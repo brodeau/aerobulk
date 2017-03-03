@@ -1,0 +1,17 @@
+# Makefile for AeroBulk
+# ==================
+
+# Fortran compiler :
+FC = gfortran
+
+
+# Fortran compilation flags :
+
+DEBUG_FF = -g -w -fbounds-check
+
+# -fdefault-integer-4 
+
+FF = -O2 -fdefault-real-8 -J./mod -I./mod
+
+# Directory to install binaries :
+INSTALL_DIR = /usr/local

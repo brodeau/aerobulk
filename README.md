@@ -1,2 +1,10 @@
-# aerobulk
-AeroBulk is a package/library that gathers state-of-the-art aerodynamic bulk formulae algorithms used to estimate turbulent air-sea fluxes in an efficient and unified way. These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux, they are needed as part of the surface boundary conditions of OGCMs, AGCMs and in the coupling interface of Earth Systems.
+# AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com), S. Falahat (sd.falahat@gmail.com)
+# https://sourceforge.net/p/aerobulk
+
+
+ * Compile AeroBulk:
+
+       Configure your own arch/make.macro_<ARCH>
+
+       $ ln -sf arch/make.macro_<ARCH> make.macro
+       $  make

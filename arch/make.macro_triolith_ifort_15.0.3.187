@@ -1,0 +1,28 @@
+# Makefile for SOSIE
+# ==================
+
+INTEL_VERSION = 2015.3.187
+
+# Fortran compiler :
+FC = /software/apps/intel/composer_xe_$(INTEL_VERSION)/bin/intel64/ifort
+
+# Root directory for Netcdf :
+NCDF = /software/apps/netcdf/4.3.2/i1214-hdf5-1.8.12-AVX-off
+
+# Root directory for SOSIE:
+SOSIE = /home/x_laubr/local
+
+INTEL_DIR = /software/apps/intel/composer_xe_$(INTEL_VERSION)/compiler
+LIB_INTEL = ${INTEL_DIR}/lib/intel64
+
+
+
+# Fortran compilation flags :
+
+#DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
+
+#FF = -O3 -parallel -r8 -i4 -fp-model precise $(DEBUG_FF) -module mod
+
+FF = -O3 -r8 -i4 -fp-model precise $(DEBUG_FF) -module mod
+
+LIB_NCDF = -L$(NCDF)/lib -lnetcdf -lnetcdff -L$(LIB_INTEL) -lirc -liomp5

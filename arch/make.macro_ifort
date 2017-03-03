@@ -1,0 +1,16 @@
+# Makefile for AeroBulk
+# ==================
+
+# Fortran compiler :
+FC = /opt/intel/compilers_and_libraries_2016.1.150/linux/bin/intel64/ifort
+
+
+# Fortran compilation flags :
+
+#DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
+DEBUG_FF = -g -fpe0 -traceback -CB -warn all
+
+FF = -O2 -r8 -i4 $(DEBUG_FF) -module mod/
+
+# Directory to install binaries :
+INSTALL_DIR = /usr/local
