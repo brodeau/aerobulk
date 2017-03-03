@@ -1,0 +1,187 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <title>TURB_ECMWF</title>
+
+    <center>
+      <!--<embed type="image/svg+xml" src="images/aerobulk_logo.svg" />-->
+      <embed type="image/png" src="../images/aerobulk_logo.png" style="width:300px"/>
+    </center>
+
+    <!--<style type="text/css">
+        @page { size: 6.0in 11.69in }
+        </style>
+    -->
+  </head>
+
+
+  <body dir="ltr" lang="en-US"  bgcolor="white" style="margin:auto; width: 1080px; border:1px solid #D8D8D8 ;">
+
+    <br/> <br/>
+
+    <div align="left" style="margin: 65px 40px 0px 40px; font-family: Courier New; font-size: 26px;width: 1000px;">
+      <b> > TURB_ECMWF, transfer coefficients with ECMWF algorithm</b>
+    </div>
+
+    <div align="justify" style="margin: 10px 40px 0px 80px; font-family: Courier New; font-size: 20px;width: 1000px;">
+
+
+      Use <i>turb_ecmwf()</i> of module <b>mod_blk_ecmwf</b> (mod_blk_ecmwf.f90).
+      <br>
+      Example of a call:
+
+      <pre style="margin: 0px 10px 10px 0px"><code style="font-family:Monospace; font-size: 14pt">
+          PROGRAM TEST_COEFF
+              USE mod_const
+              USE mod_blk_ecmwf
+              ...
+              jpi = Ni ! x-shape of the 2D domain
+              jpj = Nj ! y-shape of the 2D domain
+              ...
+              CALL TURB_ECMWF( zt, zu, T_s, t_zt, q_s, q_zt, U_zu,  &
+              &                Cd, Ch, Ce, t_zu, q_zu, U_blk        &
+              &                [ , rad_sw=Rsw, rad_lw=Rlw, slp=P ]  &
+              &                [ , xz0=z0, xu_star=u_s, xL=L ] )
+              ...
+          END PROGRAM TEST_COEFF
+      </code></pre>
+
+
+      <b>INPUT ARGUMENTS:</b>
+      <ul TYPE="SQUARE" style="margin: 10px 10px 10px 0px">
+        <li>  zt: (Sc,real) height for air temperature and  humidity [m]
+        <li>  zu: (Sc,real) height for wind speed (generally 10m)           [m]
+        <li>  t_zt: (2D,real) potential air temperature at zt               [K]
+        <li>  q_zt: (2D,real) air spec. humidity of at zt                   [kg/kg]
+        <li>  U_zu: (2D,real) scalar wind speed at zu                       [m/s]
+      </ul>
+
+      <b>INPUT and OUTPUT ARGUMENTS:</b>
+      <ul TYPE="SQUARE" style="margin: 10px 10px 10px 0px">
+        <li>  T_s: (2D,real) surface temperature   [K]
+          <ul TYPE="BULLET" style="margin: 0px 0px 0px 28px">
+            <li> input: bulk SST
+            <li> output: skin temperature or SST (unchanged)
+          </ul>
+        <li>  q_s: (2D,real) surface satur. spec. humidity at T_s [kg/kg]
+          <ul TYPE="BULLET" style="margin: 0px 0px 0px 28px">
+            <li> input: saturation at bulk SST (not needed if skin p. used)
+            <li> output: saturation at skin temp. or at SST (unchanged)
+          </ul>
+
+      </ul>
+
+      <!-- Problem is that we need function q_sat to be known into TURB_COARE
+      and TURB_ECMWF !!! -->
+
+      <b>[ OPTIONAL INPUT ARGUMENTS: ]</b>
+      <ul TYPE="SQUARE" style="margin: 0px 20px 20px 20px">
+        <li> rad_sw: (2D,real) downw. shortw. rad. at surface (>0)   [W/m^2]
+        <li> rad_lw: (2D,real) downw. longw. rad. at surface  (>0)   [W/m^2]
+        <li>  slp: (2D,real) sea-level pressure                      [Pa]
+      </ul>
+      <div align="left" style="margin: -18px 40px 0px 20px; font-family: Courier; font-size: 18x;width: 860px;">
+        (The presence of these 3 optional input parameters triggers the use of
+        the Cool-Skin Warm-Layer parameterization)
+      </div>
+      <br>
+
+      <b>OUTPUT ARGUMENTS:</b>
+      <ul TYPE="SQUARE" style="margin: 0px 10px 10px 0px">
+        <li>  Cd: (2D,real) drag coefficient
+        <li>  Ch: (2D,real) sensible heat transfer coefficient
+        <li>  Ce: (2D,real) moisture transfer (evaporation) coefficient
+        <li>  t_zu: (2D,real) air pot. temperature adjusted at zu      [K]
+        <li>  q_zu: (2D,real) air spec. humidity adjusted at zu  [kg/kg]
+        <li>  Ublk: (2D,real) bulk wind speed at 10m                 [m/s]
+      </ul>
+
+      <b>[ OPTIONAL OUTPUT ARGUMENTS: ]</b>
+      <ul TYPE="SQUARE" style="margin: 0px 10px 10px 0px">
+        <li>  z0: (2D,real) roughness length of the sea surface    [m]
+        <li>  u_s: (2D,real) friction velocity [m/s]
+        <li>  L: (2D,real) Monin-Obukhov length [m]
+      </ul>
+
+
+    </div>
+
+
+
+
+
+    <br/>
+
+    <div align="left" style="margin: 65px 40px 0px 40px; font-family: Courier New; font-size: 24px;width: 1000px;">
+      <b> > Some Examples </b>
+    </div>
+
+    <div align="justify" style="margin: 10px 40px 0px 80px; font-family: Courier New; font-size: 20px;width: 1000px;">
+
+      Using ECMWF without the cool-skin warm-layer parameterization, with
+      air temperature and humidity provided at 2m and wind at 10m:
+      <br>
+
+      <pre style="margin: 0px 10px -10px 0px"><code style="font-family:Monospace; font-size: 14pt">
+          PROGRAM TEST_COEFF
+              USE mod_const
+              USE mod_blk_ecmwf
+              ...
+              jpi = Ni ! x-shape of the 2D domain
+              jpj = Nj ! y-shape of the 2D domain
+              ...
+              CALL TURB_ECMWF( 2., 10., Ts, t2, qs, q2, U10, &
+              &                Cd, Ch, Ce, t10, q10, U_blk )
+              ...
+          END PROGRAM TEST_COEFF
+      </code></pre>
+
+      In this case, Ts and qs, the surface temperature and saturation specific humidity won't
+      be modified. The relevant value of qs must be provided as input.
+
+
+
+      <br><br>
+
+      Now the same but using the cool-skin warm-layer parameterization:
+
+      <pre style="margin: 0px 10px -10px 0px"><code style="font-family:Monospace; font-size: 14pt">
+          PROGRAM TEST_COEFF
+              USE mod_const
+              USE mod_blk_ecmwf
+              ...
+              jpi = Ni ! x-shape of the 2D domain
+              jpj = Nj ! y-shape of the 2D domain
+              ...
+              CALL TURB_ECMWF( 2., 10., Ts, t2, qs, q2, U10,   &
+              &                Cd, Ch, Ce, t10, q10, U_blk,    & 
+              &                rad_sw=Rsw, rad_lw=Rlw, slp=MSL )
+              ...
+          END PROGRAM TEST_COEFF
+      </code></pre>
+      
+      Here, Ts is the bulk SST as input and will become the skin temperature as
+      output! qs is irrelevant as input and is the saturation specific humidity at
+      temperature Ts as output!
+      
+
+
+
+
+
+
+
+    <br>
+
+    <center>
+      <div align="center" style="margin: 35px 40px 0px 40px; font-family: Courier New; font-size: 14px;width: 960px;">
+        <u>Contact</u><br><br>
+        <a href="http://sourceforge.net/projects/aerobulk/"><b>AeroBulk</b></a> / L. Brodeau / 2016
+    </center>
+
+    <br><br><br>
+
+  </body>
+</html>
