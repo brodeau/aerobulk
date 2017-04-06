@@ -1,3 +1,6 @@
+
+![Image of Yaktocat](https://brodeau.github.io/images/projects/aerobulk_logo_s.png)
+
 <center><embed type="image/png" src="doc/html/images/aerobulk_logo.png" style="width:500px"></center>
 
 <div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;" align="justify">**AeroBulk** is a package/library that gathers state-of-the-art aerodynamic bulk formulae algorithms used to estimate turbulent air-sea fluxes in an efficient and unified way. These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux, they are needed as part of the surface boundary conditions of OGCMs, AGCMs and in the coupling interface of Earth Systems.  
