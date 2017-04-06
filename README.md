@@ -18,13 +18,8 @@ Beside bulk algorithms AeroBulk also provides a variety of functions to accurate
 The focus in AeroBulk is readability, efficiency and portability towards either
 modern GCMs (Fortran 90, set of modules and a library).
 
-**> Obtaining AeroBulk**
 
-The AeroBulk project is hosted by SourceForge.net and the source code is available here: [http://sourceforge.net/projects/aerobulk/](http://sourceforge.net/projects/aerobulk/)  
-
-
-
->**> Computing transfer coefficients with AeroBulk**
+**> Computing transfer coefficients with AeroBulk**
 
 In AeroBulk, 3 different routines are available to compute the bulk transfer
 (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and
@@ -99,6 +94,116 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
                   SSQ(:,:) = 0.98*q_sat(SST, SLP)
                   ...
               END PROGRAM TEST_THERMO
+
+
+
+
+
+**> TURB_COARE, transfer coefficients with COARE 3.0/3.5**
+
+Use _turb_coare()_ of module **mod_blk_coare** (mod_blk_coare.f90).  
+Example of a call:
+
+              PROGRAM TEST_COEFF
+                  USE mod_const
+                  USE mod_blk_coare
+                  ...
+                  jpi = Ni ! x-shape of the 2D domain
+                  jpj = Nj ! y-shape of the 2D domain
+                  ...
+                  CALL TURB_COARE( cver, zt, zu, T_s, t_zt, q_s, q_zt, U_zu,  &
+                  &                Cd, Ch, Ce, t_zu, q_zu, U_blk              &
+                  &                [ , rad_sw=Rsw, rad_lw=Rlw, slp=P ]        &
+                  &                [ , xz0=z0, xu_star=u_s, xL=L ] )
+                  ...
+              END PROGRAM TEST_COEFF
+
+**INPUT ARGUMENTS:**
+
+*   cver: (String) version of the COARE algorithm ['3.0' or '3.5']
+*   zt: (Sc,real) height for air temperature and humidity [m]
+*   zu: (Sc,real) height for wind speed (generally 10m) [m]
+*   t_zt: (2D,real) potential air temperature at zt [K]
+*   q_zt: (2D,real) air spec. humidity of at zt [kg/kg]
+*   U_zu: (2D,real) scalar wind speed at zu [m/s]
+
+**INPUT and OUTPUT ARGUMENTS:**
+
+*   T_s: (2D,real) surface temperature [K]
+    *   input: bulk SST
+    *   output: skin temperature or SST (unchanged)
+*   q_s: (2D,real) surface satur. spec. humidity at T_s [kg/kg]
+    *   input: saturation at bulk SST (not needed if skin p. used)
+    *   output: saturation at skin temp. or at SST (unchanged)
+
+**[ OPTIONAL INPUT ARGUMENTS: ]**
+
+*   rad_sw: (2D,real) downw. shortw. rad. at surface (>0) [W/m^2]
+*   rad_lw: (2D,real) downw. longw. rad. at surface (>0) [W/m^2]
+*   slp: (2D,real) sea-level pressure [Pa]
+
+(The presence of these 3 optional input parameters triggers the use of the
+Cool-Skin Warm-Layer parameterization)
+
+**OUTPUT ARGUMENTS:**
+
+*   Cd: (2D,real) drag coefficient
+*   Ch: (2D,real) sensible heat transfer coefficient
+*   Ce: (2D,real) moisture transfer (evaporation) coefficient
+*   t_zu: (2D,real) air pot. temperature adjusted at zu [K]
+*   q_zu: (2D,real) air spec. humidity adjusted at zu [kg/kg]
+*   Ublk: (2D,real) bulk wind speed at 10m [m/s]
+
+**[ OPTIONAL OUTPUT ARGUMENTS: ]**
+
+*   z0: (2D,real) roughness length of the sea surface [m]
+*   u_s: (2D,real) friction velocity [m/s]
+*   L: (2D,real) Monin-Obukhov length [m]
+
+**> Some Examples**
+
+Using COARE 3.0 without the cool-skin warm-layer parameterization, with air temperature and humidity provided at 2m and wind at 10m:  
+
+              PROGRAM TEST_COEFF
+                  USE mod_const
+                  USE mod_blk_coare
+                  ...
+                  jpi = Ni ! x-shape of the 2D domain
+                  jpj = Nj ! y-shape of the 2D domain
+                  ...
+                  CALL TURB_COARE( '3.0', 2., 10., Ts, t2, qs, q2, U10, &
+                  &                Cd, Ch, Ce, t10, q10, U_blk )
+                  ...
+              END PROGRAM TEST_COEFF
+
+In this case, Ts and qs, the surface temperature and saturation specific humidity won't be modified. The relevant value of qs must be provided as input.  
+
+Now the same but using the cool-skin warm-layer parameterization:
+
+              PROGRAM TEST_COEFF
+                  USE mod_const
+                  USE mod_blk_coare
+                  ...
+                  jpi = Ni ! x-shape of the 2D domain
+                  jpj = Nj ! y-shape of the 2D domain
+                  ...
+                  CALL TURB_COARE( '3.0', 2., 10., Ts, t2, qs, q2, U10, &
+                  &                Cd, Ch, Ce, t10, q10, U_blk,         & 
+                  &                rad_sw=Rsw, rad_lw=Rlw, slp=MSL )
+                  ...
+              END PROGRAM TEST_COEFF
+
+Here, Ts is the bulk SST as input and will become the skin temperature as
+output! qs is irrelevant as input and is the saturation specific humidity at
+temperature Ts as output!
+
+
+
+
+
+
+
+
 
 **> Acknowledging AeroBulk**
 
