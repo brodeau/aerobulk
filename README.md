@@ -1,322 +1,114 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<center><embed type="image/png" src="images/aerobulk_logo.png" style="width:500px"></center>
 
-  <head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <title>AeroBulk</title>
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;" align="justify">**AeroBulk** is a package/library that gathers state-of-the-art aerodynamic bulk formulae algorithms used to estimate turbulent air-sea fluxes in an efficient and unified way. These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux, they are needed as part of the surface boundary conditions of OGCMs, AGCMs and in the coupling interface of Earth Systems.  
 
-    <center>
-      <!--<embed type="image/svg+xml" src="images/aerobulk_logo.svg" />-->
-      <embed type="image/png" src="images/aerobulk_logo.png" style="width:500px"/>
-    </center>
+AeroBulk relies on bulk formulae to compute turbulent air-sea fluxes from the sea surface temperature, wind speed, and air temperature and specific humidity. In AeroBulk, 4 state-of-the-art algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 
-    <!--<style type="text/css">
-        @page { size: 6.0in 11.69in }
-        </style>
-    -->
-  </head>
+*   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
+*   COARE v3.5 ([Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1)<a>)</a>
+*   <a>ECMWF (</a>[IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
+*   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
+In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature is the bulk SST (measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. The NCAR algorithm is to be used only with the bulk SST.  
 
-  <body dir="ltr" lang="en-US"  bgcolor="white" style="margin:auto; width: 1080px; border:1px solid #D8D8D8 ;">
+Beside bulk algorithms AeroBulk also provides a variety of functions to accurately estimate relevant atmospheric variable such as density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, Monin-Obukhov length, wind gustiness, etc...  
 
-    <br/> <br/>
+The focus in AeroBulk is readability, efficiency and portability towards either modern GCMs (Fortran 90, set of modules and a library).</div>
 
-    <!--
-        <p align="center">
-          <font face="DejaVu Sans Light, sans-serif">
-            <font size="7" style="font-size: 60pt">AeroBulk</font>
-          </font>
-        </p>
-        -->
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;" align="left">**> Obtaining AeroBulk**</div>
 
+<div style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;" align="justify">The AeroBulk project is hosted by SourceForge.net and the source code is available here: [http://sourceforge.net/projects/aerobulk/](http://sourceforge.net/projects/aerobulk/)  
 
+Alternatively you can directly checkout the code via subversion:
 
+      svn co svn://svn.code.sf.net/p/aerobulk/code/trunk aerobulk
 
+</div>
 
-    <!-- <font size="4" sface="Arial "tyle="font-size: 14pt">
-         ...
-         </font>
-    -->
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;" align="left">**> Computing transfer coefficients with AeroBulk**</div>
 
-    <!-- <p align="left">
-         ...
-         </p>
-    -->
+<div style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;" align="justify">In AeroBulk, 3 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air temperature and humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
 
-    <!-- Garamond FreeMono Courier -->
+*   _[turb_coare()](src/turb_coare.html)_ of module **mod_blk_coare** (mod_blk_coare.f90)
+*   _[turb_ecmwf()](src/turb_ecmwf.html)_ of module **mod_blk_ecmwf** (mod_blk_ecmwf.f90)
+*   _[turb_ncar()](src/turb_ncar.html)_ of module **mod_blk_ncar** (mod_blk_ncar.f90)
 
-    <div align="justify" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;">
+</div>
 
-      <b>AeroBulk</b> is a package/library that gathers state-of-the-art
-      aerodynamic bulk formulae algorithms used to estimate turbulent air-sea
-      fluxes in an efficient and unified way. These turbulent fluxes are wind
-      stress, evaporation (latent heat flux) and sensible heat flux, they are
-      needed as part of the surface boundary conditions of OGCMs, AGCMs and in
-      the coupling interface of Earth Systems.
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;" align="left">**> Computing turbulent fluxes with AeroBulk**</div>
 
-      <br><br>
+<div style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;" align="justify">AeroBulk can also directly compute the 3 turbulent fluxes with the routine _aerobulk_model()_ of module **mod_aerobulk** (mod_aerobulk.f90):
 
-      AeroBulk relies on bulk formulae to compute turbulent air-sea fluxes from
-      the sea surface temperature, wind speed, and air temperature and specific
-      humidity.
+       PROGRAM TEST_FLUX
+           USE mod_aerobulk
+           ...
+           CALL AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, q_zt, U_zu, V_zu, SLP, &
+           &                    Qe, Qh, Tau_x, Tau_y                             &
+           &                   [, Niter=N, rad_sw=Rsw, rad_lw=Rlw] )
+           ...
+       END PROGRAM TEST_FLUX
 
-      In AeroBulk, 4 state-of-the-art algorithms are available to compute the
-      drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>,
-      C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
+INPUT ARGUMENTS:
 
-      <ul TYPE="SQUARE" style="margin: 10px 40px 20px 40px">
-        <li> COARE v3.0 (<a href="http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2">Fairall <i>et al.</i> 2003</a>)
-        <li> COARE v3.5 (<a href="http://dx.doi.org/10.1175/jpo-d-12-0173.1">Edson <i>et al.</i> 2013<a>)
-        <li> ECMWF (<a href="https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation">IFS (Cy40) documentation</a>)
-        <li> NCAR  (Large & Yeager 2004, <a href="http://dx.doi.org/10.1007/s00382-008-0441-3">2009</a>)
-      </ul>
+*   calgo: (String) algorithm to use (coare/coare35/ncar/ecmwf)
+*   zt : (Sc,real) height for temperature and spec. hum. of air [m]
+*   zu : (Sc,real) height for wind speed (generally 10m) [m]
+*   sst : (2D,real) SST [K]
+*   t_zt : (2D,real) potential air temperature at zt [K]
+*   q_zt : (2D,real) specific humidity of air at zt [kg/kg]
+*   U_zu : (2D,real) zonal scalar wind speed at 10m [m/s]
+*   V_zu : (2D,real) meridional scalar wind speed at 10m [m/s]
+*   SLP : (2D,real) sea-level pressure [Pa]
 
-      In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is
-      included and can be activated if the input sea-surface temperature is the
-      bulk SST (measured a few tenths of meters below the surface). Activation
-      of these cool-skin/warm layer schemes requires the surface downwelling shortwave
-      and longwave radiative flux components to be provided.
+[ OPTIONAL INPUT ARGUMENT: ]
 
-      The NCAR algorithm is to be used only with the bulk SST.
+*   Niter: (Sc,int) number of iterations (default is 4)
+*   rad_sw: (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
+*   rad_lw: (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
 
-      <br><br>
+<div style="margin: -18px 40px 0px 20px; font-family: Courier; font-size: 18x;width: 860px;" align="left">(The presence of rad_sw and rad_sw triggers the use of the Cool-Skin Warm-Layer parameterization with COARE* and ECMWF algorithms)</div>
 
-      Beside bulk algorithms AeroBulk also provides a variety of functions to
-      accurately estimate relevant atmospheric variable such as density of air,
-      different expressions of the humidity of air, viscosity of air, specific
-      humidity at saturation, Monin-Obukhov length, wind gustiness, etc...
+OUTPUT ARGUMENTS:
 
-      <br><br>
+*   Qe : (2D,real) latent heat flux [W/m^2]
+*   Qh : (2D,real) sensible heat flux [W/m^2]
+*   Tau_x : (2D,real) zonal wind stress [N/m^2]
+*   Tau_y : (2D,real) meridional wind stress [N/m^2]
 
-      The focus in AeroBulk is readability, efficiency and portability towards
-      either modern GCMs (Fortran 90, set of modules and a library).
+Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
 
-      <!-- or diagnostic tools (C++ library and Python modules). -->
+           CALL AEROBULK_MODEL( 'coare', 2., 10., sst, t_zt, q_zt, U_zu, V_zu, SLP, &
+           &                    Qe, Qh, Tau_x, Tau_y,                               &
+           &                    Niter=10, rad_sw=Rsw, rad_lw=Rlw )
 
+</div>
 
-    </div>
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;" align="left">**> Computing atmospheric state variables with AeroBulk**</div>
 
-    <br><br>
+<div style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;" align="justify">A selection of useful functions to estimate some atmospheric state variables of the marine boundary layer are available in the module **mod_thermo** (mod_thermo.f90).  
+Example for computing SSQ of Eq.(1) out of the SST and the SLP:
 
-    <div align="left" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;">
-      <b> > Obtaining AeroBulk</b>
-    </div>
-    <div align="justify" style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;">
-      The AeroBulk project is hosted by SourceForge.net and the source code is available here:
-      <a href="http://sourceforge.net/projects/aerobulk/"> http://sourceforge.net/projects/aerobulk/</a><br>
-      <br>
-      Alternatively you can directly checkout the code via subversion:
-      <pre style="margin: 0px 40px 20px 40px"><code style="font-family: Monospace; font-size: 15pt; font-weight:bold">
-  svn co svn://svn.code.sf.net/p/aerobulk/code/trunk aerobulk
-      </code></pre>
+              PROGRAM TEST_THERMO
+                  USE mod_const
+                  USE mod_thermo
+                  ...
 
+                  SSQ(:,:) = 0.98*q_sat(SST, SLP)
+                  ...
+              END PROGRAM TEST_THERMO
 
-    </div>
+</div>
 
-    <br>
+<div style="margin: 35px 40px 0px 40px; font-family: Courier; font-size: 24px;width: 960px;" align="left">**> Acknowledging AeroBulk**</div>
 
-    <!--
-        <div align="left" style="margin: 35px 40px 0px 40px; font-family: Courier; font-size: 24px;width: 960px;">
-          <b> > Theory behind Aerobulk</b>
-        </div>
-
-
-        <div align="justify" style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;">
-          <b> &nbsp &nbsp The Bulk Model </b> <br>
-
-          <center>
-            <object type="image/svg+xml" data="images/equation_01.svg">Your browser does not support SVG</object>
-          </center>
-
-        </div>
-
-
-        <div align="justify" style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;">
-          <br>
-          <b> &nbsp &nbsp The Monin-Obukhov similarity theory </b> <br>
-          (TO BE WRITTEN SOON!)<br>
-          ...
-        </div>
-
-        -->
-
-    <div align="left" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;">
-      <b> > Computing transfer coefficients with AeroBulk</b>
-    </div>
-    <div align="justify" style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;">
-
-      In AeroBulk, 3 different routines are available to compute the bulk
-      transfer (<i>a.k.a</i> exchange)
-      coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>.
-      Beside computing the transfer coefficients, these routines adjust air
-      temperature and humidity from height <i>z<sub>t</sub></i> to the reference
-      height (wind) <i>z<sub>u</sub></i>. They also return the bulk wind speed,
-      which is the scalar wind speed at height <i>z<sub>u</sub></i> with the
-      potential inclusion of a gustiness contribution (in calm and unstable
-      conditions).
-
-
-      <ul TYPE="SQUARE" style="margin: 10px 40px 20px 40px">
-
-        <li> <i><a href="src/turb_coare.html">turb_coare()</a></i> of module <b>mod_blk_coare</b> (mod_blk_coare.f90)
-
-        <li> <i><a href="src/turb_ecmwf.html">turb_ecmwf()</a></i> of module <b>mod_blk_ecmwf</b> (mod_blk_ecmwf.f90)
-
-        <li> <i><a href="src/turb_ncar.html">turb_ncar()</a></i> of module <b>mod_blk_ncar</b> (mod_blk_ncar.f90)
-
-      </ul>
-
-
-
-
-      <!--      Example when using the COARE algorithm:
-                <pre style="margin: 0px 40px 20px 40px"><code style="font-family: Monospace; font-size: 13pt">
-                    PROGRAM TEST_COEFF
-                    USE mod_const
-                    USE mod_blk_coare
-                    ...
-                    CALL TURB_COARE(zt, zu, sst, t_air, qsat_sst, q_air, Wind10, &
-                    &             Cd, Ch, Ce, t_zu, q_zu, Ublk)
-                    ...
-                    END PROGRAM TEST_COEFF
-                </code></pre>
-                -->
-    </div>
-
-
-
-    <br>
-    
-    <div align="left" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;">
-      <b> > Computing turbulent fluxes with AeroBulk</b>
-    </div>
-    <div align="justify" style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;">
-
-
-      AeroBulk can also directly compute the 3 turbulent fluxes
-      with the routine <i>aerobulk_model()</i> of module <b>mod_aerobulk</b> (mod_aerobulk.f90):
-      <pre style="margin: 0px 10px 10px 0px"><code style="font-family: Monospace; font-size: 13pt">
-   PROGRAM TEST_FLUX
-       USE mod_aerobulk
-       ...
-       CALL AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, q_zt, U_zu, V_zu, SLP, &
-       &                    Qe, Qh, Tau_x, Tau_y                             &
-       &                   [, Niter=N, rad_sw=Rsw, rad_lw=Rlw] )
-       ...
-   END PROGRAM TEST_FLUX
-      </code></pre>
-
-      INPUT ARGUMENTS:
-      <ul TYPE="SQUARE" style="margin: 0px 40px 20px 40px">
-        <li>  calgo: (String)  algorithm to use (coare/coare35/ncar/ecmwf)
-        <li>  zt   : (Sc,real) height for temperature and spec. hum. of air            [m]
-        <li>  zu   : (Sc,real) height for wind speed (generally 10m)                   [m]
-        <li>  sst  : (2D,real) SST                                                     [K]
-        <li>  t_zt : (2D,real) potential air temperature at zt                         [K]
-        <li>  q_zt : (2D,real) specific humidity of air at zt                          [kg/kg]
-        <li>  U_zu : (2D,real) zonal scalar wind speed at 10m                          [m/s]
-        <li>  V_zu : (2D,real) meridional scalar wind speed at 10m                     [m/s]
-        <li>  SLP  : (2D,real) sea-level pressure                                      [Pa]
-      </ul>
+<div style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;" align="justify">_To acknowledge/reference AeroBulk in your scientific work, please cite:_  
+Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically significant effects of some approximations in the bulk parameterizations of turbulent air-sea fluxes. _J. Phys. Oceanogr._, 10.1175/JPO-D-16-0169.1. [ [DOI](http://dx.doi.org/10.1175/JPO-D-16-0169.1) ]  
+</div>
 
-      [ OPTIONAL INPUT ARGUMENT: ]
-      <ul TYPE="SQUARE" style="margin: 0px 40px 20px 40px">
-        <li> Niter: (Sc,int) number of iterations (default is 4)
-        <li> rad_sw: (2D,real) downw. shortwave rad. at surface (>0)   [W/m^2]                                   
-        <li> rad_lw: (2D,real)downw. longwave rad. at  surface  (>0)   [W/m^2]  
-      </ul>
-      <div align="left" style="margin: -18px 40px 0px 20px; font-family: Courier; font-size: 18x;width: 860px;">
-        (The presence of rad_sw and rad_sw triggers the use of the Cool-Skin
-        Warm-Layer parameterization with COARE* and ECMWF algorithms)
-      </div>
-      <br>
+<center>
 
-      OUTPUT ARGUMENTS:
-      <ul TYPE="SQUARE" style="margin: 0px 40px 20px 40px">
-        <li>  Qe    : (2D,real) latent heat flux                                    [W/m^2]
-        <li>  Qh    : (2D,real) sensible heat flux                                  [W/m^2]
-        <li>  Tau_x : (2D,real) zonal wind stress                                   [N/m^2]
-        <li>  Tau_y : (2D,real) meridional wind stress                              [N/m^2]
-      </ul>
+<div style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 14px;width: 960px;" align="center"><u>Contact</u>  
 
+[**AeroBulk**](http://sourceforge.net/projects/aerobulk/) / L. Brodeau / 2016</div>
 
-      <br>
-      
-      Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer
-      parameterization and 10 iterations:
-      <pre style="margin: 0px 10px 10px 0px"><code style="font-family: Monospace; font-size: 13pt">
-       CALL AEROBULK_MODEL( 'coare', 2., 10., sst, t_zt, q_zt, U_zu, V_zu, SLP, &
-       &                    Qe, Qh, Tau_x, Tau_y,                               &
-       &                    Niter=10, rad_sw=Rsw, rad_lw=Rlw )
-      </code></pre>
-      
-      
-    </div>
-
-    
-
-
-
-    <div align="left" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 24px;width: 960px;">
-      <b> > Computing atmospheric state variables with AeroBulk</b>
-    </div>
-    <div align="justify" style="margin: 10px 40px 0px 60px; font-family: Courier New; font-size: 20px;width: 960px;">
-
-      A selection of useful functions to estimate some atmospheric state
-      variables of the marine boundary layer are available in the
-      module <b>mod_thermo</b> (mod_thermo.f90).
-      <br>
-      Example for computing SSQ of Eq.(1) out of the SST and the SLP:
-      <pre style="margin: 0px 10px 10px 0px"><code style="font-family: Monospace; font-size: 13pt">
-          PROGRAM TEST_THERMO
-              USE mod_const
-              USE mod_thermo
-              ...
-
-              SSQ(:,:) = 0.98*q_sat(SST, SLP)
-              ...
-          END PROGRAM TEST_THERMO
-      </code></pre>
-
-    </div>
-
-
-
-
-    <div align="left" style="margin: 35px 40px 0px 40px; font-family: Courier; font-size: 24px;width: 960px;">
-      <b> > Acknowledging AeroBulk</b>
-    </div>
-    <div align="justify" style="margin: 10px 40px 0px 40px; font-family: Courier; font-size: 20px;width: 960px;">
-
-      <i>To acknowledge/reference AeroBulk in your scientific work, please
-        cite:</i><br>
-
-      Brodeau, L., B.&nbsp;Barnier, S.&nbsp;Gulev, and C.&nbsp;Woods, 2016:
-      Climatologically significant effects of some approximations in the bulk
-      parameterizations of turbulent air-sea
-      fluxes. <i>J. Phys. Oceanogr.</i>, 10.1175/JPO-D-16-0169.1.
-      [&nbsp;<a href="http://dx.doi.org/10.1175/JPO-D-16-0169.1">DOI</a>&nbsp;]
-      
-
-      
-      <br>
-
-    </div>
-
-
-
-
-
-
-
-
-    <center>
-      <div align="center" style="margin: 35px 40px 0px 60px; font-family: Courier New; font-size: 14px;width: 960px;">
-        <u>Contact</u><br><br>
-        <a href="http://sourceforge.net/projects/aerobulk/"><b>AeroBulk</b></a> / L. Brodeau / 2016
-    </center>
-
-    <br><br><br>
-
-  </body>
-</html>
+</center>
