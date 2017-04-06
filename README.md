@@ -208,10 +208,4 @@ temperature Ts as output!
 **> Acknowledging AeroBulk**
 
 _To acknowledge/reference AeroBulk in your scientific work, please cite:_  
-Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically significant effects of some approximations in the bulk parameterizations of turbulent air-sea fluxes. _J. Phys. Oceanogr._, 10.1175/JPO-D-16-0169.1. [ [DOI](http://dx.doi.org/10.1175/JPO-D-16-0169.1) ]  
-
-
-Contact  
-
-[**AeroBulk**](http://sourceforge.net/projects/aerobulk/) / L. Brodeau / 2016
-
+Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically significant effects of some approximations in the bulk parameterizations of turbulent air-sea fluxes. _J. Phys. Oceanogr._, **47 (1)**, 5–28, 10.1175/JPO-D-16-0169.1. [ [DOI](http://dx.doi.org/10.1175/JPO-D-16-0169.1) ]  
