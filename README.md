@@ -3,11 +3,17 @@
 ![Aerobulk Logo](https://brodeau.github.io/images/projects/aerobulk_logo_s.svg)
 
 
-**AeroBulk** is a package/library that gathers state-of-the-art aerodynamic bulk formulae algorithms used to estimate turbulent air-sea fluxes in an efficient and unified way. These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux, they are needed as part of the surface boundary conditions of OGCMs, AGCMs and in the coupling interface of Earth Systems.  
+**AeroBulk** is a Fortran package/library which gathers state-of-the-art
+algorithms, turbulent closures, parameterizations, and thermodynamics (empirical) functions used to compute
+turbulent fluxes at the air-sea interface.
+These turbulent fluxes are wind stress, evaporation (latent heat flux) and
+sensible heat flux. These fluxes are estimated by means of so-called **aerodynamic bulk formulae** from the
+sea surface temperature, and atmospheric surface parameters: wind speed, air temperature and specific
+humidity.
 
-AeroBulk relies on bulk formulae to compute turbulent air-sea fluxes from the
-sea surface temperature, wind speed, and air temperature and specific
-humidity. In AeroBulk, 4 state-of-the-art algorithms are available to compute
+![Aerobulk Logo](https://brodeau.github.io/images/projects/bulk.svg)
+
+In AeroBulk, 4 algorithms are available to compute
 the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>,
 C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 
@@ -16,7 +22,12 @@ C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
-In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature is the bulk SST (measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. The NCAR algorithm is to be used only with the bulk SST.  
+In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included 
+and can be activated if the input sea-surface temperature is the bulk SST
+(usually measured a few tenths of meters below the surface). Activation
+of these cool-skin/warm layer schemes requires the surface downwelling shortwave
+and longwave radiative flux components to be provided. The NCAR algorithm is to
+be used only with the bulk SST.
 
 Beside bulk algorithms AeroBulk also provides a variety of functions to accurately estimate relevant atmospheric variable such as density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, Monin-Obukhov length, wind gustiness, etc...  
 
@@ -24,25 +35,14 @@ The focus in AeroBulk is readability, efficiency and portability towards either
 modern GCMs (Fortran 90, set of modules and a library).
 
 
-**> Computing transfer coefficients with AeroBulk**
-
-In AeroBulk, 3 different routines are available to compute the bulk transfer
-(_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and
-C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust
-air temperature and humidity from height _z<sub>t</sub>_ to the reference height
-(wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the
-scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a
-gustiness contribution (in calm and unstable conditions).
 
 
 
 
+# **> Computing turbulent fluxes with AeroBulk**
 
-
-
-**> Computing turbulent fluxes with AeroBulk**
-
-AeroBulk can also directly compute the 3 turbulent fluxes with the routine _aerobulk_model()_ of module **mod_aerobulk** (mod_aerobulk.f90):
+AeroBulk can also directly compute the 3 turbulent fluxes with the routine aerobulk\_model()
+of module **mod\_aerobulk** (mod\_aerobulk.f90):
 
        PROGRAM TEST_FLUX
            USE mod_aerobulk
@@ -86,27 +86,25 @@ Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameter
            &                    Qe, Qh, Tau_x, Tau_y,                               &
            &                    Niter=10, rad_sw=Rsw, rad_lw=Rlw )
 
-**> Computing atmospheric state variables with AeroBulk**
-
-A selection of useful functions to estimate some atmospheric state variables of the marine boundary layer are available in the module **mod_thermo** (mod_thermo.f90).  
-Example for computing SSQ of Eq.(1) out of the SST and the SLP:
-
-              PROGRAM TEST_THERMO
-                  USE mod_const
-                  USE mod_thermo
-                  ...
-
-                  SSQ(:,:) = 0.98*q_sat(SST, SLP)
-                  ...
-              END PROGRAM TEST_THERMO
 
 
 
+
+
+# **> Computing transfer coefficients with AeroBulk**
+
+In AeroBulk, 3 different routines are available to compute the bulk transfer
+(_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and
+C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust
+air temperature and humidity from height _z<sub>t</sub>_ to the reference height
+(wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the
+scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a
+gustiness contribution (in calm and unstable conditions).
 
 
 **> TURB_COARE, transfer coefficients with COARE 3.0/3.5**
 
-Use _turb_coare()_ of module **mod_blk_coare** (mod_blk_coare.f90).  
+Use _turb_coare() of module **mod\_blk\_coare** (mod\_blk\_coare.f90).  
 Example of a call:
 
               PROGRAM TEST_COEFF
@@ -202,6 +200,24 @@ Here, Ts is the bulk SST as input and will become the skin temperature as
 output! qs is irrelevant as input and is the saturation specific humidity at
 temperature Ts as output!
 
+
+
+
+# **> Computing atmospheric state variables with AeroBulk**
+
+A selection of useful functions to estimate some atmospheric state
+variables in the marine boundary layer are available in the module
+**mod\_thermo** (mod\_thermo.f90).  
+Example for computing SSQ of Eq.(1) out of the SST and the SLP:
+
+              PROGRAM TEST_THERMO
+                  USE mod_const
+                  USE mod_thermo
+                  ...
+
+                  SSQ(:,:) = 0.98*q_sat(SST, SLP)
+                  ...
+              END PROGRAM TEST_THERMO
 
 
 
