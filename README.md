@@ -1,10 +1,15 @@
 
-![Image of Yaktocat](https://brodeau.github.io/images/projects/aerobulk_logo_s.png)
+
+![Aerobulk Logo](https://brodeau.github.io/images/projects/aerobulk_logo_s.svg)
 
 
 **AeroBulk** is a package/library that gathers state-of-the-art aerodynamic bulk formulae algorithms used to estimate turbulent air-sea fluxes in an efficient and unified way. These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux, they are needed as part of the surface boundary conditions of OGCMs, AGCMs and in the coupling interface of Earth Systems.  
 
-AeroBulk relies on bulk formulae to compute turbulent air-sea fluxes from the sea surface temperature, wind speed, and air temperature and specific humidity. In AeroBulk, 4 state-of-the-art algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
+AeroBulk relies on bulk formulae to compute turbulent air-sea fluxes from the
+sea surface temperature, wind speed, and air temperature and specific
+humidity. In AeroBulk, 4 state-of-the-art algorithms are available to compute
+the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>,
+C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 
 *   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
 *   COARE v3.5 ([Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
