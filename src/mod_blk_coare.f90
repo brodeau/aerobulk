@@ -189,7 +189,7 @@ CONTAINS
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX(t_zt , 0.0)    ! who knows what's given on masked-continental regions...
-      q_zu = MAX(q_zt , 1.E-6)  !               "
+      q_zu = MAX(q_zt , 1.e-6)  !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
@@ -200,8 +200,10 @@ CONTAINS
       ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
-      ztmp0  = LOG(10./0.0001)/LOG(zu/0.0001)  ! (z0 = 0.0001)
-      u_star = 0.035*U_blk*ztmp0               ! (u* = 0.035*Un10)
+      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
+      ztmp0   = LOG(zu*ztmp2)
+      ztmp1   = LOG(10.*ztmp2)
+      u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       ! Charnock Parameter
       SELECT CASE (cver)
@@ -216,9 +218,12 @@ CONTAINS
       END SELECT
 
       z0     = zalpha*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0t    = 1./(0.1*EXP(vkarmn/(0.00115/(vkarmn/(LOG(10./0.0001))))))
-      Cd     = vkarmn*vkarmn*ztmp0*ztmp0    ! first guess of Cd
-      ztmp0  = vkarmn*vkarmn/(LOG(zt) - LOG(z0t))/Cd
+      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+
+      ztmp2  = vkarmn/ztmp0
+      Cd     = ztmp2*ztmp2    ! first guess of Cd
+
+      ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
       ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number
@@ -252,7 +257,7 @@ CONTAINS
 
       END IF
 
-      !! =================== ITERATION BLOCK ====================
+      !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
          !!Inverse of Monin-Obukov length (1/L) :
@@ -321,8 +326,8 @@ CONTAINS
          dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
 
       END DO
-
-      !! compute transfer coefficients at zu :
+      !
+      ! compute transfer coefficients at zu :
       ztmp0 = u_star/U_blk
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
@@ -353,8 +358,7 @@ CONTAINS
       !! Wind between 10 and 18 m/s : linear increase from 0.011 to 0.018
       !! Wind greater than 18 m/s :  alfa = 0.018
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
+      !! Author: L. Brodeau, june 2016 / AeroBulk  (https://sourceforge.net/p/aerobulk)
       !!-------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p0
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! wind speed
@@ -381,7 +385,7 @@ CONTAINS
    END FUNCTION alfa_charn_3p0
 
 
-   FUNCTION One_on_L(ptha, pqa, pus, pts, pqs)
+   FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
       !!------------------------------------------------------------------------
       !!
       !! Evaluates the 1./(Monin Obukhov length) from air temperature and
@@ -390,14 +394,14 @@ CONTAINS
       !! Author: L. Brodeau, june 2016 / AeroBulk
       !!         (https://sourceforge.net/p/aerobulk)
       !!------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha,  &  !: average potetntial air temperature [K]
          &                                        pqa,   &  !: average specific humidity of air   [kg/kg]
          &                                      pus, pts, pqs   !: frictional velocity, temperature and humidity
-
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) ::     zqa          ! local scalar
+      !!-------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -414,26 +418,24 @@ CONTAINS
 
 
    FUNCTION psi_m_coare( pzeta )
-      !!---------------------------------------------------------------------
-      !! Universal profile stability function for momentum
-      !! COARE 3.0, Fairall et al. 2003
+      !!----------------------------------------------------------------------------------
+      !! ** Purpose: compute the universal profile stability function for momentum
+      !!             COARE 3.0, Fairall et al. 2003
+      !!             pzeta : stability paramenter, z/L where z is altitude
+      !!                     measurement and L is M-O length
+      !!       Stability function for wind speed and scalars matching Kansas and free
+      !!       convection forms with weighting f convective form, follows Fairall et
+      !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
+      !!       form from Beljaars and Holtslag (1991)
       !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
-      !!
-      !! Stability function for wind speed and scalars matching Kansas and free
-      !! convection forms with weighting f convective form, follows Fairall et
-      !! al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !! form from Beljaars and Holtslag (1991)
-      !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
-      !!----------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_coare
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -466,7 +468,7 @@ CONTAINS
 
 
    FUNCTION psi_h_coare( pzeta )
-      !!--------------------------------------------------------------------
+      !!---------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !! COARE 3.0, Fairall et al. 2003
       !!
@@ -481,12 +483,12 @@ CONTAINS
       !! Author: L. Brodeau, june 2016 / AeroBulk
       !!         (https://sourceforge.net/p/aerobulk)
       !!----------------------------------------------------------------
+      !!
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_coare
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi

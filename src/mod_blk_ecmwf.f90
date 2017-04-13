@@ -67,7 +67,7 @@ MODULE mod_blk_ecmwf
 
 CONTAINS
 
-   SUBROUTINE turb_ecmwf( zt, zu, T_s, t_zt, q_s, q_zt, U_zu,       &
+   SUBROUTINE TURB_ECMWF( zt, zu, T_s, t_zt, q_s, q_zt, U_zu,       &
       &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,            &
       &                   rad_sw, rad_lw, slp,                      &
       &                   xz0, xu_star, xL, xUN10 )
@@ -85,7 +85,6 @@ CONTAINS
       !!                and the SLP are provided as arguments!
       !!
       !! ** Method : Monin Obukhov Similarity Theory
-      !!======================================================================================
       !!
       !! INPUT :
       !! -------
@@ -124,7 +123,8 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !!============================================================================
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                   [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                              [m]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature              [Kelvin]
@@ -149,7 +149,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
       INTEGER :: j_itt
-      LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
@@ -169,7 +169,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      !!============================================================================
+      !!----------------------------------------------------------------------------------
 
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
          &     func_m(jpi,jpj), func_h(jpi,jpj),  &
@@ -188,11 +188,11 @@ CONTAINS
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
-
-      !! Identical first gess as in COARE, yet with IFS parameter values
-
+      !
+      ! Identical first gess as in COARE, with IFS parameter values though
+      !
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
@@ -204,32 +204,35 @@ CONTAINS
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX(t_zt , 0.0)    ! who knows what's given on masked-continental regions...
-      q_zu = MAX(q_zt , 1.E-6)  !               "
+      t_zu = MAX( t_zt , 0.0  )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6)   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-      dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
+      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
       ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
-      ztmp0  = LOG(10./0.0001)/LOG(zu/0.0001)  ! (z0 = 0.0001)
-      u_star = 0.035*U_blk*ztmp0               ! (u* = 0.035*Un10)
+      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
+      ztmp0   = LOG(zu*ztmp2)
+      ztmp1   = LOG(10.*ztmp2)
+      u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn0*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0t    = 1./(0.1*EXP(vkarmn/(0.00115/(vkarmn/(LOG(10./0.0001))))))
+      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
 
-      Cd     = vkarmn*vkarmn*ztmp0*ztmp0    ! first guess of Cd
+      ztmp2  = vkarmn/ztmp0
+      Cd     = ztmp2*ztmp2    ! first guess of Cd
 
-      ztmp0  = vkarmn*vkarmn/(LOG(zt) - LOG(z0t))/Cd
+      ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      ztmp2 = Ri_bulk(zu, t_zu, dt_zu, q_zu, dq_zu, U_blk) ; ! Ribu = Bulk Richardson number
+      ztmp2 = Ri_bulk( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Ribu = Bulk Richardson number
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
-      ztmp1 = 0.5 + SIGN(0.5 , ztmp2)
+      ztmp1 = 0.5 + SIGN( 0.5 , ztmp2 )
       ztmp0 = ztmp0*ztmp2
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
       func_h = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
@@ -244,7 +247,7 @@ CONTAINS
 
       ! What's need to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
-
+         !
          !! First update of values at zu (or zt for wind)
          ztmp0 = psi_h_ecmwf(func_h) - psi_h_ecmwf(zt*func_h/zu)    ! zt*func_h/zu == zeta_t
          ztmp1 = LOG(zt/zu) + ztmp0
@@ -254,9 +257,8 @@ CONTAINS
 
          dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
-
-      END IF
-      !! => that was same first guess as in COARE...
+         !
+      ENDIF
 
       !! First guess of inverse of Monin-Obukov length (1/L) :
       ztmp0 = (1. + rctv0*q_zu)  ! the factor to apply to temp. to get virt. temp...
@@ -267,7 +269,7 @@ CONTAINS
       func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
       func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
-      !! ==================== ITERATION BLOCK ========================
+      !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
@@ -279,7 +281,7 @@ CONTAINS
          !! expression, as in coare algorithm or in 'mod_thermo.f90' (One_on_L_MO())
 
          !! Update func_m with new Linv:
-         func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf( z0*Linv)
+         func_m = LOG(zu) -LOG(z0) - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf(z0*Linv)
 
          !! Need to update roughness lengthes:
          u_star = U_blk*vkarmn/func_m
@@ -323,7 +325,7 @@ CONTAINS
 
          !! Updating because of updated z0 and z0t and new Linv...
          ztmp0  = zu*Linv
-         func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
+         func_m = LOG(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
          func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
          !! SKIN related part
@@ -373,8 +375,8 @@ CONTAINS
    END SUBROUTINE turb_ecmwf
 
 
-   FUNCTION psi_m_ecmwf(pzeta)
-      !!---------------------------------------------------------------------
+   FUNCTION psi_m_ecmwf( pzeta )
+      !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!     ECMWF / as in IFS cy31r1 documentation, available online
       !!     at ecmwf.int
@@ -382,19 +384,19 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
-      !!----------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zzeta, zx, ztmp, psi_unst, psi_stab, stab
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN(pzeta(ji,jj) , 5.) !! Very stable conditions (L positif and big!):
+            zzeta = MIN( pzeta(ji,jj) , 5. ) !! Very stable conditions (L positif and big!):
             !
             ! Unstable (Paulson 1970):
             !   eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
@@ -413,7 +415,7 @@ CONTAINS
             stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1
             !
             psi_m_ecmwf(ji,jj) = (1. - stab) * psi_unst & ! (zzeta < 0) Unstable
-               &                +    stab    * psi_stab   ! (zzeta > 0) Stable
+               &                +      stab  * psi_stab   ! (zzeta > 0) Stable
             !
          END DO
       END DO
@@ -421,8 +423,8 @@ CONTAINS
    END FUNCTION psi_m_ecmwf
 
 
-   FUNCTION psi_h_ecmwf(pzeta)
-      !!---------------------------------------------------------------------
+   FUNCTION psi_h_ecmwf( pzeta )
+      !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!     ECMWF / as in IFS cy31r1 documentation, available online
       !!     at ecmwf.int
@@ -430,14 +432,14 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
-      !!----------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) ::  zzeta, zx, psi_unst, psi_stab, stab
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -466,12 +468,12 @@ CONTAINS
    END FUNCTION psi_h_ecmwf
 
 
-   FUNCTION Ri_bulk(pz, ptz, pdt, pqz, pdq, pub)
-      !!-------------------------------------------------------------------------------
+   FUNCTION Ri_bulk( pz, ptz, pdt, pqz, pdq, pub )
+      !!----------------------------------------------------------------------------------
       !! Bulk Richardson number (Eq. 3.25 IFS doc)
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
-      !!-------------------------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
       REAL(wp),                     INTENT(in) :: pz       !: height above the sea [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptz, &   !: air temperature at pz m [K]
