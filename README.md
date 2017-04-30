@@ -2,6 +2,7 @@
 
 ![Aerobulk Logo](https://brodeau.github.io/images/projects/aerobulk_logo_s.svg)
 
+Online documentation: https://brodeau.github.io/aerobulk/
 
 **AeroBulk** is a Fortran package/library which gathers state-of-the-art
 algorithms, turbulent closures, parameterizations, and thermodynamics (empirical) functions used to compute
