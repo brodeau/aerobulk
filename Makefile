@@ -84,7 +84,7 @@ bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 
 bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
-	$(CXX) $(CXXF) -std=c++11 src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x -lgfortran $(LIB) $(LIB_CXX)
+	$(CXX) $(CXXFLAGS) -std=c++11 src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x -lgfortran $(LIB) $(LIB_CXX)
 
 
 .f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
@@ -93,7 +93,7 @@ bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a
 
 .cpp.o: $(LIB_SRC_CXX)
 	@mkdir -p mod
-	$(CPP) -c $(CXXF) $< -o $*.o
+	$(CPP) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
 	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png
