@@ -66,13 +66,13 @@ PROGRAM cx_vs_wind_test
       &   t_us, t_ts, t_qs, &
       &   t_ac, t_ublk
 
-   IF ( iargc() /= 2 ) THEN
+   IF ( command_argument_count() /= 2 ) THEN
       PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare/coare35/ncar/ecmwf)> <SST (deg.C)>'
       STOP
    END IF
    
-   CALL getarg(1,calgo)
-   CALL getarg(2,csst) ; READ(csst,'(i2)') isst ; sst = REAL(isst)
+   CALL get_command_argument(1,calgo)
+   CALL get_command_argument(2,csst) ; READ(csst,'(i2)') isst ; sst = REAL(isst)
    sstk = sst + rt0
 
 

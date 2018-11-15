@@ -67,7 +67,7 @@ PROGRAM TEST_AEROBULK
    DO WHILE ( jarg < command_argument_count() )
 
       jarg = jarg + 1
-      CALL getarg(jarg,car)
+      CALL get_command_argument(jarg,car)
 
       SELECT CASE (trim(car))
 
