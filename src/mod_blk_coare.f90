@@ -192,8 +192,8 @@ CONTAINS
       q_zu = MAX(q_zt , 1.e-6)  !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-      dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+      dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+      dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -227,7 +227,7 @@ CONTAINS
 
       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
       ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number
-      ztmp1 = 0.5 + SIGN(0.5 , ztmp2)
+      ztmp1 = 0.5 + SIGN(0.5_wp , ztmp2)
       ztmp0 = ztmp0*ztmp2
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
       zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &
@@ -250,10 +250,10 @@ CONTAINS
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
 
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       END IF
 
@@ -322,8 +322,8 @@ CONTAINS
                &             zrhoa, rad_lw, zQsw, zdelta, T_s, q_s )
          END IF
 
-         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       END DO
       !
@@ -372,8 +372,8 @@ CONTAINS
             zw = pwnd(ji,jj)   ! wind speed
             !
             ! Charnock's constant, increases with the wind :
-            zgt10 = 0.5 + SIGN(0.5,(zw - 10.)) ! If zw<10. --> 0, else --> 1
-            zgt18 = 0.5 + SIGN(0.5,(zw - 18.)) ! If zw<18. --> 0, else --> 1
+            zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10)) ! If zw<10. --> 0, else --> 1
+            zgt18 = 0.5 + SIGN(0.5_wp,(zw - 18.)) ! If zw<18. --> 0, else --> 1
             !
             alfa_charn_3p0(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
                &     + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
@@ -455,7 +455,7 @@ CONTAINS
             zf = zta*zta
             zf = zf/(1. + zf)
             zc = MIN(50., 0.35*zta)
-            zstab = 0.5 + SIGN(0.5, zta)
+            zstab = 0.5 + SIGN(0.5_wp, zta)
             !
             psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
                &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
@@ -507,7 +507,7 @@ CONTAINS
             zf = zta*zta
             zf = zf/(1. + zf)
             zc = MIN(50.,0.35*zta)
-            zstab = 0.5 + SIGN(0.5, zta)
+            zstab = 0.5 + SIGN(0.5_wp, zta)
             !
             psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
                &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
@@ -540,8 +540,8 @@ CONTAINS
 
             zdelta = pdelta(ji,jj)
 
-            zdt = pTzu(ji,jj) - pT_s(ji,jj)  ; zdt = SIGN( MAX(ABS(zdt),1.E-6), zdt )
-            zdq = pqzu(ji,jj) - pq_s(ji,jj)  ; zdq = SIGN( MAX(ABS(zdq),1.E-9), zdq )
+            zdt = pTzu(ji,jj) - pT_s(ji,jj)  ; zdt = SIGN( MAX(ABS(zdt),1e-6_wp), zdt )
+            zdq = pqzu(ji,jj) - pq_s(ji,jj)  ; zdq = SIGN( MAX(ABS(zdq),1e-9_wp), zdq )
 
             !! compute transfer coefficients at zu :
             zz0 = pus(ji,jj)/pU10(ji,jj)    !LB! not needed inside the loop !
@@ -565,7 +565,7 @@ CONTAINS
 
             zQt = -(zQlw + zQsen + zQlat + zfr*pQsw(ji,jj))  ! Total cooling at the interface
 
-            ztf    = 0.5 + SIGN(0.5, zQt) ! Qt > 0 => cooling of the layer => ztf = 1
+            ztf    = 0.5 + SIGN(0.5_wp, zQt) ! Qt > 0 => cooling of the layer => ztf = 1
             !                               Qt < 0 => warming of the layer => ztf = 0
 
             zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2, 0.)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!

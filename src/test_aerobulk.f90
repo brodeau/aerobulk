@@ -46,7 +46,7 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL :: zt, nu_air
+   REAL(wp) :: zt, nu_air
 
    CHARACTER(len=3) :: czt, czu
 

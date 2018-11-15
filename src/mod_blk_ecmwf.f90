@@ -208,8 +208,8 @@ CONTAINS
       q_zu = MAX( q_zt , 1.e-6)   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -232,7 +232,7 @@ CONTAINS
       ztmp2 = Ri_bulk( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Ribu = Bulk Richardson number
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
-      ztmp1 = 0.5 + SIGN( 0.5 , ztmp2 )
+      ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
       func_h = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
@@ -253,10 +253,10 @@ CONTAINS
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
 
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
          !
       ENDIF
 
@@ -350,8 +350,8 @@ CONTAINS
 
          END IF
 
-         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       END DO
 
@@ -412,7 +412,7 @@ CONTAINS
                &       - zzeta - 2./3.*5./0.35
             !
             ! Combining:
-            stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
             psi_m_ecmwf(ji,jj) = (1. - stab) * psi_unst & ! (zzeta < 0) Unstable
                &                +      stab  * psi_stab   ! (zzeta > 0) Stable
@@ -456,7 +456,7 @@ CONTAINS
                &       - ABS(1. + 2./3.*zzeta)**1.5 - 2./3.*5./0.35 + 1.
             ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
             !
-            stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
             !
             psi_h_ecmwf(ji,jj) = (1. - stab) * psi_unst &   ! (zzeta < 0) Unstable
@@ -620,7 +620,7 @@ CONTAINS
                !! Qt/(rho_w*Cpw):
                ZSRD = ( pQsw(ji,jj)*ZFI + pQnsol(ji,jj) )/zRhoCp_w
                !
-               zsgn = 0.5 + SIGN(0.5, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
+               zsgn = 0.5 + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
                ztmp = MAX(ZDSST,0.)
                zdl = (zsgn + 1.)*( zus_w2(ji,jj) * SQRT(ztmp/(5.*rd0*grav*zalpha_w(ji,jj)/rNu0)) ) & ! (ZDSST > 0.0 .AND. ZSRD < 0.0)
                   &  +   zsgn   * ZSRD                                                  !   otherwize
@@ -629,7 +629,7 @@ CONTAINS
                zdL = ZCON3*zalpha_w(ji,jj)*zdL/(zus_a*zus_a*zus_a)
 
                !! Stability function Phi_t(-z/L) (zdL is -z/L) :
-               zsgn = 0.5 + SIGN(0.5, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
+               zsgn = 0.5 + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
                zdL2 = zdL*zdL
                ZPHI =     zsgn     * (1. + (5.*zdL + 4.*zdL2)/(1. + 3.*zdL + 0.25*zdL2) ) &  ! (zdL > 0) Takaya et al.
                   &  + (1. + zsgn) * ( 1./SQRT(1. - 16.*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
@@ -640,7 +640,7 @@ CONTAINS
 
                !! Solving 11 by itteration with time step of zdt...
                ZZ = rmult*1. + ZCON4*zdt*zus_w(ji,jj)/ZPHI
-               ZZ = SIGN( MAX(ABS(ZZ) , 1.E-4), ZZ )
+               ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
                zdT_w(ji,jj) = MAX( 0. , (rmult*ZDSST + ZCON5*ZSRD*zdt)/ZZ )
 
             END DO

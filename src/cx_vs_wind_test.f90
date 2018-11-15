@@ -9,17 +9,17 @@ PROGRAM cx_vs_wind_test
    IMPLICIT NONE
 
 
-   REAL, PARAMETER :: &
+   REAL(wp), PARAMETER :: &
       &                zt =  2. ,  &
       &                zu = 10. ,  &
       &             wind_max = 60.
 
-   REAL, DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
+   REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
 
    LOGICAL, PARAMETER :: &
       &   ldebug = .FALSE.
 
-   REAL, PARAMETER ::        &
+   REAL(wp), PARAMETER ::        &
       &   wdebug = 4.2
 
    INTEGER, PARAMETER :: &
@@ -34,9 +34,9 @@ PROGRAM cx_vs_wind_test
       &   cextra = '', &
       &   cf_cd, cf_ce, cf_ch, cf_ac, cf_ublk, cf_us, cf_z0
 
-   REAL :: Dtv, dt
+   REAL(wp) :: Dtv, dt
 
-   REAL, DIMENSION(1,1) :: sst, sstk, qsat_sst, sst_v, slp, t10, w10, q10, U_bulk, &
+   REAL(wp), DIMENSION(1,1) :: sst, sstk, qsat_sst, sst_v, slp, t10, w10, q10, U_bulk, &
       &  z0, z0t, z0q, us, ts, qs, &
       &  mCd, mCe, mCh, mzeta, mz0, mz0t, mz0q, mus, mts, mqs, &
       &  Cd, Ce, Ch, dw0, dw, zeta, &
@@ -45,19 +45,19 @@ PROGRAM cx_vs_wind_test
 
    INTEGER :: nrh, isst, jh, jdt, jw
 
-   REAL, DIMENSION(n_w) :: &
+   REAL(wp), DIMENSION(n_w) :: &
       &   t_w10
 
-   REAL, DIMENSION(2,1) :: v_tq
+   REAL(wp), DIMENSION(2,1) :: v_tq
    !!
-   REAL, DIMENSION(:,:), ALLOCATABLE :: &
+   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
       &     v_ta_qa, &
       &     XT_a, XQ_a
    !!
-   REAL, DIMENSION(ndt) :: &
+   REAL(wp), DIMENSION(ndt) :: &
       &   t_dvt
 
-   REAL, DIMENSION(n_w) :: &
+   REAL(wp), DIMENSION(n_w) :: &
       &   t_zeta,  &
       &   t_cd,    &
       &   t_ch,    &
@@ -352,7 +352,7 @@ PROGRAM cx_vs_wind_test
       !!
       !PRINT *, 'Dtv, dt =', Dtv, dt
       !! Couple t,q for rh=80% :
-      CALL FIND_COUPLES(sstk, Dtv, 1, (/ 0.8 /), v_tq)
+      CALL FIND_COUPLES(sstk, Dtv, 1, (/ 0.8_wp /), v_tq)
       !PRINT *, 't2, q2 =', v_tq(1,1)-rt0, 1000.*v_tq(2,1)
       !!
 
@@ -386,7 +386,7 @@ PROGRAM cx_vs_wind_test
    PRINT *, 'With sst  =', REAL(sst,4)
    PRINT *, 'With wind =', REAL(w10,4)
    !!
-   CALL FIND_COUPLES(sst+rt0, Dtv, 1, (/ 0.8 /), v_tq)
+   CALL FIND_COUPLES(sst+rt0, Dtv, 1, (/ 0.8_wp /), v_tq)
    !!
    PRINT *, 'Corresponds (for RH=80%) to t2, q2   =', REAL(v_tq(1,1)-rt0,4), REAL(1000.*v_tq(2,1),4)
    PRINT *, 'Corresponds (for RH=80%) to t10, q10 =', REAL(t10-rt0,4), REAL(1000.*q10,4)
@@ -414,19 +414,19 @@ CONTAINS
 
 
 
-      REAL,    DIMENSION(jpi,jpj),  INTENT(in)  :: Ts
-      REAL,                     INTENT(in)  :: dvt
+      REAL(wp),    DIMENSION(jpi,jpj),  INTENT(in)  :: Ts
+      REAL(wp),                     INTENT(in)  :: dvt
       INTEGER, INTENT(in)                   :: nh
-      REAL,    DIMENSION(nh)  , INTENT(in)  :: trh
-      REAL,    DIMENSION(2,nh), INTENT(out) :: t_ta_qa
+      REAL(wp),    DIMENSION(nh)  , INTENT(in)  :: trh
+      REAL(wp),    DIMENSION(2,nh), INTENT(out) :: t_ta_qa
       !!
-      REAL, PARAMETER :: reps = 1.E-7
+      REAL(wp), PARAMETER :: reps = 1.E-7
 
 
       INTEGER :: jh, nitt
 
-      REAL :: rdiff
-      REAL, DIMENSION(jpi,jpj)  :: RH_a, T_a, q_a, Tv_a, T_old, zqsat_sst, sstv, zslp
+      REAL(wp) :: rdiff
+      REAL(wp), DIMENSION(jpi,jpj)  :: RH_a, T_a, q_a, Tv_a, T_old, zqsat_sst, sstv, zslp
 
 
 

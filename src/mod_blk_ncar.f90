@@ -144,7 +144,7 @@ CONTAINS
 
       !! First guess of stability:
       ztmp0 = t_zt*(1. + rctv0*q_zt) - sst*(1. + rctv0*ssq) ! air-sea difference of virtual pot. temp. at zt
-      stab  = 0.5 + sign(0.5,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
+      stab  = 0.5 + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
 
       !! Neutral coefficients at 10m:
       ztmp0 = cd_neutral_10m( U_blk )
@@ -199,7 +199,7 @@ CONTAINS
          ztmp0 = cd_neutral_10m(ztmp0)                                               ! Cd_n10
          sqrt_Cd_n10 = sqrt(ztmp0)
 
-         stab    = 0.5 + sign(0.5,zeta_u)                           ! update stability
+         stab    = 0.5 + sign(0.5_wp,zeta_u)                           ! update stability
          Cx_n10  = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
 
          !! Update of transfer coefficients:
@@ -255,7 +255,7 @@ CONTAINS
             zw6 = zw6*zw6
             !
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
-            zgt33 = 0.5 + SIGN( 0.5, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
+            zgt33 = 0.5 + SIGN( 0.5_wp, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
             !
             cd_neutral_10m(ji,jj) = 1.e-3 * ( &
                &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
@@ -293,7 +293,7 @@ CONTAINS
             zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
             zx2 = MAX( zx2 , 1. )
             zx  = SQRT( zx2 )
-            zstab = 0.5 + SIGN( 0.5 , pzeta(ji,jj) )
+            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
             psi_m(ji,jj) =      zstab    * (-5.*pzeta(ji,jj))       &          ! Stable
                &          + (1. - zstab) * (2.*LOG((1. + zx)*0.5)   &          ! Unstable
@@ -327,7 +327,7 @@ CONTAINS
          DO ji = 1, jpi
             zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
             zx2 = MAX( zx2 , 1. )
-            zstab = 0.5 + SIGN( 0.5 , pzeta(ji,jj) )
+            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
             psi_h(ji,jj) =      zstab     * (-5.*pzeta(ji,jj))        &  ! Stable
                &           + (1. - zstab) * (2.*LOG( (1. + zx2)*0.5 ))   ! Unstable

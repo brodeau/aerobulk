@@ -15,10 +15,10 @@ PROGRAM TEST_THERMO
    CHARACTER(len=6) :: cslp
    CHARACTER(len=2) :: cdT
 
-   REAL, DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat5, &
+   REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat5, &
       &                        vsst_k, vrho, vt10, vq10, vrh
 
-   REAL, PARAMETER :: &
+   REAL(wp), PARAMETER :: &
       &   t_min =  -5. , &
       &   t_max =  35.
 

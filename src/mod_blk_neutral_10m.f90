@@ -238,8 +238,8 @@ CONTAINS
       ALLOCATE( gt10(jpi,jpj), gt18(jpi,jpj) )
       !!
       !! Charnock's constant, increases with the wind :
-      gt10 = 0.5 + SIGN(0.5,(dw - 10.)) ! If dw<10. --> 0, else --> 1
-      gt18 = 0.5 + SIGN(0.5,(dw - 18.)) ! If dw<18. --> 0, else --> 1
+      gt10 = 0.5 + SIGN(0.5_wp,(dw - 10.)) ! If dw<10. --> 0, else --> 1
+      gt18 = 0.5 + SIGN(0.5_wp,(dw - 18.)) ! If dw<18. --> 0, else --> 1
       !!
       alfa_charn =  (1. - gt10)*0.011    &    ! wind is lower than 10 m/s
          & + gt10*((1. - gt18)*(0.011 + (0.018 - 0.011) &
@@ -279,13 +279,13 @@ CONTAINS
             zw6 = zw6*zw6
             !
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
-            zgt33 = 0.5 + SIGN( 0.5, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
+            zgt33 = 0.5 + SIGN( 0.5_wp, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
             !
             cd_neutral_10m(ji,jj) = 1.e-3 * ( &
                &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34 )                                     ! wind >= 33 m/s
             !
-            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6)
+            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1e-6_wp)
             !
          END DO
       END DO
