@@ -78,7 +78,7 @@ CONTAINS
 
 
 
-      Ub = MAX(U_N10, 0.1)
+      Ub = MAX(U_N10, 0.1_wp)
 
 
       IF ( (TRIM(calgo) == 'coare30').OR.(TRIM(calgo) == 'coare35').OR.(TRIM(calgo) == 'ecmwf') ) THEN
@@ -100,7 +100,7 @@ CONTAINS
 
             IF ( TRIM(calgo) == 'coare35' ) THEN
                !! COARE 3.5: Charnock parameter is computed from the neutral wind speed at 10m: Eq. 13 (Edson al. 2013)
-               ztmp0 = MIN( 0.0017*Ub - 0.005 , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
+               ztmp0 = MIN( 0.0017_wp*Ub - 0.005_wp , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
                !ztmp0 = MAX( ztmp0 , 0. )
 
             ELSEIF ( TRIM(calgo) == 'coare30' ) THEN
@@ -140,7 +140,7 @@ CONTAINS
             ztmp1 = z0*u_star/nu0_air
 
             !! Scalar roughness length z0t:
-            z0t = MIN( 1.1E-4 , 5.5E-5*ztmp1**(-0.6) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
+            z0t = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
             z0q = z0t
 
          END IF
@@ -152,7 +152,7 @@ CONTAINS
 
             !! Scalar roughness length z0t:
             !! Chris Fairall, Jim Edscon, private communication, March 2016 / COARE 3.5 :
-            z0t   = MIN( 1.6e-4 , 5.8E-5*ztmp1**(-0.72) ) ! These thermal roughness lengths give Stanton and
+            z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp) ) ! These thermal roughness lengths give Stanton and
             !!                                            ! Dalton numbers that closely approximate COARE3.0
             z0q = z0t
 
@@ -185,7 +185,7 @@ CONTAINS
 
       ELSEIF ( TRIM(calgo) == 'ncar' ) THEN
 
-         Ub = MAX(U_N10, 0.5)
+         Ub = MAX(U_N10, 0.5_wp)
 
          CdN10  = cd_neutral_10m( Ub )
 

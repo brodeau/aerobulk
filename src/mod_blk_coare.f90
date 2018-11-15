@@ -181,15 +181,15 @@ CONTAINS
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1.) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
+         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = 0.98*q_sat(MAX(T_s, 200.), slp) ! First guess of q_s
+         q_s    = 0.98*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
          zdelta = 0.001                    ! First guess of zdelta
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX(t_zt , 0.0)    ! who knows what's given on masked-continental regions...
-      q_zu = MAX(q_zt , 1.e-6)  !               "
+      t_zu = MAX(t_zt , 0.0_wp)    ! who knows what's given on masked-continental regions...
+      q_zu = MAX(q_zt , 1.e-6_wp)  !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
@@ -210,8 +210,8 @@ CONTAINS
       CASE('3.0')
          zalpha = alfa_charn_3p0(U_zu)
       CASE('3.5')
-         zalpha = MIN( 0.0017*U_zu - 0.005 , charn0_max) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
-         zalpha = MAX( zalpha , 0. )
+         zalpha = MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
+         zalpha = MAX( zalpha , 0._wp )
       CASE DEFAULT
          PRINT *, 'Unknown version for COARE algorithm: ',cver ; PRINT *, ''
          STOP
@@ -267,16 +267,16 @@ CONTAINS
 
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          ! Ug = Beta*w*  (Beta = 1.25, Fairall et al. 2003, Eq.8):
-         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0.))**(2./3.)   ! => ztmp2 == Ug^2
+         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2./3.)   ! => ztmp2 == Ug^2
          !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before 600.
-         U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2)        ! include gustiness in bulk wind speed
+         U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
          IF( cver == '3.5' ) THEN
             !! Need to update Charnock parameter from neutral wind speed!
             ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
-            zalpha = MIN( 0.0017*ztmp2 - 0.005 , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
-            zalpha = MAX( zalpha , 0. )
+            zalpha = MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
+            zalpha = MAX( zalpha , 0._wp )
          END IF
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
@@ -285,18 +285,18 @@ CONTAINS
 
          SELECT CASE (cver)
          CASE('3.0')
-            z0t   = MIN( 1.1E-4 , 5.5E-5*ztmp1**(-0.6) ) ! Scalar roughness for both theta and q (eq.28)
+            z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28)
          CASE('3.5')
             ! Chris Fairall and Jim Edsson, private communication, March 2016 / COARE 3.5 :
             !  -> these thermal roughness lengths give CE and CH that closely approximate COARE3.0
-            z0t   = MIN( 1.6e-4 , 5.8E-5*ztmp1**(-0.72))
+            z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
             !                                            !
          END SELECT
 
          !! Stability parameters:
-         zeta_u = zu*ztmp0 ; zeta_u = sign( min(abs(zeta_u),50.0), zeta_u )
+         zeta_u = zu*ztmp0 ; zeta_u = sign( min(abs(zeta_u),50.0_wp), zeta_u )
          IF( .NOT. l_zt_equal_zu ) THEN
-            zeta_t = zt*ztmp0 ;  zeta_t = sign( min(abs(zeta_t),50.0), zeta_t )
+            zeta_t = zt*ztmp0 ;  zeta_t = sign( min(abs(zeta_t),50.0_wp), zeta_t )
          END IF
 
          !! Turbulent scales at zu=10m :
@@ -454,7 +454,7 @@ CONTAINS
             !
             zf = zta*zta
             zf = zf/(1. + zf)
-            zc = MIN(50., 0.35*zta)
+            zc = MIN(50._wp, 0.35_wp*zta)
             zstab = 0.5 + SIGN(0.5_wp, zta)
             !
             psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
@@ -506,7 +506,7 @@ CONTAINS
             !
             zf = zta*zta
             zf = zf/(1. + zf)
-            zc = MIN(50.,0.35*zta)
+            zc = MIN(50._wp,0.35_wp*zta)
             zstab = 0.5 + SIGN(0.5_wp, zta)
             !
             psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
@@ -550,7 +550,7 @@ CONTAINS
 
             ! Turbulent heat fluxes:
             zz1 = prhoa(ji,jj)*pU10(ji,jj)
-            zQlat = MIN( L0vap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0. )
+            zQlat = MIN( L0vap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
             zQsen =      Cp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
 
             ! Net longwave flux:
@@ -568,16 +568,16 @@ CONTAINS
             ztf    = 0.5 + SIGN(0.5_wp, zQt) ! Qt > 0 => cooling of the layer => ztf = 1
             !                               Qt < 0 => warming of the layer => ztf = 0
 
-            zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2, 0.)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
+            zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2_wp, 0._wp)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
 
             !! Term alpha*Qb (Qb is the virtual surface cooling inc. buoyancy effect of salinity due to evap):
             zz1 = zalpha*zQt - 0.026*zQlat*Cp0_w/L0vap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
             !! LB: this terms only makes sense if > 0 i.e. in the cooling case
             !! so similar to what's donce in ECMWF:
-            zz1 = MAX(0. , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
+            zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
 
             !! Laurent: too low wind (u*) might cause problem in stable cases:
-            zus = MAX(pus(ji,jj), 1.E-4)
+            zus = MAX(pus(ji,jj), 1.E-4_wp)
 
             ! Lambda (=> zz0, empirical coeff.) (Eq.14):
             zz0 = 16. * zz1 * grav * rho0_w * Cp0_w * nu0_w*nu0_w*nu0_w  ! (numerateur) zz1 == alpha*Q
@@ -589,7 +589,7 @@ CONTAINS
             ! Updating molecular sublayer thickness (delta):
             zz2    = nu0_w/(SQRT(prhoa(ji,jj)/rho0_w)*zus)
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
-               &    + (1. - ztf) * MIN(0.007 , 6.*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
+               &    + (1. - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007
             pdelta(ji,jj) = zdelta
 
@@ -601,7 +601,7 @@ CONTAINS
          END DO
       END DO
 
-      pq_s = 0.98*q_sat(MAX(pT_s, 200.), pslp)   !skin !LB: just to avoid problem on masked regions
+      pq_s = 0.98*q_sat(MAX(pT_s, 200._wp), pslp)   !skin !LB: just to avoid problem on masked regions
 
    END SUBROUTINE CSWL_COARE
 
