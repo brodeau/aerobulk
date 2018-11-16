@@ -1,13 +1,22 @@
-      integer function aerobulk_cxx_all( calgo, zt, zu, sst, t_zt, &
-     &                       q_zt, U_zu, V_zu, slp,    &
-     &                       QL, QH, Tau_x, Tau_y,     &
-     &                       Niter, rad_sw, rad_lw,    &
-     &                       l, m ) bind(c)
+module mod_aerobluk_cxx
 
-      use iso_c_binding
-      use mod_aerobulk
+  use mod_aerobulk
+  use iso_c_binding
 
-      implicit none
+  implicit none
+
+  private
+
+  public :: aerobulk_cxx_all, aerobulk_cxx_rad, aerobulk_cxx_niter, aerobulk_cxx_noopt
+
+contains
+
+!==== C++ interface for all options activated ====
+  subroutine aerobulk_cxx_all( calgo, zt, zu, sst, t_zt, &
+                               q_zt, U_zu, V_zu, slp,    &
+                               QL, QH, Tau_x, Tau_y,     &
+                               Niter, rad_sw, rad_lw,    &
+                               l, m ) bind(c)
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
@@ -29,22 +38,18 @@
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
-     &                 q_zt, U_zu, V_zu, slp,   &
-     &                 QL, QH, Tau_x, Tau_y,    &
-     &                 Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw )
+                           q_zt, U_zu, V_zu, slp,         &
+                           QL, QH, Tau_x, Tau_y,          &
+                           Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw )
 
-      end function
+      end subroutine aerobulk_cxx_all
 
-      integer function aerobulk_cxx_rad( calgo, zt, zu, sst, t_zt, &
-     &                       q_zt, U_zu, V_zu, slp,    &
-     &                       QL, QH, Tau_x, Tau_y,     &
-     &                       rad_sw, rad_lw,           &
-     &                       l, m ) bind(c)
-
-      use iso_c_binding
-      use mod_aerobulk
-
-      implicit none
+!==== C++ interface for only using optional incoming radiation ====
+      subroutine aerobulk_cxx_rad( calgo, zt, zu, sst, t_zt, &
+                                   q_zt, U_zu, V_zu, slp,    &
+                                   QL, QH, Tau_x, Tau_y,     &
+                                   rad_sw, rad_lw,           &
+                                   l, m ) bind(c)
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m
@@ -66,22 +71,18 @@
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
-     &                 q_zt, U_zu, V_zu, slp,   &
-     &                 QL, QH, Tau_x, Tau_y,    &
-     &                 rad_sw=rad_sw, rad_lw=rad_lw )
+                           q_zt, U_zu, V_zu, slp,         &
+                           QL, QH, Tau_x, Tau_y,          &
+                           rad_sw=rad_sw, rad_lw=rad_lw )
 
-      end function
+      end subroutine aerobulk_cxx_rad
 
-      integer function aerobulk_cxx_niter( calgo, zt, zu, sst, t_zt, &
-     &                       q_zt, U_zu, V_zu, slp,    &
-     &                       QL, QH, Tau_x, Tau_y,     &
-     &                       Niter,                    &
-     &                       l, m ) bind(c)
-
-      use iso_c_binding
-      use mod_aerobulk
-
-      implicit none
+!==== C++ interface for only using optional number of iterations ====
+      subroutine aerobulk_cxx_niter( calgo, zt, zu, sst, t_zt, &
+                                     q_zt, U_zu, V_zu, slp,    &
+                                     QL, QH, Tau_x, Tau_y,     &
+                                     Niter,                    &
+                                     l, m ) bind(c)
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
@@ -106,17 +107,13 @@
      &                 QL, QH, Tau_x, Tau_y,    &
      &                 Niter=Niter)
 
-      end function
+      end subroutine aerobulk_cxx_niter
 
-      integer function aerobulk_cxx_noopt( calgo, zt, zu, sst, t_zt, &
-     &                       q_zt, U_zu, V_zu, slp,    &
-     &                       QL, QH, Tau_x, Tau_y,     &
-     &                       l, m ) bind(c)
-
-      use iso_c_binding
-      use mod_aerobulk
-
-      implicit none
+!==== C++ interface for only using none of the optional inputs ====
+      subroutine aerobulk_cxx_noopt( calgo, zt, zu, sst, t_zt, &
+                                     q_zt, U_zu, V_zu, slp,    &
+                                     QL, QH, Tau_x, Tau_y,     &
+                                     l, m ) bind(c)
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m
@@ -137,8 +134,10 @@
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
-     &                 q_zt, U_zu, V_zu, slp,   &
-     &                 QL, QH, Tau_x, Tau_y )
+                           q_zt, U_zu, V_zu, slp,   &
+                           QL, QH, Tau_x, Tau_y )
 
-      end function
+      end subroutine aerobulk_cxx_noopt
+
+end module mod_aerobluk_cxx
 
