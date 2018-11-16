@@ -14,10 +14,10 @@ int main(int argc, char** argv)
     std::vector<double> zRsw  = {0., 0.}; // (night)
     std::vector<double> zRlw  = {350., 350.};
 
-    std::vector<double> zQL(2);
-    std::vector<double> zQH(2);
-    std::vector<double> zTau_x(2);
-    std::vector<double> zTau_y(2);
+    std::vector<double> zQL;
+    std::vector<double> zQH;
+    std::vector<double> zTau_x;
+    std::vector<double> zTau_y;
 
     aerobulk::model(std::string("coare"), 2, 10, zsst, zt_zt,
             zq_zt, zU_zu, zV_zu, zslp,
