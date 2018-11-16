@@ -4,15 +4,15 @@
 int main(int argc, char** argv)
 {
 
-    std::vector<double> zsst  = {273.15 + 22., 273.15 + 2.};
-    std::vector<double> zt_zt = {273.15 + 20., 273.15 + 0.};
+    std::vector<double> zsst  = {273.15 + 22., 273.15 + 22.};
+    std::vector<double> zt_zt = {273.15 + 20., 273.15 + 20.};
     std::vector<double> zq_zt = {0.012, 0.012};
-    std::vector<double> zU_zu = {5., 0.};
-    std::vector<double> zV_zu = {0., 5.};
-    std::vector<double> zslp  = {101000.0, 1010e2};
+    std::vector<double> zU_zu = {5., 5.};
+    std::vector<double> zV_zu = {0., 0.};
+    std::vector<double> zslp  = {101000.0, 101000.0};
 
-    std::vector<double> zRsw  = {0., 10.}; // (night)
-    std::vector<double> zRlw  = {350., 300.};
+    std::vector<double> zRsw  = {0., 0.}; // (night)
+    std::vector<double> zRlw  = {350., 350.};
 
     std::vector<double> zQL(2);
     std::vector<double> zQH(2);
