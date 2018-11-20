@@ -1,3 +1,5 @@
+/* -*- mode: c++; coding: utf-8; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4; show-trailing-whitespace: t -*- vim: set fenc=utf-8 ft=cpp et sw=4 ts=4 sts=4: */
+
 #include "aerobulk.hpp"
 
 extern "C"
@@ -26,6 +28,23 @@ extern "C"
 			const int *, const int *);
 }
 
+std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
+{
+    switch (algo)
+    {
+        case algorithm::COARE:
+            return std::string("coare");
+        case algorithm::COARE35:
+            return std::string("coare35");
+        case algorithm::NCAR:
+            return std::string("ncar");
+        case algorithm::ECMWF:
+            return std::string("ecmwf");
+        default:
+            return std::string("unknown");
+    }
+}
+
 int aerobulk::check_sizes(int count, ...)
 {
     va_list ap;
@@ -42,12 +61,13 @@ int aerobulk::check_sizes(int count, ...)
 }
 
 // Interface for all options activated
-void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(aerobulk::algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
 		const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
 		std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y,
 		int Niter, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw)
 {
-    // Size needed for the C interface
+    // Algorithm string and size
+    std::string calgo = aerobulk::algorithm_to_string(algo);
 	int l = calgo.size();
 
     // Check the length of the inputs and record it
@@ -67,12 +87,13 @@ void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<
 }
 
 // Interface for only using optional incoming radiation
-void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
 		const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
 		std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y,
 		const std::vector<double> &rad_sw, const std::vector<double> &rad_lw)
 {
-    // Size needed for the C interface
+    // Algorithm string and size
+    std::string calgo = aerobulk::algorithm_to_string(algo);
 	int l = calgo.size();
 
     // Check the length of the inputs and record it
@@ -92,12 +113,13 @@ void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<
 }
 
 // Interface for only using optional number of iterations
-void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
 		const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
 		std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y,
 		const int Niter)
 {
-    // Size needed for the C interface
+    // Algorithm string and size
+    std::string calgo = aerobulk::algorithm_to_string(algo);
 	int l = calgo.size();
 
     // Check the length of the inputs and record it
@@ -117,11 +139,12 @@ void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<
 }
 
 // Interface for only using none of the optional inputs
-void aerobulk::model(std::string calgo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
 		const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
 		std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y)
 {
-    // Size needed for the C interface
+    // Algorithm string and size
+    std::string calgo = aerobulk::algorithm_to_string(algo);
 	int l = calgo.size();
 
     // Check the length of the inputs and record it

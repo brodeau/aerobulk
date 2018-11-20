@@ -1,3 +1,5 @@
+/* -*- mode: c++; coding: utf-8; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4; show-trailing-whitespace: t -*- vim: set fenc=utf-8 ft=cpp et sw=4 ts=4 sts=4: */
+
 #include "aerobulk.hpp"
 #include <iostream>
 
@@ -19,16 +21,16 @@ int main(int argc, char** argv)
     std::vector<double> zTau_x;
     std::vector<double> zTau_y;
 
-    aerobulk::model(std::string("coare"), 2, 10, zsst, zt_zt,
+    aerobulk::model(aerobulk::algorithm::COARE, 2, 10, zsst, zt_zt,
             zq_zt, zU_zu, zV_zu, zslp,
             zQL, zQH, zTau_x, zTau_y,
             10, zRsw, zRlw );
 
     std::cout
-        << " QH=" << zQH[0] << " " << zQH[1] << std::endl
-        << " QL=" << zQL[0] << " " << zQL[1] << std::endl
-        << " Tau_x=" << zTau_x[0] << " " << zTau_x[1] << std::endl
-        << " Tau_y=" << zTau_y[0] << " " << zTau_y[1] << std::endl;
+        << " QH = \t" << zQH[0] << "\t" << zQH[1] << std::endl
+        << " QL = \t" << zQL[0] << "\t" << zQL[1] << std::endl
+        << " Tau_x = \t" << zTau_x[0] << "\t" << zTau_x[1] << std::endl
+        << " Tau_y = \t" << zTau_y[0] << "\t" << zTau_y[1] << std::endl;
 }
  
 
