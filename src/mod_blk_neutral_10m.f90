@@ -1,5 +1,4 @@
-! AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2015 / L. Brodeau
 
 MODULE mod_blk_neutral_10m
 
@@ -8,7 +7,7 @@ MODULE mod_blk_neutral_10m
    !!   Momentum, Latent and sensible heat exchange coefficients
    !!          In neutral conditions / at 10m
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
 
@@ -32,7 +31,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_neutral_10m  ***
       !!
-      !!            2015: L. Brodeau (brodeau@gmail.com)
+      !!            2015: L. Brodeau
       !!
       !! ** Purpose :   Computes turbulent neutra transfert coefficients at 10m
       !!                from the neutral wind speed at 10m
@@ -78,7 +77,7 @@ CONTAINS
 
 
 
-      Ub = MAX(U_N10, 0.1)
+      Ub = MAX(U_N10, 0.1_wp)
 
 
       IF ( (TRIM(calgo) == 'coare30').OR.(TRIM(calgo) == 'coare35').OR.(TRIM(calgo) == 'ecmwf') ) THEN
@@ -100,7 +99,7 @@ CONTAINS
 
             IF ( TRIM(calgo) == 'coare35' ) THEN
                !! COARE 3.5: Charnock parameter is computed from the neutral wind speed at 10m: Eq. 13 (Edson al. 2013)
-               ztmp0 = MIN( 0.0017*Ub - 0.005 , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
+               ztmp0 = MIN( 0.0017_wp*Ub - 0.005_wp , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
                !ztmp0 = MAX( ztmp0 , 0. )
 
             ELSEIF ( TRIM(calgo) == 'coare30' ) THEN
@@ -140,7 +139,7 @@ CONTAINS
             ztmp1 = z0*u_star/nu0_air
 
             !! Scalar roughness length z0t:
-            z0t = MIN( 1.1E-4 , 5.5E-5*ztmp1**(-0.6) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
+            z0t = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
             z0q = z0t
 
          END IF
@@ -152,7 +151,7 @@ CONTAINS
 
             !! Scalar roughness length z0t:
             !! Chris Fairall, Jim Edscon, private communication, March 2016 / COARE 3.5 :
-            z0t   = MIN( 1.6e-4 , 5.8E-5*ztmp1**(-0.72) ) ! These thermal roughness lengths give Stanton and
+            z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp) ) ! These thermal roughness lengths give Stanton and
             !!                                            ! Dalton numbers that closely approximate COARE3.0
             z0q = z0t
 
@@ -185,7 +184,7 @@ CONTAINS
 
       ELSEIF ( TRIM(calgo) == 'ncar' ) THEN
 
-         Ub = MAX(U_N10, 0.5)
+         Ub = MAX(U_N10, 0.5_wp)
 
          CdN10  = cd_neutral_10m( Ub )
 
@@ -238,8 +237,8 @@ CONTAINS
       ALLOCATE( gt10(jpi,jpj), gt18(jpi,jpj) )
       !!
       !! Charnock's constant, increases with the wind :
-      gt10 = 0.5 + SIGN(0.5,(dw - 10.)) ! If dw<10. --> 0, else --> 1
-      gt18 = 0.5 + SIGN(0.5,(dw - 18.)) ! If dw<18. --> 0, else --> 1
+      gt10 = 0.5 + SIGN(0.5_wp,(dw - 10.)) ! If dw<10. --> 0, else --> 1
+      gt18 = 0.5 + SIGN(0.5_wp,(dw - 18.)) ! If dw<18. --> 0, else --> 1
       !!
       alfa_charn =  (1. - gt10)*0.011    &    ! wind is lower than 10 m/s
          & + gt10*((1. - gt18)*(0.011 + (0.018 - 0.011) &
@@ -279,13 +278,13 @@ CONTAINS
             zw6 = zw6*zw6
             !
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
-            zgt33 = 0.5 + SIGN( 0.5, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
+            zgt33 = 0.5 + SIGN( 0.5_wp, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
             !
             cd_neutral_10m(ji,jj) = 1.e-3 * ( &
                &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34 )                                     ! wind >= 33 m/s
             !
-            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6)
+            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1e-6_wp)
             !
          END DO
       END DO

@@ -31,35 +31,32 @@ MODULE sbcblk_algo_coare
    USE phycst         ! physical constants
    USE sbc_oce        ! Surface boundary condition: ocean fields
    USE sbcwave, ONLY  :  cdn_wave ! wave module
-#if defined key_lim3 || defined key_cice
+#if defined key_si3 || defined key_cice
    USE sbc_ice        ! Surface boundary condition: ice fields
 #endif
    !
    USE in_out_manager ! I/O manager
    USE iom            ! I/O manager library
    USE lib_mpp        ! distribued memory computing library
-   USE wrk_nemo       ! work arrays
-   USE timing         ! Timing
    USE prtctl         ! Print control
    USE lib_fortran    ! to use key_nosignedzero
-
 
    IMPLICIT NONE
    PRIVATE
 
    PUBLIC ::   TURB_COARE   ! called by sbcblk.F90
 
-   !! COARE own values for given constants:
-   REAL(wp), PARAMETER :: &
-      &   zi0     = 600.,  &   !: scale height of the atmospheric boundary layer...1
-      &  Beta0    = 1.25, &   !: gustiness parameter
-      &  rctv0    = 0.608     !: constant to obtain virtual temperature...
+   !                                              !! COARE own values for given constants:
+   REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
+   REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
+   REAL(wp), PARAMETER ::   rctv0   =   0.608_wp   ! constant to obtain virtual temperature...
 
-
+   !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE turb_coare( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk )
+      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+      &                   Cdn, Chn, Cen                       )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare  ***
       !!
@@ -105,30 +102,26 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cdn, Chn, Cen ! neutral transfer coefficients
       !
       INTEGER :: j_itt
       LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       INTEGER , PARAMETER ::   nb_itt = 4       ! number of itterations
 
-      REAL(wp), DIMENSION(:,:), POINTER  ::  &
+      REAL(wp), DIMENSION(jpi,jpj) ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  z0, z0t
-      REAL(wp), DIMENSION(:,:), POINTER ::   zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), POINTER ::   zeta_t        ! stability parameter at height zt
-      REAL(wp), DIMENSION(:,:), POINTER ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(jpi,jpj) ::   zeta_u        ! stability parameter at height zu
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_t        ! stability parameter at height zt
       !!----------------------------------------------------------------------
       !
-      IF( nn_timing == 1 )  CALL timing_start('turb_coare')
-
-      CALL wrk_alloc( jpi,jpj,   u_star, t_star, q_star, zeta_u, dt_zu, dq_zu)
-      CALL wrk_alloc( jpi,jpj,   znu_a, z0, z0t, ztmp0, ztmp1, ztmp2 )
-
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      IF( .NOT. l_zt_equal_zu )   CALL wrk_alloc( jpi,jpj, zeta_t )
+      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX(t_zt , 0.0)    ! who knows what's given on masked-continental regions...
@@ -150,23 +143,23 @@ CONTAINS
 
 
       z0     = alfa_charn(U_blk)*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1)))   !  WARNING: 1/z0t !
 
       ztmp2  = vkarmn/ztmp0
       Cd     = ztmp2*ztmp2    ! first guess of Cd
 
-      ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
+      ztmp0 = vkarmn*vkarmn/LOG(zt*z0t)/Cd
 
       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
       ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number
-      ztmp1 = 0.5 + SIGN(0.5 , ztmp2)
+      ztmp1 = 0.5 + sign(0.5 , ztmp2)
       ztmp0 = ztmp0*ztmp2
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
       zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &
          &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-      ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
+      ztmp0  =  vkarmn/(LOG(zu*z0t) - psi_h_coare(zeta_u))
 
       u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u))
       t_star = dt_zu*ztmp0
@@ -179,10 +172,10 @@ CONTAINS
 
          !! First update of values at zu (or zt for wind)
          ztmp0 = psi_h_coare(zeta_u) - psi_h_coare(zeta_t)
-         ztmp1 = LOG(zt/zu) + ztmp0
+         ztmp1 = log(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5 + sign(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
 
          dt_zu = t_zu - sst  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
          dq_zu = q_zu - ssq  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
@@ -220,11 +213,11 @@ CONTAINS
 
          !! Turbulent scales at zu=10m :
          ztmp0   = psi_h_coare(zeta_u)
-         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
+         ztmp1   = vkarmn/(LOG(zu) -LOG(z0t) - ztmp0)
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
-         u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u))
+         u_star = U_blk*vkarmn/(LOG(zu) -LOG(z0) - psi_m_coare(zeta_u))
 
          IF( .NOT. l_zt_equal_zu ) THEN
             ! What's need to be done if zt /= zu
@@ -245,12 +238,13 @@ CONTAINS
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
       !
-      CALL wrk_dealloc( jpi,jpj, u_star, t_star, q_star, zeta_u, dt_zu, dq_zu )
-      CALL wrk_dealloc( jpi,jpj, znu_a, z0, z0t, ztmp0, ztmp1, ztmp2 )
-      IF( .NOT. l_zt_equal_zu ) CALL wrk_dealloc( jpi,jpj, zeta_t )
-
-      IF( nn_timing == 1 )  CALL timing_stop('turb_coare')
-
+      ztmp1 = zu + z0
+      Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
+      Chn = vkarmn*vkarmn / (log(ztmp1/z0t)*log(ztmp1/z0t))
+      Cen = Chn
+      !
+      IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
+      !
    END SUBROUTINE turb_coare
 
 

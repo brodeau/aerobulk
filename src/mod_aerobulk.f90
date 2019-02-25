@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !

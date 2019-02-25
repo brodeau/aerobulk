@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -26,7 +25,7 @@ MODULE mod_blk_ecmwf
    !!       Routine turb_ecmwf maintained and developed in AeroBulk
    !!                     (http://aerobulk.sourceforge.net/)
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -74,7 +73,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
       !!
-      !!            2015: L. Brodeau (brodeau@gmail.com)
+      !!            2015: L. Brodeau
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to IFS doc. (cycle 40)
@@ -198,18 +197,18 @@ CONTAINS
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1.) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
+         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = 0.98*q_sat(MAX(T_s, 200.), slp) ! First guess of q_s
+         q_s    = 0.98*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt , 0.0  )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6)   !               "
+      t_zu = MAX( t_zt , 0.0_wp  )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6_wp)   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -232,7 +231,7 @@ CONTAINS
       ztmp2 = Ri_bulk( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Ribu = Bulk Richardson number
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
-      ztmp1 = 0.5 + SIGN( 0.5 , ztmp2 )
+      ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
       func_h = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
@@ -253,10 +252,10 @@ CONTAINS
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
 
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
          !
       ENDIF
 
@@ -293,9 +292,9 @@ CONTAINS
 
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
-         ztmp1 = ztmp1 * MAX( -zi0*Linv/vkarmn ,0. )**(2./3.) ! => w*^2
+         ztmp1 = ztmp1 * MAX( -zi0*Linv/vkarmn ,0._wp )**(2./3.) ! => w*^2
          !! => equivalent using Beta=1 (gustiness parameter, 1.25 for COARE, also zi0=600 in COARE..)
-         U_blk = MAX(SQRT(U_zu*U_zu + ztmp1), 0.2)    ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+         U_blk = MAX(SQRT(U_zu*U_zu + ztmp1), 0.2_wp)    ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
          !! Need to update "theta" and "q" at zu in case they are given at different heights
          !! as well the air-sea differences:
@@ -346,12 +345,12 @@ CONTAINS
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
 
-            q_s = 0.98*q_sat(MAX(T_s, 200.), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
+            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
 
          END IF
 
-         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
-         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
+         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
 
       END DO
 
@@ -396,7 +395,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN( pzeta(ji,jj) , 5. ) !! Very stable conditions (L positif and big!):
+            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!):
             !
             ! Unstable (Paulson 1970):
             !   eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
@@ -412,7 +411,7 @@ CONTAINS
                &       - zzeta - 2./3.*5./0.35
             !
             ! Combining:
-            stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
             psi_m_ecmwf(ji,jj) = (1. - stab) * psi_unst & ! (zzeta < 0) Unstable
                &                +      stab  * psi_stab   ! (zzeta > 0) Stable
@@ -444,7 +443,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN(pzeta(ji,jj) , 5.)   ! Very stable conditions (L positif and big!):
+            zzeta = MIN(pzeta(ji,jj) , 5._wp)   ! Very stable conditions (L positif and big!):
             !
             zx  = ABS(1. - 16.*zzeta)**.25        ! this is actually (1/phi_m)**2  !!!
             !                                     ! eq.3.19, Chap.3, p.33, IFS doc - Cy31r1
@@ -456,7 +455,7 @@ CONTAINS
                &       - ABS(1. + 2./3.*zzeta)**1.5 - 2./3.*5./0.35 + 1.
             ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
             !
-            stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
             !
             psi_h_ecmwf(ji,jj) = (1. - stab) * psi_unst &   ! (zzeta < 0) Unstable
@@ -560,11 +559,11 @@ CONTAINS
       !
       ! Friction velocities
       ! "MAX( pustar(:,:), 1.E-4)" is u* in the air !
-      zus_w(:,:)  = MAX( pustar(:,:), 1.E-4)*SQRT(ZROADRW)       ! u* in the water
+      zus_w(:,:)  = MAX( pustar(:,:), 1.E-4_wp)*SQRT(ZROADRW)       ! u* in the water
       zus_w2(:,:) = zus_w(:,:)*zus_w(:,:)
       !
       ! Ocean buoyancy
-      zalpha_w(:,:) = MAX( 1.E-5 , 1.E-5*(pTs(:,:) - rt0) ) ! thermal expansion coefficient of water
+      zalpha_w(:,:) = MAX( 1.E-5_wp , 1.E-5_wp*(pTs(:,:) - rt0) ) ! thermal expansion coefficient of water
       !
       zdT_c = 0.0
       zdT_w = 0.0
@@ -575,7 +574,7 @@ CONTAINS
          DO ji = 1, jpi
             !
             ! Non-solar heat loss to the atmosphere:
-            zQnsol = MAX( 1. , - pQnsol(ji,jj) )
+            zQnsol = MAX( 1._wp , - pQnsol(ji,jj) )
 
             zlamb = 6.*(1. + (zQnsol*zalpha_w(ji,jj)*ZCON2/(zus_w2(ji,jj)*zus_w2(ji,jj)))**0.75)**(-1./3.)
 
@@ -583,8 +582,8 @@ CONTAINS
 
             !    Solar absorption
             zfs   = 0.065 + 11.*zdelta - (6.6E-5/zdelta)*(1. - EXP(-zdelta/8.E-4))  ! Eq. 8.131 / IFS cy40r1, doc, Part IV,
-            zfs   = MAX(zfs , 0.01)
-            zQnet = MAX( 1. , -zfs*pQsw(ji,jj) + zQnsol )
+            zfs   = MAX(zfs , 0.01_wp)
+            zQnet = MAX( 1._wp , -zfs*pQsw(ji,jj) + zQnsol )
             zdT_c(ji,jj) = -zdelta*zQnet/k0_w
 
          END DO
@@ -620,16 +619,16 @@ CONTAINS
                !! Qt/(rho_w*Cpw):
                ZSRD = ( pQsw(ji,jj)*ZFI + pQnsol(ji,jj) )/zRhoCp_w
                !
-               zsgn = 0.5 + SIGN(0.5, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
-               ztmp = MAX(ZDSST,0.)
+               zsgn = 0.5 + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
+               ztmp = MAX(ZDSST,0._wp)
                zdl = (zsgn + 1.)*( zus_w2(ji,jj) * SQRT(ztmp/(5.*rd0*grav*zalpha_w(ji,jj)/rNu0)) ) & ! (ZDSST > 0.0 .AND. ZSRD < 0.0)
                   &  +   zsgn   * ZSRD                                                  !   otherwize
                !
-               zus_a = MAX( pustar(ji,jj), 1.E-4 )
+               zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
                zdL = ZCON3*zalpha_w(ji,jj)*zdL/(zus_a*zus_a*zus_a)
 
                !! Stability function Phi_t(-z/L) (zdL is -z/L) :
-               zsgn = 0.5 + SIGN(0.5, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
+               zsgn = 0.5 + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
                zdL2 = zdL*zdL
                ZPHI =     zsgn     * (1. + (5.*zdL + 4.*zdL2)/(1. + 3.*zdL + 0.25*zdL2) ) &  ! (zdL > 0) Takaya et al.
                   &  + (1. + zsgn) * ( 1./SQRT(1. - 16.*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
@@ -640,8 +639,8 @@ CONTAINS
 
                !! Solving 11 by itteration with time step of zdt...
                ZZ = rmult*1. + ZCON4*zdt*zus_w(ji,jj)/ZPHI
-               ZZ = SIGN( MAX(ABS(ZZ) , 1.E-4), ZZ )
-               zdT_w(ji,jj) = MAX( 0. , (rmult*ZDSST + ZCON5*ZSRD*zdt)/ZZ )
+               ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
+               zdT_w(ji,jj) = MAX( 0._wp , (rmult*ZDSST + ZCON5*ZSRD*zdt)/ZZ )
 
             END DO
          END DO

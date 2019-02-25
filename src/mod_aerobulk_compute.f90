@@ -1,5 +1,4 @@
-! AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2015 / L. Brodeau
 
 MODULE mod_aerobulk_compute
 
@@ -24,7 +23,7 @@ CONTAINS
       &                         rad_sw, rad_lw )
       !!
       !!******************************
-      !! 2015: L. Brodeau (brodeau@gmail.com)
+      !! 2015: L. Brodeau
       !!  => all constants taken from mod_thermo and mod_const must
       !!     be done or used from NEMO constant bank...    ... vkarmn ... grav ...
       !!******************************

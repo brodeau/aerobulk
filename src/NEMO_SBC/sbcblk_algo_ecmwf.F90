@@ -31,12 +31,10 @@ MODULE sbcblk_algo_ecmwf
    USE phycst          ! physical constants
    USE iom             ! I/O manager library
    USE lib_mpp         ! distribued memory computing library
-   USE wrk_nemo        ! work arrays
-   USE timing          ! Timing
    USE in_out_manager  ! I/O manager
    USE prtctl          ! Print control
    USE sbcwave, ONLY   :  cdn_wave ! wave module
-#if defined key_lim3 || defined key_cice
+#if defined key_si3 || defined key_cice
    USE sbc_ice         ! Surface boundary condition: ice fields
 #endif
    USE lib_fortran     ! to use key_nosignedzero
@@ -63,14 +61,15 @@ MODULE sbcblk_algo_ecmwf
 CONTAINS
 
    SUBROUTINE TURB_ECMWF( zt, zu, sst, t_zt, ssq , q_zt , U_zu,   &
-      &                   Cd, Ch, Ce , t_zu, q_zu, U_blk )
+      &                   Cd, Ch, Ce , t_zu, q_zu, U_blk,         &
+      &                   Cdn, Chn, Cen                           )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
       !!
       !!            2015: L. Brodeau (brodeau@gmail.com)
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
-      !!                fluxes according to IFS doc. (cycle 40)
+      !!                fluxes according to IFS doc. (cycle 31)
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
       !!
       !! ** Method : Monin Obukhov Similarity Theory
@@ -111,24 +110,20 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cdn, Chn, Cen ! neutral transfer coefficients
       !
       INTEGER :: j_itt
-      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       INTEGER , PARAMETER ::   nb_itt = 4       ! number of itterations
       !
-      REAL(wp), DIMENSION(:,:), POINTER  ::   u_star, t_star, q_star,   &
+      REAL(wp), DIMENSION(jpi,jpj) ::   u_star, t_star, q_star,   &
          &  dt_zu, dq_zu,    &
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  Linv,            & !: 1/L (inverse of Monin Obukhov length...
          &  z0, z0t, z0q
-      REAL(wp), DIMENSION(:,:), POINTER ::   func_m, func_h
-      REAL(wp), DIMENSION(:,:), POINTER ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(jpi,jpj) ::   func_m, func_h
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztmp0, ztmp1, ztmp2
       !!----------------------------------------------------------------------------------
-      !
-      IF( nn_timing == 1 )   CALL timing_start('turb_ecmwf')
-      !
-      CALL wrk_alloc( jpi,jpj,   u_star, t_star, q_star, func_m, func_h, dt_zu, dq_zu, Linv )
-      CALL wrk_alloc( jpi,jpj,   znu_a, z0, z0t, z0q, ztmp0, ztmp1, ztmp2 )
       !
       ! Identical first gess as in COARE, with IFS parameter values though
       !
@@ -146,33 +141,33 @@ CONTAINS
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
+      ztmp2 = 0.5 * 0.5  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
-      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
+      ! z0     = 0.0001
+      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0
       ztmp0   = LOG(zu*ztmp2)
       ztmp1   = LOG(10.*ztmp2)
       u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn0*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1)))   !  WARNING: 1/z0t !
 
-      ztmp2  = vkarmn/ztmp0
-      Cd     = ztmp2*ztmp2    ! first guess of Cd
+      Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
-      ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
+      ztmp0 = vkarmn*vkarmn/LOG(zt*z0t)/Cd
 
       ztmp2 = Ri_bulk( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Ribu = Bulk Richardson number
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5 , ztmp2 )
-      ztmp0 = ztmp0*ztmp2
+      func_m = ztmp0*ztmp2 ! temporary array !!
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
-      func_h = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))
+      func_h = (1.-ztmp1)*(func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1*(func_m*(1. + 27./9.*ztmp2/ztmp0))
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-      ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
+      ztmp0   =        vkarmn/(LOG(zu*z0t) - psi_h_ecmwf(func_h))
 
       u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_ecmwf(func_h))
       t_star = dt_zu*ztmp0
@@ -183,26 +178,34 @@ CONTAINS
          !
          !! First update of values at zu (or zt for wind)
          ztmp0 = psi_h_ecmwf(func_h) - psi_h_ecmwf(zt*func_h/zu)    ! zt*func_h/zu == zeta_t
-         ztmp1 = LOG(zt/zu) + ztmp0
+         ztmp1 = log(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5 + sign(0.5,q_zu))*q_zu !Makes it impossible to have negative humidity :
 
          dt_zu = t_zu - sst  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
          dq_zu = q_zu - ssq  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
          !
       ENDIF
 
+
+      !! => that was same first guess as in COARE...
+
+
       !! First guess of inverse of Monin-Obukov length (1/L) :
       ztmp0 = (1. + rctv0*q_zu)  ! the factor to apply to temp. to get virt. temp...
       Linv  =  grav*vkarmn*(t_star*ztmp0 + rctv0*t_zu*q_star) / ( u_star*u_star * t_zu*ztmp0 )
 
       !! Functions such as  u* = U_blk*vkarmn/func_m
-      ztmp0 = zu*Linv
-      func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
-      func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
+      ztmp1 = zu + z0
+      ztmp0 = ztmp1*Linv
+      func_m = LOG(ztmp1) -LOG(z0) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0*Linv)
+      func_h = LOG(ztmp1*z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(1./z0t*Linv)
+
 
       !! ITERATION BLOCK
+      !! ***************
+
       DO j_itt = 1, nb_itt
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
@@ -212,33 +215,36 @@ CONTAINS
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3, p.33, IFS doc - Cy31r1
 
          !! Update func_m with new Linv:
-         func_m = LOG(zu) -LOG(z0) - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf(z0*Linv)
+         ztmp1 = zu + z0
+         func_m = LOG(ztmp1) -LOG(z0) - psi_m_ecmwf(ztmp1*Linv) + psi_m_ecmwf(z0*Linv)
 
          !! Need to update roughness lengthes:
          u_star = U_blk*vkarmn/func_m
-         ztmp1  = u_star*u_star
-         ztmp2  = znu_a/u_star
-         z0     = alpha_M*ztmp2 + charn0*ztmp1/grav
-         z0t    = alpha_H*ztmp2                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = alpha_Q*ztmp2
+         ztmp2  = u_star*u_star
+         ztmp1  = znu_a/u_star
+         z0    = alpha_M*ztmp1 + charn0*ztmp2/grav
+         z0t    = alpha_H*ztmp1                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+         z0q    = alpha_Q*ztmp1
 
          !! Update wind at 10m taking into acount convection-related wind gustiness:
-         !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
-         ztmp1 = ztmp1 * MAX( -zi0*Linv/vkarmn ,0. )**(2./3.) ! => w*^2
+         ! Only true when unstable (L<0) => when ztmp0 < 0 => - !!!
+         ztmp2 = ztmp2 * (MAX(-zi0*Linv/vkarmn,0.))**(2./3.) ! => w*^2  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
          !! => equivalent using Beta=1 (gustiness parameter, 1.25 for COARE, also zi0=600 in COARE..)
-         U_blk = MAX(SQRT(U_zu*U_zu + ztmp1), 0.2)    ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+         U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2)              ! eq.3.17, Chap.3, p.32, IFS doc - Cy31r1
+         ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+
 
          !! Need to update "theta" and "q" at zu in case they are given at different heights
          !! as well the air-sea differences:
          IF( .NOT. l_zt_equal_zu ) THEN
 
             !! Arrays func_m and func_h are free for a while so using them as temporary arrays...
-            func_h = psi_h_ecmwf(zu*Linv) ! temporary array !!!
-            func_m = psi_h_ecmwf(zt*Linv) ! temporary array !!!
+            func_h = psi_h_ecmwf((zu+z0)*Linv) ! temporary array !!!
+            func_m = psi_h_ecmwf((zt+z0)*Linv) ! temporary array !!!
 
             ztmp2  = psi_h_ecmwf(z0t*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0t) - ztmp0)
             t_star = dt_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
@@ -246,33 +252,35 @@ CONTAINS
 
             ztmp2  = psi_h_ecmwf(z0q*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0q) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0q) - ztmp0)
             q_star = dq_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
-            ztmp1  = LOG(zt/zu) + ztmp2
+            ztmp1  = log(zt/zu) + ztmp2
             q_zu   = q_zt - q_star/vkarmn*ztmp1
 
             dt_zu = t_zu - sst ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6), dt_zu )
             dq_zu = q_zu - ssq ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9), dq_zu )
+
          END IF
 
          !! Updating because of updated z0 and z0t and new Linv...
-         ztmp0  = zu*Linv
-         func_m = LOG(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
-         func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
+         ztmp1 = zu + z0
+         ztmp0 = ztmp1*Linv
+         func_m = log(ztmp1) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
+         func_h = log(ztmp1) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
       END DO
 
       Cd = vkarmn*vkarmn/(func_m*func_m)
       Ch = vkarmn*vkarmn/(func_m*func_h)
-      ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
+      ztmp1 = log((zu + z0)/z0q) - psi_h_ecmwf((zu + z0)*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = vkarmn*vkarmn/(func_m*ztmp1)
 
-      CALL wrk_dealloc( jpi,jpj,   u_star, t_star, q_star, func_m, func_h, dt_zu, dq_zu, Linv )
-      CALL wrk_dealloc( jpi,jpj,   znu_a, z0, z0t, z0q, ztmp0, ztmp1, ztmp2 )
-      !
-      IF( nn_timing == 1 )   CALL timing_stop('turb_ecmwf')
-      !
+      ztmp1 = zu + z0
+      Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
+      Chn = vkarmn*vkarmn / (log(ztmp1/z0t)*log(ztmp1/z0t))
+      Cen = vkarmn*vkarmn / (log(ztmp1/z0q)*log(ztmp1/z0q))
+
    END SUBROUTINE TURB_ECMWF
 
 
@@ -323,7 +331,7 @@ CONTAINS
       !
    END FUNCTION psi_m_ecmwf
 
-
+   
    FUNCTION psi_h_ecmwf( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
@@ -354,7 +362,7 @@ CONTAINS
             !
             ! Stable:
             psi_stab = -2./3.*(zzeta - 5./0.35)*EXP(-0.35*zzeta) & ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
-               &       - ABS(1. + 2./3.*zzeta)**1.5 - 2./3.*5./0.35 + 1.
+               &       - ABS(1. + 2./3.*zzeta)**1.5 - 2./3.*5./0.35 + 1. 
             ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
             !
             stab = 0.5 + SIGN(0.5, zzeta) ! zzeta > 0 => stab = 1

@@ -1,5 +1,4 @@
-! AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2015 / L. Brodeau
 
 PROGRAM TEST_AEROBULK
 
@@ -46,7 +45,7 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL :: zt, nu_air
+   REAL(wp) :: zt, nu_air
 
    CHARACTER(len=3) :: czt, czu
 
@@ -64,10 +63,10 @@ PROGRAM TEST_AEROBULK
 
    jarg = 0
 
-   DO WHILE ( jarg < iargc() )
+   DO WHILE ( jarg < command_argument_count() )
 
       jarg = jarg + 1
-      CALL getarg(jarg,car)
+      CALL get_command_argument(jarg,car)
 
       SELECT CASE (trim(car))
 

@@ -27,14 +27,12 @@ MODULE sbcblk_algo_ncar
    USE phycst          ! physical constants
    USE sbc_oce         ! Surface boundary condition: ocean fields
    USE sbcwave, ONLY   :  cdn_wave ! wave module
-#if defined key_lim3 || defined key_cice
+#if defined key_si3 || defined key_cice
    USE sbc_ice         ! Surface boundary condition: ice fields
 #endif
    !
    USE iom             ! I/O manager library
    USE lib_mpp         ! distribued memory computing library
-   USE wrk_nemo        ! work arrays
-   USE timing          ! Timing
    USE in_out_manager  ! I/O manager
    USE prtctl          ! Print control
    USE lib_fortran     ! to use key_nosignedzero
@@ -52,7 +50,8 @@ MODULE sbcblk_algo_ncar
 CONTAINS
 
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                  Cd, Ch, Ce, t_zu, q_zu, U_blk )
+      &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+      &                  Cdn, Chn, Cen                       )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
       !!
@@ -111,23 +110,19 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cdn, Chn, Cen ! neutral transfer coefficients
       !
       INTEGER ::   j_itt
       LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       INTEGER , PARAMETER ::   nb_itt = 4       ! number of itterations
       !
-      REAL(wp), DIMENSION(:,:), POINTER ::   Cx_n10        ! 10m neutral latent/sensible coefficient
-      REAL(wp), DIMENSION(:,:), POINTER ::   sqrt_Cd_n10   ! root square of Cd_n10
-      REAL(wp), DIMENSION(:,:), POINTER ::   zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), POINTER ::   zpsi_h_u
-      REAL(wp), DIMENSION(:,:), POINTER ::   ztmp0, ztmp1, ztmp2
-      REAL(wp), DIMENSION(:,:), POINTER ::   stab          ! stability test integer
+      REAL(wp), DIMENSION(jpi,jpj) ::   Cx_n10        ! 10m neutral latent/sensible coefficient
+      REAL(wp), DIMENSION(jpi,jpj) ::   sqrt_Cd_n10   ! root square of Cd_n10
+      REAL(wp), DIMENSION(jpi,jpj) ::   zeta_u        ! stability parameter at height zu
+      REAL(wp), DIMENSION(jpi,jpj) ::   zpsi_h_u
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(jpi,jpj) ::   stab          ! stability test integer
       !!----------------------------------------------------------------------------------
-      !
-      IF( nn_timing == 1 )   CALL timing_start('turb_ncar')
-      !
-      CALL wrk_alloc( jpi,jpj,   Cx_n10, sqrt_Cd_n10, zeta_u, stab )
-      CALL wrk_alloc( jpi,jpj,   zpsi_h_u, ztmp0, ztmp1, ztmp2 )
       !
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
@@ -153,6 +148,8 @@ CONTAINS
       Ce = 1.e-3*( 34.6 * sqrt_Cd_n10 )
       Ch = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))
       stab = sqrt_Cd_n10   ! Temporaty array !!! stab == SQRT(Cd)
+ 
+      IF( ln_cdgw )   Cen = Ce  ; Chn = Ch
 
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt   ;   q_zu = q_zt
@@ -190,7 +187,14 @@ CONTAINS
          ztmp2 = psi_m(zeta_u)
          IF( ln_cdgw ) THEN      ! surface wave case
             stab = vkarmn / ( vkarmn / sqrt_Cd_n10 - ztmp2 )  ! (stab == SQRT(Cd))
-            Cd      = stab * stab
+            Cd   = stab * stab
+            ztmp0 = (LOG(zu/10.) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
+            ztmp2 = stab / sqrt_Cd_n10   ! (stab == SQRT(Cd))
+            ztmp1 = 1. + Chn * ztmp0     
+            Ch    = Chn * ztmp2 / ztmp1  ! L&Y 2004 eq. (10b)
+            ztmp1 = 1. + Cen * ztmp0
+            Ce    = Cen * ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
+
          ELSE
             ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 eq. 9a)...
             !   In very rare low-wind conditions, the old way of estimating the
@@ -198,33 +202,31 @@ CONTAINS
             !   to crash. To prevent this a threshold of 0.25m/s is imposed.
             ztmp0 = MAX( 0.25 , U_blk/(1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
             ztmp0 = cd_neutral_10m(ztmp0)                                               ! Cd_n10
+            Cdn(:,:) = ztmp0
             sqrt_Cd_n10 = sqrt(ztmp0)
 
             stab    = 0.5 + sign(0.5,zeta_u)                           ! update stability
             Cx_n10  = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
+            Chn(:,:) = Cx_n10
 
             !! Update of transfer coefficients:
             ztmp1 = 1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
             Cd      = ztmp0 / ( ztmp1*ztmp1 )
             stab = SQRT( Cd ) ! Temporary array !!! (stab == SQRT(Cd))
-         ENDIF
 
-         ztmp0 = (LOG(zu/10.) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
-         ztmp2 = stab / sqrt_Cd_n10   ! (stab == SQRT(Cd))
-         ztmp1 = 1. + Cx_n10*ztmp0    ! (Cx_n10 == Ch_n10)
-         Ch  = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
+            ztmp0 = (LOG(zu/10.) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
+            ztmp2 = stab / sqrt_Cd_n10   ! (stab == SQRT(Cd))
+            ztmp1 = 1. + Cx_n10*ztmp0    ! (Cx_n10 == Ch_n10)
+            Ch  = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
 
-         Cx_n10  = 1.e-3 * (34.6 * sqrt_Cd_n10)  ! L&Y 2004 eq. (6b)    ! Cx_n10 == Ce_n10
-         ztmp1 = 1. + Cx_n10*ztmp0
-         Ce  = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
-
+            Cx_n10  = 1.e-3 * (34.6 * sqrt_Cd_n10)  ! L&Y 2004 eq. (6b)    ! Cx_n10 == Ce_n10
+            Cen(:,:) = Cx_n10
+            ztmp1 = 1. + Cx_n10*ztmp0
+            Ce  = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
+            ENDIF
+         !
       END DO
-
-      CALL wrk_dealloc( jpi,jpj,   Cx_n10, sqrt_Cd_n10, zeta_u, stab )
-      CALL wrk_dealloc( jpi,jpj,   zpsi_h_u, ztmp0, ztmp1, ztmp2 )
-
-      IF( nn_timing == 1 )   CALL timing_stop('turb_ncar')
-
+      !
    END SUBROUTINE turb_ncar
 
 

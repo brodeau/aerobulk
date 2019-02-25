@@ -1,9 +1,9 @@
-! AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2015 / L. Brodeau
 
 PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
 
    USE mod_aerobulk
+   USE mod_const
    
    IMPLICIT NONE
 
@@ -11,7 +11,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    INTEGER, PARAMETER :: nx = 2, &
       &                  ny = 1
    
-   REAL(8), DIMENSION(nx,ny) :: zsst, zt_zt, zq_zt, zU_zu, zV_zu, zslp, &
+   REAL(wp), DIMENSION(nx,ny) :: zsst, zt_zt, zq_zt, zU_zu, zV_zu, zslp, &
       &                         zRsw, zRlw,           &
       &                         zQL, zQH, zTau_x, zTau_y
 
@@ -26,7 +26,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    zRsw  = 0. ! (night)
    zRlw  = 350. 
    
-   CALL aerobulk_model( 'coare', 2., 10., zsst, zt_zt, &
+   CALL aerobulk_model( 'coare', 2._wp, 10._wp, zsst, zt_zt, &
       &                 zq_zt, zU_zu, zV_zu, zslp,   &
       &                 zQL, zQH, zTau_x, zTau_y,    &
       &                 Niter=10, rad_sw=zRsw, rad_lw=zRlw )

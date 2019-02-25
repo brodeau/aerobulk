@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -23,7 +22,7 @@ MODULE mod_blk_ncar
    !!       Routine turb_ncar maintained and developed in AeroBulk
    !!                     (http://aerobulk.sourceforge.net/)
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -62,7 +61,7 @@ CONTAINS
       !!    - using code-wide physical constants defined into "phycst.mod" rather than redifining them
       !!      => 'vkarmn' and 'grav'
       !!
-      !!      Author:  L. Brodeau (brodeau@gmail.com)
+      !!      Author:  L. Brodeau
       !!----------------------------------------------------------------------
 
       !!======================================================================================
@@ -140,11 +139,11 @@ CONTAINS
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      U_blk = MAX( 0.5 , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
+      U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
       !! First guess of stability:
       ztmp0 = t_zt*(1. + rctv0*q_zt) - sst*(1. + rctv0*ssq) ! air-sea difference of virtual pot. temp. at zt
-      stab  = 0.5 + sign(0.5,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
+      stab  = 0.5 + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
 
       !! Neutral coefficients at 10m:
       ztmp0 = cd_neutral_10m( U_blk )
@@ -177,17 +176,17 @@ CONTAINS
          !                                                      ( Cd*U_blk*U_blk is U*^2 at zu )
 
          !! Stability parameters :
-         zeta_u   = zu*ztmp0   ;  zeta_u = sign( min(abs(zeta_u),10.0), zeta_u )
+         zeta_u   = zu*ztmp0   ;  zeta_u = sign( min(abs(zeta_u),10.0_wp), zeta_u )
          zpsi_h_u = psi_h( zeta_u )
 
          !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Array 'stab' is free for the moment so using it to store 'zeta_t'
-            stab = zt*ztmp0 ;  stab = SIGN( MIN(ABS(stab),10.0), stab )  ! Temporaty array stab == zeta_t !!!
+            stab = zt*ztmp0 ;  stab = SIGN( MIN(ABS(stab),10.0_wp), stab )  ! Temporaty array stab == zeta_t !!!
             stab = LOG(zt/zu) + zpsi_h_u - psi_h(stab)                   ! stab just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*stab    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
             q_zu = q_zt - ztmp2/vkarmn*stab    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
-            q_zu = max(0., q_zu)
+            q_zu = max(0._wp, q_zu)
          END IF
 
          ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 eq. 9a)...
@@ -195,11 +194,11 @@ CONTAINS
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m(zeta_u)
-         ztmp0 = MAX( 0.25 , U_blk/(1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
+         ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrt_Cd_n10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
          ztmp0 = cd_neutral_10m(ztmp0)                                               ! Cd_n10
          sqrt_Cd_n10 = sqrt(ztmp0)
 
-         stab    = 0.5 + sign(0.5,zeta_u)                           ! update stability
+         stab    = 0.5 + sign(0.5_wp,zeta_u)                           ! update stability
          Cx_n10  = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
 
          !! Update of transfer coefficients:
@@ -255,13 +254,13 @@ CONTAINS
             zw6 = zw6*zw6
             !
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
-            zgt33 = 0.5 + SIGN( 0.5, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
+            zgt33 = 0.5 + SIGN( 0.5_wp, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
             !
             cd_neutral_10m(ji,jj) = 1.e-3 * ( &
                &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34 )                                     ! wind >= 33 m/s
             !
-            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6)
+            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6_wp)
             !
          END DO
       END DO
@@ -291,9 +290,9 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1. )
+            zx2 = MAX( zx2 , 1._wp )
             zx  = SQRT( zx2 )
-            zstab = 0.5 + SIGN( 0.5 , pzeta(ji,jj) )
+            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
             psi_m(ji,jj) =      zstab    * (-5.*pzeta(ji,jj))       &          ! Stable
                &          + (1. - zstab) * (2.*LOG((1. + zx)*0.5)   &          ! Unstable
@@ -326,8 +325,8 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1. )
-            zstab = 0.5 + SIGN( 0.5 , pzeta(ji,jj) )
+            zx2 = MAX( zx2 , 1._wp )
+            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
             psi_h(ji,jj) =      zstab     * (-5.*pzeta(ji,jj))        &  ! Stable
                &           + (1. - zstab) * (2.*LOG( (1. + zx2)*0.5 ))   ! Unstable
