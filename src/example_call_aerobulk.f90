@@ -28,19 +28,39 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    
    zRsw  = 0. ! (night)  ! [W/m^2]
    zRlw  = 350.          ! [W/m^2]
-   
+
+   PRINT *, ''
+   PRINT *, ' *********** COARE 3.0 *****************'   
    CALL aerobulk_model( 'coare', 2._wp, 10._wp, zsst, zt_zt, &
       &                 zq_zt, zU_zu, zV_zu, zslp,   &
       &                 zQL, zQH, zTau_x, zTau_y,    &
-      &                 Niter=10, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
+      &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
 
-   
-   PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', zQH ; PRINT *, ''
    PRINT *, '  Latent  heat flux: QL =', zQL ; PRINT *, ''
    PRINT *, ' Skin temperature: SSST =', zTs-rt0 ; PRINT *, ''
    PRINT *, ' Tau_x=', zTau_x ; PRINT *, ''
    PRINT *, ' Tau_y=', zTau_y ; PRINT *, ''
+
+
+
+   PRINT *, ''
+   PRINT *, ''
+
+   PRINT *, ' *********** ECMWF *****************'   
+   CALL aerobulk_model( 'ecmwf', 2._wp, 10._wp, zsst, zt_zt, &
+      &                 zq_zt, zU_zu, zV_zu, zslp,   &
+      &                 zQL, zQH, zTau_x, zTau_y,    &
+      &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
+   
+   PRINT *, ' Sensible heat flux: QH =', zQH ; PRINT *, ''
+   PRINT *, '  Latent  heat flux: QL =', zQL ; PRINT *, ''
+   PRINT *, ' Skin temperature: SSST =', zTs-rt0 ; PRINT *, ''
+   PRINT *, ' Tau_x=', zTau_x ; PRINT *, ''
+   PRINT *, ' Tau_y=', zTau_y ; PRINT *, ''
+   
+
+   PRINT *, ''
    
    
 END PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
