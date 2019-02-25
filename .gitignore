@@ -1,0 +1,13 @@
+*.err
+*.tmp
+*.out
+*#
+*.mod
+*.o
+*.nc
+make.macro
+*.bak
+bin
+lib
+obj
+mod
