@@ -20,7 +20,7 @@ CONTAINS
    SUBROUTINE aerobulk_compute( calgo, zt, zu, sst, t_zt, &
       &                         q_zt, U_zu, V_zu, slp,    &
       &                         QL, QH, Tau_x, Tau_y,     &
-      &                         rad_sw, rad_lw )
+      &                         rad_sw, rad_lw, T_s )
       !!
       !!******************************
       !! 2015: L. Brodeau
@@ -54,6 +54,11 @@ CONTAINS
       !!    *  Tau_x  : zonal wind stress                                    [N/m^2]
       !!    *  Tau_y  : zonal wind stress                                    [N/m^2]
       !!
+      !! OPTIONAL OUTPUT
+      !! ---------------
+      !!    *  T_s : skin temperature    [K]
+      !!             (only when l_use_skin=TRUE)      
+      !!
       !!============================================================================
       !!
       !! I/O ARGUMENTS:
@@ -62,6 +67,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: QL, QH, Tau_x, Tau_y
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: rad_sw, rad_lw
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out),OPTIONAL :: T_s
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &     XWzu,            & !: Scalar wind speed at zu m
@@ -110,7 +116,7 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_COARE ( '3.0', zt, zu, Ts, XTzt, qs, q_zt, XWzu,  &
                &              Cd, Ch, Ce, XTzu, XQzu, XUblk,            &
-               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )            
          ELSE
             CALL TURB_COARE ( '3.0', zt, zu, Ts, XTzt, qs, q_zt, XWzu,  &
                &              Cd, Ch, Ce, XTzu, XQzu, XUblk )
@@ -148,7 +154,10 @@ CONTAINS
          STOP
       END SELECT
 
-
+      !! Skin temperature:
+      !! IF( l_use_skin ), Ts has been updated from SST to skin temperature !
+      T_s = Ts
+      
       !! Need the air density at zu m, so using t and q corrected at zu m:
       XRHO = rho_air(XTzu, XQzu, slp)
       QH   = slp - XRHO*grav*zu      ! QH used as temporary array!
