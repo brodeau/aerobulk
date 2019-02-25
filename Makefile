@@ -4,7 +4,7 @@
 include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
-	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x 
+	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
@@ -22,14 +22,32 @@ LIB_SRC = src/mod_const.f90 \
 
 LIB_OBJ = $(LIB_SRC:.f90=.o)
 
+LIB_CXX = -L./lib -laerobulk_cxx
+
+LIB_SRC_CXX = src/aerobulk.cpp \
+		  src/aerobulk_cxx.f90
+
+LIB_OBJ_CXX = src/aerobulk.o \
+		  src/aerobulk_cxx.o
+
+
+CXXFLAGS += -I ./include
+
 .SUFFIXES: 
-.SUFFIXES: .f90 .o
+.SUFFIXES: .f90 .o .cpp
 
 lib/libaerobulk.a: $(LIB_OBJ)
 	@echo ""
 	@mkdir -p lib
 	ar -rv lib/libaerobulk.a  $(LIB_OBJ)
 	ranlib lib/libaerobulk.a
+	@echo ""
+
+lib/libaerobulk_cxx.a: $(LIB_OBJ) $(LIB_OBJ_CXX)
+	@echo ""
+	@mkdir -p lib
+	ar -rv lib/libaerobulk_cxx.a $(LIB_OBJ_CXX)
+	ranlib lib/libaerobulk_cxx.a
 	@echo ""
 
 bin/test_aerobulk.x: src/test_aerobulk.f90 lib/libaerobulk.a
@@ -64,10 +82,19 @@ bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat
 	$(FC) $(FF) src/cx_vs_wind_test.f90 -o bin/cx_vs_wind_test.x $(LIB)
 
+bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
+	@mkdir -p bin dat
+	$(CXX) $(CXXFLAGS) -std=c++11 src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB) $(LIB_CXX)
 
-.f90.o: $(LIB_SRC)
+###  -lgfortran
+
+.f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
 	@mkdir -p mod
 	$(FC) -c $(FF) $< -o $*.o
+
+.cpp.o: $(LIB_SRC_CXX)
+	@mkdir -p mod
+	$(CPP) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
 	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png

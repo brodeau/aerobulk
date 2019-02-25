@@ -2,8 +2,8 @@
 # ==================
 
 # Fortran compiler :
-FC = ifort
-
+FC  = ifort
+CXX = icc
 
 # Fortran compilation flags :
 
