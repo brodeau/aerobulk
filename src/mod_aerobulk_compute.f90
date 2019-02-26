@@ -57,7 +57,7 @@ CONTAINS
       !! OPTIONAL OUTPUT
       !! ---------------
       !!    *  T_s : skin temperature    [K]
-      !!             (only when l_use_skin=TRUE)      
+      !!             (only when l_use_skin=TRUE)
       !!
       !!============================================================================
       !!
@@ -94,8 +94,18 @@ CONTAINS
             l_use_skin = .TRUE.
             PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
+         CALL check_unit_consitency( 'rad_sw',   rad_sw,  INT(sst*0.+1., 1) )
+         CALL check_unit_consitency( 'rad_lw',   rad_lw,  INT(sst*0.+1., 1) )         
       END IF
 
+      CALL check_unit_consitency( 'sst',   sst,  INT(sst*0.+1., 1) )
+      CALL check_unit_consitency( 't_air', t_zt, INT(t_zt*0.+1.,1) )
+      CALL check_unit_consitency( 'q_air', q_zt, INT(q_zt*0.+1.,1) )
+      CALL check_unit_consitency( 'slp',   slp,  INT(slp*0.+1.,1) )
+      CALL check_unit_consitency( 'u10', ABS(U_zu), INT(U_zu*0.+1.,1) )
+      CALL check_unit_consitency( 'v10', ABS(V_zu), INT(V_zu*0.+1.,1) )
+
+      
       !! Scalar wind:
       XWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
@@ -116,7 +126,7 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_COARE ( '3.0', zt, zu, Ts, XTzt, qs, q_zt, XWzu,  &
                &              Cd, Ch, Ce, XTzu, XQzu, XUblk,            &
-               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )            
+               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
             CALL TURB_COARE ( '3.0', zt, zu, Ts, XTzt, qs, q_zt, XWzu,  &
                &              Cd, Ch, Ce, XTzu, XQzu, XUblk )
@@ -157,7 +167,7 @@ CONTAINS
       !! Skin temperature:
       !! IF( l_use_skin ), Ts has been updated from SST to skin temperature !
       T_s = Ts
-      
+
       !! Need the air density at zu m, so using t and q corrected at zu m:
       XRHO = rho_air(XTzu, XQzu, slp)
       QH   = slp - XRHO*grav*zu      ! QH used as temporary array!
@@ -190,5 +200,83 @@ CONTAINS
       DEALLOCATE ( XWzu, XSSQ, Cd, Ch, Ce, XTzt, XTzu, XQzu, XUblk, XRHO, Ts, qs )
 
    END SUBROUTINE aerobulk_compute
+
+
+
+
+   SUBROUTINE check_unit_consitency( cfield, Xval, mask )
+
+      !! Ignore values where mask==0
+      
+      CHARACTER(len=*),         INTENT(in) :: cfield
+      REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
+      INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
+
+      CHARACTER(len=64) :: cunit
+      REAL(wp) :: zmean, vmin, vmax
+      LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
+      
+      zmean = SUM( Xval * REAL(mask,wp) ) / REAL( SUM(mask) , wp )
+      
+      !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
+      
+      SELECT CASE (TRIM(cfield))
+         
+      CASE('sst')
+         vmax = 313._wp
+         vmin = 270._wp
+         cunit = 'K'
+         
+      CASE('t_air')
+         vmax = 323._wp
+         vmin = 220._wp
+         cunit = 'K'
+         
+      CASE('q_air')
+         vmax = 0.08_wp
+         vmin = 0._wp
+         cunit = 'kg/kg'
+         
+      CASE('slp')
+         vmax = 108000.
+         vmin =  87000.
+         cunit = 'Pa'
+         
+      CASE('u10')
+         vmax = 50._wp
+         vmin =  0._wp 
+         cunit = 'm/s'
+         
+      CASE('v10')
+         vmax = 50._wp
+         vmin =  0._wp
+         cunit = 'm/s'
+
+      CASE('rad_sw')
+         vmax = 1500.0_wp
+         vmin =  0._wp
+         cunit = 'W/m^2'
+
+      CASE('rad_lw')
+         vmax = 700.0_wp
+         vmin =  0._wp
+         cunit = 'W/m^2'
+
+      CASE DEFAULT
+         WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): we do not know field ",a," !")') TRIM(cfield)
+         STOP
+      END SELECT
+      
+      IF ( MAXVAL(Xval) > vmax )                   l_too_large    = .TRUE.
+      IF ( MINVAL(Xval) < vmin )                   l_too_small    = .TRUE.
+      IF ( (zmean < vmin) .OR. (zmean > vmax) ) l_mean_outside = .TRUE.
+      
+      IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
+         WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
+         STOP
+      END IF
+      
+   END SUBROUTINE check_unit_consitency
+   
 
 END MODULE mod_aerobulk_compute
