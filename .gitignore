@@ -11,3 +11,5 @@ bin
 lib
 obj
 mod
+out
+err

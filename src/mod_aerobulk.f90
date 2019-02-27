@@ -35,8 +35,8 @@ CONTAINS
       INTEGER :: ni, nj
 
       PRINT *, ''
-      PRINT *, 'aerobulk_init'
-
+      PRINT *, '****************************************************'
+      PRINT *, '*            ----- aerobulk_init -----'
       ! 1.
       jpi = size(psst,1) ; jpj = size(psst,2)
 
@@ -67,13 +67,12 @@ CONTAINS
          PRINT *, 'ERROR: aerobulk_init => SST and SLP arrays do not agree in shape!' ; STOP
       END IF
 
-      PRINT *, '    *** jpi and jpj set to ', jpi, jpj ; PRINT *, ''
+      PRINT *, '    *** jpi and jpj set to ', jpi, jpj
       PRINT *, '    *** nb_itt is set to ', nb_itt
-
-
-      l_first_call = .false.
-
+      PRINT *, '****************************************************'
       PRINT *, ''
+
+      l_first_call = .FALSE.
 
    END SUBROUTINE aerobulk_init
 
