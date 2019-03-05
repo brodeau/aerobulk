@@ -30,17 +30,23 @@ extern "C"
 
 std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
 {
-    std::string return_value = std::string("unknown");
+    std::string return_value;
     switch (algo)
     {
         case algorithm::COARE:
             return_value = std::string("coare");
+            break;
         case algorithm::COARE35:
             return_value = std::string("coare35");
+            break;
         case algorithm::NCAR:
             return_value = std::string("ncar");
+            break;
         case algorithm::ECMWF:
             return_value = std::string("ecmwf");
+            break;
+        default:
+            return_value = "unknown";
     }
     return return_value;
 }
