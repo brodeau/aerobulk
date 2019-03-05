@@ -14,19 +14,25 @@ MODULE sbcblk
    !!            3.4  !  2011-11  (C. Harris)  Fill arrays required by CICE
    !!            3.7  !  2014-06  (L. Brodeau)  simplification and optimization of CORE bulk
    !!            4.0  !  2016-06  (L. Brodeau)  sbcblk_core becomes sbcblk and is not restricted to the CORE algorithm anymore
-   !!                                          ==> based on AeroBulk (http://aerobulk.sourceforge.net/)
+   !!                 !                        ==> based on AeroBulk (http://aerobulk.sourceforge.net/)
    !!            4.0  !  2016-10  (G. Madec)  introduce a sbc_blk_init routine
+   !!            4.0  !  2016-10  (M. Vancoppenolle)  Introduce Jules emulator (M. Vancoppenolle) 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
    !!   sbc_blk_init  : initialisation of the chosen bulk formulation as ocean surface boundary condition
    !!   sbc_blk       : bulk formulation as ocean surface boundary condition
    !!   blk_oce       : computes momentum, heat and freshwater fluxes over ocean
-   !!   blk_ice       : computes momentum, heat and freshwater fluxes over sea ice
    !!   rho_air       : density of (moist) air (depends on T_air, q_air and SLP
    !!   cp_air        : specific heat of (moist) air (depends spec. hum. q_air)
    !!   q_sat         : saturation humidity as a function of SLP and temperature
    !!   L_vap         : latent heat of vaporization of water as a function of temperature
+   !!             sea-ice case only : 
+   !!   blk_ice_tau   : provide the air-ice stress
+   !!   blk_ice_flx   : provide the heat and mass fluxes at air-ice interface
+   !!   blk_ice_qcn   : provide ice surface temperature and snow/ice conduction flux (emulating JULES coupler)
+   !!   Cdn10_Lupkes2012 : Lupkes et al. (2012) air-ice drag
+   !!   Cdn10_Lupkes2015 : Lupkes et al. (2015) air-ice drag 
    !!----------------------------------------------------------------------
    USE oce            ! ocean dynamics and tracers
    USE dom_oce        ! ocean space and time domain
@@ -38,12 +44,9 @@ MODULE sbcblk
    USE sbcwave , ONLY :   cdn_wave ! wave module
    USE sbc_ice        ! Surface boundary condition: ice fields
    USE lib_fortran    ! to use key_nosignedzero
-#if defined key_lim3
-   USE ice     , ONLY :   u_ice, v_ice, jpl, pfrld, a_i_b, at_i_b
-   USE limthd_dh      ! for CALL lim_thd_snwblow
-#elif defined key_lim2
-   USE ice_2   , ONLY :   u_ice, v_ice
-   USE par_ice_2      ! LIM-2 parameters
+#if defined key_si3
+   USE ice     , ONLY :   u_ice, v_ice, jpl, a_i_b, at_i_b, tm_su, rn_cnd_s, hfx_err_dif
+   USE icethd_dh      ! for CALL ice_thd_snwblow
 #endif
    USE sbcblk_algo_ncar     ! => turb_ncar     : NCAR - CORE (Large & Yeager, 2009) 
    USE sbcblk_algo_coare    ! => turb_coare    : COAREv3.0 (Fairall et al. 2003) 
@@ -53,8 +56,6 @@ MODULE sbcblk
    USE iom            ! I/O manager library
    USE in_out_manager ! I/O manager
    USE lib_mpp        ! distribued memory computing library
-   USE wrk_nemo       ! work arrays
-   USE timing         ! Timing
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE prtctl         ! Print control
 
@@ -63,10 +64,11 @@ MODULE sbcblk
 
    PUBLIC   sbc_blk_init  ! called in sbcmod
    PUBLIC   sbc_blk       ! called in sbcmod
-#if defined key_lim2 || defined key_lim3
-   PUBLIC   blk_ice_tau   ! routine called in sbc_ice_lim module
-   PUBLIC   blk_ice_flx   ! routine called in sbc_ice_lim module
-#endif
+#if defined key_si3
+   PUBLIC   blk_ice_tau   ! routine called in iceforcing
+   PUBLIC   blk_ice_flx   ! routine called in iceforcing
+   PUBLIC   blk_ice_qcn   ! routine called in iceforcing
+#endif 
 
 !!Lolo: should ultimately be moved in the module with all physical constants ?
 !!gm  : In principle, yes.
@@ -95,7 +97,7 @@ MODULE sbcblk
    REAL(wp), PARAMETER ::   cpa    = 1000.5         ! specific heat of air (only used for ice fluxes now...)
    REAL(wp), PARAMETER ::   Ls     =    2.839e6     ! latent heat of sublimation
    REAL(wp), PARAMETER ::   Stef   =    5.67e-8     ! Stefan Boltzmann constant
-   REAL(wp), PARAMETER ::   Cd_ice =    1.4e-3      ! iovi 1.63e-3     ! transfer coefficient over ice
+   REAL(wp), PARAMETER ::   Cd_ice =    1.4e-3      ! transfer coefficient over ice
    REAL(wp), PARAMETER ::   albo   =    0.066       ! ocean albedo assumed to be constant
    !
    !                           !!* Namelist namsbc_blk : bulk parameters
@@ -106,13 +108,20 @@ MODULE sbcblk
    !
    LOGICAL  ::   ln_taudif      ! logical flag to use the "mean of stress module - module of mean stress" data
    REAL(wp) ::   rn_pfac        ! multiplication factor for precipitation
-   REAL(wp) ::   rn_efac        ! multiplication factor for evaporation (clem)
-   REAL(wp) ::   rn_vfac        ! multiplication factor for ice/ocean velocity in the calculation of wind stress (clem)
+   REAL(wp) ::   rn_efac        ! multiplication factor for evaporation
+   REAL(wp) ::   rn_vfac        ! multiplication factor for ice/ocean velocity in the calculation of wind stress
    REAL(wp) ::   rn_zqt         ! z(q,t) : height of humidity and temperature measurements
    REAL(wp) ::   rn_zu          ! z(u)   : height of wind measurements
-   LOGICAL  ::   ln_Cd_L12 = .FALSE. !  Modify the drag ice-atm and oce-atm depending on ice concentration (from Lupkes et al. JGR2012)
+!!gm ref namelist initialize it so remove the setting to false below
+   LOGICAL  ::   ln_Cd_L12 = .FALSE. !  Modify the drag ice-atm depending on ice concentration (from Lupkes et al. JGR2012)
+   LOGICAL  ::   ln_Cd_L15 = .FALSE. !  Modify the drag ice-atm depending on ice concentration (from Lupkes et al. JGR2015)
    !
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   Cd_oce   ! air-ocean drag (clem)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   Cd_atm                    ! transfer coefficient for momentum      (tau)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   Ch_atm                    ! transfer coefficient for sensible heat (Q_sens)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   Ce_atm                    ! tansfert coefficient for evaporation   (Q_lat)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   t_zu                      ! air temperature at wind speed height (needed by Lupkes 2015 bulk scheme)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   q_zu                      ! air spec. hum.  at wind speed height (needed by Lupkes 2015 bulk scheme)
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   cdn_oce, chn_oce, cen_oce ! needed by Lupkes 2015 bulk scheme
 
    INTEGER  ::   nblk           ! choice of the bulk algorithm
    !                            ! associated indices:
@@ -124,9 +133,9 @@ MODULE sbcblk
    !! * Substitutions
 #  include "vectopt_loop_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OPA 3.7 , NEMO-consortium (2014)
-   !! $Id: sbcblk.F90 6416 2016-04-01 12:22:17Z clem $
-   !! Software governed by the CeCILL licence     (NEMOGCM/NEMO_CeCILL.txt)
+   !! NEMO/OCE 4.0 , NEMO Consortium (2018)
+   !! $Id: sbcblk.F90 10425 2018-12-19 21:54:16Z smasson $
+   !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -134,11 +143,13 @@ CONTAINS
       !!-------------------------------------------------------------------
       !!             ***  ROUTINE sbc_blk_alloc ***
       !!-------------------------------------------------------------------
-      ALLOCATE( Cd_oce(jpi,jpj) , STAT=sbc_blk_alloc )
+      ALLOCATE( Cd_atm (jpi,jpj), Ch_atm (jpi,jpj), Ce_atm (jpi,jpj), t_zu(jpi,jpj), q_zu(jpi,jpj), &
+         &      cdn_oce(jpi,jpj), chn_oce(jpi,jpj), cen_oce(jpi,jpj), STAT=sbc_blk_alloc )
       !
-      IF( lk_mpp             )   CALL mpp_sum ( sbc_blk_alloc )
-      IF( sbc_blk_alloc /= 0 )   CALL ctl_warn('sbc_blk_alloc: failed to allocate arrays')
+      CALL mpp_sum ( 'sbcblk', sbc_blk_alloc )
+      IF( sbc_blk_alloc /= 0 )   CALL ctl_stop( 'STOP', 'sbc_blk_alloc: failed to allocate arrays' )
    END FUNCTION sbc_blk_alloc
+
 
    SUBROUTINE sbc_blk_init
       !!---------------------------------------------------------------------
@@ -147,11 +158,6 @@ CONTAINS
       !! ** Purpose :   choose and initialize a bulk formulae formulation
       !!
       !! ** Method  : 
-      !!
-      !!      C A U T I O N : never mask the surface stress fields
-      !!                      the stress is assumed to be in the (i,j) mesh referential
-      !!
-      !! ** Action  :   
       !!
       !!----------------------------------------------------------------------
       INTEGER  ::   ifpr, jfld            ! dummy loop indice and argument
@@ -166,7 +172,7 @@ CONTAINS
          &                 sn_tair, sn_prec, sn_snow, sn_slp, sn_tdif,                &
          &                 ln_NCAR, ln_COARE_3p0, ln_COARE_3p5, ln_ECMWF,             &   ! bulk algorithm
          &                 cn_dir , ln_taudif, rn_zqt, rn_zu,                         & 
-         &                 rn_pfac, rn_efac, rn_vfac, ln_Cd_L12
+         &                 rn_pfac, rn_efac, rn_vfac, ln_Cd_L12, ln_Cd_L15
       !!---------------------------------------------------------------------
       !
       !                                      ! allocate sbc_blk_core array
@@ -175,17 +181,17 @@ CONTAINS
       !                             !** read bulk namelist  
       REWIND( numnam_ref )                !* Namelist namsbc_blk in reference namelist : bulk parameters
       READ  ( numnam_ref, namsbc_blk, IOSTAT = ios, ERR = 901)
-901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'namsbc_blk in reference namelist', lwp )
+901   IF( ios /= 0 )   CALL ctl_nam ( ios , 'namsbc_blk in reference namelist', lwp )
       !
       REWIND( numnam_cfg )                !* Namelist namsbc_blk in configuration namelist : bulk parameters
       READ  ( numnam_cfg, namsbc_blk, IOSTAT = ios, ERR = 902 )
-902   IF( ios /= 0 ) CALL ctl_nam ( ios , 'namsbc_blk in configuration namelist', lwp )
+902   IF( ios >  0 )   CALL ctl_nam ( ios , 'namsbc_blk in configuration namelist', lwp )
       !
       IF(lwm) WRITE( numond, namsbc_blk )
       !
       !                             !** initialization of the chosen bulk formulae (+ check)
       !                                   !* select the bulk chosen in the namelist and check the choice
-      ;                                                        ioptio = 0
+                                                               ioptio = 0
       IF( ln_NCAR      ) THEN   ;   nblk =  np_NCAR        ;   ioptio = ioptio + 1   ;   ENDIF
       IF( ln_COARE_3p0 ) THEN   ;   nblk =  np_COARE_3p0   ;   ioptio = ioptio + 1   ;   ENDIF
       IF( ln_COARE_3p5 ) THEN   ;   nblk =  np_COARE_3p5   ;   ioptio = ioptio + 1   ;   ENDIF
@@ -218,26 +224,30 @@ CONTAINS
       DO ifpr= 1, jfld
          ALLOCATE( sf(ifpr)%fnow(jpi,jpj,1) )
          IF( slf_i(ifpr)%ln_tint )   ALLOCATE( sf(ifpr)%fdta(jpi,jpj,1,2) )
+         IF( slf_i(ifpr)%nfreqh > 0. .AND. MOD( 3600. * slf_i(ifpr)%nfreqh , REAL(nn_fsbc) * rdt) /= 0. )   &
+            &  CALL ctl_warn( 'sbc_blk_init: sbcmod timestep rdt*nn_fsbc is NOT a submultiple of atmospheric forcing frequency.',   &
+            &                 '               This is not ideal. You should consider changing either rdt or nn_fsbc value...' )
+
       END DO
       !                                      !- fill the bulk structure with namelist informations
       CALL fld_fill( sf, slf_i, cn_dir, 'sbc_blk_init', 'surface boundary condition -- bulk formulae', 'namsbc_blk' )
       !
       IF ( ln_wave ) THEN
       !Activated wave module but neither drag nor stokes drift activated
-         IF ( .NOT.(ln_cdgw .OR. ln_sdw .OR. ln_tauoc .OR. ln_stcor ) )   THEN
-            CALL ctl_warn( 'Ask for wave coupling but ln_cdgw=F, ln_sdw=F, ln_tauoc=F, ln_stcor=F')
+         IF ( .NOT.(ln_cdgw .OR. ln_sdw .OR. ln_tauwoc .OR. ln_stcor ) )   THEN
+            CALL ctl_stop( 'STOP',  'Ask for wave coupling but ln_cdgw=F, ln_sdw=F, ln_tauwoc=F, ln_stcor=F' )
       !drag coefficient read from wave model definable only with mfs bulk formulae and core 
          ELSEIF (ln_cdgw .AND. .NOT. ln_NCAR )       THEN       
-             CALL ctl_stop( 'drag coefficient read from wave model definable only with mfs bulk formulae and core')
+             CALL ctl_stop( 'drag coefficient read from wave model definable only with NCAR and CORE bulk formulae')
          ELSEIF (ln_stcor .AND. .NOT. ln_sdw)                             THEN
              CALL ctl_stop( 'Stokes-Coriolis term calculated only if activated Stokes Drift ln_sdw=T')
          ENDIF
       ELSE
-      IF ( ln_cdgw .OR. ln_sdw .OR. ln_tauoc .OR. ln_stcor )                & 
+      IF ( ln_cdgw .OR. ln_sdw .OR. ln_tauwoc .OR. ln_stcor )                & 
          &   CALL ctl_stop( 'Not Activated Wave Module (ln_wave=F) but asked coupling ',    &
          &                  'with drag coefficient (ln_cdgw =T) '  ,                        &
          &                  'or Stokes Drift (ln_sdw=T) ' ,                                 &
-         &                  'or ocean stress modification due to waves (ln_tauoc=T) ',      &  
+         &                  'or ocean stress modification due to waves (ln_tauwoc=T) ',      &  
          &                  'or Stokes-Coriolis term (ln_stcori=T)'  )
       ENDIF 
       !
@@ -257,13 +267,15 @@ CONTAINS
          WRITE(numout,*) '      factor applied on evaporation                       rn_efac      = ', rn_efac
          WRITE(numout,*) '      factor applied on ocean/ice velocity                rn_vfac      = ', rn_vfac
          WRITE(numout,*) '         (form absolute (=0) to relative winds(=1))'
+         WRITE(numout,*) '      use ice-atm drag from Lupkes2012                    ln_Cd_L12    = ', ln_Cd_L12
+         WRITE(numout,*) '      use ice-atm drag from Lupkes2015                    ln_Cd_L15    = ', ln_Cd_L15
          !
          WRITE(numout,*)
          SELECT CASE( nblk )              !* Print the choice of bulk algorithm
-         CASE( np_NCAR      )   ;   WRITE(numout,*) '      ===>>   "NCAR" algorithm        (Large and Yeager 2008)'
-         CASE( np_COARE_3p0 )   ;   WRITE(numout,*) '      ===>>   "COARE 3.0" algorithm   (Fairall et al. 2003)'
-         CASE( np_COARE_3p5 )   ;   WRITE(numout,*) '      ===>>   "COARE 3.5" algorithm   (Edson et al. 2013)'
-         CASE( np_ECMWF     )   ;   WRITE(numout,*) '      ===>>   "ECMWF" algorithm       (IFS cycle 31)'
+         CASE( np_NCAR      )   ;   WRITE(numout,*) '   ==>>>   "NCAR" algorithm        (Large and Yeager 2008)'
+         CASE( np_COARE_3p0 )   ;   WRITE(numout,*) '   ==>>>   "COARE 3.0" algorithm   (Fairall et al. 2003)'
+         CASE( np_COARE_3p5 )   ;   WRITE(numout,*) '   ==>>>   "COARE 3.5" algorithm   (Edson et al. 2013)'
+         CASE( np_ECMWF     )   ;   WRITE(numout,*) '   ==>>>   "ECMWF" algorithm       (IFS cycle 31)'
          END SELECT
          !
       ENDIF
@@ -276,7 +288,7 @@ CONTAINS
       !!                    ***  ROUTINE sbc_blk  ***
       !!
       !! ** Purpose :   provide at each time step the surface ocean fluxes
-      !!      (momentum, heat, freshwater and runoff)
+      !!              (momentum, heat, freshwater and runoff)
       !!
       !! ** Method  : (1) READ each fluxes in NetCDF files:
       !!      the 10m wind velocity (i-component) (m/s)    at T-point
@@ -300,7 +312,6 @@ CONTAINS
       !!              - qns, qsr    non-solar and solar heat fluxes
       !!              - emp         upward mass flux (evapo. - precip.)
       !!              - sfx         salt flux due to freezing/melting (non-zero only if ice is present)
-      !!                            (set in limsbc(_2).F90)
       !!
       !! ** References :   Large & Yeager, 2004 / Large & Yeager, 2008
       !!                   Brodeau et al. Ocean Modelling 2010
@@ -359,28 +370,16 @@ CONTAINS
       !
       INTEGER  ::   ji, jj               ! dummy loop indices
       REAL(wp) ::   zztmp                ! local variable
-      REAL(wp), DIMENSION(:,:), POINTER ::   zwnd_i, zwnd_j    ! wind speed components at T-point
-      REAL(wp), DIMENSION(:,:), POINTER ::   zsq               ! specific humidity at pst
-      REAL(wp), DIMENSION(:,:), POINTER ::   zqlw, zqsb        ! long wave and sensible heat fluxes
-      REAL(wp), DIMENSION(:,:), POINTER ::   zqla, zevap       ! latent heat fluxes and evaporation
-      REAL(wp), DIMENSION(:,:), POINTER ::   Cd                ! transfer coefficient for momentum      (tau)
-      REAL(wp), DIMENSION(:,:), POINTER ::   Ch                ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), DIMENSION(:,:), POINTER ::   Ce                ! tansfert coefficient for evaporation   (Q_lat)
-      REAL(wp), DIMENSION(:,:), POINTER ::   zst               ! surface temperature in Kelvin
-      REAL(wp), DIMENSION(:,:), POINTER ::   zt_zu             ! air temperature at wind speed height
-      REAL(wp), DIMENSION(:,:), POINTER ::   zq_zu             ! air spec. hum.  at wind speed height
-      REAL(wp), DIMENSION(:,:), POINTER ::   zU_zu             ! bulk wind speed at height zu  [m/s]
-      REAL(wp), DIMENSION(:,:), POINTER ::   ztpot             ! potential temperature of air at z=rn_zqt [K]
-      REAL(wp), DIMENSION(:,:), POINTER ::   zrhoa             ! density of air   [kg/m^3]
+      REAL(wp), DIMENSION(jpi,jpj) ::   zwnd_i, zwnd_j    ! wind speed components at T-point
+      REAL(wp), DIMENSION(jpi,jpj) ::   zsq               ! specific humidity at pst
+      REAL(wp), DIMENSION(jpi,jpj) ::   zqlw, zqsb        ! long wave and sensible heat fluxes
+      REAL(wp), DIMENSION(jpi,jpj) ::   zqla, zevap       ! latent heat fluxes and evaporation
+      REAL(wp), DIMENSION(jpi,jpj) ::   zst               ! surface temperature in Kelvin
+      REAL(wp), DIMENSION(jpi,jpj) ::   zU_zu             ! bulk wind speed at height zu  [m/s]
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztpot             ! potential temperature of air at z=rn_zqt [K]
+      REAL(wp), DIMENSION(jpi,jpj) ::   zrhoa             ! density of air   [kg/m^3]
       !!---------------------------------------------------------------------
       !
-      IF( nn_timing == 1 )  CALL timing_start('blk_oce')
-      !
-      CALL wrk_alloc( jpi,jpj,   zwnd_i, zwnd_j, zsq, zqlw, zqsb, zqla, zevap )
-      CALL wrk_alloc( jpi,jpj,   Cd, Ch, Ce, zst, zt_zu, zq_zu )
-      CALL wrk_alloc( jpi,jpj,   zU_zu, ztpot, zrhoa )
-      !
-
       ! local scalars ( place there for vector optimisation purposes)
       zst(:,:) = pst(:,:) + rt0      ! convert SST from Celcius to Kelvin (and set minimum value far above 0 K)
 
@@ -407,8 +406,7 @@ CONTAINS
             zwnd_j(ji,jj) = (  sf(jp_wndj)%fnow(ji,jj,1) - rn_vfac * 0.5 * ( pv(ji  ,jj-1) + pv(ji,jj) )  )
          END DO
       END DO
-      CALL lbc_lnk( zwnd_i(:,:) , 'T', -1. )
-      CALL lbc_lnk( zwnd_j(:,:) , 'T', -1. )
+      CALL lbc_lnk_multi( 'sbcblk', zwnd_i, 'T', -1., zwnd_j, 'T', -1. )
       ! ... scalar wind ( = | U10m - U_oce | ) at T-point (masked)
       wndm(:,:) = SQRT(  zwnd_i(:,:) * zwnd_i(:,:)   &
          &             + zwnd_j(:,:) * zwnd_j(:,:)  ) * tmask(:,:,1)
@@ -425,8 +423,6 @@ CONTAINS
 
       zqlw(:,:) = (  sf(jp_qlw)%fnow(:,:,1) - Stef * zst(:,:)*zst(:,:)*zst(:,:)*zst(:,:)  ) * tmask(:,:,1)   ! Long  Wave
 
-
-
       ! ----------------------------------------------------------------------------- !
       !     II    Turbulent FLUXES                                                    !
       ! ----------------------------------------------------------------------------- !
@@ -442,29 +438,30 @@ CONTAINS
       SELECT CASE( nblk )        !==  transfer coefficients  ==!   Cd, Ch, Ce at T-point
       !
       CASE( np_NCAR      )   ;   CALL turb_ncar    ( rn_zqt, rn_zu, zst, ztpot, zsq, sf(jp_humi)%fnow, wndm,   &  ! NCAR-COREv2
-         &                                               Cd, Ch, Ce, zt_zu, zq_zu, zU_zu )
+         &                                           Cd_atm, Ch_atm, Ce_atm, t_zu, q_zu, zU_zu, cdn_oce, chn_oce, cen_oce )
       CASE( np_COARE_3p0 )   ;   CALL turb_coare   ( rn_zqt, rn_zu, zst, ztpot, zsq, sf(jp_humi)%fnow, wndm,   &  ! COARE v3.0
-         &                                               Cd, Ch, Ce, zt_zu, zq_zu, zU_zu )
+         &                                           Cd_atm, Ch_atm, Ce_atm, t_zu, q_zu, zU_zu, cdn_oce, chn_oce, cen_oce )
       CASE( np_COARE_3p5 )   ;   CALL turb_coare3p5( rn_zqt, rn_zu, zst, ztpot, zsq, sf(jp_humi)%fnow, wndm,   &  ! COARE v3.5
-         &                                               Cd, Ch, Ce, zt_zu, zq_zu, zU_zu )
+         &                                           Cd_atm, Ch_atm, Ce_atm, t_zu, q_zu, zU_zu, cdn_oce, chn_oce, cen_oce )
       CASE( np_ECMWF     )   ;   CALL turb_ecmwf   ( rn_zqt, rn_zu, zst, ztpot, zsq, sf(jp_humi)%fnow, wndm,   &  ! ECMWF
-         &                                               Cd, Ch, Ce, zt_zu, zq_zu, zU_zu )
+         &                                           Cd_atm, Ch_atm, Ce_atm, t_zu, q_zu, zU_zu, cdn_oce, chn_oce, cen_oce )
       CASE DEFAULT
          CALL ctl_stop( 'STOP', 'sbc_oce: non-existing bulk formula selected' )
       END SELECT
 
       !                          ! Compute true air density :
       IF( ABS(rn_zu - rn_zqt) > 0.01 ) THEN     ! At zu: (probably useless to remove zrho*grav*rn_zu from SLP...)
-         zrhoa(:,:) = rho_air( zt_zu(:,:)             , zq_zu(:,:)             , sf(jp_slp)%fnow(:,:,1) )
+         zrhoa(:,:) = rho_air( t_zu(:,:)              , q_zu(:,:)              , sf(jp_slp)%fnow(:,:,1) )
       ELSE                                      ! At zt:
          zrhoa(:,:) = rho_air( sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1), sf(jp_slp)%fnow(:,:,1) )
       END IF
 
-      Cd_oce(:,:) = Cd(:,:)  ! record value of pure ocean-atm. drag (clem)
+!!      CALL iom_put( "Cd_oce", Cd_atm)  ! output value of pure ocean-atm. transfer coef.
+!!      CALL iom_put( "Ch_oce", Ch_atm)  ! output value of pure ocean-atm. transfer coef.
 
       DO jj = 1, jpj             ! tau module, i and j component
          DO ji = 1, jpi
-            zztmp = zrhoa(ji,jj)  * zU_zu(ji,jj) * Cd(ji,jj)   ! using bulk wind speed
+            zztmp = zrhoa(ji,jj)  * zU_zu(ji,jj) * Cd_atm(ji,jj)   ! using bulk wind speed
             taum  (ji,jj) = zztmp * wndm  (ji,jj)
             zwnd_i(ji,jj) = zztmp * zwnd_i(ji,jj)
             zwnd_j(ji,jj) = zztmp * zwnd_j(ji,jj)
@@ -487,33 +484,31 @@ CONTAINS
                &          * MAX(tmask(ji,jj,1),tmask(ji,jj+1,1))
          END DO
       END DO
-      CALL lbc_lnk( utau(:,:), 'U', -1. )
-      CALL lbc_lnk( vtau(:,:), 'V', -1. )
-
+      CALL lbc_lnk_multi( 'sbcblk', utau, 'U', -1., vtau, 'V', -1. )
 
       !  Turbulent fluxes over ocean
       ! -----------------------------
 
       ! zqla used as temporary array, for rho*U (common term of bulk formulae):
-      zqla(:,:) = zrhoa(:,:) * zU_zu(:,:)
+      zqla(:,:) = zrhoa(:,:) * zU_zu(:,:) * tmask(:,:,1)
 
       IF( ABS( rn_zu - rn_zqt) < 0.01_wp ) THEN
          !! q_air and t_air are given at 10m (wind reference height)
-         zevap(:,:) = rn_efac*MAX( 0._wp,             zqla(:,:)*Ce(:,:)*(zsq(:,:) - sf(jp_humi)%fnow(:,:,1)) ) ! Evaporation, using bulk wind speed
-         zqsb (:,:) = cp_air(sf(jp_humi)%fnow(:,:,1))*zqla(:,:)*Ch(:,:)*(zst(:,:) - ztpot(:,:)             )   ! Sensible Heat, using bulk wind speed
+         zevap(:,:) = rn_efac*MAX( 0._wp,             zqla(:,:)*Ce_atm(:,:)*(zsq(:,:) - sf(jp_humi)%fnow(:,:,1)) ) ! Evaporation, using bulk wind speed
+         zqsb (:,:) = cp_air(sf(jp_humi)%fnow(:,:,1))*zqla(:,:)*Ch_atm(:,:)*(zst(:,:) - ztpot(:,:)             )   ! Sensible Heat, using bulk wind speed
       ELSE
          !! q_air and t_air are not given at 10m (wind reference height)
          ! Values of temp. and hum. adjusted to height of wind during bulk algorithm iteration must be used!!!
-         zevap(:,:) = rn_efac*MAX( 0._wp,             zqla(:,:)*Ce(:,:)*(zsq(:,:) - zq_zu(:,:) ) ) ! Evaporation ! using bulk wind speed
-         zqsb (:,:) = cp_air(sf(jp_humi)%fnow(:,:,1))*zqla(:,:)*Ch(:,:)*(zst(:,:) - zt_zu(:,:) )   ! Sensible Heat ! using bulk wind speed
+         zevap(:,:) = rn_efac*MAX( 0._wp,             zqla(:,:)*Ce_atm(:,:)*(zsq(:,:) - q_zu(:,:) ) ) ! Evaporation, using bulk wind speed
+         zqsb (:,:) = cp_air(sf(jp_humi)%fnow(:,:,1))*zqla(:,:)*Ch_atm(:,:)*(zst(:,:) - t_zu(:,:) )   ! Sensible Heat, using bulk wind speed
       ENDIF
 
       zqla(:,:) = L_vap(zst(:,:)) * zevap(:,:)     ! Latent Heat flux
 
 
       IF(ln_ctl) THEN
-         CALL prt_ctl( tab2d_1=zqla  , clinfo1=' blk_oce: zqla   : ', tab2d_2=Ce , clinfo2=' Ce  : ' )
-         CALL prt_ctl( tab2d_1=zqsb  , clinfo1=' blk_oce: zqsb   : ', tab2d_2=Ch , clinfo2=' Ch  : ' )
+         CALL prt_ctl( tab2d_1=zqla  , clinfo1=' blk_oce: zqla   : ', tab2d_2=Ce_atm , clinfo2=' Ce_oce  : ' )
+         CALL prt_ctl( tab2d_1=zqsb  , clinfo1=' blk_oce: zqsb   : ', tab2d_2=Ch_atm , clinfo2=' Ch_oce  : ' )
          CALL prt_ctl( tab2d_1=zqlw  , clinfo1=' blk_oce: zqlw   : ', tab2d_2=qsr, clinfo2=' qsr : ' )
          CALL prt_ctl( tab2d_1=zsq   , clinfo1=' blk_oce: zsq    : ', tab2d_2=zst, clinfo2=' zst : ' )
          CALL prt_ctl( tab2d_1=utau  , clinfo1=' blk_oce: utau   : ', mask1=umask,   &
@@ -530,15 +525,16 @@ CONTAINS
          &         - sf(jp_prec)%fnow(:,:,1) * rn_pfac  ) * tmask(:,:,1)
       !
       qns(:,:) = zqlw(:,:) - zqsb(:,:) - zqla(:,:)                                &   ! Downward Non Solar
-         &     - sf(jp_snow)%fnow(:,:,1) * rn_pfac * lfus                         &   ! remove latent melting heat for solid precip
+         &     - sf(jp_snow)%fnow(:,:,1) * rn_pfac * rLfus                        &   ! remove latent melting heat for solid precip
          &     - zevap(:,:) * pst(:,:) * rcp                                      &   ! remove evap heat content at SST
          &     + ( sf(jp_prec)%fnow(:,:,1) - sf(jp_snow)%fnow(:,:,1) ) * rn_pfac  &   ! add liquid precip heat content at Tair
          &     * ( sf(jp_tair)%fnow(:,:,1) - rt0 ) * rcp                          &
          &     + sf(jp_snow)%fnow(:,:,1) * rn_pfac                                &   ! add solid  precip heat content at min(Tair,Tsnow)
-         &     * ( MIN( sf(jp_tair)%fnow(:,:,1), rt0_snow ) - rt0 ) * cpic * tmask(:,:,1)
+         &     * ( MIN( sf(jp_tair)%fnow(:,:,1), rt0 ) - rt0 ) * rcpi
+      qns(:,:) = qns(:,:) * tmask(:,:,1)
       !
-#if defined key_lim3
-      qns_oce(:,:) = zqlw(:,:) - zqsb(:,:) - zqla(:,:)                                ! non solar without emp (only needed by LIM3)
+#if defined key_si3
+      qns_oce(:,:) = zqlw(:,:) - zqsb(:,:) - zqla(:,:)                                ! non solar without emp (only needed by SI3)
       qsr_oce(:,:) = qsr(:,:)
 #endif
       !
@@ -550,10 +546,10 @@ CONTAINS
          CALL iom_put( "qns_oce" ,   qns  )                 ! output downward non solar heat over the ocean
          CALL iom_put( "qsr_oce" ,   qsr  )                 ! output downward solar heat over the ocean
          CALL iom_put( "qt_oce"  ,   qns+qsr )              ! output total downward heat over the ocean
-         tprecip(:,:) = sf(jp_prec)%fnow(:,:,1) * rn_pfac   ! output total precipitation [kg/m2/s]
-         sprecip(:,:) = sf(jp_snow)%fnow(:,:,1) * rn_pfac   ! output solid precipitation [kg/m2/s]
-         CALL iom_put( 'snowpre', sprecip * 86400. )        ! Snow
-         CALL iom_put( 'precip' , tprecip * 86400. )        ! Total precipitation
+         tprecip(:,:) = sf(jp_prec)%fnow(:,:,1) * rn_pfac * tmask(:,:,1) ! output total precipitation [kg/m2/s]
+         sprecip(:,:) = sf(jp_snow)%fnow(:,:,1) * rn_pfac * tmask(:,:,1) ! output solid precipitation [kg/m2/s]
+         CALL iom_put( 'snowpre', sprecip )                 ! Snow
+         CALL iom_put( 'precip' , tprecip )                 ! Total precipitation
       ENDIF
       !
       IF(ln_ctl) THEN
@@ -564,294 +560,9 @@ CONTAINS
             &         tab2d_2=vtau , clinfo2=              ' vtau  : ' , mask2=vmask )
       ENDIF
       !
-      CALL wrk_dealloc( jpi,jpj,   zwnd_i, zwnd_j, zsq, zqlw, zqsb, zqla, zevap )
-      CALL wrk_dealloc( jpi,jpj,   Cd, Ch, Ce, zst, zt_zu, zq_zu )
-      CALL wrk_dealloc( jpi,jpj,   zU_zu, ztpot, zrhoa )
-      !
-      IF( nn_timing == 1 )  CALL timing_stop('blk_oce')
-      !
    END SUBROUTINE blk_oce
 
-#if defined key_lim2 || defined key_lim3
 
-   SUBROUTINE blk_ice_tau
-      !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE blk_ice_tau  ***
-      !!
-      !! ** Purpose :   provide the surface boundary condition over sea-ice
-      !!
-      !! ** Method  :   compute momentum using bulk formulation
-      !!                formulea, ice variables and read atmospheric fields.
-      !!                NB: ice drag coefficient is assumed to be a constant
-      !!---------------------------------------------------------------------
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      !
-      REAL(wp), DIMENSION(:,:)  , POINTER :: zrhoa
-      !
-      REAL(wp) ::   zwnorm_f, zwndi_f , zwndj_f               ! relative wind module and components at F-point
-      REAL(wp) ::             zwndi_t , zwndj_t               ! relative wind components at T-point
-      REAL(wp), DIMENSION(:,:), POINTER ::   Cd               ! transfer coefficient for momentum      (tau)
-      !!---------------------------------------------------------------------
-      !
-      IF( nn_timing == 1 )  CALL timing_start('blk_ice_tau')
-      !
-      CALL wrk_alloc( jpi,jpj, zrhoa )
-      CALL wrk_alloc( jpi,jpj, Cd )
-
-      Cd(:,:) = Cd_ice
-
-      ! Make ice-atm. drag dependent on ice concentration (see Lupkes et al. 2012) (clem)
-#if defined key_lim3
-      IF( ln_Cd_L12 ) THEN
-         CALL Cdn10_Lupkes2012( Cd ) ! calculate new drag from Lupkes(2012) equations
-      ENDIF
-#endif
-
-      ! local scalars ( place there for vector optimisation purposes)
-      ! Computing density of air! Way denser that 1.2 over sea-ice !!!
-      !!
-      zrhoa (:,:) =  rho_air(sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1), sf(jp_slp)%fnow(:,:,1))
-
-      !!gm brutal....
-      utau_ice  (:,:) = 0._wp
-      vtau_ice  (:,:) = 0._wp
-      wndm_ice  (:,:) = 0._wp
-      !!gm end
-
-      ! ----------------------------------------------------------------------------- !
-      !    Wind components and module relative to the moving ocean ( U10m - U_ice )   !
-      ! ----------------------------------------------------------------------------- !
-      SELECT CASE( cp_ice_msh )
-      CASE( 'I' )                  ! B-grid ice dynamics :   I-point (i.e. F-point with sea-ice indexation)
-         !                           and scalar wind at T-point ( = | U10m - U_ice | ) (masked)
-         DO jj = 2, jpjm1
-            DO ji = 2, jpim1   ! B grid : NO vector opt
-               ! ... scalar wind at I-point (fld being at T-point)
-               zwndi_f = 0.25 * (  sf(jp_wndi)%fnow(ji-1,jj  ,1) + sf(jp_wndi)%fnow(ji  ,jj  ,1)   &
-                  &              + sf(jp_wndi)%fnow(ji-1,jj-1,1) + sf(jp_wndi)%fnow(ji  ,jj-1,1)  ) - rn_vfac * u_ice(ji,jj)
-               zwndj_f = 0.25 * (  sf(jp_wndj)%fnow(ji-1,jj  ,1) + sf(jp_wndj)%fnow(ji  ,jj  ,1)   &
-                  &              + sf(jp_wndj)%fnow(ji-1,jj-1,1) + sf(jp_wndj)%fnow(ji  ,jj-1,1)  ) - rn_vfac * v_ice(ji,jj)
-               zwnorm_f = zrhoa(ji,jj) * Cd(ji,jj) * SQRT( zwndi_f * zwndi_f + zwndj_f * zwndj_f )
-               ! ... ice stress at I-point
-               utau_ice(ji,jj) = zwnorm_f * zwndi_f
-               vtau_ice(ji,jj) = zwnorm_f * zwndj_f
-               ! ... scalar wind at T-point (fld being at T-point)
-               zwndi_t = sf(jp_wndi)%fnow(ji,jj,1) - rn_vfac * 0.25 * (  u_ice(ji,jj+1) + u_ice(ji+1,jj+1)   &
-                  &                                                    + u_ice(ji,jj  ) + u_ice(ji+1,jj  )  )
-               zwndj_t = sf(jp_wndj)%fnow(ji,jj,1) - rn_vfac * 0.25 * (  v_ice(ji,jj+1) + v_ice(ji+1,jj+1)   &
-                  &                                                    + v_ice(ji,jj  ) + v_ice(ji+1,jj  )  )
-               wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t ) * tmask(ji,jj,1)
-            END DO
-         END DO
-         CALL lbc_lnk( utau_ice, 'I', -1. )
-         CALL lbc_lnk( vtau_ice, 'I', -1. )
-         CALL lbc_lnk( wndm_ice, 'T',  1. )
-         !
-      CASE( 'C' )                  ! C-grid ice dynamics :   U & V-points (same as ocean)
-         DO jj = 2, jpj
-            DO ji = fs_2, jpi   ! vect. opt.
-               zwndi_t = (  sf(jp_wndi)%fnow(ji,jj,1) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
-               zwndj_t = (  sf(jp_wndj)%fnow(ji,jj,1) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
-               wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t ) * tmask(ji,jj,1)
-            END DO
-         END DO
-         DO jj = 2, jpjm1
-            DO ji = fs_2, fs_jpim1   ! vect. opt.
-               utau_ice(ji,jj) = 0.5 * zrhoa(ji,jj) * Cd(ji,jj) * ( wndm_ice(ji+1,jj  ) + wndm_ice(ji,jj) )                          &
-                  &          * ( 0.5 * (sf(jp_wndi)%fnow(ji+1,jj,1) + sf(jp_wndi)%fnow(ji,jj,1) ) - rn_vfac * u_ice(ji,jj) )
-               vtau_ice(ji,jj) = 0.5 * zrhoa(ji,jj) * Cd(ji,jj) * ( wndm_ice(ji,jj+1  ) + wndm_ice(ji,jj) )                          &
-                  &          * ( 0.5 * (sf(jp_wndj)%fnow(ji,jj+1,1) + sf(jp_wndj)%fnow(ji,jj,1) ) - rn_vfac * v_ice(ji,jj) )
-            END DO
-         END DO
-         CALL lbc_lnk( utau_ice, 'U', -1. )
-         CALL lbc_lnk( vtau_ice, 'V', -1. )
-         CALL lbc_lnk( wndm_ice, 'T',  1. )
-         !
-      END SELECT
-
-      IF(ln_ctl) THEN
-         CALL prt_ctl(tab2d_1=utau_ice  , clinfo1=' blk_ice: utau_ice : ', tab2d_2=vtau_ice  , clinfo2=' vtau_ice : ')
-         CALL prt_ctl(tab2d_1=wndm_ice  , clinfo1=' blk_ice: wndm_ice : ')
-      ENDIF
-
-      IF( nn_timing == 1 )  CALL timing_stop('blk_ice_tau')
-
-   END SUBROUTINE blk_ice_tau
-
-
-   SUBROUTINE blk_ice_flx( ptsu, palb )
-      !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE blk_ice_flx  ***
-      !!
-      !! ** Purpose :   provide the surface boundary condition over sea-ice
-      !!
-      !! ** Method  :   compute heat and freshwater exchanged
-      !!                between atmosphere and sea-ice using bulk formulation
-      !!                formulea, ice variables and read atmmospheric fields.
-      !!
-      !! caution : the net upward water flux has with mm/day unit
-      !!---------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   ptsu   ! sea ice surface temperature
-      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   palb   ! ice albedo (all skies)
-      !!
-      INTEGER  ::   ji, jj, jl               ! dummy loop indices
-      REAL(wp) ::   zst2, zst3               ! local variable
-      REAL(wp) ::   zcoef_dqlw, zcoef_dqla   !   -      -
-      REAL(wp) ::   zztmp, z1_lsub           !   -      -
-      REAL(wp), DIMENSION(:,:,:), POINTER ::   z_qlw         ! long wave heat flux over ice
-      REAL(wp), DIMENSION(:,:,:), POINTER ::   z_qsb         ! sensible  heat flux over ice
-      REAL(wp), DIMENSION(:,:,:), POINTER ::   z_dqlw        ! long wave heat sensitivity over ice
-      REAL(wp), DIMENSION(:,:,:), POINTER ::   z_dqsb        ! sensible  heat sensitivity over ice
-      REAL(wp), DIMENSION(:,:)  , POINTER ::   zevap, zsnw   ! evaporation and snw distribution after wind blowing (LIM3)
-      REAL(wp), DIMENSION(:,:)  , POINTER ::   zrhoa
-      REAL(wp), DIMENSION(:,:)  , POINTER ::   Cd            ! transfer coefficient for momentum      (tau)
-      !!---------------------------------------------------------------------
-      !
-      IF( nn_timing == 1 )  CALL timing_start('blk_ice_flx')
-      !
-      CALL wrk_alloc( jpi,jpj,jpl,   z_qlw, z_qsb, z_dqlw, z_dqsb )
-      CALL wrk_alloc( jpi,jpj,       zrhoa)
-      CALL wrk_alloc( jpi,jpj, Cd )
-
-      Cd(:,:) = Cd_ice
-
-      ! Make ice-atm. drag dependent on ice concentration (see Lupkes et al.  2012) (clem)
-#if defined key_lim3
-      IF( ln_Cd_L12 ) THEN
-         CALL Cdn10_Lupkes2012( Cd ) ! calculate new drag from Lupkes(2012) equations
-      ENDIF
-#endif
-
-      !
-      ! local scalars ( place there for vector optimisation purposes)
-      zcoef_dqlw   = 4.0 * 0.95 * Stef
-      zcoef_dqla   = -Ls * 11637800. * (-5897.8)
-      !
-      zrhoa(:,:) = rho_air( sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1), sf(jp_slp)%fnow(:,:,1) )
-      !
-      zztmp = 1. / ( 1. - albo )
-      !                                     ! ========================== !
-      DO jl = 1, jpl                        !  Loop over ice categories  !
-         !                                  ! ========================== !
-         DO jj = 1 , jpj
-            DO ji = 1, jpi
-               ! ----------------------------!
-               !      I   Radiative FLUXES   !
-               ! ----------------------------!
-               zst2 = ptsu(ji,jj,jl) * ptsu(ji,jj,jl)
-               zst3 = ptsu(ji,jj,jl) * zst2
-               ! Short Wave (sw)
-               qsr_ice(ji,jj,jl) = zztmp * ( 1. - palb(ji,jj,jl) ) * qsr(ji,jj)
-               ! Long  Wave (lw)
-               z_qlw(ji,jj,jl) = 0.95 * ( sf(jp_qlw)%fnow(ji,jj,1) - Stef * ptsu(ji,jj,jl) * zst3 ) * tmask(ji,jj,1)
-               ! lw sensitivity
-               z_dqlw(ji,jj,jl) = zcoef_dqlw * zst3
-
-               ! ----------------------------!
-               !     II    Turbulent FLUXES  !
-               ! ----------------------------!
-
-               ! ... turbulent heat fluxes
-               ! Sensible Heat
-               z_qsb(ji,jj,jl) = zrhoa(ji,jj) * cpa * Cd(ji,jj) * wndm_ice(ji,jj) * ( ptsu(ji,jj,jl) - sf(jp_tair)%fnow(ji,jj,1) )
-               ! Latent Heat
-               qla_ice(ji,jj,jl) = rn_efac * MAX( 0.e0, zrhoa(ji,jj) * Ls  * Cd(ji,jj) * wndm_ice(ji,jj)   &
-                  &                         * (  11637800. * EXP( -5897.8 / ptsu(ji,jj,jl) ) / zrhoa(ji,jj) - sf(jp_humi)%fnow(ji,jj,1)  ) )
-               ! Latent heat sensitivity for ice (Dqla/Dt)
-               IF( qla_ice(ji,jj,jl) > 0._wp ) THEN
-                  dqla_ice(ji,jj,jl) = rn_efac * zcoef_dqla * Cd(ji,jj) * wndm_ice(ji,jj) / ( zst2 ) * EXP( -5897.8 / ptsu(ji,jj,jl) )
-               ELSE
-                  dqla_ice(ji,jj,jl) = 0._wp
-               ENDIF
-
-               ! Sensible heat sensitivity (Dqsb_ice/Dtn_ice)
-               z_dqsb(ji,jj,jl) = zrhoa(ji,jj) * cpa * Cd(ji,jj) * wndm_ice(ji,jj)
-
-               ! ----------------------------!
-               !     III    Total FLUXES     !
-               ! ----------------------------!
-               ! Downward Non Solar flux
-               qns_ice (ji,jj,jl) =     z_qlw (ji,jj,jl) - z_qsb (ji,jj,jl) - qla_ice (ji,jj,jl)
-               ! Total non solar heat flux sensitivity for ice
-               dqns_ice(ji,jj,jl) = - ( z_dqlw(ji,jj,jl) + z_dqsb(ji,jj,jl) + dqla_ice(ji,jj,jl) )
-            END DO
-            !
-         END DO
-         !
-      END DO
-      !
-      tprecip(:,:) = sf(jp_prec)%fnow(:,:,1) * rn_pfac      ! total precipitation [kg/m2/s]
-      sprecip(:,:) = sf(jp_snow)%fnow(:,:,1) * rn_pfac      ! solid precipitation [kg/m2/s]
-      CALL iom_put( 'snowpre', sprecip * 86400. )                  ! Snow precipitation
-      CALL iom_put( 'precip' , tprecip * 86400. )                  ! Total precipitation
-
-#if defined  key_lim3
-      CALL wrk_alloc( jpi,jpj,   zevap, zsnw )
-
-      ! --- evaporation --- !
-      z1_lsub = 1._wp / Lsub
-      evap_ice (:,:,:) = rn_efac * qla_ice (:,:,:) * z1_lsub    ! sublimation
-      devap_ice(:,:,:) = rn_efac * dqla_ice(:,:,:) * z1_lsub    ! d(sublimation)/dT
-      zevap    (:,:)   = rn_efac * ( emp(:,:) + tprecip(:,:) )  ! evaporation over ocean
-
-      ! --- evaporation minus precipitation --- !
-      zsnw(:,:) = 0._wp
-      CALL lim_thd_snwblow( pfrld, zsnw )  ! snow distribution over ice after wind blowing
-      emp_oce(:,:) = pfrld(:,:) * zevap(:,:) - ( tprecip(:,:) - sprecip(:,:) ) - sprecip(:,:) * (1._wp - zsnw )
-      emp_ice(:,:) = SUM( a_i_b(:,:,:) * evap_ice(:,:,:), dim=3 ) - sprecip(:,:) * zsnw
-      emp_tot(:,:) = emp_oce(:,:) + emp_ice(:,:)
-
-      ! --- heat flux associated with emp --- !
-      qemp_oce(:,:) = - pfrld(:,:) * zevap(:,:) * sst_m(:,:) * rcp                               & ! evap at sst
-         &          + ( tprecip(:,:) - sprecip(:,:) ) * ( sf(jp_tair)%fnow(:,:,1) - rt0 ) * rcp  & ! liquid precip at Tair
-         &          +   sprecip(:,:) * ( 1._wp - zsnw ) *                                        & ! solid precip at min(Tair,Tsnow)
-         &              ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0_snow ) - rt0 ) * cpic * tmask(:,:,1) - lfus )
-      qemp_ice(:,:) =   sprecip(:,:) * zsnw *                                                    & ! solid precip (only)
-         &              ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0_snow ) - rt0 ) * cpic * tmask(:,:,1) - lfus )
-
-      ! --- total solar and non solar fluxes --- !
-      qns_tot(:,:) = pfrld(:,:) * qns_oce(:,:) + SUM( a_i_b(:,:,:) * qns_ice(:,:,:), dim=3 ) + qemp_ice(:,:) + qemp_oce(:,:)
-      qsr_tot(:,:) = pfrld(:,:) * qsr_oce(:,:) + SUM( a_i_b(:,:,:) * qsr_ice(:,:,:), dim=3 )
-
-      ! --- heat content of precip over ice in J/m3 (to be used in 1D-thermo) --- !
-      qprec_ice(:,:) = rhosn * ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0_snow ) - rt0 ) * cpic * tmask(:,:,1) - lfus )
-
-      ! --- heat content of evap over ice in W/m2 (to be used in 1D-thermo) ---
-      DO jl = 1, jpl
-         qevap_ice(:,:,jl) = 0._wp ! should be -evap_ice(:,:,jl)*( ( Tice - rt0 ) * cpic * tmask(:,:,1) )
-                                   ! But we do not have Tice => consider it at 0degC => evap=0 
-      END DO
-
-      CALL wrk_dealloc( jpi,jpj,   zevap, zsnw )
-#endif
-
-      !--------------------------------------------------------------------
-      ! FRACTIONs of net shortwave radiation which is not absorbed in the
-      ! thin surface layer and penetrates inside the ice cover
-      ! ( Maykut and Untersteiner, 1971 ; Ebert and Curry, 1993 )
-      !
-      fr1_i0(:,:) = ( 0.18 * ( 1.0 - cldf_ice ) + 0.35 * cldf_ice )
-      fr2_i0(:,:) = ( 0.82 * ( 1.0 - cldf_ice ) + 0.65 * cldf_ice )
-      !
-      !
-      IF(ln_ctl) THEN
-         CALL prt_ctl(tab3d_1=qla_ice , clinfo1=' blk_ice: qla_ice  : ', tab3d_2=z_qsb   , clinfo2=' z_qsb    : ', kdim=jpl)
-         CALL prt_ctl(tab3d_1=z_qlw   , clinfo1=' blk_ice: z_qlw    : ', tab3d_2=dqla_ice, clinfo2=' dqla_ice : ', kdim=jpl)
-         CALL prt_ctl(tab3d_1=z_dqsb  , clinfo1=' blk_ice: z_dqsb   : ', tab3d_2=z_dqlw  , clinfo2=' z_dqlw   : ', kdim=jpl)
-         CALL prt_ctl(tab3d_1=dqns_ice, clinfo1=' blk_ice: dqns_ice : ', tab3d_2=qsr_ice , clinfo2=' qsr_ice  : ', kdim=jpl)
-         CALL prt_ctl(tab3d_1=ptsu    , clinfo1=' blk_ice: ptsu     : ', tab3d_2=qns_ice , clinfo2=' qns_ice  : ', kdim=jpl)
-         CALL prt_ctl(tab2d_1=tprecip , clinfo1=' blk_ice: tprecip  : ', tab2d_2=sprecip , clinfo2=' sprecip  : ')
-      ENDIF
-
-      CALL wrk_dealloc( jpi,jpj,jpl,   z_qlw, z_qsb, z_dqlw, z_dqsb )
-      CALL wrk_dealloc( jpi,jpj,       zrhoa )
-      CALL wrk_dealloc( jpi,jpj, Cd )
-      !
-      IF( nn_timing == 1 )  CALL timing_stop('blk_ice_flx')
-
-   END SUBROUTINE blk_ice_flx
-   
-#endif
 
    FUNCTION rho_air( ptak, pqa, pslp )
       !!-------------------------------------------------------------------------------
@@ -947,7 +658,7 @@ CONTAINS
          DO ji = 1, jpi
             zrv = pqa(ji,jj) / (1. - pqa(ji,jj))
             ziRT = 1. / (R_dry*ptak(ji,jj))    ! 1/RT
-            gamma_moist(ji,jj) = grav * ( 1. + cevap*zrv*ziRT ) / ( Cp_dry + cevap*cevap*zrv*reps0*ziRT/ptak(ji,jj) )
+            gamma_moist(ji,jj) = grav * ( 1. + rLevap*zrv*ziRT ) / ( Cp_dry + rLevap*rLevap*zrv*reps0*ziRT/ptak(ji,jj) )
          END DO
       END DO
       !
@@ -970,14 +681,355 @@ CONTAINS
       !
    END FUNCTION L_vap
 
+#if defined key_si3
+   !!----------------------------------------------------------------------
+   !!   'key_si3'                                       SI3 sea-ice model
+   !!----------------------------------------------------------------------
+   !!   blk_ice_tau : provide the air-ice stress
+   !!   blk_ice_flx : provide the heat and mass fluxes at air-ice interface
+   !!   blk_ice_qcn : provide ice surface temperature and snow/ice conduction flux (emulating JULES coupler)
+   !!   Cdn10_Lupkes2012 : Lupkes et al. (2012) air-ice drag
+   !!   Cdn10_Lupkes2015 : Lupkes et al. (2015) air-ice drag 
+   !!----------------------------------------------------------------------
 
-#if defined key_lim3
+   SUBROUTINE blk_ice_tau
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE blk_ice_tau  ***
+      !!
+      !! ** Purpose :   provide the surface boundary condition over sea-ice
+      !!
+      !! ** Method  :   compute momentum using bulk formulation
+      !!                formulea, ice variables and read atmospheric fields.
+      !!                NB: ice drag coefficient is assumed to be a constant
+      !!---------------------------------------------------------------------
+      INTEGER  ::   ji, jj    ! dummy loop indices
+      REAL(wp) ::   zwndi_f , zwndj_f, zwnorm_f   ! relative wind module and components at F-point
+      REAL(wp) ::   zwndi_t , zwndj_t             ! relative wind components at T-point
+      REAL(wp), DIMENSION(jpi,jpj) ::   zrhoa     ! transfer coefficient for momentum      (tau)
+      !!---------------------------------------------------------------------
+      !
+      ! set transfer coefficients to default sea-ice values
+      Cd_atm(:,:) = Cd_ice
+      Ch_atm(:,:) = Cd_ice
+      Ce_atm(:,:) = Cd_ice
+
+      wndm_ice(:,:) = 0._wp      !!gm brutal....
+
+      ! ------------------------------------------------------------ !
+      !    Wind module relative to the moving ice ( U10m - U_ice )   !
+      ! ------------------------------------------------------------ !
+      ! C-grid ice dynamics :   U & V-points (same as ocean)
+      DO jj = 2, jpjm1
+         DO ji = fs_2, fs_jpim1   ! vect. opt.
+            zwndi_t = (  sf(jp_wndi)%fnow(ji,jj,1) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
+            zwndj_t = (  sf(jp_wndj)%fnow(ji,jj,1) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
+            wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t ) * tmask(ji,jj,1)
+         END DO
+      END DO
+      CALL lbc_lnk( 'sbcblk', wndm_ice, 'T',  1. )
+      !
+      ! Make ice-atm. drag dependent on ice concentration
+      IF    ( ln_Cd_L12 ) THEN   ! calculate new drag from Lupkes(2012) equations
+         CALL Cdn10_Lupkes2012( Cd_atm )
+         Ch_atm(:,:) = Cd_atm(:,:)       ! momentum and heat transfer coef. are considered identical
+      ELSEIF( ln_Cd_L15 ) THEN   ! calculate new drag from Lupkes(2015) equations
+         CALL Cdn10_Lupkes2015( Cd_atm, Ch_atm ) 
+      ENDIF
+
+!!      CALL iom_put( "Cd_ice", Cd_atm)  ! output value of pure ice-atm. transfer coef.
+!!      CALL iom_put( "Ch_ice", Ch_atm)  ! output value of pure ice-atm. transfer coef.
+
+      ! local scalars ( place there for vector optimisation purposes)
+      ! Computing density of air! Way denser that 1.2 over sea-ice !!!
+      zrhoa (:,:) =  rho_air(sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1), sf(jp_slp)%fnow(:,:,1))
+
+      !!gm brutal....
+      utau_ice  (:,:) = 0._wp
+      vtau_ice  (:,:) = 0._wp
+      !!gm end
+
+      ! ------------------------------------------------------------ !
+      !    Wind stress relative to the moving ice ( U10m - U_ice )   !
+      ! ------------------------------------------------------------ !
+      ! C-grid ice dynamics :   U & V-points (same as ocean)
+      DO jj = 2, jpjm1
+         DO ji = fs_2, fs_jpim1   ! vect. opt.
+            utau_ice(ji,jj) = 0.5 * zrhoa(ji,jj) * Cd_atm(ji,jj) * ( wndm_ice(ji+1,jj  ) + wndm_ice(ji,jj) )            &
+               &          * ( 0.5 * (sf(jp_wndi)%fnow(ji+1,jj,1) + sf(jp_wndi)%fnow(ji,jj,1) ) - rn_vfac * u_ice(ji,jj) )
+            vtau_ice(ji,jj) = 0.5 * zrhoa(ji,jj) * Cd_atm(ji,jj) * ( wndm_ice(ji,jj+1  ) + wndm_ice(ji,jj) )            &
+               &          * ( 0.5 * (sf(jp_wndj)%fnow(ji,jj+1,1) + sf(jp_wndj)%fnow(ji,jj,1) ) - rn_vfac * v_ice(ji,jj) )
+         END DO
+      END DO
+      CALL lbc_lnk_multi( 'sbcblk', utau_ice, 'U', -1., vtau_ice, 'V', -1. )
+      !
+      !
+      IF(ln_ctl) THEN
+         CALL prt_ctl(tab2d_1=utau_ice  , clinfo1=' blk_ice: utau_ice : ', tab2d_2=vtau_ice  , clinfo2=' vtau_ice : ')
+         CALL prt_ctl(tab2d_1=wndm_ice  , clinfo1=' blk_ice: wndm_ice : ')
+      ENDIF
+      !
+   END SUBROUTINE blk_ice_tau
+
+
+   SUBROUTINE blk_ice_flx( ptsu, phs, phi, palb )
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE blk_ice_flx  ***
+      !!
+      !! ** Purpose :   provide the heat and mass fluxes at air-ice interface
+      !!
+      !! ** Method  :   compute heat and freshwater exchanged
+      !!                between atmosphere and sea-ice using bulk formulation
+      !!                formulea, ice variables and read atmmospheric fields.
+      !!
+      !! caution : the net upward water flux has with mm/day unit
+      !!---------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   ptsu   ! sea ice surface temperature
+      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   phs    ! snow thickness
+      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   phi    ! ice thickness
+      REAL(wp), DIMENSION(:,:,:), INTENT(in)  ::   palb   ! ice albedo (all skies)
+      !!
+      INTEGER  ::   ji, jj, jl               ! dummy loop indices
+      REAL(wp) ::   zst3                     ! local variable
+      REAL(wp) ::   zcoef_dqlw, zcoef_dqla   !   -      -
+      REAL(wp) ::   zztmp, z1_rLsub           !   -      -
+      REAL(wp) ::   zfr1, zfr2               ! local variables
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   z1_st         ! inverse of surface temperature
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   z_qlw         ! long wave heat flux over ice
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   z_qsb         ! sensible  heat flux over ice
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   z_dqlw        ! long wave heat sensitivity over ice
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   z_dqsb        ! sensible  heat sensitivity over ice
+      REAL(wp), DIMENSION(jpi,jpj)     ::   zevap, zsnw   ! evaporation and snw distribution after wind blowing (SI3)
+      REAL(wp), DIMENSION(jpi,jpj)     ::   zrhoa
+      !!---------------------------------------------------------------------
+      !
+      zcoef_dqlw = 4.0 * 0.95 * Stef             ! local scalars
+      zcoef_dqla = -Ls * 11637800. * (-5897.8)
+      !
+      zrhoa(:,:) = rho_air( sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1), sf(jp_slp)%fnow(:,:,1) )
+      !
+      zztmp = 1. / ( 1. - albo )
+      WHERE( ptsu(:,:,:) /= 0._wp )   ;   z1_st(:,:,:) = 1._wp / ptsu(:,:,:)
+      ELSEWHERE                       ;   z1_st(:,:,:) = 0._wp
+      END WHERE
+      !                                     ! ========================== !
+      DO jl = 1, jpl                        !  Loop over ice categories  !
+         !                                  ! ========================== !
+         DO jj = 1 , jpj
+            DO ji = 1, jpi
+               ! ----------------------------!
+               !      I   Radiative FLUXES   !
+               ! ----------------------------!
+               zst3 = ptsu(ji,jj,jl) * ptsu(ji,jj,jl) * ptsu(ji,jj,jl)
+               ! Short Wave (sw)
+               qsr_ice(ji,jj,jl) = zztmp * ( 1. - palb(ji,jj,jl) ) * qsr(ji,jj)
+               ! Long  Wave (lw)
+               z_qlw(ji,jj,jl) = 0.95 * ( sf(jp_qlw)%fnow(ji,jj,1) - Stef * ptsu(ji,jj,jl) * zst3 ) * tmask(ji,jj,1)
+               ! lw sensitivity
+               z_dqlw(ji,jj,jl) = zcoef_dqlw * zst3
+
+               ! ----------------------------!
+               !     II    Turbulent FLUXES  !
+               ! ----------------------------!
+
+               ! ... turbulent heat fluxes with Ch_atm recalculated in blk_ice_tau
+               ! Sensible Heat
+               z_qsb(ji,jj,jl) = zrhoa(ji,jj) * cpa * Ch_atm(ji,jj) * wndm_ice(ji,jj) * (ptsu(ji,jj,jl) - sf(jp_tair)%fnow(ji,jj,1))
+               ! Latent Heat
+               qla_ice(ji,jj,jl) = rn_efac * MAX( 0.e0, zrhoa(ji,jj) * Ls  * Ch_atm(ji,jj) * wndm_ice(ji,jj) *  &
+                  &                ( 11637800. * EXP( -5897.8 * z1_st(ji,jj,jl) ) / zrhoa(ji,jj) - sf(jp_humi)%fnow(ji,jj,1) ) )
+               ! Latent heat sensitivity for ice (Dqla/Dt)
+               IF( qla_ice(ji,jj,jl) > 0._wp ) THEN
+                  dqla_ice(ji,jj,jl) = rn_efac * zcoef_dqla * Ch_atm(ji,jj) * wndm_ice(ji,jj) *  &
+                     &                 z1_st(ji,jj,jl)*z1_st(ji,jj,jl) * EXP(-5897.8 * z1_st(ji,jj,jl))
+               ELSE
+                  dqla_ice(ji,jj,jl) = 0._wp
+               ENDIF
+
+               ! Sensible heat sensitivity (Dqsb_ice/Dtn_ice)
+               z_dqsb(ji,jj,jl) = zrhoa(ji,jj) * cpa * Ch_atm(ji,jj) * wndm_ice(ji,jj)
+
+               ! ----------------------------!
+               !     III    Total FLUXES     !
+               ! ----------------------------!
+               ! Downward Non Solar flux
+               qns_ice (ji,jj,jl) =     z_qlw (ji,jj,jl) - z_qsb (ji,jj,jl) - qla_ice (ji,jj,jl)
+               ! Total non solar heat flux sensitivity for ice
+               dqns_ice(ji,jj,jl) = - ( z_dqlw(ji,jj,jl) + z_dqsb(ji,jj,jl) + dqla_ice(ji,jj,jl) )
+            END DO
+            !
+         END DO
+         !
+      END DO
+      !
+      tprecip(:,:) = sf(jp_prec)%fnow(:,:,1) * rn_pfac * tmask(:,:,1)  ! total precipitation [kg/m2/s]
+      sprecip(:,:) = sf(jp_snow)%fnow(:,:,1) * rn_pfac * tmask(:,:,1)  ! solid precipitation [kg/m2/s]
+      CALL iom_put( 'snowpre', sprecip )                    ! Snow precipitation
+      CALL iom_put( 'precip' , tprecip )                    ! Total precipitation
+
+      ! --- evaporation --- !
+      z1_rLsub = 1._wp / rLsub
+      evap_ice (:,:,:) = rn_efac * qla_ice (:,:,:) * z1_rLsub    ! sublimation
+      devap_ice(:,:,:) = rn_efac * dqla_ice(:,:,:) * z1_rLsub    ! d(sublimation)/dT
+      zevap    (:,:)   = rn_efac * ( emp(:,:) + tprecip(:,:) )   ! evaporation over ocean
+
+      ! --- evaporation minus precipitation --- !
+      zsnw(:,:) = 0._wp
+      CALL ice_thd_snwblow( (1.-at_i_b(:,:)), zsnw )  ! snow distribution over ice after wind blowing
+      emp_oce(:,:) = ( 1._wp - at_i_b(:,:) ) * zevap(:,:) - ( tprecip(:,:) - sprecip(:,:) ) - sprecip(:,:) * (1._wp - zsnw )
+      emp_ice(:,:) = SUM( a_i_b(:,:,:) * evap_ice(:,:,:), dim=3 ) - sprecip(:,:) * zsnw
+      emp_tot(:,:) = emp_oce(:,:) + emp_ice(:,:)
+
+      ! --- heat flux associated with emp --- !
+      qemp_oce(:,:) = - ( 1._wp - at_i_b(:,:) ) * zevap(:,:) * sst_m(:,:) * rcp                  & ! evap at sst
+         &          + ( tprecip(:,:) - sprecip(:,:) ) * ( sf(jp_tair)%fnow(:,:,1) - rt0 ) * rcp  & ! liquid precip at Tair
+         &          +   sprecip(:,:) * ( 1._wp - zsnw ) *                                        & ! solid precip at min(Tair,Tsnow)
+         &              ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0 ) - rt0 ) * rcpi * tmask(:,:,1) - rLfus )
+      qemp_ice(:,:) =   sprecip(:,:) * zsnw *                                                    & ! solid precip (only)
+         &              ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0 ) - rt0 ) * rcpi * tmask(:,:,1) - rLfus )
+
+      ! --- total solar and non solar fluxes --- !
+      qns_tot(:,:) = ( 1._wp - at_i_b(:,:) ) * qns_oce(:,:) + SUM( a_i_b(:,:,:) * qns_ice(:,:,:), dim=3 )  &
+         &           + qemp_ice(:,:) + qemp_oce(:,:)
+      qsr_tot(:,:) = ( 1._wp - at_i_b(:,:) ) * qsr_oce(:,:) + SUM( a_i_b(:,:,:) * qsr_ice(:,:,:), dim=3 )
+
+      ! --- heat content of precip over ice in J/m3 (to be used in 1D-thermo) --- !
+      qprec_ice(:,:) = rhos * ( ( MIN( sf(jp_tair)%fnow(:,:,1), rt0 ) - rt0 ) * rcpi * tmask(:,:,1) - rLfus )
+
+      ! --- heat content of evap over ice in W/m2 (to be used in 1D-thermo) ---
+      DO jl = 1, jpl
+         qevap_ice(:,:,jl) = 0._wp ! should be -evap_ice(:,:,jl)*( ( Tice - rt0 ) * rcpi * tmask(:,:,1) )
+         !                         ! But we do not have Tice => consider it at 0degC => evap=0 
+      END DO
+
+      ! --- shortwave radiation transmitted below the surface (W/m2, see Grenfell Maykut 77) --- !
+      zfr1 = ( 0.18 * ( 1.0 - cldf_ice ) + 0.35 * cldf_ice )            ! transmission when hi>10cm
+      zfr2 = ( 0.82 * ( 1.0 - cldf_ice ) + 0.65 * cldf_ice )            ! zfr2 such that zfr1 + zfr2 to equal 1
+      !
+      WHERE    ( phs(:,:,:) <= 0._wp .AND. phi(:,:,:) <  0.1_wp )       ! linear decrease from hi=0 to 10cm  
+         qtr_ice_top(:,:,:) = qsr_ice(:,:,:) * ( zfr1 + zfr2 * ( 1._wp - phi(:,:,:) * 10._wp ) )
+      ELSEWHERE( phs(:,:,:) <= 0._wp .AND. phi(:,:,:) >= 0.1_wp )       ! constant (zfr1) when hi>10cm
+         qtr_ice_top(:,:,:) = qsr_ice(:,:,:) * zfr1
+      ELSEWHERE                                                         ! zero when hs>0
+         qtr_ice_top(:,:,:) = 0._wp 
+      END WHERE
+      !
+      IF(ln_ctl) THEN
+         CALL prt_ctl(tab3d_1=qla_ice , clinfo1=' blk_ice: qla_ice  : ', tab3d_2=z_qsb   , clinfo2=' z_qsb    : ', kdim=jpl)
+         CALL prt_ctl(tab3d_1=z_qlw   , clinfo1=' blk_ice: z_qlw    : ', tab3d_2=dqla_ice, clinfo2=' dqla_ice : ', kdim=jpl)
+         CALL prt_ctl(tab3d_1=z_dqsb  , clinfo1=' blk_ice: z_dqsb   : ', tab3d_2=z_dqlw  , clinfo2=' z_dqlw   : ', kdim=jpl)
+         CALL prt_ctl(tab3d_1=dqns_ice, clinfo1=' blk_ice: dqns_ice : ', tab3d_2=qsr_ice , clinfo2=' qsr_ice  : ', kdim=jpl)
+         CALL prt_ctl(tab3d_1=ptsu    , clinfo1=' blk_ice: ptsu     : ', tab3d_2=qns_ice , clinfo2=' qns_ice  : ', kdim=jpl)
+         CALL prt_ctl(tab2d_1=tprecip , clinfo1=' blk_ice: tprecip  : ', tab2d_2=sprecip , clinfo2=' sprecip  : ')
+      ENDIF
+      !
+   END SUBROUTINE blk_ice_flx
+   
+
+   SUBROUTINE blk_ice_qcn( k_virtual_itd, ptsu, ptb, phs, phi )
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE blk_ice_qcn  ***
+      !!
+      !! ** Purpose :   Compute surface temperature and snow/ice conduction flux
+      !!                to force sea ice / snow thermodynamics
+      !!                in the case JULES coupler is emulated
+      !!                
+      !! ** Method  :   compute surface energy balance assuming neglecting heat storage
+      !!                following the 0-layer Semtner (1976) approach
+      !!
+      !! ** Outputs : - ptsu    : sea-ice / snow surface temperature (K)
+      !!              - qcn_ice : surface inner conduction flux (W/m2)
+      !!
+      !!---------------------------------------------------------------------
+      INTEGER                   , INTENT(in   ) ::   k_virtual_itd   ! single-category option
+      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   ptsu            ! sea ice / snow surface temperature
+      REAL(wp), DIMENSION(:,:)  , INTENT(in   ) ::   ptb             ! sea ice base temperature
+      REAL(wp), DIMENSION(:,:,:), INTENT(in   ) ::   phs             ! snow thickness
+      REAL(wp), DIMENSION(:,:,:), INTENT(in   ) ::   phi             ! sea ice thickness
+      !
+      INTEGER , PARAMETER ::   nit = 10                  ! number of iterations
+      REAL(wp), PARAMETER ::   zepsilon = 0.1_wp         ! characteristic thickness for enhanced conduction
+      !
+      INTEGER  ::   ji, jj, jl           ! dummy loop indices
+      INTEGER  ::   iter                 ! local integer
+      REAL(wp) ::   zfac, zfac2, zfac3   ! local scalars
+      REAL(wp) ::   zkeff_h, ztsu, ztsu0 !
+      REAL(wp) ::   zqc, zqnet           !
+      REAL(wp) ::   zhe, zqa0            !
+      REAL(wp), DIMENSION(jpi,jpj,jpl) ::   zgfac   ! enhanced conduction factor
+      !!---------------------------------------------------------------------
+      
+      ! -------------------------------------!
+      !      I   Enhanced conduction factor  !
+      ! -------------------------------------!
+      ! Emulates the enhancement of conduction by unresolved thin ice (k_virtual_itd = 1/2)
+      ! Fichefet and Morales Maqueda, JGR 1997
+      !
+      zgfac(:,:,:) = 1._wp
+      
+      SELECT CASE ( k_virtual_itd )
+      !
+      CASE ( 1 , 2 )
+         !
+         zfac  = 1._wp /  ( rn_cnd_s + rcnd_i )
+         zfac2 = EXP(1._wp) * 0.5_wp * zepsilon
+         zfac3 = 2._wp / zepsilon
+         !   
+         DO jl = 1, jpl                
+            DO jj = 1 , jpj
+               DO ji = 1, jpi
+                  zhe = ( rn_cnd_s * phi(ji,jj,jl) + rcnd_i * phs(ji,jj,jl) ) * zfac                            ! Effective thickness
+                  IF( zhe >=  zfac2 )   zgfac(ji,jj,jl) = MIN( 2._wp, 0.5_wp * ( 1._wp + LOG( zhe * zfac3 ) ) ) ! Enhanced conduction factor
+               END DO
+            END DO
+         END DO
+         !      
+      END SELECT
+      
+      ! -------------------------------------------------------------!
+      !      II   Surface temperature and conduction flux            !
+      ! -------------------------------------------------------------!
+      !
+      zfac = rcnd_i * rn_cnd_s
+      !
+      DO jl = 1, jpl
+         DO jj = 1 , jpj
+            DO ji = 1, jpi
+               !                    
+               zkeff_h = zfac * zgfac(ji,jj,jl) / &                                    ! Effective conductivity of the snow-ice system divided by thickness
+                  &      ( rcnd_i * phs(ji,jj,jl) + rn_cnd_s * MAX( 0.01, phi(ji,jj,jl) ) )
+               ztsu    = ptsu(ji,jj,jl)                                                ! Store current iteration temperature
+               ztsu0   = ptsu(ji,jj,jl)                                                ! Store initial surface temperature
+               zqa0    = qsr_ice(ji,jj,jl) - qtr_ice_top(ji,jj,jl) + qns_ice(ji,jj,jl) ! Net initial atmospheric heat flux
+               !
+               DO iter = 1, nit     ! --- Iterative loop
+                  zqc   = zkeff_h * ( ztsu - ptb(ji,jj) )                              ! Conduction heat flux through snow-ice system (>0 downwards)
+                  zqnet = zqa0 + dqns_ice(ji,jj,jl) * ( ztsu - ptsu(ji,jj,jl) ) - zqc  ! Surface energy budget
+                  ztsu  = ztsu - zqnet / ( dqns_ice(ji,jj,jl) - zkeff_h )              ! Temperature update
+               END DO
+               !
+               ptsu   (ji,jj,jl) = MIN( rt0, ztsu )
+               qcn_ice(ji,jj,jl) = zkeff_h * ( ptsu(ji,jj,jl) - ptb(ji,jj) )
+               qns_ice(ji,jj,jl) = qns_ice(ji,jj,jl) + dqns_ice(ji,jj,jl) * ( ptsu(ji,jj,jl) - ztsu0 )
+               qml_ice(ji,jj,jl) = ( qsr_ice(ji,jj,jl) - qtr_ice_top(ji,jj,jl) + qns_ice(ji,jj,jl) - qcn_ice(ji,jj,jl) )  &
+                             &   * MAX( 0._wp , SIGN( 1._wp, ptsu(ji,jj,jl) - rt0 ) )
+
+               ! --- Diagnose the heat loss due to changing non-solar flux (as in icethd_zdf_bl99) --- !
+               hfx_err_dif(ji,jj) = hfx_err_dif(ji,jj) - ( dqns_ice(ji,jj,jl) * ( ptsu(ji,jj,jl) - ztsu0 ) ) * a_i_b(ji,jj,jl) 
+
+            END DO
+         END DO
+         !
+      END DO 
+      !      
+   END SUBROUTINE blk_ice_qcn
+   
+
    SUBROUTINE Cdn10_Lupkes2012( Cd )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  Cdn10_Lupkes2012  ***
       !!
-      !! ** Purpose :    Recompute the ice-atm drag at 10m height to make
-      !!                 it dependent on edges at leads, melt ponds and flows.
+      !! ** Purpose :    Recompute the neutral air-ice drag referenced at 10m 
+      !!                 to make it dependent on edges at leads, melt ponds and flows.
       !!                 After some approximations, this can be resumed to a dependency
       !!                 on ice concentration.
       !!                
@@ -1021,8 +1073,123 @@ CONTAINS
          &      zCe    * ( 1._wp - at_i_b(:,:) )**zcoef * at_i_b(:,:)**(zmu-1._wp)  ! change due to sea-ice morphology
       
    END SUBROUTINE Cdn10_Lupkes2012
+
+
+   SUBROUTINE Cdn10_Lupkes2015( Cd, Ch )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  Cdn10_Lupkes2015  ***
+      !!
+      !! ** pUrpose :    Alternative turbulent transfert coefficients formulation
+      !!                 between sea-ice and atmosphere with distinct momentum 
+      !!                 and heat coefficients depending on sea-ice concentration 
+      !!                 and atmospheric stability (no meltponds effect for now).
+      !!                
+      !! ** Method :     The parameterization is adapted from Lupkes et al. (2015)
+      !!                 and ECHAM6 atmospheric model. Compared to Lupkes2012 scheme,
+      !!                 it considers specific skin and form drags (Andreas et al. 2010)
+      !!                 to compute neutral transfert coefficients for both heat and 
+      !!                 momemtum fluxes. Atmospheric stability effect on transfert
+      !!                 coefficient is also taken into account following Louis (1979).
+      !!
+      !! ** References : Lupkes et al. JGR 2015 (theory)
+      !!                 Lupkes et al. ECHAM6 documentation 2015 (implementation)
+      !!
+      !!----------------------------------------------------------------------
+      !
+      REAL(wp), DIMENSION(:,:), INTENT(inout) ::   Cd
+      REAL(wp), DIMENSION(:,:), INTENT(inout) ::   Ch
+      REAL(wp), DIMENSION(jpi,jpj)            ::   zst, zqo_sat, zqi_sat
+      !
+      ! ECHAM6 constants
+      REAL(wp), PARAMETER ::   z0_skin_ice  = 0.69e-3_wp  ! Eq. 43 [m]
+      REAL(wp), PARAMETER ::   z0_form_ice  = 0.57e-3_wp  ! Eq. 42 [m]
+      REAL(wp), PARAMETER ::   z0_ice       = 1.00e-3_wp  ! Eq. 15 [m]
+      REAL(wp), PARAMETER ::   zce10        = 2.80e-3_wp  ! Eq. 41
+      REAL(wp), PARAMETER ::   zbeta        = 1.1_wp      ! Eq. 41
+      REAL(wp), PARAMETER ::   zc           = 5._wp       ! Eq. 13
+      REAL(wp), PARAMETER ::   zc2          = zc * zc
+      REAL(wp), PARAMETER ::   zam          = 2. * zc     ! Eq. 14
+      REAL(wp), PARAMETER ::   zah          = 3. * zc     ! Eq. 30
+      REAL(wp), PARAMETER ::   z1_alpha     = 1._wp / 0.2_wp  ! Eq. 51
+      REAL(wp), PARAMETER ::   z1_alphaf    = z1_alpha    ! Eq. 56
+      REAL(wp), PARAMETER ::   zbetah       = 1.e-3_wp    ! Eq. 26
+      REAL(wp), PARAMETER ::   zgamma       = 1.25_wp     ! Eq. 26
+      REAL(wp), PARAMETER ::   z1_gamma     = 1._wp / zgamma
+      REAL(wp), PARAMETER ::   r1_3         = 1._wp / 3._wp
+      !
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      REAL(wp) ::   zthetav_os, zthetav_is, zthetav_zu
+      REAL(wp) ::   zrib_o, zrib_i
+      REAL(wp) ::   zCdn_skin_ice, zCdn_form_ice, zCdn_ice
+      REAL(wp) ::   zChn_skin_ice, zChn_form_ice
+      REAL(wp) ::   z0w, z0i, zfmi, zfmw, zfhi, zfhw
+      REAL(wp) ::   zCdn_form_tmp
+      !!----------------------------------------------------------------------
+
+      ! Momentum Neutral Transfert Coefficients (should be a constant)
+      zCdn_form_tmp = zce10 * ( LOG( 10._wp / z0_form_ice + 1._wp ) / LOG( rn_zu / z0_form_ice + 1._wp ) )**2   ! Eq. 40
+      zCdn_skin_ice = ( vkarmn                                      / LOG( rn_zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
+      zCdn_ice      = zCdn_skin_ice   ! Eq. 7 (cf Lupkes email for details)
+      !zCdn_ice     = 1.89e-3         ! old ECHAM5 value (cf Eq. 32)
+
+      ! Heat Neutral Transfert Coefficients
+      zChn_skin_ice = vkarmn**2 / ( LOG( rn_zu / z0_ice + 1._wp ) * LOG( rn_zu * z1_alpha / z0_skin_ice + 1._wp ) )   ! Eq. 50 + Eq. 52 (cf Lupkes email for details)
+     
+      ! Atmospheric and Surface Variables
+      zst(:,:)     = sst_m(:,:) + rt0                                       ! convert SST from Celcius to Kelvin
+      zqo_sat(:,:) = 0.98_wp * q_sat( zst(:,:)  , sf(jp_slp)%fnow(:,:,1) )  ! saturation humidity over ocean [kg/kg]
+      zqi_sat(:,:) = 0.98_wp * q_sat( tm_su(:,:), sf(jp_slp)%fnow(:,:,1) )  ! saturation humidity over ice   [kg/kg]
+      !
+      DO jj = 2, jpjm1           ! reduced loop is necessary for reproducibility
+         DO ji = fs_2, fs_jpim1
+            ! Virtual potential temperature [K]
+            zthetav_os = zst(ji,jj)   * ( 1._wp + rctv0 * zqo_sat(ji,jj) )   ! over ocean
+            zthetav_is = tm_su(ji,jj) * ( 1._wp + rctv0 * zqi_sat(ji,jj) )   ! ocean ice
+            zthetav_zu = t_zu (ji,jj) * ( 1._wp + rctv0 * q_zu(ji,jj)    )   ! at zu
+            
+            ! Bulk Richardson Number (could use Ri_bulk function from aerobulk instead)
+            zrib_o = grav / zthetav_os * ( zthetav_zu - zthetav_os ) * rn_zu / MAX( 0.5, wndm(ji,jj)     )**2   ! over ocean
+            zrib_i = grav / zthetav_is * ( zthetav_zu - zthetav_is ) * rn_zu / MAX( 0.5, wndm_ice(ji,jj) )**2   ! over ice
+            
+            ! Momentum and Heat Neutral Transfert Coefficients
+            zCdn_form_ice = zCdn_form_tmp * at_i_b(ji,jj) * ( 1._wp - at_i_b(ji,jj) )**zbeta  ! Eq. 40
+            zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )               ! Eq. 53 
+                       
+            ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead)
+            z0w = rn_zu * EXP( -1._wp * vkarmn / SQRT( Cdn_oce(ji,jj) ) ) ! over water
+            z0i = z0_skin_ice                                             ! over ice (cf Lupkes email for details)
+            IF( zrib_o <= 0._wp ) THEN
+               zfmw = 1._wp - zam * zrib_o / ( 1._wp + 3._wp * zc2 * Cdn_oce(ji,jj) * SQRT( -zrib_o * ( rn_zu / z0w + 1._wp ) ) )  ! Eq. 10
+               zfhw = ( 1._wp + ( zbetah * ( zthetav_os - zthetav_zu )**r1_3 / ( Chn_oce(ji,jj) * MAX(0.01, wndm(ji,jj)) )   &     ! Eq. 26
+                  &             )**zgamma )**z1_gamma
+            ELSE
+               zfmw = 1._wp / ( 1._wp + zam * zrib_o / SQRT( 1._wp + zrib_o ) )   ! Eq. 12
+               zfhw = 1._wp / ( 1._wp + zah * zrib_o / SQRT( 1._wp + zrib_o ) )   ! Eq. 28
+            ENDIF
+            
+            IF( zrib_i <= 0._wp ) THEN
+               zfmi = 1._wp - zam * zrib_i / (1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( rn_zu / z0i + 1._wp)))   ! Eq.  9
+               zfhi = 1._wp - zah * zrib_i / (1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( rn_zu / z0i + 1._wp)))   ! Eq. 25
+            ELSE
+               zfmi = 1._wp / ( 1._wp + zam * zrib_i / SQRT( 1._wp + zrib_i ) )   ! Eq. 11
+               zfhi = 1._wp / ( 1._wp + zah * zrib_i / SQRT( 1._wp + zrib_i ) )   ! Eq. 27
+            ENDIF
+            
+            ! Momentum Transfert Coefficients (Eq. 38)
+            Cd(ji,jj) = zCdn_skin_ice *   zfmi +  &
+               &        zCdn_form_ice * ( zfmi * at_i_b(ji,jj) + zfmw * ( 1._wp - at_i_b(ji,jj) ) ) / MAX( 1.e-06, at_i_b(ji,jj) )
+            
+            ! Heat Transfert Coefficients (Eq. 49)
+            Ch(ji,jj) = zChn_skin_ice *   zfhi +  &
+               &        zChn_form_ice * ( zfhi * at_i_b(ji,jj) + zfhw * ( 1._wp - at_i_b(ji,jj) ) ) / MAX( 1.e-06, at_i_b(ji,jj) )
+            !
+         END DO
+      END DO
+      CALL lbc_lnk_multi( 'sbcblk', Cd, 'T',  1., Ch, 'T', 1. )
+      !
+   END SUBROUTINE Cdn10_Lupkes2015
+
 #endif
-   
 
    !!======================================================================
 END MODULE sbcblk

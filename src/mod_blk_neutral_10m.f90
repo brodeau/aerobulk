@@ -1,5 +1,4 @@
-! AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2015 / L. Brodeau
 
 MODULE mod_blk_neutral_10m
 
@@ -8,7 +7,7 @@ MODULE mod_blk_neutral_10m
    !!   Momentum, Latent and sensible heat exchange coefficients
    !!          In neutral conditions / at 10m
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
 
@@ -32,7 +31,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_neutral_10m  ***
       !!
-      !!            2015: L. Brodeau (brodeau@gmail.com)
+      !!            2015: L. Brodeau
       !!
       !! ** Purpose :   Computes turbulent neutra transfert coefficients at 10m
       !!                from the neutral wind speed at 10m

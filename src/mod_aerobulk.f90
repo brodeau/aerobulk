@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -36,8 +35,8 @@ CONTAINS
       INTEGER :: ni, nj
 
       PRINT *, ''
-      PRINT *, 'aerobulk_init'
-
+      PRINT *, '****************************************************'
+      PRINT *, '*            ----- aerobulk_init -----'
       ! 1.
       jpi = size(psst,1) ; jpj = size(psst,2)
 
@@ -68,13 +67,12 @@ CONTAINS
          PRINT *, 'ERROR: aerobulk_init => SST and SLP arrays do not agree in shape!' ; STOP
       END IF
 
-      PRINT *, '    *** jpi and jpj set to ', jpi, jpj ; PRINT *, ''
+      PRINT *, '    *** jpi and jpj set to ', jpi, jpj
       PRINT *, '    *** nb_itt is set to ', nb_itt
-
-
-      l_first_call = .false.
-
+      PRINT *, '****************************************************'
       PRINT *, ''
+
+      l_first_call = .FALSE.
 
    END SUBROUTINE aerobulk_init
 
@@ -94,7 +92,7 @@ CONTAINS
    SUBROUTINE AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, &
       &                       q_zt, U_zu, V_zu, slp,    &
       &                       QL, QH, Tau_x, Tau_y,     &
-      &                       Niter, rad_sw, rad_lw )
+      &                       Niter, rad_sw, rad_lw, T_s )
       !!======================================================================================
       !!
       !! INPUT :
@@ -118,9 +116,10 @@ CONTAINS
       !!
       !! OPTIONAL :
       !! ----------
-      !!    * Niter  : number of itterattions in the bulk algorithm (default is 4)
+      !!    *  Niter  : number of itterattions in the bulk algorithm (default is 4)
       !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
+      !!    *  T_s    : skin temperature                                      [K]
       !!
       !!============================================================================
       CHARACTER(len=*),         INTENT(in)  :: calgo
@@ -128,6 +127,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
       REAL(wp), DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
+      REAL(wp), DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s
 
       INTEGER, INTENT(in), OPTIONAL :: Niter
 
@@ -141,7 +141,7 @@ CONTAINS
          CALL aerobulk_compute(calgo, zt, zu, sst, t_zt, &
             &                  q_zt, U_zu, V_zu, slp,    &
             &                  QL, QH, Tau_x, Tau_y ,    &
-            &                  rad_sw=rad_sw, rad_lw=rad_lw )
+            &                  rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
 
       ELSE
 

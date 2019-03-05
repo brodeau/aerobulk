@@ -2,13 +2,13 @@
 # ==================
 
 # Fortran compiler :
-FC = ifort
-
+FC  = ifort
+CXX = icc
 
 # Fortran compilation flags :
 
 #DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
-DEBUG_FF = -g -fpe0 -traceback -CB -warn all
+DEBUG_FF = -g -fpe0 -traceback -CB
 
 FF = -O2 -r8 -i4 $(DEBUG_FF) -module mod/
 

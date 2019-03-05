@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -23,7 +22,7 @@ MODULE mod_blk_ncar
    !!       Routine turb_ncar maintained and developed in AeroBulk
    !!                     (http://aerobulk.sourceforge.net/)
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -62,7 +61,7 @@ CONTAINS
       !!    - using code-wide physical constants defined into "phycst.mod" rather than redifining them
       !!      => 'vkarmn' and 'grav'
       !!
-      !!      Author:  L. Brodeau (brodeau@gmail.com)
+      !!      Author:  L. Brodeau
       !!----------------------------------------------------------------------
 
       !!======================================================================================

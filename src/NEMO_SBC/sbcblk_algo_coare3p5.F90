@@ -31,14 +31,12 @@ MODULE sbcblk_algo_coare3p5
    USE phycst          ! physical constants
    USE sbc_oce         ! Surface boundary condition: ocean fields
    USE sbcwave, ONLY   :  cdn_wave ! wave module
-#if defined key_lim3 || defined key_cice
+#if defined key_si3 || defined key_cice
    USE sbc_ice         ! Surface boundary condition: ice fields
 #endif
    !
    USE iom             ! I/O manager library
    USE lib_mpp         ! distribued memory computing library
-   USE wrk_nemo        ! work arrays
-   USE timing          ! Timing
    USE in_out_manager  ! I/O manager
    USE prtctl          ! Print control
    USE lib_fortran     ! to use key_nosignedzero
@@ -57,8 +55,9 @@ MODULE sbcblk_algo_coare3p5
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_coare3p5( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk )
+   SUBROUTINE turb_coare3p5( zt, zu, sst, t_zt, ssq, q_zt, U_zu,  &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,       &
+      &                      Cdn, Chn, Cen                        )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p5  ***
       !!
@@ -104,30 +103,26 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu             [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu             [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cdn, Chn, Cen ! neutral transfer coefficients
       !
       INTEGER :: j_itt
       LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       INTEGER , PARAMETER ::   nb_itt = 4       ! number of itterations
       !
-      REAL(wp), DIMENSION(:,:), POINTER  ::  &
+      REAL(wp), DIMENSION(jpi,jpj) ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  z0, z0t
-      REAL(wp), DIMENSION(:,:), POINTER ::   zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), POINTER ::   zeta_t        ! stability parameter at height zt
-      REAL(wp), DIMENSION(:,:), POINTER ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(jpi,jpj) ::   zeta_u        ! stability parameter at height zu
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_t        ! stability parameter at height zt
       !!----------------------------------------------------------------------------------
       !
-      IF( nn_timing == 1 )  CALL timing_start('turb_coare3p5')
-
-      CALL wrk_alloc( jpi,jpj, u_star, t_star, q_star, zeta_u, dt_zu, dq_zu)
-      CALL wrk_alloc( jpi,jpj, znu_a, z0, z0t, ztmp0, ztmp1, ztmp2 )
-
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      IF( .NOT. l_zt_equal_zu )   CALL wrk_alloc( jpi,jpj, zeta_t )
+      IF( .NOT. l_zt_equal_zu )   ALLOCATE( zeta_t(jpi,jpj) )
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX(t_zt , 0.0)    ! who knows what's given on masked-continental regions...
@@ -251,12 +246,13 @@ CONTAINS
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
       !
-      CALL wrk_dealloc( jpi,jpj, u_star, t_star, q_star, zeta_u, dt_zu, dq_zu )
-      CALL wrk_dealloc( jpi,jpj, znu_a, z0, z0t, ztmp0, ztmp1, ztmp2 )
-      IF( .NOT. l_zt_equal_zu ) CALL wrk_dealloc( jpi,jpj, zeta_t )
-
-      IF( nn_timing == 1 )  CALL timing_stop('turb_coare3p5')
-
+      ztmp1 = zu + z0
+      Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
+      Chn = vkarmn*vkarmn / (log(ztmp1/z0t)*log(ztmp1/z0t))
+      Cen = Chn
+      !
+      IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
+      !
    END SUBROUTINE turb_coare3p5
 
 

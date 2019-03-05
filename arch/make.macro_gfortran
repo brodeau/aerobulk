@@ -2,7 +2,8 @@
 # ===================================================
 
 # Fortran compiler :
-FC = gfortran
+FC  = gfortran
+CXX = g++
 
 # Gfortran "debuggibg" compilation flags:
 DEBUG_FF = -g -w -fbounds-check

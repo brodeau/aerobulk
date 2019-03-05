@@ -1,5 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau (brodeau@gmail.com)
-! https://sourceforge.net/p/aerobulk
+! AeroBulk / 2016 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -26,7 +25,7 @@ MODULE mod_blk_coare
    !!       Routine turb_coare maintained and developed in AeroBulk
    !!                     (http://aerobulk.sourceforge.net/)
    !!
-   !!            Author: Laurent Brodeau, 2016, brodeau@gmail.com
+   !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -53,7 +52,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare  ***
       !!
-      !!            2015: L. Brodeau (brodeau@gmail.com)
+      !!            2015: L. Brodeau
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to Fairall et al. (2003)
