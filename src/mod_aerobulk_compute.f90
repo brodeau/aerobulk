@@ -225,7 +225,7 @@ CONTAINS
       REAL(wp) :: zmean, vmin, vmax
       LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
       
-      zmean = SUM( Xval * REAL(mask,wp) ) / REAL( SUM(mask) , wp )
+      zmean = SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
       
       !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
       
