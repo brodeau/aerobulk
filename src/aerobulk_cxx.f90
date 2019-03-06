@@ -2,6 +2,7 @@ module mod_aerobluk_cxx
 
   use mod_aerobulk
   use iso_c_binding
+  use mod_const
 
   implicit none
 
@@ -49,6 +50,11 @@ contains
         calgo_fort(i:i) = calgo(i)
       enddo
 
+      ! Check that the jpi and jpj are right
+      if ( jpi /= m .or. jpj /= 1 ) then
+        l_first_call = .true.
+      end if
+
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
@@ -79,6 +85,11 @@ contains
       do i=1,l
         calgo_fort(i:i) = calgo(i)
       enddo
+
+      ! Check that the jpi and jpj are right
+      if ( jpi /= m .or. jpj /= 1 ) then
+        l_first_call = .true.
+      end if
 
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
