@@ -24,6 +24,9 @@ std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
     std::string return_value;
     switch (algo)
     {
+        case algorithm::OTHER:
+            return_value = std::string("other");
+            break;
         case algorithm::COARE:
             return_value = std::string("coare");
             break;

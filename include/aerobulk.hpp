@@ -12,10 +12,11 @@ namespace aerobulk
 {
     enum class algorithm
     {
-        COARE   = 0,
-        COARE35 = 1,
-        NCAR    = 2,
-        ECMWF   = 3
+        OTHER   = 0, // In case you want to roll your own
+        COARE   = 1,
+        COARE35 = 2,
+        NCAR    = 3,
+        ECMWF   = 4
     };
 
     std::string algorithm_to_string(algorithm algo);
