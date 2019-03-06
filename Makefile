@@ -31,7 +31,7 @@ LIB_OBJ_CXX = src/aerobulk.o \
 		  src/aerobulk_cxx.o
 
 
-CXXFLAGS += -I ./include
+CXXFLAGS += -I./include
 
 .SUFFIXES: 
 .SUFFIXES: .f90 .o .cpp
@@ -84,7 +84,7 @@ bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 
 bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
-	$(CPP) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB) $(LIB_CXX)
+	$(CPP) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB)
 
 .f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
 	@mkdir -p mod
