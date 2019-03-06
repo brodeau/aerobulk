@@ -10,6 +10,11 @@ DEBUG_FF = -g -w -fbounds-check
 
 # Gfortran compilation flags:
 FF = -O2 -fdefault-real-8 -ffree-line-length-200 $(DEBUG_FF) -J./mod -I./mod
+# These are needed for the C/C++ interface
+FF += -std=f2008 -lstdc++
+
+# g++ compilarion flags
+CXXFLAGS += -std=c++11 -lgfortran -O2
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
