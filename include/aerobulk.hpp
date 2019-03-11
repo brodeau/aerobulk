@@ -31,12 +31,14 @@ namespace aerobulk
     void model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
         const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
         std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y,
-        const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s);
+        const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s,
+        const int Niter=5);
 
     // Interface to aerobulk_model without rad_sw, rad_lw, and T_s
     void model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
         const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
-        std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y);
+        std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y,
+        const int Niter=5);
 }
 
 #endif

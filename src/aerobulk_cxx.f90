@@ -31,10 +31,10 @@ contains
                                    q_zt, U_zu, V_zu, slp,    &
                                    QL, QH, Tau_x, Tau_y,     &
                                    rad_sw, rad_lw, T_s,      &
-                                   l, m ) bind(c)
+                                   Niter, l, m ) bind(c)
 
       ! Arguments
-      INTEGER(c_int),                    INTENT(in)  :: l, m
+      INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
@@ -60,7 +60,7 @@ contains
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
                            q_zt, U_zu, V_zu, slp,         &
                            QL, QH, Tau_x, Tau_y,          &
-                           rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
+                           Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
 
       end subroutine aerobulk_cxx_skin
 
@@ -68,10 +68,10 @@ contains
       subroutine aerobulk_cxx_no_skin( calgo, zt, zu, sst, t_zt, &
                                      q_zt, U_zu, V_zu, slp,    &
                                      QL, QH, Tau_x, Tau_y,     &
-                                     l, m ) bind(c)
+                                     Niter, l, m ) bind(c)
 
       ! Arguments
-      INTEGER(c_int),                    INTENT(in)  :: l, m
+      INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
@@ -95,7 +95,7 @@ contains
       ! We could/should transpose the arrays, but it's not neccesary
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
                            q_zt, U_zu, V_zu, slp,   &
-                           QL, QH, Tau_x, Tau_y )
+                           QL, QH, Tau_x, Tau_y, Niter=Niter )
 
       end subroutine aerobulk_cxx_no_skin
 
