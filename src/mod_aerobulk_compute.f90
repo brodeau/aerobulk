@@ -238,7 +238,7 @@ CONTAINS
          
       CASE('t_air')
          vmax = 323._wp
-         vmin = 220._wp
+         vmin = 200._wp
          cunit = 'K'
          
       CASE('q_air')
@@ -282,6 +282,7 @@ CONTAINS
       
       IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
          WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
+         WRITE(*,'(" min value = ", es9.3," max value = ", es9.3," mean value = ", es9.3)') MINVAL(Xval), MAXVAL(Xval), zmean
          STOP
       END IF
       
