@@ -86,11 +86,11 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
          &     pWzu,            & !: Scalar wind speed at zu m
          &   pSSQ,              & !: Specific humidiyt at the air-sea interface
-         &   pCd, pCh, pCe,        & !: bulk transfer coefficients
+         &   pCd, pCh, pCe,     & !: bulk transfer coefficients
          &  pTzt,               & !: potential temperature at zt meters
          &  pTzu, pQzu,         & !: potential temperature and specific humidity at zu meters
-         &  pTs, pqs,             & !:
-         &   pUblk,             !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
+         &  pTs, pqs,           & !:
+         &   pUblk                !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
 
       LOGICAL :: l_use_skin
       !!------------------------------------------------------------------------------

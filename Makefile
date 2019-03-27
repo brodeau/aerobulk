@@ -18,6 +18,7 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \
           src/mod_aerobulk_compute.f90 \
+          src/mod_aerobulk_compute_crude.f90 \
           src/mod_aerobulk.f90
 
 LIB_OBJ = $(LIB_SRC:.f90=.o)
