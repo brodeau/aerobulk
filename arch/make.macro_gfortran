@@ -5,6 +5,10 @@
 FC  = gfortran
 CXX = g++
 
+DIR_FORT_LIB = /usr/lib/gcc/x86_64-linux-gnu/7
+LNK_FORT_LIB = -lgfortran
+
+
 # Gfortran "debuggibg" compilation flags:
 DEBUG_FF = -g -w -fbounds-check
 

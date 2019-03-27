@@ -9,7 +9,7 @@ All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_sk
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
 
-LIB = -L./lib -laerobulk
+LIB = -L./lib -laerobulk -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_thermo.f90 \
