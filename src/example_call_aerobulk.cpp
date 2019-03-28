@@ -7,10 +7,10 @@ int main(int argc, char** argv)
 {
 
     std::vector<double> zsst  = {273.15 + 22., 273.15 + 22.};
-    std::vector<double> zt_zt = {273.15 + 20., 273.15 + 20.};
+    std::vector<double> zt_zt = {273.15 + 20., 273.15 + 25.}; // second case is stable ABL as t_air > SST (25>22)!
     std::vector<double> zq_zt = {0.012, 0.012};
-    std::vector<double> zU_zu = {5., 5.};
-    std::vector<double> zV_zu = {0., 0.};
+    std::vector<double> zU_zu = { 4.,  4.};
+    std::vector<double> zV_zu = {10., 10.};
     std::vector<double> zslp  = {101000.0, 101000.0};
 
     std::vector<double> zRsw  = {0., 0.}; // (night)
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 
     std::vector<double> L = aerobulk::lvap(zsst);
 
-    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[0]*1e-3/L[0] << std::endl;
+    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 
 
     aerobulk::model(aerobulk::algorithm::ECMWF, 2, 10, zsst, zt_zt,
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 
     L = aerobulk::lvap(zsst);
 
-    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[0]*1e-3/L[0] << std::endl;
+    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 
     aerobulk::model(aerobulk::algorithm::NCAR, 2, 10, zsst, zt_zt,
             zq_zt, zU_zu, zV_zu, zslp,
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 
     L = aerobulk::lvap(zsst);
 
-    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[0]*1e-3/L[0] << std::endl;
+    std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 }
  
 

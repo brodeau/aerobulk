@@ -154,6 +154,6 @@ CONTAINS
 
       IF ( l_last_call ) CALL aerobulk_bye()
 
-   END SUBROUTINE aerobulk_model
+   END SUBROUTINE AEROBULK_MODEL
 
 END MODULE mod_aerobulk

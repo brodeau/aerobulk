@@ -6,6 +6,7 @@ include make.macro
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
 	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
+
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
 
@@ -18,7 +19,6 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \
           src/mod_aerobulk_compute.f90 \
-          src/mod_aerobulk_compute_crude.f90 \
           src/mod_aerobulk.f90
 
 LIB_OBJ = $(LIB_SRC:.f90=.o)
@@ -82,6 +82,8 @@ bin/test_thermo.x: src/test_thermo.f90 lib/libaerobulk.a
 bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat
 	$(FC) $(FF) src/cx_vs_wind_test.f90 -o bin/cx_vs_wind_test.x $(LIB)
+
+
 
 bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
