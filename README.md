@@ -3,7 +3,7 @@
 ![Aerobulk Logo](https://brodeau.github.io/images/projects/aerobulk_logo_s.svg)
 
 
-## This is branch "crude" of AeroBulk, use of NCAR algo here will yield same setup as in NEMO 3.6 // rho_air, Lvap, Cp_air assumed constant!!!
+## This is branch "crude" of AeroBulk, use of NCAR algo here will yield same setup as in NEMO 3.6 // rho_air, Lvap, Cp_air assumed constant, simpler empirical function for q_sat(SST) !!!
 
 
 Online documentation: https://brodeau.github.io/aerobulk/
