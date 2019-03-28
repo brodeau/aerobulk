@@ -1,5 +1,16 @@
 ! AeroBulk / 2016 / L. Brodeau
 !
+!! "CRUDE" because use the old "a la CORE" way to compute the fluxes:
+!! => constant air density of        rho_a = 1.22 kg/m^3
+!! => extremely simple estimate of specific humidity at saturation (see "q_sat_simple" in mod_thermo.f90 !
+!! => constant value of Lvap (instead of calling Lvap(SST)
+!!   => Lvap = 2.5e6
+!! => Constant value for specific heat of air:
+!!   => cpa  = 1000.5
+!!
+!! Chosing "NCAR" algo in this setup should yields exact same value as SBCBLK_CORE produces in NEMOGCM 3.6 !
+
+
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
 !   Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically
@@ -54,7 +65,9 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: Lvap   !: [J/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: zsst   !: water temperature [K]
 
-      Lvap = (2.501 - 0.00237*(zsst - rt0))*1.E6
+      !Lvap = (2.501 - 0.00237*(zsst - rt0))*1.E6
+
+      Lvap = 2.5E6  !! lolo/crude / NEMO 3.6
 
    END FUNCTION Lvap
 
@@ -191,7 +204,8 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: cp_air  !: [J/K/kg]
       !!-------------------------------------------------------------------------------
       !
-      cp_air = Cp_dry + Cp_vap*pqa
+      !cp_air = Cp_dry + Cp_vap*pqa
+      cp_air = 1000.5_wp !! lolo/crude / NEMO 3.6
       !
    END FUNCTION cp_air
 
@@ -267,8 +281,10 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air   !:              [kg/m^3]
       !!-------------------------------------------------------------------------------
       !
-      rho_air = pslp/(R_dry*ptak*(1._wp + rctv0*pqa))
-      !
+      !!rho_air = pslp/(R_dry*ptak*(1._wp + rctv0*pqa))
+      !!
+      rho_air = 1.22_wp !! lolo/crude / NEMO 3.6
+!!!
    END FUNCTION rho_air
 
 
@@ -286,14 +302,15 @@ CONTAINS
       !!
       REAL(wp), DIMENSION(jpi,jpj) :: ztv !: virtual temperature
       !!
-      ztv = zt/(1. - e_air(zq, zP)/zP*(1. - reps0))
+      !!ztv = zt/(1. - e_air(zq, zP)/zP*(1. - reps0))
       !!
-      rho_air_adv = zP/(R_dry*ztv)
+      !!rho_air_adv = zP/(R_dry*ztv)
+      rho_air_adv = 1.22_wp !! lolo/crude / NEMO 3.6
       !!
    END FUNCTION rho_air_adv
 
 
-   FUNCTION q_sat(temp, slp,  cform)
+   FUNCTION q_sat(temp, slp)   !! cform) !! lolo/crude / NEMO 3.6 / slp not used...
 
       !! Specific humidity at saturation
 
@@ -302,29 +319,29 @@ CONTAINS
          &                  temp,  &   !: sea surface temperature         [K]
          &                  slp       !: sea level atmospheric pressure  [Pa]
 
-      CHARACTER(len=*), OPTIONAL, INTENT(in) :: cform
-
+      !CHARACTER(len=*), OPTIONAL, INTENT(in) :: cform
 
       !! Local :
-      LOGICAL :: lbuck  !: we use Buck formula to compute e_sat instead of Goff 1957
-      REAL(wp), DIMENSION(jpi,jpj) ::  &
-         &    e_s
+      !LOGICAL :: lbuck  !: we use Buck formula to compute e_sat instead of Goff 1957
+      !REAL(wp), DIMENSION(jpi,jpj) ::  &
+      !   &    e_s
 
-      lbuck = .FALSE.
-      IF ( PRESENT(cform) ) THEN
-         IF ( (TRIM(cform) == 'buck').OR.(TRIM(cform) == 'Buck').OR.(TRIM(cform) == 'BUCK') ) THEN
-            lbuck = .TRUE.
-         END IF
-      END IF
+      q_sat = 640380._wp/1.22_wp * EXP(-5107.4_wp/temp) !! lolo/crude / NEMO 3.6
+
+      !lbuck = .FALSE.
+      !IF ( PRESENT(cform) ) THEN
+      !   IF ( (TRIM(cform) == 'buck').OR.(TRIM(cform) == 'Buck').OR.(TRIM(cform) == 'BUCK') ) THEN
+      !      lbuck = .TRUE.
+      !   END IF
+      !END IF
 
       !! Vapour pressure at saturation :
-      IF ( lbuck ) THEN
-         e_s = e_sat_buck(temp, slp)
-      ELSE
-         e_s = e_sat(temp)  ! using Goff !
-      END IF
-
-      q_sat = reps0*e_s/(slp - (1. - reps0)*e_s)
+      !IF ( lbuck ) THEN
+      !   e_s = e_sat_buck(temp, slp)
+      !ELSE
+      !   e_s = e_sat(temp)  ! using Goff !
+      !END IF
+      !q_sat = reps0*e_s/(slp - (1. - reps0)*e_s)
 
    END FUNCTION q_sat
 

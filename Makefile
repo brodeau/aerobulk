@@ -4,7 +4,7 @@
 include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
-	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
+	bin/example_call_aerobulk.x bin/cx_vs_wind_test.x lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 
 # bin/test_coef_n10.x
@@ -75,9 +75,9 @@ bin/test_coef_no98.x: src/test_coef_no98.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/test_coef_no98.f90 -o bin/test_coef_no98.x $(LIB)
 
-bin/test_thermo.x: src/test_thermo.f90 lib/libaerobulk.a
-	@mkdir -p bin
-	$(FC) $(FF) src/test_thermo.f90 -o bin/test_thermo.x $(LIB)
+#bin/test_thermo.x: src/test_thermo.f90 lib/libaerobulk.a
+#	@mkdir -p bin
+#	$(FC) $(FF) src/test_thermo.f90 -o bin/test_thermo.x $(LIB)
 
 bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat

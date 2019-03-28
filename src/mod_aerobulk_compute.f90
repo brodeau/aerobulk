@@ -79,8 +79,8 @@ CONTAINS
          &  pTzt,               & !: potential temperature at zt meters
          &  pTzu, pQzu,         & !: potential temperature and specific humidity at zu meters
          &  pTs, pqs,           & !:
-         &   pUblk,             & !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
-         &   pRHO                 !: density of air
+         &   pUblk                !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
+
       LOGICAL :: l_use_skin
       !!------------------------------------------------------------------------------
 
@@ -90,7 +90,7 @@ CONTAINS
       ALLOCATE ( pmask(jpi,jpj), pWzu(jpi,jpj), pSSQ(jpi,jpj), &
          &     pCd(jpi,jpj), pCh(jpi,jpj), pCe(jpi,jpj),       &
          &     pTzt(jpi,jpj), pTzu(jpi,jpj), pQzu(jpi,jpj), &
-         &     pUblk(jpi,jpj), pRHO(jpi,jpj), pTs(jpi,jpj), pqs(jpi,jpj)  )
+         &     pUblk(jpi,jpj), pTs(jpi,jpj), pqs(jpi,jpj)  )
 
       ! Masked region ?
       IF( PRESENT(mask) ) THEN
@@ -122,10 +122,11 @@ CONTAINS
       pWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
       !! Computing specific humidity at saturation at sea surface temperature :
-      pSSQ (:,:) = 0.98*q_sat(sst, slp)
+      pSSQ (:,:) = 0.98*q_sat(sst, slp) !! lolo/crude / NEMO 3.6  (slp not used!)
 
       !! Approximate potential temperarure at zt meters above sea surface:
-      pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
+      !pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
+      pTzt = t_zt !! lolo/crude / NEMO 3.6
 
       !! Mind that TURB_COARE and TURB_ECMWF will modify SST and SSQ if their
       !! respective Cool Skin Warm Layer parameterization is used
@@ -182,31 +183,19 @@ CONTAINS
       IF( l_use_skin ) T_s = pTs
 
       !! Need the air density at zu m, so using t and q corrected at zu m:
-      pRHO = rho_air(pTzu, pQzu, slp)
-      QH   = slp - pRHO*grav*zu      ! QH used as temporary array!
-      pRHO = rho_air(pTzu, pQzu, QH)
+      !pRHO = rho_air(pTzu, pQzu, slp)
+      !QH   = slp - pRHO*grav*zu      ! QH used as temporary array!
+      !pRHO = rho_air(pTzu, pQzu, QH) !! lolo/crude / NEMO 3.6
 
       !! *** Wind stress ***
-      Tau_x = pCd*pRHO * U_zu * pUblk
-      Tau_y = pCd*pRHO * V_zu * pUblk
+      Tau_x = pCd*1.22_wp * U_zu * pUblk !! lolo/crude / NEMO 3.6
+      Tau_y = pCd*1.22_wp * V_zu * pUblk !! lolo/crude / NEMO 3.6
 
       !! *** Latent and Sensible heat fluxes ***
-      QL = pCe*pRHO*Lvap(pTs)    * (pQzu - pqs) * pUblk
-      QH = pCh*pRHO*cp_air(pQzu) * (pTzu - pTs) * pUblk
+      QL = pCe*1.22_wp * 2.5e6     * (pQzu - pqs) * pUblk  !! lolo/crude / NEMO 3.6
+      QH = pCh*1.22_wp * 1000.5_wp * (pTzu - pTs) * pUblk  !! lolo/crude / NEMO 3.6
 
-      !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
-      !PRINT *, 'pCe =', pCe
-      !PRINT *, 'Qlat =', QL
-      !PRINT *, 'Ublk =', pUblk
-      !PRINT *, 'pCe/Ublk =', pCe/pUblk
-      !PRINT *, 't_zu =', pTzu
-      !PRINT *, 'q_zu =', pQzu
-      !PRINT *, 'Rho =', pRHO
-      !PRINT *, 'ssq =', pSSQ
-      !PRINT *, 'Lvap =', Lvap(pTs)
-      !PRINT *, ''
-
-      DEALLOCATE ( pmask, pWzu, pSSQ, pCd, pCh, pCe, pTzt, pTzu, pQzu, pUblk, pRHO, pTs, pqs )
+      DEALLOCATE ( pmask, pWzu, pSSQ, pCd, pCh, pCe, pTzt, pTzu, pQzu, pUblk, pTs, pqs )
 
    END SUBROUTINE aerobulk_compute
 
