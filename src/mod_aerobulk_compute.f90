@@ -75,10 +75,10 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
          &     pWzu,            & !: Scalar wind speed at zu m
          &   pSSQ,              & !: Specific humidiyt at the air-sea interface
-         &   pCd, pCh, pCe,        & !: bulk transfer coefficients
+         &   pCd, pCh, pCe,     & !: bulk transfer coefficients
          &  pTzt,               & !: potential temperature at zt meters
          &  pTzu, pQzu,         & !: potential temperature and specific humidity at zu meters
-         &  pTs, pqs,             & !:
+         &  pTs, pqs,           & !:
          &   pUblk,             & !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
          &   pRHO                 !: density of air
       LOGICAL :: l_use_skin
@@ -86,7 +86,7 @@ CONTAINS
 
 
       l_use_skin = .FALSE.
-      
+
       ALLOCATE ( pmask(jpi,jpj), pWzu(jpi,jpj), pSSQ(jpi,jpj), &
          &     pCd(jpi,jpj), pCh(jpi,jpj), pCe(jpi,jpj),       &
          &     pTzt(jpi,jpj), pTzu(jpi,jpj), pQzu(jpi,jpj), &
@@ -99,7 +99,7 @@ CONTAINS
          pmask(:,:) = 1
       END IF
 
-      
+
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
          IF((TRIM(calgo) == 'coare').OR.(TRIM(calgo) == 'coare35').OR.(TRIM(calgo) == 'ecmwf')) THEN
@@ -107,17 +107,17 @@ CONTAINS
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
          CALL check_unit_consitency( 'rad_sw', rad_sw, pmask )
-         CALL check_unit_consitency( 'rad_lw', rad_lw, pmask )         
+         CALL check_unit_consitency( 'rad_lw', rad_lw, pmask )
       END IF
-      
+
       CALL check_unit_consitency( 'sst',   sst,  pmask )
       CALL check_unit_consitency( 't_air', t_zt, pmask )
       CALL check_unit_consitency( 'q_air', q_zt, pmask )
       CALL check_unit_consitency( 'slp',   slp,  pmask )
       CALL check_unit_consitency( 'u10', ABS(U_zu), pmask )
       CALL check_unit_consitency( 'v10', ABS(V_zu), pmask )
-      
-      
+
+
       !! Scalar wind:
       pWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
@@ -185,11 +185,11 @@ CONTAINS
       pRHO = rho_air(pTzu, pQzu, slp)
       QH   = slp - pRHO*grav*zu      ! QH used as temporary array!
       pRHO = rho_air(pTzu, pQzu, QH)
-      
+
       !! *** Wind stress ***
       Tau_x = pCd*pRHO * U_zu * pUblk
       Tau_y = pCd*pRHO * V_zu * pUblk
-      
+
       !! *** Latent and Sensible heat fluxes ***
       QL = pCe*pRHO*Lvap(pTs)    * (pQzu - pqs) * pUblk
       QH = pCh*pRHO*cp_air(pQzu) * (pTzu - pTs) * pUblk
@@ -216,7 +216,7 @@ CONTAINS
    SUBROUTINE check_unit_consitency( cfield, Xval, mask )
 
       !! Ignore values where mask==0
-      
+
       CHARACTER(len=*),         INTENT(in) :: cfield
       REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
       INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
@@ -224,38 +224,38 @@ CONTAINS
       CHARACTER(len=64) :: cunit
       REAL(wp) :: zmean, vmin, vmax
       LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
-      
+
       zmean = SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
-      
+
       !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
-      
+
       SELECT CASE (TRIM(cfield))
-         
+
       CASE('sst')
          vmax = 313._wp
          vmin = 270._wp
          cunit = 'K'
-         
+
       CASE('t_air')
          vmax = 323._wp
          vmin = 200._wp
          cunit = 'K'
-         
+
       CASE('q_air')
          vmax = 0.08_wp
          vmin = 0._wp
          cunit = 'kg/kg'
-         
+
       CASE('slp')
          vmax = 108000.
          vmin =  87000.
          cunit = 'Pa'
-         
+
       CASE('u10')
          vmax = 50._wp
-         vmin =  0._wp 
+         vmin =  0._wp
          cunit = 'm/s'
-         
+
       CASE('v10')
          vmax = 50._wp
          vmin =  0._wp
@@ -275,18 +275,18 @@ CONTAINS
          WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): we do not know field ",a," !")') TRIM(cfield)
          STOP
       END SELECT
-      
+
       IF ( MAXVAL(Xval) > vmax )                   l_too_large    = .TRUE.
       IF ( MINVAL(Xval) < vmin )                   l_too_small    = .TRUE.
       IF ( (zmean < vmin) .OR. (zmean > vmax) ) l_mean_outside = .TRUE.
-      
+
       IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
          WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
          WRITE(*,'(" min value = ", es9.3," max value = ", es9.3," mean value = ", es9.3)') MINVAL(Xval), MAXVAL(Xval), zmean
          STOP
       END IF
-      
+
    END SUBROUTINE check_unit_consitency
-   
+
 
 END MODULE mod_aerobulk_compute
