@@ -12,16 +12,15 @@ sensible heat flux. These fluxes are estimated by means of so-called **aerodynam
 sea surface temperature, and atmospheric surface parameters: wind speed, air temperature and specific
 humidity.
 
-<!--- ![Aerobulk Logo](https://brodeau.github.io/images/projects/bulk.svg) -->
+![Aerobulk Logo](https://brodeau.github.io/images/projects/bulk.svg)
 
-$$ \tau= \rho_{air}  C_D U_z ~ {\bf U_B} \\
+<!-- $$ \tau= \rho_{air}  C_D U_z ~ {\bf U_B} \\
 Q_H = \rho_{air}~C_H~C_P~\big[ \theta_z - T_s \big] ~ {\bf U_B} \\
 E      = \rho_{air}~C_E    ~\big[    q_s   - q_z \big] ~ {\bf U_B}   \\
 Q_L           = -L_v \, E   $$
 with:
-$$  \theta_z \simeq T_z+\gamma z \\
-q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
-
+$$  \theta_z \simeq T_z+\gamma z \\ q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
+-->
 
 In AeroBulk, 4 algorithms are available to compute
 the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>,
