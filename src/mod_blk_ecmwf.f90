@@ -23,7 +23,7 @@ MODULE mod_blk_ecmwf
    !!      + consideration of cool-skin warm layer parametrization (CS: Fairall et al. 1996; WL: Zeng & Beljaars, 2005 )
    !!
    !!       Routine turb_ecmwf maintained and developed in AeroBulk
-   !!                     (http://aerobulk.sourceforge.net/)
+   !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
    !!
@@ -122,7 +122,7 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                   [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                              [m]
@@ -383,7 +383,7 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -431,7 +431,7 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -471,7 +471,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Bulk Richardson number (Eq. 3.25 IFS doc)
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
       REAL(wp),                     INTENT(in) :: pz       !: height above the sea [m]

@@ -20,7 +20,7 @@ MODULE mod_blk_ncar
    !!    Using the bulk formulation/param. of "CORE2" aka "NCAR", Large & Yeager (2004,2008)
    !!
    !!       Routine turb_ncar maintained and developed in AeroBulk
-   !!                     (http://aerobulk.sourceforge.net/)
+   !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
    !!
@@ -277,7 +277,7 @@ CONTAINS
       !!         and L is M-O length
       !!
       !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
+      !!         (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       !!
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -313,7 +313,7 @@ CONTAINS
       !!         and L is M-O length
       !!
       !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
+      !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       REAL(wp), DIMENSION(jpi,jpj)             :: psi_h

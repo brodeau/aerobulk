@@ -23,7 +23,7 @@ MODULE mod_blk_coare
    !!      + consideration of cool-skin warm layer parametrization (Fairall et al. 1996)
    !!
    !!       Routine turb_coare maintained and developed in AeroBulk
-   !!                     (http://aerobulk.sourceforge.net/)
+   !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
    !!
@@ -357,7 +357,7 @@ CONTAINS
       !! Wind between 10 and 18 m/s : linear increase from 0.011 to 0.018
       !! Wind greater than 18 m/s :  alfa = 0.018
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk  (https://sourceforge.net/p/aerobulk)
+      !! Author: L. Brodeau, june 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p0
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! wind speed
@@ -391,7 +391,7 @@ CONTAINS
       !!  specific humidity, and frictional scales u*, t* and q*
       !!
       !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
+      !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha,  &  !: average potetntial air temperature [K]
@@ -427,7 +427,7 @@ CONTAINS
       !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
       !!       form from Beljaars and Holtslag (1991)
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_coare
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -480,7 +480,7 @@ CONTAINS
       !! form from Beljaars and Holtslag (1991)
       !!
       !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://sourceforge.net/p/aerobulk)
+      !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
       !!
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_coare

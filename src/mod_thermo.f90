@@ -185,7 +185,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       !! ** Purpose : Compute specific heat (Cp) of MOIST air
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa     !: air spec. hum. [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj)             :: cp_air  !: [J/K/kg]
@@ -248,7 +248,6 @@ CONTAINS
          &     da,     &    !: dew-point temperature   [K]
          &     slp         !: atmospheric pressure    [Pa]
       !!
-      !q_air_dp = e_sat(da)*reps0/(slp - (1. - reps0)*e_sat(da))
       q_air_dp = e_sat(da)*reps0/(slp - (1. - reps0)*e_sat(da))
       !!
    END FUNCTION q_air_dp
@@ -259,7 +258,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       !! ** Purpose : compute density of (moist) air with eq. of state
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, &  !: air temperature   [K]
          &                                        pqa, &  !: air spec. hum.    [kg/kg]
@@ -398,7 +397,7 @@ CONTAINS
       !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
       !!     => http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://sourceforge.net/p/aerobulk)
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: gamma_moist
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
