@@ -103,7 +103,8 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !!============================================================================
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
       CHARACTER(len=3), INTENT(in   )             ::   cver     ! version of COARE to use (use '3.0' if u don't know what to chose!'
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                   [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                              [m]
@@ -129,7 +130,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
       INTEGER :: j_itt
-      LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
@@ -187,12 +188,12 @@ CONTAINS
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX(t_zt , 0.0_wp)    ! who knows what's given on masked-continental regions...
-      q_zu = MAX(q_zt , 1.e-6_wp)  !               "
+      t_zu = MAX( t_zt , 0.0_wp  )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6_wp)   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-      dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
+      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -217,6 +218,7 @@ CONTAINS
       END SELECT
 
       z0     = zalpha*u_star*u_star/grav + 0.11*znu_a/u_star
+     z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
 
       ztmp2  = vkarmn/ztmp0
@@ -226,11 +228,14 @@ CONTAINS
 
       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
       ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number
-      ztmp1 = 0.5 + SIGN(0.5_wp , ztmp2)
+
+      !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
+      ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
-      !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
-      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))
+      !!      
+      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &   ! Ribu < 0
+         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))                 ! Ribu > 0
+      !#LOLO: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0[previous]*ztmp2" and not "ztmp0[previous]==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
@@ -241,19 +246,16 @@ CONTAINS
 
       ! What's need to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
-
-         zeta_t = zt*zeta_u/zu
-
          !! First update of values at zu (or zt for wind)
+         zeta_t = zt*zeta_u/zu
          ztmp0 = psi_h_coare(zeta_u) - psi_h_coare(zeta_t)
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
          q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
-
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
-
+         !
+         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       END IF
 
       !! ITERATION BLOCK
@@ -316,13 +318,16 @@ CONTAINS
          END IF
 
          !! SKIN related part
+         !! -----------------
          IF( l_use_skin ) THEN
             CALL CSWL_COARE( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
                &             zrhoa, rad_lw, zQsw, zdelta, T_s, q_s )
          END IF
 
-         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
+         IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
+            dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+            dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+         END IF
 
       END DO
       !

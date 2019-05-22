@@ -84,6 +84,7 @@ CONTAINS
       !!                and the SLP are provided as arguments!
       !!
       !! ** Method : Monin Obukhov Similarity Theory
+      !!======================================================================================
       !!
       !! INPUT :
       !! -------
@@ -234,9 +235,9 @@ CONTAINS
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       func_m = ztmp0*ztmp2 ! temporary array !!
-      !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
-      func_h = (1.-ztmp1)*(func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1*(func_m*(1. + 27./9.*ztmp2/ztmp0))
+      func_h = (1.-ztmp1)*(func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  Ribu < 0 ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1*(func_m*(1. + 27./9.*ztmp2/func_m))                !  Ribu > 0
+      !#LOLO: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
@@ -351,8 +352,8 @@ CONTAINS
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
             q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given            
          END IF
-         
-         IF( .NOT. l_zt_equal_zu ) THEN
+
+         IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
@@ -362,7 +363,7 @@ CONTAINS
       Cd = vkarmn*vkarmn/(func_m*func_m)
       Ch = vkarmn*vkarmn/(func_m*func_h)
       ztmp1 = zu + z0
-      ztmp2 = log(ztmp1/z0q) - psi_h_ecmwf(ztmp1*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q ztmp1 is still zu+z0!
+      ztmp2 = log(ztmp1/z0q) - psi_h_ecmwf(ztmp1*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = vkarmn*vkarmn/(func_m*ztmp2)
 
       !Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
