@@ -191,7 +191,7 @@ CONTAINS
       ! Identical first gess as in COARE, with IFS parameter values though
       !
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
@@ -207,8 +207,8 @@ CONTAINS
       q_zu = MAX( q_zt , 1.e-6_wp)   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
+      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -221,6 +221,7 @@ CONTAINS
       u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn0*u_star*u_star/grav + 0.11*znu_a/u_star
+      z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
 
       ztmp2  = vkarmn/ztmp0
@@ -232,10 +233,10 @@ CONTAINS
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
-      ztmp0 = ztmp0*ztmp2
+      func_m = ztmp0*ztmp2 ! temporary array !!
       !!             Ribu < 0                                 Ribu > 0   Beta = 1.25
-      func_h = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))
+      func_h = (1.-ztmp1)*(func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &  ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1*(func_m*(1. + 27./9.*ztmp2/ztmp0))
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
@@ -246,22 +247,25 @@ CONTAINS
 
       ! What's need to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
-         !
          !! First update of values at zu (or zt for wind)
          ztmp0 = psi_h_ecmwf(func_h) - psi_h_ecmwf(zt*func_h/zu)    ! zt*func_h/zu == zeta_t
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
          q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
-
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
          !
-      ENDIF
+         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      END IF
+
+
+      !! => that was same first guess as in COARE...
+
 
       !! First guess of inverse of Monin-Obukov length (1/L) :
       ztmp0 = (1. + rctv0*q_zu)  ! the factor to apply to temp. to get virt. temp...
-      Linv  =  grav*vkarmn*(t_star*ztmp0 + rctv0*t_zu*q_star) / ( u_star*u_star * t_zu*ztmp0 )
+      Linv  =  grav*vkarmn*(t_star*ztmp0 + rctv0*t_zu*q_star) / MAX( u_star*u_star * t_zu*ztmp0 , 1.E-9 ) ! #LOLO
+      Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
       !! Functions such as  u* = U_blk*vkarmn/func_m
       ztmp0 = zu*Linv
@@ -275,38 +279,41 @@ CONTAINS
          ztmp0 = Ri_bulk(zu, t_zu, dt_zu, q_zu, dq_zu, U_blk)
 
          !! New estimate of the inverse of the Monin-Obukhon length (Linv == zeta/zu) :
-         Linv = ztmp0*func_m*func_m/func_h / zu ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
+         Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
          !! Note: it is slightly different that the L we would get with the usual
          !! expression, as in coare algorithm or in 'mod_thermo.f90' (One_on_L_MO())
 
          !! Update func_m with new Linv:
-         func_m = LOG(zu) -LOG(z0) - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf(z0*Linv)
+         ztmp1 = zu + z0
+         func_m = LOG(ztmp1) -LOG(z0) - psi_m_ecmwf(ztmp1*Linv) + psi_m_ecmwf(z0*Linv)
 
          !! Need to update roughness lengthes:
          u_star = U_blk*vkarmn/func_m
-         ztmp1  = u_star*u_star
-         ztmp2  = znu_a/u_star
-         z0     = alpha_M*ztmp2 + charn0*ztmp1/grav
-         z0t    = alpha_H*ztmp2                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = alpha_Q*ztmp2
+         ztmp2  = u_star*u_star
+         ztmp1  = znu_a/u_star
+         z0    = alpha_M*ztmp1 + charn0*ztmp2/grav
+         z0t    = alpha_H*ztmp1                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+         z0q    = alpha_Q*ztmp1
 
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
-         ztmp1 = ztmp1 * MAX( -zi0*Linv/vkarmn ,0._wp )**(2./3.) ! => w*^2
+         ! Only true when unstable (L<0) => when ztmp0 < 0 => - !!!
+         ztmp2 = ztmp2 * ( MAX(-zi0*Linv/vkarmn , 0._wp))**(2._wp/3._wp) ! => w*^2  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
          !! => equivalent using Beta=1 (gustiness parameter, 1.25 for COARE, also zi0=600 in COARE..)
-         U_blk = MAX(SQRT(U_zu*U_zu + ztmp1), 0.2_wp)    ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+         U_blk = MAX( SQRT(U_zu*U_zu + ztmp2) , 0.2_wp )              ! eq.3.17, Chap.3, p.32, IFS doc - Cy31r1
+         ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+
 
          !! Need to update "theta" and "q" at zu in case they are given at different heights
          !! as well the air-sea differences:
          IF( .NOT. l_zt_equal_zu ) THEN
-
             !! Arrays func_m and func_h are free for a while so using them as temporary arrays...
-            func_h = psi_h_ecmwf(zu*Linv) ! temporary array !!!
-            func_m = psi_h_ecmwf(zt*Linv) ! temporary array !!!
+            func_h = psi_h_ecmwf((zu+z0)*Linv) ! temporary array !!!
+            func_m = psi_h_ecmwf((zt+z0)*Linv) ! temporary array !!!
 
             ztmp2  = psi_h_ecmwf(z0t*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0t) - ztmp0)
             t_star = dt_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
@@ -314,18 +321,18 @@ CONTAINS
 
             ztmp2  = psi_h_ecmwf(z0q*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0q) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0q) - ztmp0)
             q_star = dq_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
             q_zu   = q_zt - q_star/vkarmn*ztmp1
-
          END IF
 
          !! Updating because of updated z0 and z0t and new Linv...
-         ztmp0  = zu*Linv
-         func_m = LOG(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
-         func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
+         ztmp1 = zu + z0
+         ztmp0 = ztmp1*Linv
+         func_m = log(ztmp1) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
+         func_h = log(ztmp1) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
          !! SKIN related part
          !! -----------------
@@ -335,29 +342,32 @@ CONTAINS
             Ch = vkarmn*vkarmn/(func_m*func_h)
             ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
             Ce = vkarmn*vkarmn/(func_m*ztmp1)
-
             ! Non-Solar heat flux to the ocean:
             ztmp1 = U_blk*zrhoa     ! rho*U10
             ztmp2 = T_s*T_s
             ztmp1 = ztmp1 * ( Ce*L0vap*(q_zu - q_s) + Ch*Cp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
                &     + 0.97*(rad_lw - sigma0*ztmp2*ztmp2)                        ! Net longwave flux
-
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
-
-            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
-
+            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given            
          END IF
-
-         dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1e-6_wp), dt_zu )
-         dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1e-9_wp), dq_zu )
-
+         
+         IF( .NOT. l_zt_equal_zu ) THEN
+            dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+            dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+         END IF
+         
       END DO
 
       Cd = vkarmn*vkarmn/(func_m*func_m)
       Ch = vkarmn*vkarmn/(func_m*func_h)
-      ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
-      Ce = vkarmn*vkarmn/(func_m*ztmp1)
+      ztmp1 = zu + z0
+      ztmp2 = log(ztmp1/z0q) - psi_h_ecmwf(ztmp1*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q ztmp1 is still zu+z0!
+      Ce = vkarmn*vkarmn/(func_m*ztmp2)
+
+      !Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
+      !Chn = vkarmn*vkarmn / (log(ztmp1/z0t)*log(ztmp1/z0t))
+      !Cen = vkarmn*vkarmn / (log(ztmp1/z0q)*log(ztmp1/z0q))
 
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
@@ -371,7 +381,7 @@ CONTAINS
          DEALLOCATE ( zsst, zrhoa, zQsw ) ! Cool skin
       END IF
 
-   END SUBROUTINE turb_ecmwf
+   END SUBROUTINE TURB_ECMWF
 
 
    FUNCTION psi_m_ecmwf( pzeta )
@@ -399,22 +409,22 @@ CONTAINS
             !
             ! Unstable (Paulson 1970):
             !   eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
-            zx = SQRT(ABS(1. - 16.*zzeta))
-            ztmp = 1. + SQRT(zx)
+            zx = SQRT(ABS(1._wp - 16._wp*zzeta))
+            ztmp = 1._wp + SQRT(zx)
             ztmp = ztmp*ztmp
-            psi_unst = LOG( 0.125*ztmp*(1. + zx) )   &
-               &       -2.*ATAN( SQRT(zx) ) + 0.5*rpi
+            psi_unst = LOG( 0.125_wp*ztmp*(1._wp + zx) )   &
+               &       -2._wp*ATAN( SQRT(zx) ) + 0.5_wp*rpi
             !
             ! Unstable:
             ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
-            psi_stab = -2./3.*(zzeta - 5./0.35)*EXP(-0.35*zzeta) &
-               &       - zzeta - 2./3.*5./0.35
+            psi_stab = -2._wp/3._wp*(zzeta - 5._wp/0.35_wp)*EXP(-0.35_wp*zzeta) &
+               &       - zzeta - 2._wp/3._wp*5._wp/0.35_wp
             !
             ! Combining:
-            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
-            psi_m_ecmwf(ji,jj) = (1. - stab) * psi_unst & ! (zzeta < 0) Unstable
-               &                +      stab  * psi_stab   ! (zzeta > 0) Stable
+            psi_m_ecmwf(ji,jj) = (1._wp - stab) * psi_unst & ! (zzeta < 0) Unstable
+               &                +      stab  * psi_stab      ! (zzeta > 0) Stable
             !
          END DO
       END DO
@@ -445,21 +455,21 @@ CONTAINS
             !
             zzeta = MIN(pzeta(ji,jj) , 5._wp)   ! Very stable conditions (L positif and big!):
             !
-            zx  = ABS(1. - 16.*zzeta)**.25        ! this is actually (1/phi_m)**2  !!!
+            zx  = ABS(1._wp - 16._wp*zzeta)**.25        ! this is actually (1/phi_m)**2  !!!
             !                                     ! eq.3.19, Chap.3, p.33, IFS doc - Cy31r1
             ! Unstable (Paulson 1970) :
-            psi_unst = 2.*LOG(0.5*(1. + zx*zx))   ! eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
+            psi_unst = 2._wp*LOG(0.5_wp*(1._wp + zx*zx))   ! eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
             !
             ! Stable:
-            psi_stab = -2./3.*(zzeta - 5./0.35)*EXP(-0.35*zzeta) & ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
-               &       - ABS(1. + 2./3.*zzeta)**1.5 - 2./3.*5./0.35 + 1.
+            psi_stab = -2._wp/3._wp*(zzeta - 5._wp/0.35_wp)*EXP(-0.35_wp*zzeta) & ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
+               &       - ABS(1._wp + 2._wp/3._wp*zzeta)**1.5_wp - 2._wp/3._wp*5._wp/0.35_wp + 1._wp
             ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
             !
-            stab = 0.5 + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
+            stab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
             !
             !
-            psi_h_ecmwf(ji,jj) = (1. - stab) * psi_unst &   ! (zzeta < 0) Unstable
-               &                +    stab    * psi_stab     ! (zzeta > 0) Stable
+            psi_h_ecmwf(ji,jj) = (1._wp - stab) * psi_unst &   ! (zzeta < 0) Unstable
+               &                +    stab    * psi_stab        ! (zzeta > 0) Stable
             !
          END DO
       END DO
@@ -473,17 +483,18 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
-      REAL(wp),                     INTENT(in) :: pz       !: height above the sea [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptz, &   !: air temperature at pz m [K]
-         &                                        pdt, &   !: ptz - sst               [K]
-         &                                        pqz, &   !: air temperature at pz m [kg/kg]
-         &                                        pdq, &   !: pqz - ssq               [kg/kg]
-         &                                        pub      !: bulk wind speed         [m/s]
-      !!-------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk   !
+      !
+      REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptz   ! air temperature at pz m     [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptz - sst                   [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqz   ! air temperature at pz m [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqz - ssq               [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
+      !!----------------------------------------------------------------------------------
       !
       Ri_bulk =   grav*pz/(pub*pub)   &
-         &      * ( pdt/(ptz - 0.5*(pdt + grav*pz/(Cp_dry + Cp_vap*pqz))) &
+         &      * ( pdt/(ptz - 0.5_wp*(pdt + grav*pz/(Cp_dry + Cp_vap*pqz))) &
          &          + rctv0*pdq )
       !
    END FUNCTION Ri_bulk
@@ -548,14 +559,14 @@ CONTAINS
       !     1.2C Warm layer parametrization constants
       !
       !    ZFI = Fraction of solar radiation absorbed in warm layer (-)
-      ZFI = 1. -0.28*EXP(-71.5*rd0) -0.27*EXP(-2.8*rd0) - 0.45*EXP(-0.07*rd0)  !: Eq. 8.135
+      ZFI = 1. -0.28*EXP(-71.5_wp*rd0) -0.27*EXP(-2.8*rd0) - 0.45*EXP(-0.07*rd0)  !: Eq. 8.135
       !
-      ZCON3 = rd0*vkarmn*grav/(ZROADRW)**1.5
+      ZCON3 = rd0*vkarmn*grav/(ZROADRW)**1.5_wp
       ZCON4 = (rNu0 + 1.0)*vkarmn/rd0
       ZCON5 = (rNu0 + 1.0)/(rNu0*rd0)
       !
       !     1.3 Cool skin parametrization constants
-      ZCON2 = 16.*grav*zRhoCp_w*nu0_w**3/(k0_w**2)
+      ZCON2 = 16._wp*grav*zRhoCp_w*nu0_w**3/(k0_w**2)
       !
       ! Friction velocities
       ! "MAX( pustar(:,:), 1.E-4)" is u* in the air !
@@ -576,7 +587,7 @@ CONTAINS
             ! Non-solar heat loss to the atmosphere:
             zQnsol = MAX( 1._wp , - pQnsol(ji,jj) )
 
-            zlamb = 6.*(1. + (zQnsol*zalpha_w(ji,jj)*ZCON2/(zus_w2(ji,jj)*zus_w2(ji,jj)))**0.75)**(-1./3.)
+            zlamb = 6.*(1. + (zQnsol*zalpha_w(ji,jj)*ZCON2/(zus_w2(ji,jj)*zus_w2(ji,jj)))**0.75)**(-1./3._wp)
 
             zdelta = zlamb*nu0_w/zus_w(ji,jj)
 
@@ -621,7 +632,7 @@ CONTAINS
                !
                zsgn = 0.5 + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
                ztmp = MAX(ZDSST,0._wp)
-               zdl = (zsgn + 1.)*( zus_w2(ji,jj) * SQRT(ztmp/(5.*rd0*grav*zalpha_w(ji,jj)/rNu0)) ) & ! (ZDSST > 0.0 .AND. ZSRD < 0.0)
+               zdl = (zsgn + 1.)*( zus_w2(ji,jj) * SQRT(ztmp/(5._wp*rd0*grav*zalpha_w(ji,jj)/rNu0)) ) & ! (ZDSST > 0.0 .AND. ZSRD < 0.0)
                   &  +   zsgn   * ZSRD                                                  !   otherwize
                !
                zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
@@ -630,11 +641,11 @@ CONTAINS
                !! Stability function Phi_t(-z/L) (zdL is -z/L) :
                zsgn = 0.5 + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
                zdL2 = zdL*zdL
-               ZPHI =     zsgn     * (1. + (5.*zdL + 4.*zdL2)/(1. + 3.*zdL + 0.25*zdL2) ) &  ! (zdL > 0) Takaya et al.
-                  &  + (1. + zsgn) * ( 1./SQRT(1. - 16.*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
+               ZPHI =     zsgn     * (1. + (5._wp*zdL + 4.*zdL2)/(1. + 3._wp*zdL + 0.25*zdL2) ) &  ! (zdL > 0) Takaya et al.
+                  &  + (1. + zsgn) * ( 1./SQRT(1. - 16._wp*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
                !
                !! FOR zdL > 0.0, old relations:
-               !         ZPHI = 1.+5.*zdL                                ! Eq. 8.136 (Large et al. 1994)
+               !         ZPHI = 1.+5._wp*zdL                                ! Eq. 8.136 (Large et al. 1994)
                !         ZPHI = 1.+5.0*(zdL+zdL**2)/(1.0+3.0*zdL+zdL**2) ! SHEBA, Grachev et al. 2007
 
                !! Solving 11 by itteration with time step of zdt...
