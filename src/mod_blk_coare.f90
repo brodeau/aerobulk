@@ -36,11 +36,10 @@ MODULE mod_blk_coare
 
    PUBLIC :: TURB_COARE
 
-   !! COARE own values for given constants:
-   REAL(wp), PARAMETER ::  &
-      &   zi0     = 600.,  & !: scale height of the atmospheric boundary layer...1
-      &  Beta0    = 1.25,  & !: gustiness parameter
-      &  charn0_max = 0.028  !: for COARE 3.5:
+   !                   !! COARE own values for given constants:
+   REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
+   REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
+   REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5:
    !                         !:  -> VALUE above which the Charnock paramter levels off for winds > 18
 
 CONTAINS
@@ -218,7 +217,7 @@ CONTAINS
       END SELECT
 
       z0     = zalpha*u_star*u_star/grav + 0.11*znu_a/u_star
-     z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
 
       ztmp2  = vkarmn/ztmp0
@@ -226,16 +225,14 @@ CONTAINS
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
-      ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number
+      ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
 
       !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
-      !!      
-      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) &   ! Ribu < 0
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))                 ! Ribu > 0
-      !#LOLO: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0[previous]*ztmp2" and not "ztmp0[previous]==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
+      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  Ribu < 0
+         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))               !  Ribu > 0
+      !#LOLO: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
@@ -273,6 +270,7 @@ CONTAINS
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
+         !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
          IF( cver == '3.5' ) THEN
             !! Need to update Charnock parameter from neutral wind speed!
             ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
@@ -352,7 +350,7 @@ CONTAINS
    END SUBROUTINE turb_coare
 
 
-   FUNCTION alfa_charn_3p0(pwnd)
+   FUNCTION alfa_charn_3p0( pwnd )
       !!-------------------------------------------------------------------
       !! Compute the Charnock parameter as a function of the wind speed
       !!
@@ -369,6 +367,7 @@ CONTAINS
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) :: zw, zgt10, zgt18
+      !!-------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
