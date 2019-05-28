@@ -222,6 +222,7 @@ CONTAINS
       z0     = charn0*u_star*u_star/grav + 0.11*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = MIN(ABS(z0t), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
       ztmp2  = vkarmn/ztmp0
       Cd     = ztmp2*ztmp2    ! first guess of Cd
@@ -290,10 +291,10 @@ CONTAINS
          u_star = U_blk*vkarmn/func_m
          ztmp2  = u_star*u_star
          ztmp1  = znu_a/u_star
-         z0    = alpha_M*ztmp1 + charn0*ztmp2/grav
-         z0t    = alpha_H*ztmp1                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = alpha_Q*ztmp1
-
+         z0     = MIN( ABS( alpha_M*ztmp1 + charn0*ztmp2/grav ) , 0.001)
+         z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+         z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001)
+         
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
          ! Only true when unstable (L<0) => when ztmp0 < 0 => - !!!
@@ -661,5 +662,5 @@ CONTAINS
 
    END SUBROUTINE CSWL_ECMWF
 
-
+   !!======================================================================
 END MODULE mod_blk_ecmwf
