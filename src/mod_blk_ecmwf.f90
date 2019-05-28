@@ -37,15 +37,15 @@ MODULE mod_blk_ecmwf
    PUBLIC :: TURB_ECMWF
 
    !! ECMWF own values for given constants, taken form IFS documentation...
-   REAL(wp),    PARAMETER :: &
-      & charn0 = 0.018, &      !:  Charnock constant (pretty high value here!!!
-                                !!                       !:   =>  Usually 0.011 for moderate winds)
-                                !!  Note that in the ECMWF system, when coupled to tje wave model, the
-                                !!  the Charnock parameter is provided by the wave model!
-      &   zi0     = 1000.,  &  !: scale height of the atmospheric boundary layer...1
-      &  Beta0    = 1. ,    &  !: gustiness parameter ( = 1.25 in COAREv3)
-      &   alpha_M = 0.11,   &  !: For roughness length (smooth surface term)
-      &   alpha_H = 0.40,   &  !: (Chapter 3, p.34, IFS doc Cy31r1)
+   REAL(wp),  PARAMETER :: &
+      &    charn0 = 0.018, &      !:  Charnock constant (pretty high value here!!!
+      !!                          !:   =>  Usually ~ 0.011 for moderate winds)
+                                  !:  Note that in the ECMWF system, when coupled to the wave model, the
+      !!                          !:  the Charnock parameter is provided by the wave model!
+      &   zi0     = 1000.,  &     !: scale height of the atmospheric boundary layer...1
+      &   Beta0   = 1. ,    &     !: gustiness parameter ( = 1.25 in COAREv3)
+      &   alpha_M = 0.11,   &     !: For roughness length (smooth surface term)
+      &   alpha_H = 0.40,   &     !: (Chapter 3, p.34, IFS doc Cy31r1)
       &   alpha_Q = 0.62
 
    !! Cool-Skin / Warm-Layer related parameters:
