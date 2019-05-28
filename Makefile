@@ -4,8 +4,9 @@
 include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
-	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
+	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x
 
+CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
