@@ -36,17 +36,16 @@ MODULE mod_blk_ecmwf
 
    PUBLIC :: TURB_ECMWF
 
-   !! ECMWF own values for given constants, taken form IFS documentation...
-   REAL(wp),  PARAMETER :: &
-      &    charn0 = 0.018, &      !:  Charnock constant (pretty high value here!!!
-      !!                          !:   =>  Usually ~ 0.011 for moderate winds)
-                                  !:  Note that in the ECMWF system, when coupled to the wave model, the
-      !!                          !:  the Charnock parameter is provided by the wave model!
-      &   zi0     = 1000.,  &     !: scale height of the atmospheric boundary layer...1
-      &   Beta0   = 1. ,    &     !: gustiness parameter ( = 1.25 in COAREv3)
-      &   alpha_M = 0.11,   &     !: For roughness length (smooth surface term)
-      &   alpha_H = 0.40,   &     !: (Chapter 3, p.34, IFS doc Cy31r1)
-      &   alpha_Q = 0.62
+   !                   !! ECMWF own values for given constants, taken form IFS documentation...
+   REAL(wp), PARAMETER ::   charn0 = 0.018    ! Charnock constant (pretty high value here !!!
+   !                                          !    =>  Usually 0.011 for moderate winds)
+   REAL(wp), PARAMETER ::   zi0     = 1000.   ! scale height of the atmospheric boundary layer...1
+   REAL(wp), PARAMETER ::   Beta0    = 1.     ! gustiness parameter ( = 1.25 in COAREv3)
+   REAL(wp), PARAMETER ::   alpha_M = 0.11    ! For roughness length (smooth surface term)
+   REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
+   REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
+
+   !!!INTEGER , PARAMETER ::   nb_itt = 5        ! number of itterations
 
    !! Cool-Skin / Warm-Layer related parameters:
    REAL(wp),    PARAMETER :: &
@@ -64,27 +63,28 @@ MODULE mod_blk_ecmwf
    !                            !:    => ACCEPTABLE IN MOST CONDITIONS ! (UNLESS: sunny + very calm/low-wind conditions)
    !                            !:  => Otherwize use "nb_itt_wl = 10"
 
+
+
+
+   !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE TURB_ECMWF( zt, zu, T_s, t_zt, q_s, q_zt, U_zu,       &
-      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,            &
-      &                   rad_sw, rad_lw, slp,                      &
+   SUBROUTINE TURB_ECMWF( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
+      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+      &                   rad_sw, rad_lw, slp,                &
       &                   xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
       !!
-      !!            2015: L. Brodeau
-      !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to IFS doc. (cycle 40)
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
+      !!                Returns the effective bulk wind speed at 10m to be used in the bulk formulas
       !!
       !!                Applies the cool-skin warm-layer correction of the SST to T_s
       !!                if the downwelling radiative fluxes at the surface (rad_sw & rad_lw)
       !!                and the SLP are provided as arguments!
       !!
-      !! ** Method : Monin Obukhov Similarity Theory
-      !!======================================================================================
       !!
       !! INPUT :
       !! -------
@@ -97,7 +97,7 @@ CONTAINS
       !! INPUT/OUTPUT:
       !! -------------
       !!    *  T_s  : SST or skin temperature                                 [K]
-      !!    *  q_s  : SSQ aka saturation specific humidity (at temp. T_s)     [kg/kg]
+      !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
@@ -130,7 +130,7 @@ CONTAINS
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   q_s      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity                   [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
@@ -162,7 +162,6 @@ CONTAINS
       LOGICAL :: l_use_skin = .FALSE.
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                zrhoa,  &  ! densitty of air
          &                zQsw       ! thickness of the viscous (skin) layer
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
@@ -181,7 +180,7 @@ CONTAINS
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
          l_use_skin = .TRUE.
-         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zQsw(jpi,jpj) )
+         ALLOCATE ( zsst(jpi,jpj) , zQsw(jpi,jpj) )
       END IF
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -198,7 +197,6 @@ CONTAINS
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
          q_s    = 0.98*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
@@ -283,10 +281,10 @@ CONTAINS
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
          !! Note: it is slightly different that the L we would get with the usual
          !! expression, as in coare algorithm or in 'mod_thermo.f90' (One_on_L_MO())
+         Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
          !! Update func_m with new Linv:
-         ztmp1 = zu + z0
-         func_m = LOG(ztmp1) -LOG(z0) - psi_m_ecmwf(ztmp1*Linv) + psi_m_ecmwf(z0*Linv)
+         func_m = LOG(zu) -LOG(z0) - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf(z0*Linv) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
 
          !! Need to update roughness lengthes:
          u_star = U_blk*vkarmn/func_m
@@ -309,12 +307,12 @@ CONTAINS
          !! as well the air-sea differences:
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Arrays func_m and func_h are free for a while so using them as temporary arrays...
-            func_h = psi_h_ecmwf((zu+z0)*Linv) ! temporary array !!!
-            func_m = psi_h_ecmwf((zt+z0)*Linv) ! temporary array !!!
+            func_h = psi_h_ecmwf(zu*Linv) ! temporary array !!!
+            func_m = psi_h_ecmwf(zt*Linv) ! temporary array !!!
 
             ztmp2  = psi_h_ecmwf(z0t*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0t) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
             t_star = dt_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
@@ -322,7 +320,7 @@ CONTAINS
 
             ztmp2  = psi_h_ecmwf(z0q*Linv)
             ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu+z0) - LOG(z0q) - ztmp0)
+            ztmp1  = vkarmn/(LOG(zu) - LOG(z0q) - ztmp0)
             q_star = dq_zu*ztmp1
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
@@ -330,10 +328,9 @@ CONTAINS
          END IF
 
          !! Updating because of updated z0 and z0t and new Linv...
-         ztmp1 = zu + z0
-         ztmp0 = ztmp1*Linv
-         func_m = log(ztmp1) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
-         func_h = log(ztmp1) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
+         ztmp0 = zu*Linv
+         func_m = log(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
+         func_h = log(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
          !! SKIN related part
          !! -----------------
@@ -344,13 +341,13 @@ CONTAINS
             ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
             Ce = vkarmn*vkarmn/(func_m*ztmp1)
             ! Non-Solar heat flux to the ocean:
-            ztmp1 = U_blk*zrhoa     ! rho*U10
+            ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
             ztmp2 = T_s*T_s
             ztmp1 = ztmp1 * ( Ce*L0vap*(q_zu - q_s) + Ch*Cp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
                &     + 0.97*(rad_lw - sigma0*ztmp2*ztmp2)                        ! Net longwave flux
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
-            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given            
+            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
          END IF
 
          IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
@@ -358,17 +355,16 @@ CONTAINS
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-      END DO
+      END DO !DO j_itt = 1, nb_itt
 
       Cd = vkarmn*vkarmn/(func_m*func_m)
       Ch = vkarmn*vkarmn/(func_m*func_h)
-      ztmp1 = zu + z0
-      ztmp2 = log(ztmp1/z0q) - psi_h_ecmwf(ztmp1*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
+      ztmp2 = log(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = vkarmn*vkarmn/(func_m*ztmp2)
 
-      !Cdn = vkarmn*vkarmn / (log(ztmp1/z0 )*log(ztmp1/z0 ))
-      !Chn = vkarmn*vkarmn / (log(ztmp1/z0t)*log(ztmp1/z0t))
-      !Cen = vkarmn*vkarmn / (log(ztmp1/z0q)*log(ztmp1/z0q))
+      !Cdn = vkarmn*vkarmn / (log(zu/z0 )*log(zu/z0 ))
+      !Chn = vkarmn*vkarmn / (log(zu/z0t)*log(zu/z0t))
+      !Cen = vkarmn*vkarmn / (log(zu/z0q)*log(zu/z0q))
 
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
@@ -379,7 +375,7 @@ CONTAINS
          &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
 
       IF( l_use_skin ) THEN
-         DEALLOCATE ( zsst, zrhoa, zQsw ) ! Cool skin
+         DEALLOCATE ( zsst, zQsw ) ! Cool skin
       END IF
 
    END SUBROUTINE TURB_ECMWF
@@ -654,14 +650,14 @@ CONTAINS
                ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
                zdT_w(ji,jj) = MAX( 0._wp , (rmult*ZDSST + ZCON5*ZSRD*zdt)/ZZ )
 
-            END DO
-         END DO
+            END DO ! DO ji = 1, jpi
+         END DO ! DO jj = 1, jpj
 
          ! 3. Apply warm layer and cool skin effects
          !------------------------------------------
          pTs(:,:) = pSST(:,:) + zdT_w(:,:) + zdT_c(:,:)
 
-      END DO  !: sub-itteration
+      END DO  ! DO jwl = 1, nbi !: sub-itteration
 
    END SUBROUTINE CSWL_ECMWF
 
