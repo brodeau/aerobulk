@@ -13,3 +13,6 @@ obj
 mod
 out
 err
+*.eps
+*.gp
+dat
