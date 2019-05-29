@@ -10,8 +10,9 @@ CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
+#-L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
-LIB = -L./lib -laerobulk -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
+LIB = -L./lib -laerobulk 
 
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_thermo.f90 \
