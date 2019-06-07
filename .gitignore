@@ -8,11 +8,12 @@
 make.macro
 *.bak
 bin
-lib
-obj
-mod
 out
 err
 *.eps
 *.gp
 dat
+mod
+obj
+lib
+
