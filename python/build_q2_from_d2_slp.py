@@ -30,13 +30,21 @@ elif iconv == 2:
     cv_lat = 'latitude'
 
     
-if len(sys.argv) != 2:
-    print 'Usage: '+sys.argv[0]+' <IN_FILE_D2.nc>'
+if not len(sys.argv) in [2,3]:
+    print 'Usage: '+sys.argv[0]+' <IN_FILE_D2.nc> (<DIR_OUT>)'
     sys.exit(0)
 
 cf_d2   = sys.argv[1]
 cf_p0 = string.replace(cf_d2, cv_d2, cv_p0)
+
+
 cf_q2 = basename(string.replace(cf_d2, cv_d2, cv_q2))
+
+cdir_out='.'
+if len(sys.argv) == 3:
+    cdir_out = sys.argv[2]
+    cf_q2 = cdir_out+'/'+cf_q2
+
 print '\n *** Will generate file '+cf_q2+' !\n'
 
 
@@ -55,7 +63,9 @@ clnm_lat = f_d2_in.variables[cv_lat].long_name
 print 'LATITUDE: ', cunt_lat, clnm_lat
 
 # Extracting time 1D array:
-vtime     = f_d2_in.variables['time'][:] ; cunt_time = f_d2_in.variables['time'].units
+vtime     = f_d2_in.variables['time'][:]
+cunt_time = f_d2_in.variables['time'].units
+ccal_time = f_d2_in.variables['time'].calendar
 print 'TIME: ', cunt_time, '\n'
 f_d2_in.close()
 
@@ -64,8 +74,7 @@ f_d2_in.close()
 
 
 Nt = len(vtime)
-
-
+Nt=4
 print 'Nt = ', Nt
 
 for jt in range(Nt):
@@ -118,30 +127,29 @@ for jt in range(Nt):
         f_out.createDimension('time', None)
     
         # Variables
-        id_lon = f_out.createVariable(cv_lon,'f4',(cv_lon,),              zlib=True)
-        id_lat = f_out.createVariable(cv_lat,'f4',(cv_lat,),              zlib=True)
-        id_tim = f_out.createVariable('time','f4',('time',)               zlib=True)
-        id_q2  = f_out.createVariable(cv_q2, 'f4',('time',cv_lat,cv_lon,) zlib=True)
+        id_lon = f_out.createVariable(cv_lon,'f4',(cv_lon,),               zlib=True)
+        id_lat = f_out.createVariable(cv_lat,'f4',(cv_lat,),               zlib=True)
+        id_tim = f_out.createVariable('time','f4',('time',),               zlib=True)
+        id_q2  = f_out.createVariable(cv_q2, 'f4',('time',cv_lat,cv_lon,), zlib=True)
     
         # Attributes
-        id_tim.units = cunt_time
+        id_tim.units    = cunt_time
+        id_tim.calendar = ccal_time
     
-        id_lat.long_name     = clnm_lat
         id_lat.units         = cunt_lat
+        id_lat.long_name     = clnm_lat
         #id_lat.standard_name = csnm_lat
     
-        id_lon.long_name     = clnm_lon
         id_lon.units         = cunt_lon
+        id_lon.long_name     = clnm_lon
         #id_lon.standard_name = csnm_lon
     
-        id_tim.units         = cunt_time
-    
-        id_q2.long_name = 'Surface specific humidity at 2m, built from '+cv_d2+' and '+cv_p0
         id_q2.units = 'kg/kg'
+        id_q2.long_name = 'Surface specific humidity at 2m, built from '+cv_d2+' and '+cv_p0
         id_q2.code  = '133'
         id_q2.table = '128'
     
-        f_out.About = 'Created by BaraKuda using '+cv_p0+' and '+cv_d2+'. [https://github.com/brodeau/barakuda]'
+        f_out.About = 'Created with "build_q2_from_d2_slp.py" of AeroBulk, using '+cv_p0+' and '+cv_d2+'. [https://github.com/brodeau/aerobulk]'
     
         # Filling variables:
         id_lat[:] = vlat[:]

@@ -72,7 +72,7 @@ def e_sat(rT):
     #
     # Goff, J. A., 1957: Saturation pressure of water on the new kelvin
     # temperature scale. Transactions of the American society of heating
-    # and ventilating engineers, 347–354.
+    # and ventilating engineers, 347--354.
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #
     ztmp = nmp.zeros(nmp.shape(rT))
@@ -82,8 +82,8 @@ def e_sat(rT):
     #                    + 1.50475*10.^(-4)*(1. - 10.^(-8.2969*(rT/rtt0 - 1.)) ) \
     #                    + 0.42873*10.^(-3)*(10.^(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
     #
-    e_sat = 100.*( nmp.power(10.,(10.79574*(1. - ztmp) - 5.028*nmp.log10(zrtrt0) \
-                   + 1.50475*0.0001*(1. - nmp.power(10.,(-8.2969*(zrtrt0 - 1.))) ) \
+    e_sat = 100.*( nmp.power(10.,(10.79574*(1. - ztmp) - 5.028*nmp.log10(1./ztmp) \
+                   + 1.50475*0.0001*(1. - nmp.power(10.,(-8.2969*(1./ztmp - 1.))) ) \
                    + 0.42873*0.001 *(nmp.power(10.,(4.76955*(1. - ztmp))) - 1.) + 0.78614 ) ) )
     #
     del ztmp
