@@ -74,7 +74,6 @@ f_d2_in.close()
 
 
 Nt = len(vtime)
-Nt=4
 print 'Nt = ', Nt
 
 for jt in range(Nt):
