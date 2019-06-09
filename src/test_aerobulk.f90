@@ -40,7 +40,7 @@ PROGRAM TEST_AEROBULK
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
 
    REAL(wp), DIMENSION(lx,ly) :: sst, Ts, qsat_zt, SLP, &
-      &  W10, t_zt, theta_zt, q_zt, RH_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
+      &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
       &  tmp
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
@@ -51,6 +51,7 @@ PROGRAM TEST_AEROBULK
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
+      &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
       &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
    !                                       !: (Cool Skin Warm Layer parameterization)
    !                                       !:  => only in COARE and ECMWF
@@ -78,6 +79,9 @@ PROGRAM TEST_AEROBULK
 
       CASE('-r')
          l_use_rh = .TRUE.
+
+      CASE('-d')
+         l_use_dp = .TRUE.
 
       CASE('-S')
          l_use_cswl = .TRUE.
@@ -146,11 +150,18 @@ PROGRAM TEST_AEROBULK
    qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
 
    IF ( l_use_rh ) THEN
-      WRITE(6,*) 'Give relative humidity at ',trim(czt),' (%):'
+      WRITE(6,*) 'Give relative humidity at ',trim(czt),' [%]:'
       READ(*,*) RH_zt
       RH_zt = 1.E-2*RH_zt
       q_zt = q_air_rh(RH_zt, t_zt, SLP)
       WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+   ELSEIF ( l_use_dp ) THEN
+      WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
+      READ(*,*) d_zt
+      d_zt = d_zt + rt0
+      q_zt = q_air_dp(d_zt, SLP)
+      WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
       !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
    ELSE
       WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
