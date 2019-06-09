@@ -6,8 +6,7 @@ import sys
 import numpy as nmp
 from netCDF4 import Dataset
 import string
-
-from os.path import basename
+from os.path import exists,basename
 
 import aerobulk_physf as abp
 
@@ -35,7 +34,7 @@ rmiss = -9999.
 def __chck4f__(cf, script_name=''):
     cmesg = 'ERROR: File '+cf+' does not exist !!!'
     if script_name != '': cmesg = 'ERROR in script '+script_name+': File '+cf+' does not exist !!!'
-    if not os.path.exists(cf):
+    if not exists(cf):
         print cmesg ; sys.exit(0)
     else:
         print ' *** will open file '+cf
@@ -70,10 +69,10 @@ print '\n *** Will generate file '+cf_q2+' !\n'
 
 
 if l_mask:
-    print ' *** Opening land-sea mask file...'
-    f_lsm_in = Dataset(cf_d2)
+    print ' *** Opening land-sea mask file... '+cf_lsm
+    f_lsm_in = Dataset(cf_lsm)
     xmask = f_lsm_in.variables['lsm'][:,:]
-    f_d2_in.close()
+    f_lsm_in.close()
     print ' *** Land-sea mask read!\n'
     idx_land = nmp.where(xmask < 0.5)
     del xmask
@@ -106,6 +105,7 @@ f_d2_in.close()
 
 
 Nt = len(vtime)
+#Nt=4
 print 'Nt = ', Nt
 
 for jt in range(Nt):
@@ -164,8 +164,12 @@ for jt in range(Nt):
         id_lon = f_out.createVariable(cv_lon,'f4',(cv_lon,),               zlib=True)
         id_lat = f_out.createVariable(cv_lat,'f4',(cv_lat,),               zlib=True)
         id_tim = f_out.createVariable('time','f4',('time',),               zlib=True)
-        id_q2  = f_out.createVariable(cv_q2, 'f4',('time',cv_lat,cv_lon,), zlib=True)
-    
+        
+        if l_mask:
+            id_q2  = f_out.createVariable(cv_q2, 'f4',('time',cv_lat,cv_lon,), zlib=True, fill_value=rmiss)
+        else:
+            id_q2  = f_out.createVariable(cv_q2, 'f4',('time',cv_lat,cv_lon,), zlib=True)
+
         # Attributes
         id_tim.units    = cunt_time
         id_tim.calendar = ccal_time
@@ -178,7 +182,6 @@ for jt in range(Nt):
         id_lon.long_name     = clnm_lon
         #id_lon.standard_name = csnm_lon
 
-        if l_mask: id_q2._FillValue = rmiss
         id_q2.units = 'kg/kg'
         id_q2.long_name = 'Surface specific humidity at 2m, built from '+cv_d2+' and '+cv_p0
         id_q2.code  = '133'
