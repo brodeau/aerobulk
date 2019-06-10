@@ -155,7 +155,7 @@ for jt in range(Nt):
         #id_out.code  = '133'
         #id_out.table = '128'
     
-        f_out.About = cv_in+'masked and deflated with "mask_field_ecmwf.py" of AeroBulk. [https://github.com/brodeau/aerobulk].'
+        f_out.About = cv_in+' masked and deflated with "mask_field_ecmwf.py" of AeroBulk. [https://github.com/brodeau/aerobulk].'
     
         # Filling variables:
         id_lat[:] = vlat[:]
