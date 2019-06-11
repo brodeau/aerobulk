@@ -50,9 +50,6 @@ if not len(sys.argv) in [2,3]:
 cf_d2   = sys.argv[1]
 cf_p0 = string.replace(cf_d2, cv_d2, cv_p0)
 
-
-cf_q2 = basename(string.replace(cf_d2, cv_d2, cv_q2))
-
 #cdir_out='.'
 l_mask = False
 if len(sys.argv) == 3:
@@ -61,10 +58,15 @@ if len(sys.argv) == 3:
     l_mask = True
     cf_lsm = sys.argv[2]
 
+
+cf_q2 = basename(string.replace(cf_d2, cv_d2, cv_q2))
+
 __chck4f__(cf_d2)
 __chck4f__(cf_p0)
-if l_mask: __chck4f__(cf_lsm)
-    
+if l_mask:
+    __chck4f__(cf_lsm)
+    cf_q2 = basename(string.replace(cf_q2, '.nc', '_masked.nc'))
+
 print '\n *** Will generate file '+cf_q2+' !\n'
 
 
