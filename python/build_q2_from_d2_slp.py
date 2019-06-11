@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# L. Brodeau, Feb.2001
+# L. Brodeau, June 2019
 
 import sys
 import numpy as nmp
