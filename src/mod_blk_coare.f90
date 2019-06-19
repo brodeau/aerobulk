@@ -388,38 +388,6 @@ CONTAINS
    END FUNCTION alfa_charn_3p0
 
 
-   FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
-      !!------------------------------------------------------------------------
-      !!
-      !! Evaluates the 1./(Monin Obukhov length) from air temperature and
-      !!  specific humidity, and frictional scales u*, t* and q*
-      !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha,  &  !: average potetntial air temperature [K]
-         &                                        pqa,   &  !: average specific humidity of air   [kg/kg]
-         &                                      pus, pts, pqs   !: frictional velocity, temperature and humidity
-      !
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) ::     zqa          ! local scalar
-      !!-------------------------------------------------------------------
-      !
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            !
-            zqa = (1. + rctv0*pqa(ji,jj))
-            !
-            One_on_L(ji,jj) =  grav*vkarmn*(pts(ji,jj)*zqa + rctv0*ptha(ji,jj)*pqs(ji,jj)) &
-               &                      / ( pus(ji,jj)*pus(ji,jj) * ptha(ji,jj)*zqa )
-            !
-         END DO
-      END DO
-      !
-   END FUNCTION One_on_L
-
-
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum

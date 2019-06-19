@@ -17,4 +17,5 @@ mod
 obj
 lib
 *.pyc
+*.png
 

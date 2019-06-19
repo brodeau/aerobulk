@@ -263,10 +263,8 @@ CONTAINS
 
 
       !! First guess of inverse of Monin-Obukov length (1/L) :
-      ztmp0 = (1. + rctv0*q_zu)  ! the factor to apply to temp. to get virt. temp...
-      Linv  =  grav*vkarmn*(t_star*ztmp0 + rctv0*t_zu*q_star) / MAX( u_star*u_star * t_zu*ztmp0 , 1.E-9 ) ! #LOLO
-      Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO
-
+      Linv = One_on_L( t_zu, q_zu, u_star, t_star, q_star )
+      
       !! Functions such as  u* = U_blk*vkarmn/func_m
       ztmp0 = zu*Linv
       func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)

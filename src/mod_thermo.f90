@@ -17,7 +17,7 @@ MODULE mod_thermo
 
    PUBLIC :: visc_air, Lvap, e_sat, e_sat_buck, e_air, cp_air, rh_air, &
       &      rho_air, rho_air_adv, q_sat, q_air_rh, q_air_dp, q_sat_simple, &
-      &      One_on_L_MO, gamma_moist
+      &      gamma_moist, One_on_L
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -361,36 +361,6 @@ CONTAINS
 
    END FUNCTION q_sat_simple
 
-
-
-   FUNCTION One_on_L_MO(theta_a, q_a, us, ts, qs)
-
-      !! ********************************************************************************
-      !! Evaluates the 1./(Monin Obukhov length) from average temperature, specific humidity
-      !! and frictional u, t and q
-      !! 2015: L. Brodeau
-      !! ********************************************************************************
-
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: theta_a,  &  !: average potetntial air temperature [K]
-         &                                q_a,      &  !: average specific humidity of air   [kg/kg]
-         &                                us, ts, qs   !: frictional velocity, temperature and humidity
-
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L_MO         !: 1./(Monin Obukhov length) [m^-1]
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: rqa
-
-      ALLOCATE ( rqa(jpi,jpj) )
-
-      rqa = (1. + rctv0*q_a)
-
-      One_on_L_MO =  grav*vkarmn*(ts*rqa + rctv0*theta_a*qs) / ( us*us * theta_a*rqa )
-
-      DEALLOCATE ( rqa )
-
-   END FUNCTION One_on_L_MO
-
-
-
    FUNCTION gamma_moist( ptak, pqa )
       !!----------------------------------------------------------------------------------
       !! ** Purpose : Compute the moist adiabatic lapse-rate.
@@ -415,5 +385,42 @@ CONTAINS
       END DO
       !
    END FUNCTION gamma_moist
+
+
+   
+   FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
+      !!------------------------------------------------------------------------
+      !!
+      !! Evaluates the 1./(Monin Obukhov length) from air temperature and
+      !!  specific humidity, and frictional scales u*, t* and q*
+      !!
+      !! Author: L. Brodeau, june 2016 / AeroBulk
+      !!         (https://github.com/brodeau/aerobulk/)
+      !!------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha,  &  !: average potetntial air temperature [K]
+         &                                        pqa,   &  !: average specific humidity of air   [kg/kg]
+         &                                      pus, pts, pqs   !: frictional velocity, temperature and humidity
+      !
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      REAL(wp) ::     zqa          ! local scalar
+      !!-------------------------------------------------------------------
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            !
+            zqa = (1._wp + rctv0*pqa(ji,jj))
+            !
+            One_on_L(ji,jj) = grav*vkarmn*(pts(ji,jj) + rctv0*ptha(ji,jj)*pqs(ji,jj)) &
+               &               / MAX( pus(ji,jj)*pus(ji,jj)*ptha(ji,jj)*zqa , 1.E-9_wp )
+            !
+         END DO
+      END DO
+      !
+      One_on_L = SIGN( MIN(ABS(One_on_L),200._wp), One_on_L ) ! (prevent FPE from stupid values over masked regions...)
+      !
+   END FUNCTION One_on_L
+
+
 
 END MODULE mod_thermo

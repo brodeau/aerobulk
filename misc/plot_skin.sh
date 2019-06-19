@@ -218,7 +218,13 @@ gnuplot plot.gp
 
 
 
-
+list=`\ls *.eps`
+for ff in ${list}; do
+    fn=`echo ${ff} | sed -e s/".eps"/".png"/g`
+    CMD="convert -density 180 -flatten ${ff} ${fn}"
+    echo ${CMD}
+    ${CMD}
+done
 
 
 
