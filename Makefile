@@ -100,7 +100,7 @@ bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
-	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png
+	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp
 
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp
 
