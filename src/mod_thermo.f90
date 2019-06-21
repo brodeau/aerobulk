@@ -17,7 +17,7 @@ MODULE mod_thermo
 
    PUBLIC :: visc_air, Lvap, e_sat, e_sat_buck, e_air, cp_air, rh_air, &
       &      rho_air, rho_air_adv, q_sat, q_air_rh, q_air_dp, q_sat_simple, &
-      &      gamma_moist, One_on_L
+      &      gamma_moist, One_on_L, Ri_bulk_ecmwf, Ri_bulk
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -373,21 +373,21 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) :: zrv, ziRT        ! local scalar
+      REAL(wp) :: zwa, ziRT        ! local scalar
       !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zrv = pqa(ji,jj) / (1. - pqa(ji,jj))
+            zwa = pqa(ji,jj) / (1. - pqa(ji,jj))   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
             ziRT = 1./(R_dry*ptak(ji,jj))    ! 1/RT
-            gamma_moist(ji,jj) = grav * ( 1. + L0vap*zrv*ziRT ) / ( Cp_dry + L0vap*L0vap*zrv*reps0*ziRT/ptak(ji,jj) )
+            gamma_moist(ji,jj) = grav * ( 1. + L0vap*zwa*ziRT ) / ( Cp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak(ji,jj) )
          END DO
       END DO
       !
    END FUNCTION gamma_moist
 
 
-   
+
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
       !!------------------------------------------------------------------------
       !!
@@ -421,6 +421,81 @@ CONTAINS
       !
    END FUNCTION One_on_L
 
+
+   
+   FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
+      !!----------------------------------------------------------------------------------
+      !! Bulk Richardson number (Eq. 3.25 IFS doc)
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_ecmwf   !
+      REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha  ! pot. air temp. at height "pz"    [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa   ! air spec. hum. at pz m  [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
+      !!----------------------------------------------------------------------------------
+      !
+      Ri_bulk_ecmwf =   grav*pz/(pub*pub)   &
+         &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )      
+      !
+   END FUNCTION Ri_bulk_ecmwf
+
+   !FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
+   !   !!----------------------------------------------------------------------------------
+   !   !! Bulk Richardson number as found in the original coare 3.0 algorithm...
+   !   !!----------------------------------------------------------------------------------
+   !   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_coare   !
+   !   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha   ! air temperature at pz m     [K]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
+   !   !!----------------------------------------------------------------------------------
+   !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
+   !END FUNCTION Ri_bulk_coare
+   
+   FUNCTION Ri_bulk( pz, psst, ptha, pssq, pqa, pub )
+      !!----------------------------------------------------------------------------------
+      !! Bulk Richardson number according to "wide-spread equation"...
+      !!
+      !! ** Author: L. Brodeau, june 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
+      REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
+      !
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      REAL(wp) ::     zdth_v , ztv      ! local scalar
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zgamma
+      !!-------------------------------------------------------------------
+      !
+      ALLOCATE ( zgamma(jpi,jpj) )
+      zgamma = gamma_moist( ptha, pqa ) ! adiabatic lapse-rate of moist air, to estimate T_z out of theta_z (T_z normally slightly colder)
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            !
+            ! air-sea delta of "virtual potential temperature" (\delta \theta_v)
+            zdth_v = ptha(ji,jj)*(1._wp + rctv0*pqa(ji,jj)) - psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj))
+            !
+            !! Global virtual temperature Tv? (not potential!) and where? upper or lower layer?
+            ztv    = 0.5_wp*( psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) + (ptha(ji,jj)-zgamma(ji,jj)*pz)*(1._wp + rctv0*pqa(ji,jj)) )  ! Tv as average of the 2 levels!
+            !ztv    = (ptha(ji,jj)-zgamma(ji,jj)*pz)*(1._wp + rctv0*pqa(ji,jj)) ! Tv at upper level
+            !ztv    = psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) ! Tv at bottom level
+            Ri_bulk(ji,jj) = grav * zdth_v*pz / ( ztv*pub(ji,jj)*pub(ji,jj) )
+            !
+         END DO
+      END DO
+      DEALLOCATE ( zgamma )
+      !
+   END FUNCTION Ri_bulk
 
 
 END MODULE mod_thermo

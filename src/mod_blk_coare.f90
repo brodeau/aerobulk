@@ -51,18 +51,15 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare  ***
       !!
-      !!            2015: L. Brodeau
-      !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to Fairall et al. (2003)
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
+      !!                Returns the effective bulk wind speed at 10m to be used in the bulk formulas
       !!
       !!                Applies the cool-skin warm-layer correction of the SST to T_s
       !!                if the downwelling radiative fluxes at the surface (rad_sw & rad_lw)
       !!                and the SLP are provided as arguments!
       !!
-      !! ** Method : Monin Obukhov Similarity Theory
-      !!======================================================================================
       !!
       !! INPUT :
       !! -------
@@ -76,7 +73,7 @@ CONTAINS
       !! INPUT/OUTPUT:
       !! -------------
       !!    *  T_s  : SST or skin temperature                                 [K]
-      !!    *  q_s  : SSQ aka saturation specific humidity (at temp. T_s)     [kg/kg]
+      !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
@@ -93,7 +90,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind at 10m                                      [m/s]
+      !!    *  U_blk  : bulk wind speed at 10m                                [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -105,18 +102,18 @@ CONTAINS
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       CHARACTER(len=3), INTENT(in   )             ::   cver     ! version of COARE to use (use '3.0' if u don't know what to chose!'
-      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                   [m]
-      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                              [m]
-      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature              [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature            [Kelvin]
-      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   q_s      ! saturation sea surface spec. hum.     [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity                 [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu            [m/s]
+      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
+      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   q_s      ! sea surface specific humidity           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu             [K]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu             [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
       !
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_sw   !             [W/m^2]
@@ -150,7 +147,7 @@ CONTAINS
          &                zdelta     ! thickness of the viscous (skin) layer
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      !!============================================================================
+      !!----------------------------------------------------------------------------------
 
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
          &     zeta_u(jpi,jpj), zalpha(jpi,jpj),  &
@@ -225,13 +222,14 @@ CONTAINS
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
+      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
+      !ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
 
-      !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
+      !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
-      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  Ribu < 0
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))               !  Ribu > 0
+      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  BRN < 0
+         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))               !  BRN > 0
       !#LOLO: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L

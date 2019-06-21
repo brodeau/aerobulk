@@ -45,7 +45,7 @@ MODULE mod_blk_ecmwf
    REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
    REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
 
-   !!!INTEGER , PARAMETER ::   nb_itt = 5        ! number of itterations
+!!!INTEGER , PARAMETER ::   nb_itt = 5        ! number of itterations
 
    !! Cool-Skin / Warm-Layer related parameters:
    REAL(wp),    PARAMETER :: &
@@ -63,10 +63,6 @@ MODULE mod_blk_ecmwf
    !                            !:    => ACCEPTABLE IN MOST CONDITIONS ! (UNLESS: sunny + very calm/low-wind conditions)
    !                            !:  => Otherwize use "nb_itt_wl = 10"
 
-
-
-
-   !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE TURB_ECMWF( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
@@ -229,13 +225,13 @@ CONTAINS
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      ztmp2 = Ri_bulk( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Ribu = Bulk Richardson number
+      ztmp2 = Ri_bulk_ecmwf( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Bulk Richardson Number = BRN
 
-      !! First estimate of zeta_u, depending on the stability, ie sign of Ribu (ztmp2):
+      !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       func_m = ztmp0*ztmp2 ! temporary array !!
-      func_h = (1.-ztmp1) * (func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  Ribu < 0 ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (func_m*(1. + 27./9.*ztmp2/func_m))              !  Ribu > 0
+      func_h = (1.-ztmp1) * (func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1   * (func_m*(1. + 27./9.*ztmp2/func_m))              !  BRN > 0
       !#LOLO: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
@@ -264,7 +260,7 @@ CONTAINS
 
       !! First guess of inverse of Monin-Obukov length (1/L) :
       Linv = One_on_L( t_zu, q_zu, u_star, t_star, q_star )
-      
+
       !! Functions such as  u* = U_blk*vkarmn/func_m
       ztmp0 = zu*Linv
       func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
@@ -274,7 +270,7 @@ CONTAINS
       DO j_itt = 1, nb_itt
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
-         ztmp0 = Ri_bulk(zu, t_zu, dt_zu, q_zu, dq_zu, U_blk)
+         ztmp0 = Ri_bulk_ecmwf(zu, t_zu, dt_zu, q_zu, dq_zu, U_blk)
 
          !! New estimate of the inverse of the Monin-Obukhon length (Linv == zeta/zu) :
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
@@ -292,7 +288,7 @@ CONTAINS
          z0     = MIN( ABS( alpha_M*ztmp1 + charn0*ztmp2/grav ) , 0.001)
          z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
          z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001)
-         
+
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
          ! Only true when unstable (L<0) => when ztmp0 < 0 => - !!!
@@ -471,29 +467,6 @@ CONTAINS
       END DO
       !
    END FUNCTION psi_h_ecmwf
-
-
-   FUNCTION Ri_bulk( pz, ptz, pdt, pqz, pdq, pub )
-      !!----------------------------------------------------------------------------------
-      !! Bulk Richardson number (Eq. 3.25 IFS doc)
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk   !
-      !
-      REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptz   ! air temperature at pz m     [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptz - sst                   [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqz   ! air temperature at pz m [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqz - ssq               [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
-      !!----------------------------------------------------------------------------------
-      !
-      Ri_bulk =   grav*pz/(pub*pub)   &
-         &      * ( pdt/(ptz - 0.5_wp*(pdt + grav*pz/(Cp_dry + Cp_vap*pqz))) &
-         &          + rctv0*pdq )
-      !
-   END FUNCTION Ri_bulk
 
 
    SUBROUTINE CSWL_ECMWF( pQsw, pQnsol, pustar, pSST, pTs )

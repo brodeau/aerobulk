@@ -17,7 +17,7 @@ PROGRAM TEST_AEROBULK
       &      vca = (/ 'coare  ', 'coare35', 'ncar   ', 'ecmwf  ' /)
 
    REAL(4), DIMENSION(nb_algos) ::  &
-      &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, &
+      &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
    REAL(wp), PARAMETER ::   &
@@ -216,13 +216,24 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - sst*(1. + rctv0*ssq) , 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
 
+   
 
    WRITE(6,*) 'Give wind speed at zu=10m (m/s):'
    READ(*,*) W10
    WRITE(6,*) ''
 
+   
+   !! We have enough to calculate the bulk Richardson number:
+   tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
+   WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
+   !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
+   !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
+   tmp = Ri_bulk( zt, sst, theta_zt, ssq, q_zt, W10 )
+   WRITE(6,*) ' *** Bulk Richardson number "a la LB":', REAL(tmp, 4)
+   WRITE(6,*) ''
+   
 
-
+   
    IF ( l_use_cswl ) THEN
 
       WRITE(6,*) ''
@@ -333,8 +344,9 @@ PROGRAM TEST_AEROBULK
 
 
 
-
-
+      !! Bulk Richardson Number for layer "sea-level -- zu":
+      tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
+      vBRN(ialgo) = REAL(tmp(1,1),4)
 
 
       vTheta_u(ialgo) = REAL(   theta_zu(1,1) -rt0 , 4)   ! Potential temperature at zu
@@ -443,6 +455,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '      z_0     =   ', vz0        , '[m]'
    WRITE(6,*) '      u*      =   ', vus        , '[m/s]'
    WRITE(6,*) '      L       =   ', vL         , '[m]'
+   WRITE(6,*) '      Ri_bulk =   ', vBRN       , '[-]'
    WRITE(6,*) '      UN10    =   ', vUN10      , '[m/s]'
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
