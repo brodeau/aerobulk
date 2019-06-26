@@ -14,11 +14,17 @@ MODULE mod_thermo
    IMPLICIT none
 
    PRIVATE
+   
+   INTERFACE gamma_moist
+      MODULE PROCEDURE gamma_moist_vctr, gamma_moist_sclr
+   END INTERFACE gamma_moist
 
+
+   
    PUBLIC :: visc_air, Lvap, e_sat, e_sat_buck, e_air, cp_air, rh_air, &
       &      rho_air, rho_air_adv, q_sat, q_air_rh, q_air_dp, q_sat_simple, &
-      &      gamma_moist, One_on_L, Ri_bulk_ecmwf, Ri_bulk
-
+      &      gamma_moist, One_on_L, dry_static_energy, Ri_bulk_ecmwf, Ri_bulk_ecmwf2, Ri_bulk
+   
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
 
@@ -183,7 +189,7 @@ CONTAINS
 
    FUNCTION cp_air( pqa )
       !!-------------------------------------------------------------------------------
-      !! ** Purpose : Compute specific heat (Cp) of MOIST air
+      !! ** Purpose : provide specific heat capacity of (moist) air at constant pressure
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
@@ -361,7 +367,7 @@ CONTAINS
 
    END FUNCTION q_sat_simple
 
-   FUNCTION gamma_moist( ptak, pqa )
+   FUNCTION gamma_moist_vctr( ptak, pqa )
       !!----------------------------------------------------------------------------------
       !! ** Purpose : Compute the moist adiabatic lapse-rate.
       !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
@@ -369,7 +375,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: gamma_moist
+      REAL(wp), DIMENSION(jpi,jpj)             :: gamma_moist_vctr
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
@@ -380,12 +386,31 @@ CONTAINS
          DO ji = 1, jpi
             zwa = pqa(ji,jj) / (1. - pqa(ji,jj))   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
             ziRT = 1./(R_dry*ptak(ji,jj))    ! 1/RT
-            gamma_moist(ji,jj) = grav * ( 1. + L0vap*zwa*ziRT ) / ( Cp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak(ji,jj) )
+            gamma_moist_vctr(ji,jj) = grav * ( 1. + L0vap*zwa*ziRT ) / ( Cp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak(ji,jj) )
          END DO
       END DO
       !
-   END FUNCTION gamma_moist
+   END FUNCTION gamma_moist_vctr
+   
 
+   FUNCTION gamma_moist_sclr( ptak, pqa )
+      !!----------------------------------------------------------------------------------
+      !! ** Purpose : Compute the moist adiabatic lapse-rate.
+      !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
+      !!     => http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             :: gamma_moist_sclr
+      REAL(wp), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
+      !
+      REAL(wp) :: zwa, ziRT        ! local scalar
+      !!----------------------------------------------------------------------------------
+      zwa = pqa / (1. - pqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
+      ziRT = 1./(R_dry*ptak)    ! 1/RT
+      gamma_moist_sclr = grav * ( 1. + L0vap*zwa*ziRT ) / ( Cp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak )
+      !
+   END FUNCTION gamma_moist_sclr
 
 
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
@@ -421,6 +446,20 @@ CONTAINS
       !
    END FUNCTION One_on_L
 
+   
+   FUNCTION dry_static_energy( pz, pta, pqa )
+      !!----------------------------------------------------------------------------------
+      !! Dry static energy "s" (Eq. 3.5 IFS doc)
+      !!
+      !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             ::   dry_static_energy
+      REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea         [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pta   ! absolute air temp. at pz m   [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa   ! air spec. hum. at pz m   [kg/kg]
+      !!----------------------------------------------------------------------------------
+      dry_static_energy = grav*pz + cp_air(pqa)*pta
+   END FUNCTION dry_static_energy
 
    
    FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
@@ -439,10 +478,62 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !
       Ri_bulk_ecmwf =   grav*pz/(pub*pub)   &
-         &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )      
+         &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )
       !
    END FUNCTION Ri_bulk_ecmwf
 
+
+
+
+   FUNCTION Ri_bulk_ecmwf2( pz, psst, ptha, pssq, pqa, pub )
+      !!----------------------------------------------------------------------------------
+      !! Bulk Richardson number according to "wide-spread equation"...
+      !!
+      !! ** Author: L. Brodeau, june 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf2
+      REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
+      !
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      REAL(wp) :: zta, zsz, zs0, zqa         ! local scalar
+      !!-------------------------------------------------------------------
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))  ! ~ mean q in layer...
+            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! Absolute temperature of air within the layer
+            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
+            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
+            !
+            zs0 =           (Cp_dry + Cp_vap*pssq(ji,jj))*psst(ji,jj)  ! dry static energy at air-sea interface (z=0)
+            zsz = grav*pz + (Cp_dry + Cp_vap* pqa(ji,jj))*zta          ! dry static energy at z=pz
+            !
+            Ri_bulk_ecmwf2(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
+               &  * ( 2._wp*(zsz - zs0)/(zsz + zs0 - grav*pz) + rctv0*(pqa(ji,jj) - pssq(ji,jj)) )
+            !
+         END DO
+      END DO
+      !
+   END FUNCTION Ri_bulk_ecmwf2
+
+
+
+
+
+
+
+   
+
+
+
+
+
+   
    !FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
    !   !!----------------------------------------------------------------------------------
    !   !! Bulk Richardson number as found in the original coare 3.0 algorithm...
@@ -469,33 +560,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
       !
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) ::     zdth_v , ztv      ! local scalar
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zgamma
+      INTEGER  ::   ji, jj                         ! dummy loop indices
+      REAL(wp) ::   zqa, zta, zgamma, zdth_v, ztv  ! local scalars
       !!-------------------------------------------------------------------
-      !
-      ALLOCATE ( zgamma(jpi,jpj) )
-      zgamma = gamma_moist( ptha, pqa ) ! adiabatic lapse-rate of moist air, to estimate T_z out of theta_z (T_z normally slightly colder)
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
+            zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))                                             ! ~ mean q within the layer...
+            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+            zgamma =  gamma_moist(zta, zqa)
+            !
             ! air-sea delta of "virtual potential temperature" (\delta \theta_v)
             zdth_v = ptha(ji,jj)*(1._wp + rctv0*pqa(ji,jj)) - psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj))
             !
-            !! Global virtual temperature Tv? (not potential!) and where? upper or lower layer?
-            ztv    = 0.5_wp*( psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) + (ptha(ji,jj)-zgamma(ji,jj)*pz)*(1._wp + rctv0*pqa(ji,jj)) )  ! Tv as average of the 2 levels!
-            !ztv    = (ptha(ji,jj)-zgamma(ji,jj)*pz)*(1._wp + rctv0*pqa(ji,jj)) ! Tv at upper level
-            !ztv    = psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) ! Tv at bottom level
-            Ri_bulk(ji,jj) = grav * zdth_v*pz / ( ztv*pub(ji,jj)*pub(ji,jj) )
+            !! Absolute virtual temperature Tv? (not potential!) and where? upper or lower layer?
+            zta = ptha(ji,jj) - zgamma*pz ! Absolute temperature at height pz (from pot. temp. at pz)
+            ztv = 0.5_wp*( psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) + zta*(1._wp + rctv0*pqa(ji,jj)) )  ! ~ mean absolute virtual temp. within the layer 
+            Ri_bulk(ji,jj) = grav*zdth_v*pz / ( ztv*pub(ji,jj)*pub(ji,jj) )                            ! the usual definition of Ri_bulk
             !
          END DO
       END DO
-      DEALLOCATE ( zgamma )
-      !
    END FUNCTION Ri_bulk
-
 
 END MODULE mod_thermo
