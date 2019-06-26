@@ -487,7 +487,7 @@ CONTAINS
 
    FUNCTION Ri_bulk_ecmwf2( pz, psst, ptha, pssq, pqa, pub )
       !!----------------------------------------------------------------------------------
-      !! Bulk Richardson number according to "wide-spread equation"...
+      !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
       !!
       !! ** Author: L. Brodeau, june 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
