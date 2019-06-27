@@ -4,7 +4,7 @@
 include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
-	bin/example_call_aerobulk.x bin/test_thermo.x bin/cx_vs_wind_test.x
+	bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
@@ -15,7 +15,7 @@ CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 LIB = -L./lib -laerobulk 
 
 LIB_SRC = src/mod_const.f90 \
-	  src/mod_thermo.f90 \
+	  src/mod_phymbl.f90 \
 	  src/mod_blk_neutral_10m.f90 \
 	  src/mod_blk_coare.f90 \
           src/mod_blk_ncar.f90 \
@@ -77,9 +77,9 @@ bin/test_coef_no98.x: src/test_coef_no98.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/test_coef_no98.f90 -o bin/test_coef_no98.x $(LIB)
 
-bin/test_thermo.x: src/test_thermo.f90 lib/libaerobulk.a
+bin/test_phymbl.x: src/test_phymbl.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/test_thermo.f90 -o bin/test_thermo.x $(LIB)
+	$(FC) $(FF) src/test_phymbl.f90 -o bin/test_phymbl.x $(LIB)
 
 bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat

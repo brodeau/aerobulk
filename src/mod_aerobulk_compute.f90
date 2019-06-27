@@ -3,7 +3,7 @@
 MODULE mod_aerobulk_compute
 
    USE mod_const       !: physical constants
-   USE mod_thermo      !: thermodynamics functions
+   USE mod_phymbl      !: thermodynamics functions
 
    USE mod_blk_coare   !: COAREv3   algorithm
    USE mod_blk_ncar    !: Large & Yeager algorithm
@@ -24,7 +24,7 @@ CONTAINS
       !!
       !!******************************
       !! 2015: L. Brodeau
-      !!  => all constants taken from mod_thermo and mod_const must
+      !!  => all constants taken from mod_phymbl and mod_const must
       !!     be done or used from NEMO constant bank...    ... vkarmn ... grav ...
       !!******************************
       !!

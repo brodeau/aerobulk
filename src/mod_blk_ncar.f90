@@ -26,7 +26,7 @@ MODULE mod_blk_ncar
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
-   USE mod_thermo  !: thermodynamics
+   USE mod_phymbl  !: thermodynamics
 
    IMPLICIT NONE
    PRIVATE

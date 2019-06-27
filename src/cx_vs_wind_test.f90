@@ -1,7 +1,7 @@
 PROGRAM cx_vs_wind_test
 
    USE mod_const
-   USE mod_thermo
+   USE mod_phymbl
    USE mod_blk_coare
    USE mod_blk_ncar
    USE mod_blk_ecmwf

@@ -3,7 +3,7 @@
 PROGRAM TEST_AEROBULK
 
    USE mod_const
-   USE mod_thermo
+   USE mod_phymbl
 
    USE mod_blk_coare
    USE mod_blk_ncar
@@ -224,14 +224,14 @@ PROGRAM TEST_AEROBULK
 
    
    !! We have enough to calculate the bulk Richardson number:
-   tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
-   WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
-   tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
-   WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
+   !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
+   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
+   !tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
+   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
    !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
    !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
    tmp = Ri_bulk( zt, sst, theta_zt, ssq, q_zt, W10 )
-   WRITE(6,*) ' *** Bulk Richardson number "a la LB":', REAL(tmp, 4)
+   WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
    WRITE(6,*) ''
    
 

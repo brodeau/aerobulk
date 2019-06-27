@@ -15,7 +15,7 @@ contains
 !==== C++ interface for lvap ====
       subroutine lvap_cxx( sst, m, lvap_out ) bind(c)
 
-      use mod_thermo
+      use mod_phymbl
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: m

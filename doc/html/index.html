@@ -268,18 +268,18 @@
 
       A selection of useful functions to estimate some atmospheric state
       variables of the marine boundary layer are available in the
-      module <b>mod_thermo</b> (mod_thermo.f90).
+      module <b>mod_phymbl</b> (mod_phymbl.f90).
       <br>
       Example for computing SSQ of Eq.(1) out of the SST and the SLP:
       <pre style="margin: 0px 10px 10px 0px"><code style="font-family: Monospace; font-size: 13pt">
-          PROGRAM TEST_THERMO
+          PROGRAM TEST_PHYMBL
               USE mod_const
-              USE mod_thermo
+              USE mod_phymbl
               ...
 
               SSQ(:,:) = 0.98*q_sat(SST, SLP)
               ...
-          END PROGRAM TEST_THERMO
+          END PROGRAM TEST_PHYMBL
       </code></pre>
 
     </div>

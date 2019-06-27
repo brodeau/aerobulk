@@ -1,9 +1,9 @@
 ! AeroBulk / 2015 / L. Brodeau
 
-PROGRAM TEST_THERMO
+PROGRAM TEST_PHYMBL
 
    USE mod_const
-   USE mod_thermo
+   USE mod_phymbl
 
    IMPLICIT NONE
 
@@ -121,4 +121,4 @@ PROGRAM TEST_THERMO
    
 
 
-END PROGRAM TEST_THERMO
+END PROGRAM TEST_PHYMBL

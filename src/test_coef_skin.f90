@@ -3,7 +3,7 @@
 PROGRAM TEST_COEF
 
    USE mod_const
-   USE mod_thermo
+   USE mod_phymbl
 
    USE mod_blk_coare
 

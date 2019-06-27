@@ -29,7 +29,7 @@ MODULE mod_blk_ecmwf
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
-   USE mod_thermo  !: thermodynamics
+   USE mod_phymbl  !: thermodynamics
 
    IMPLICIT NONE
    PRIVATE
@@ -225,7 +225,7 @@ CONTAINS
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      ztmp2 = Ri_bulk_ecmwf( zu, t_zu, dt_zu, q_zu, dq_zu, U_blk )   ! Bulk Richardson Number = BRN
+      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
 
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
@@ -270,12 +270,12 @@ CONTAINS
       DO j_itt = 1, nb_itt
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
-         ztmp0 = Ri_bulk_ecmwf(zu, t_zu, dt_zu, q_zu, dq_zu, U_blk)
+         ztmp0 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
 
          !! New estimate of the inverse of the Monin-Obukhon length (Linv == zeta/zu) :
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
          !! Note: it is slightly different that the L we would get with the usual
-         !! expression, as in coare algorithm or in 'mod_thermo.f90' (One_on_L_MO())
+         !! expression, as in coare algorithm or in 'mod_phymbl.f90' (One_on_L_MO())
          Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
          !! Update func_m with new Linv:
