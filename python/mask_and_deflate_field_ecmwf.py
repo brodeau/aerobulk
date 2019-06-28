@@ -29,9 +29,6 @@ def __chck4f__(cf, script_name=''):
     else:
         print ' *** will open file '+cf
 
-
-
-    
     
 if len(sys.argv) != 4:
     print 'Usage: '+sys.argv[0]+' <IN_FILE.nc> <FIELD_NAME> <LSM_FILE.nc>'
@@ -83,17 +80,14 @@ f_in_in.close()
 
 
 
-
-
 Nt = len(vtime)
-#Nt=4
+
 print 'Nt = ', Nt
 
 for jt in range(Nt):
 
     print ' *** jt = ', jt
-    
-        
+            
     # D2M
     # ~~~
     if jt == 0:
