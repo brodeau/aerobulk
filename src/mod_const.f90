@@ -46,7 +46,7 @@ MODULE mod_const
       !!
       &  nu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
       !!
-      &  L0vap = 2.46E6,    &   !: Latent heat of vaporization for sea-water in J/kg
+      &  rLevap = 2.46E6,    &   !: Latent heat of vaporization for sea-water in J/kg
       &  vkarmn = 0.4,       &   !: Von Karman's constant
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,     &
@@ -81,7 +81,7 @@ MODULE mod_const
    !&    RD = 1000.*R/RMD, &
    !&    RV = 1000.*R/RMV, &
    !&    rCp_dry = 3.5*RD, &
-   !&    L0vap=2.5008E+6, &
+   !&    rLevap=2.5008E+6, &
     !&    rctv0 = RV/RD-1.0
 
 

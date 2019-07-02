@@ -178,7 +178,7 @@ CONTAINS
          DO ji = 1, jpi
             zwa = pqa(ji,jj) / (1. - pqa(ji,jj))   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
             ziRT = 1._wp/(R_dry*ptak(ji,jj))    ! 1/RT
-            gamma_moist_vctr(ji,jj) = grav * ( 1._wp + L0vap*zwa*ziRT ) / ( rCp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak(ji,jj) )
+            gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/ptak(ji,jj) )
          END DO
       END DO
       !
@@ -199,7 +199,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       zwa = pqa / (1. - pqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
       ziRT = 1./(R_dry*ptak)    ! 1/RT
-      gamma_moist_sclr = grav * ( 1. + L0vap*zwa*ziRT ) / ( rCp_dry + L0vap*L0vap*zwa*reps0*ziRT/ptak )
+      gamma_moist_sclr = grav * ( 1. + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/ptak )
       !
    END FUNCTION gamma_moist_sclr
 

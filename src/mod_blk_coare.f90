@@ -523,7 +523,7 @@ CONTAINS
 
             ! Turbulent heat fluxes:
             zz1 = prhoa(ji,jj)*pU10(ji,jj)
-            zQlat = MIN( L0vap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
+            zQlat = MIN( rLevap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
             zQsen =     rCp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
 
             ! Net longwave flux:
@@ -544,7 +544,7 @@ CONTAINS
             zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2_wp, 0._wp)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
 
             !! Term alpha*Qb (Qb is the virtual surface cooling inc. buoyancy effect of salinity due to evap):
-            zz1 = zalpha*zQt - 0.026*zQlat*rCp0_w/L0vap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
+            zz1 = zalpha*zQt - 0.026*zQlat*rCp0_w/rLevap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
             !! LB: this terms only makes sense if > 0 i.e. in the cooling case
             !! so similar to what's donce in ECMWF:
             zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
