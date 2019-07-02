@@ -210,10 +210,10 @@ PROGRAM TEST_AEROBULK
 
 
    !! Checking the difference of virtual potential temperature between air at zt and sea surface:
-   tmp = theta_zt*(1. + rctv0*q_zt)
+   tmp = virt_temp(theta_zt, q_zt)
    WRITE(6,*) 'Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
    WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sst , 4), ' [deg.C]'
-   WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - sst*(1. + rctv0*ssq) , 4), ' [deg.C]'
+   WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
 
    

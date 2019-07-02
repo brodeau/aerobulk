@@ -23,8 +23,8 @@ MODULE mod_phymbl
    INTERFACE gamma_moist
       MODULE PROCEDURE gamma_moist_vctr, gamma_moist_sclr
    END INTERFACE gamma_moist
-   
-   PUBLIC :: visc_air, Lvap, e_sat, e_sat_buck, e_air, cp_air, rh_air, &
+
+   PUBLIC :: virt_temp, visc_air, Lvap, e_sat, e_sat_buck, e_air, cp_air, rh_air, &
       &      rho_air, rho_air_adv, q_sat, q_air_rh, q_air_dp, q_sat_simple, &
       &      gamma_moist, One_on_L, dry_static_energy, Ri_bulk
    
@@ -34,6 +34,34 @@ MODULE mod_phymbl
 CONTAINS
 
 
+   
+   FUNCTION virt_temp( pta, pqa )
+      !!------------------------------------------------------------------------
+      !!
+      !! Compute the (absolute/potential) virtual temperature, knowing the
+      !! (absolute/potential) temperature and specific humidity
+      !!
+      !! If input temperature is absolute then output vitual temperature is absolute
+      !! If input temperature is potential then output vitual temperature is potential
+      !!
+      !! Author: L. Brodeau, June 2019 / AeroBulk
+      !!         (https://github.com/brodeau/aerobulk/)
+      !!------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: virt_temp         !: 1./(Monin Obukhov length) [m^-1]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta,  &  !: absolute or potetntial air temperature [K]
+         &                                        pqa      !: specific humidity of air   [kg/kg]
+      !!-------------------------------------------------------------------
+      !
+      virt_temp(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
+      !!
+      !! This is exactly the same sing that:
+      !! virt_temp = pta * ( pwa + reps0) / (reps0*(1.+pwa))
+      !! with wpa (mixing ration) defined as : pwa = pqa/(1.-pqa)      
+      !
+   END FUNCTION virt_temp
+
+
+   
    FUNCTION visc_air(Ta)
       
       !! Air viscosity (m^2/s) given from temperature in degrees...
@@ -194,7 +222,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       !! ** Purpose : provide specific heat capacity of (moist) air at constant pressure
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa     !: air spec. hum. [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj)             :: cp_air  !: [J/K/kg]
@@ -267,7 +295,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       !! ** Purpose : compute density of (moist) air with eq. of state
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, &  !: air temperature   [K]
          &                                        pqa, &  !: air spec. hum.    [kg/kg]
@@ -376,7 +404,7 @@ CONTAINS
       !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
       !!     => http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: gamma_moist_vctr
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
@@ -402,7 +430,7 @@ CONTAINS
       !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
       !!     => http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp)             :: gamma_moist_sclr
       REAL(wp), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
@@ -422,7 +450,7 @@ CONTAINS
       !! Evaluates the 1./(Monin Obukhov length) from air temperature and
       !!  specific humidity, and frictional scales u*, t* and q*
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
+      !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
@@ -470,7 +498,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Bulk Richardson number according to "wide-spread equation"...
       !!
-      !! ** Author: L. Brodeau, june 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
       REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
@@ -510,7 +538,7 @@ CONTAINS
    !   !!----------------------------------------------------------------------------------
    !   !! Bulk Richardson number (Eq. 3.25 IFS doc)
    !   !!
-   !   !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+   !   !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
    !   !!----------------------------------------------------------------------------------
    !   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_ecmwf   !
    !   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
@@ -530,7 +558,7 @@ CONTAINS
    !   !!----------------------------------------------------------------------------------
    !   !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
    !   !!
-   !   !! ** Author: L. Brodeau, june 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+   !   !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
    !   !!----------------------------------------------------------------------------------
    !   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf2
    !   REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
