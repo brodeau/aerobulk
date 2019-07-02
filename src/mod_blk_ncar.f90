@@ -84,7 +84,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind at 10m                                      [m/s]
+      !!    *  U_blk  : bulk wind speed at 10m                                [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -93,19 +93,20 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !!============================================================================
-      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                   [m]
-      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                              [m]
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature              [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature            [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity         [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity                 [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu            [m/s]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu             [K]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu             [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
@@ -114,7 +115,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
       INTEGER :: j_itt
-      LOGICAL ::   l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   Cx_n10        ! 10m neutral latent/sensible coefficient
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrt_Cd_n10   ! root square of Cd_n10
@@ -124,7 +125,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   stab          ! stability test integer
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      !!============================================================================
+      !!----------------------------------------------------------------------------------
 
       ALLOCATE( Cx_n10(jpi,jpj), sqrt_Cd_n10(jpi,jpj), &
          &    zeta_u(jpi,jpj), stab(jpi,jpj), zpsi_h_u(jpi,jpj),  &
@@ -142,16 +143,12 @@ CONTAINS
       U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
       !! First guess of stability:
-      ztmp0 = t_zt*(1. + rctv0*q_zt) - sst*(1. + rctv0*ssq) ! air-sea difference of virtual pot. temp. at zt
+      ztmp0 = virt_temp(t_zt, q_zt) - virt_temp(sst, ssq) ! air-sea difference of virtual pot. temp. at zt
       stab  = 0.5 + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
-
-      !! Neutral coefficients at 10m:
-      ztmp0 = cd_neutral_10m( U_blk )
-
-      sqrt_Cd_n10 = SQRT( ztmp0 )
-
-      !! Initializing transf. coeff. with their first guess neutral equivalents :
-      Cd = ztmp0
+      !! 
+      !! As a first guess: initializing transf. coeff. with the Neutral coefficients at 10m:
+      Cd = cd_neutral_10m( U_blk )
+      sqrt_Cd_n10 = SQRT( Cd )
       Ce = 1.e-3*( 34.6 * sqrt_Cd_n10 )
       Ch = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))
       stab = sqrt_Cd_n10   ! Temporaty array !!! stab == SQRT(Cd)
@@ -166,15 +163,13 @@ CONTAINS
          ztmp2 = q_zu - ssq
 
          ! Updating turbulent scales :   (L&Y 2004 eq. (7))
-         ztmp1  = Ch/stab*ztmp1    ! theta*   (stab == SQRT(Cd))
-         ztmp2  = Ce/stab*ztmp2    ! q*       (stab == SQRT(Cd))
-
-         ztmp0 = 1. + rctv0*q_zu      ! multiply this with t and you have the virtual temperature
+         ztmp0 = stab*U_blk       ! u*       (stab == SQRT(Cd))
+         ztmp1 = Ch/stab*ztmp1    ! theta*   (stab == SQRT(Cd))
+         ztmp2 = Ce/stab*ztmp2    ! q*       (stab == SQRT(Cd))
 
          ! Estimate the inverse of Monin-Obukov length (1/L) at height zu:
-         ztmp0 =  (grav*vkarmn/(t_zu*ztmp0)*(ztmp1*ztmp0 + rctv0*t_zu*ztmp2)) / (Cd*U_blk*U_blk)
-         !                                                      ( Cd*U_blk*U_blk is U*^2 at zu )
-
+         ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
+         
          !! Stability parameters :
          zeta_u   = zu*ztmp0   ;  zeta_u = sign( min(abs(zeta_u),10.0_wp), zeta_u )
          zpsi_h_u = psi_h( zeta_u )
