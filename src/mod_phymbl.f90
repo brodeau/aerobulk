@@ -171,14 +171,17 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             ::   gamma_moist_vctr   ! moist adiabatic lapse-rate
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) :: zwa, ziRT        ! local scalar
+      REAL(wp) :: zta, zqa, zwa, ziRT        ! local scalar
       !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zwa = pqa(ji,jj) / (1. - pqa(ji,jj))   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
-            ziRT = 1._wp/(R_dry*ptak(ji,jj))    ! 1/RT
-            gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/ptak(ji,jj) )
+            zta = MAX( ptak(ji,jj),  180._wp) ! prevents screw-up over masked regions where field == 0.
+            zqa = MAX( pqa(ji,jj),  1.E-6_wp) !    "                   "                     "
+            !
+            zwa = zqa / (1. - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
+            ziRT = 1._wp/(R_dry*zta)    ! 1/RT
+            gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
          END DO
       END DO
       !
@@ -195,12 +198,15 @@ CONTAINS
       REAL(wp)             :: gamma_moist_sclr
       REAL(wp), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
       !
-      REAL(wp) :: zwa, ziRT        ! local scalar
+      REAL(wp) :: zta, zqa, zwa, ziRT        ! local scalar
       !!----------------------------------------------------------------------------------
-      zwa = pqa / (1. - pqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
-      ziRT = 1./(R_dry*ptak)    ! 1/RT
-      gamma_moist_sclr = grav * ( 1. + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/ptak )
-      !
+      zta = MAX( ptak,  180._wp) ! prevents screw-up over masked regions where field == 0.
+      zqa = MAX( pqa,  1.E-6_wp) !    "                   "                     "
+      !!
+      zwa = zqa / (1._wp - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
+      ziRT = 1._wp / (R_dry*zta)    ! 1/RT
+      gamma_moist_sclr = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
+      !!
    END FUNCTION gamma_moist_sclr
 
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
