@@ -150,7 +150,7 @@ PROGRAM TEST_SKIN_CORR
    WRITE(6,*) 'Give SST (deg. C):'
    READ(*,*) sst
    sst = sst + rt0
-   WRITE(6,*) 'For this sst the latent heat of vaporization is Lvap =', Lvap(sst), ' [J/kg]'
+   WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
 
    WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'

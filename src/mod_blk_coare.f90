@@ -184,14 +184,14 @@ CONTAINS
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt , 0.0_wp  )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6_wp)   !               "
+      t_zu = MAX( t_zt , 199.0_wp )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+      znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
       ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
@@ -216,6 +216,7 @@ CONTAINS
       z0     = zalpha*u_star*u_star/grav + 0.11*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = MIN(ABS(z0t), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
       ztmp2  = vkarmn/ztmp0
       Cd     = ztmp2*ztmp2    ! first guess of Cd
@@ -258,6 +259,7 @@ CONTAINS
 
          !!Inverse of Monin-Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Monin-Obukhov length]
+         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...) !#LOLO
 
          ztmp1 = u_star*u_star   ! u*^2
 
@@ -291,9 +293,11 @@ CONTAINS
          END SELECT
 
          !! Stability parameters:
-         zeta_u = zu*ztmp0 ; zeta_u = sign( min(abs(zeta_u),50.0_wp), zeta_u )
+         zeta_u = zu*ztmp0
+         zeta_u = SIGN( MIN(ABS(zeta_u),50.0_wp), zeta_u )
          IF( .NOT. l_zt_equal_zu ) THEN
-            zeta_t = zt*ztmp0 ;  zeta_t = sign( min(abs(zeta_t),50.0_wp), zeta_t )
+            zeta_t = zt*ztmp0
+            zeta_t = SIGN( MIN(ABS(zeta_t),50.0_wp), zeta_t )
          END IF
 
          !! Turbulent scales at zu=10m :
@@ -520,7 +524,7 @@ CONTAINS
             ! Turbulent heat fluxes:
             zz1 = prhoa(ji,jj)*pU10(ji,jj)
             zQlat = MIN( L0vap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
-            zQsen =      Cp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
+            zQsen =     rCp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
 
             ! Net longwave flux:
             zz1  = pT_s(ji,jj)*pT_s(ji,jj)
@@ -540,7 +544,7 @@ CONTAINS
             zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2_wp, 0._wp)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
 
             !! Term alpha*Qb (Qb is the virtual surface cooling inc. buoyancy effect of salinity due to evap):
-            zz1 = zalpha*zQt - 0.026*zQlat*Cp0_w/L0vap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
+            zz1 = zalpha*zQt - 0.026*zQlat*rCp0_w/L0vap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
             !! LB: this terms only makes sense if > 0 i.e. in the cooling case
             !! so similar to what's donce in ECMWF:
             zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
@@ -549,7 +553,7 @@ CONTAINS
             zus = MAX(pus(ji,jj), 1.E-4_wp)
 
             ! Lambda (=> zz0, empirical coeff.) (Eq.14):
-            zz0 = 16. * zz1 * grav * rho0_w * Cp0_w * nu0_w*nu0_w*nu0_w  ! (numerateur) zz1 == alpha*Q
+            zz0 = 16. * zz1 * grav * rho0_w * rCp0_w * nu0_w*nu0_w*nu0_w  ! (numerateur) zz1 == alpha*Q
             zz2 = zus*zus * prhoa(ji,jj) / rho0_w * k0_w
             zz2 =  zz2*zz2                                             ! denominateur
             !LB:  zz0 has the sign of zz1 and therefore of Qb !

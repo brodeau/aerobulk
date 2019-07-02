@@ -137,7 +137,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'Give SST (deg. C):'
    READ(*,*) sst
    sst = sst + rt0
-   WRITE(6,*) 'For this sst the latent heat of vaporization is Lvap =', Lvap(sst), ' [J/kg]'
+   WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
 
    WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'
@@ -392,7 +392,7 @@ PROGRAM TEST_AEROBULK
       tmp = cp_air(q_zu)
       vQH(ialgo)   = rho_zu(1,1)*tmp(1,1)*Ch(1,1) * ( theta_zu(1,1) - Ts(1,1)  ) * Ublk(1,1)
       vEvap(ialgo) = rho_zu(1,1)*Ce(1,1)          * ( qs(1,1)      - q_zu(1,1) ) * Ublk(1,1)  ! mm/s
-      tmp = Lvap(Ts)
+      tmp = L_vap(Ts)
       vQL(ialgo)   = -1.* ( tmp(1,1)*vEvap(ialgo) )
 
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day

@@ -35,7 +35,7 @@ int main(int argc, char** argv)
         << " Tau_y = \t" << zTau_y[0] << "\t" << zTau_y[1] << std::endl
         << " T_s = \t" << zT_s[0] << "\t" << zT_s[1] << std::endl;
 
-    std::vector<double> L = aerobulk::lvap(zsst);
+    std::vector<double> L = aerobulk::l_vap(zsst);
 
     std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
         << " Tau_y = \t" << zTau_y[0] << "\t" << zTau_y[1] << std::endl
         << " T_s = \t" << zT_s[0] << "\t" << zT_s[1] << std::endl;
 
-    L = aerobulk::lvap(zsst);
+    L = aerobulk::l_vap(zsst);
 
     std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
         << " Tau_y = \t" << zTau_y[0] << "\t" << zTau_y[1] << std::endl
         << " T_s = \t" << zsst[0] << "\t" << zsst[1] << std::endl;
 
-    L = aerobulk::lvap(zsst);
+    L = aerobulk::l_vap(zsst);
 
     std::cout << " Evaporation = \t" << -zQL[0]*1e-3/L[0] << "\t" << -zQL[1]*1e-3/L[1] << std::endl;
 }

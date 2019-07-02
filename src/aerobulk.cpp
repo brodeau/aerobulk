@@ -15,7 +15,7 @@ extern "C"
 			double *, double *, double *, double *,
 			const int *, const int *, const int *);
 
-    void lvap_cxx( const double *, int *, double *);
+    void l_vap_cxx( const double *, int *, double *);
 }
 
 // Convert the C++ algorithm enumeration to a string
@@ -61,17 +61,17 @@ int aerobulk::check_sizes(int count, ...)
     return size;
 }
 
-// Interface for lvap
-std::vector<double> aerobulk::lvap(const std::vector<double> &sst)
+// Interface for l_vap
+std::vector<double> aerobulk::l_vap(const std::vector<double> &sst)
 {
     // Prepp
     int m = sst.size();
-    std::vector<double> lvap_out(m);
+    std::vector<double> l_vap_out(m);
 
     // The actual function call
-    lvap_cxx(&sst[0], &m, &lvap_out[0]);
+    l_vap_cxx(&sst[0], &m, &l_vap_out[0]);
 
-    return lvap_out;
+    return l_vap_out;
 }
 
 // Interface to aerobulk_model with rad_sw and rad_lw as inputs and T_s as output

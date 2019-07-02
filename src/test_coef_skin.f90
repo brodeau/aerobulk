@@ -125,7 +125,7 @@ PROGRAM TEST_COEF
    PRINT *, 'Give SST (deg. C):'
    READ(*,*) sst
    sst = sst + rt0
-   PRINT *, 'For this sst the latent heat of vaporization is Lvap =', Lvap(sst), ' [J/kg]'
+   PRINT *, 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    PRINT *, ''
 
    PRINT *, 'Give temperature at ',trim(czt),' (deg. C):'

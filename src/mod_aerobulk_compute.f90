@@ -191,7 +191,7 @@ CONTAINS
       Tau_y = pCd*pRHO * V_zu * pUblk
 
       !! *** Latent and Sensible heat fluxes ***
-      QL = pCe*pRHO*Lvap(pTs)    * (pQzu - pqs) * pUblk
+      QL = pCe*pRHO*L_vap(pTs)   * (pQzu - pqs) * pUblk
       QH = pCh*pRHO*cp_air(pQzu) * (pTzu - pTs) * pUblk
 
       !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
@@ -203,7 +203,7 @@ CONTAINS
       !PRINT *, 'q_zu =', pQzu
       !PRINT *, 'Rho =', pRHO
       !PRINT *, 'ssq =', pSSQ
-      !PRINT *, 'Lvap =', Lvap(pTs)
+      !PRINT *, 'L_vap =', L_vap(pTs)
       !PRINT *, ''
 
       DEALLOCATE ( pmask, pWzu, pSSQ, pCd, pCh, pCe, pTzt, pTzu, pQzu, pUblk, pRHO, pTs, pqs )
@@ -282,7 +282,7 @@ CONTAINS
 
       IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
          WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
-         WRITE(*,'(" min value = ", es9.3," max value = ", es9.3," mean value = ", es9.3)') MINVAL(Xval), MAXVAL(Xval), zmean
+         WRITE(*,'(" min value = ", es10.3," max value = ", es10.3," mean value = ", es10.3)') MINVAL(Xval), MAXVAL(Xval), zmean
          STOP
       END IF
 

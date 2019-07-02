@@ -27,18 +27,18 @@ MODULE mod_const
       &  grav  = 9.8,       &      !: acceleration of gravity    [m.s^-2]
       &  Patm  = 101000.,   &
       !!
-      & rho0_a = 1.2  ,         &  !: Approx. of density of air                     [kg/m^3]
-      & Cp0_a  = 1015.0 ,       &  !: Specic heat of moist air                      [J/K/kg]
-      & Cp_dry = 1005.0 ,       &  !: Specic heat of dry air, constant pressure      [J/K/kg]
-      & Cp_vap = 1860.0 ,       &  !: Specic heat of water vapor, constant pressure  [J/K/kg]
+      & rho0_a = 1.2  ,     &  !: Approx. of density of air                     [kg/m^3]
+      & rCp0_a  = 1015.0 ,  &  !: Specic heat of moist air                      [J/K/kg]
+      & rCp_dry = 1005.0 ,  &  !: Specic heat of dry air, constant pressure      [J/K/kg]
+      & rCp_vap = 1860.0 ,  &  !: Specic heat of water vapor, constant pressure  [J/K/kg]
       !!
-      &  R_dry = 287.05,        &  !: Specific gas constant for dry air              [J/K/kg]
-      &  R_vap = 461.495,       &  !: Specific gas constant for water vapor          [J/K/kg]
+      &  R_dry = 287.05,    &  !: Specific gas constant for dry air              [J/K/kg]
+      &  R_vap = 461.495,   &  !: Specific gas constant for water vapor          [J/K/kg]
       !!
-      & Cp0_w  = 4190. ,        &  !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
-      & rho0_w = 1025.  ,       &  !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
-      &  nu0_w = 1.e-6,         &  !: kinetic viscosity of water                      [m^2/s]
-      &  k0_w  = 0.6,           &  !: thermal conductivity of water (at 20C)          [W/m/K]
+      & rCp0_w  = 4190. ,    &  !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
+      & rho0_w = 1025.  ,    &  !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
+      &  nu0_w = 1.e-6,      &  !: kinetic viscosity of water                      [m^2/s]
+      &  k0_w  = 0.6,        &  !: thermal conductivity of water (at 20C)          [W/m/K]
       !!
       &  reps0 = R_dry/R_vap,  &   !: ratio of gas constant for dry air and water vapor => ~ 0.622
       !!
@@ -60,7 +60,8 @@ MODULE mod_const
       &  to_rad = Pi/180., &
       &  R_earth = 6.37E6,        & ! Earth radius (m)
       &  rtilt_earth = 23.5, &
-      &  Sol0 = 1366.        ! Solar constant W/m^2
+      &  Sol0 = 1366.  , &       !: Solar constant W/m^2
+      &  rdct_qsat_salt = 0.98   !: factor to apply to q_sat(SST) to account for salt
 
 
    INTEGER, DIMENSION(12), PARAMETER, PUBLIC :: &
@@ -79,7 +80,7 @@ MODULE mod_const
    !&    RMV = 18.0153, &
    !&    RD = 1000.*R/RMD, &
    !&    RV = 1000.*R/RMV, &
-   !&    Cp_dry = 3.5*RD, &
+   !&    rCp_dry = 3.5*RD, &
    !&    L0vap=2.5008E+6, &
     !&    rctv0 = RV/RD-1.0
 

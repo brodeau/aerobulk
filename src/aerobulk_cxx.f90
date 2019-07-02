@@ -8,23 +8,23 @@ module mod_aerobluk_cxx
 
   private
 
-  public :: lvap_cxx, aerobulk_cxx_skin, aerobulk_cxx_no_skin
+  public :: l_vap_cxx, aerobulk_cxx_skin, aerobulk_cxx_no_skin
 
 contains
 
-!==== C++ interface for lvap ====
-      subroutine lvap_cxx( sst, m, lvap_out ) bind(c)
+!==== C++ interface for l_vap ====
+      subroutine l_vap_cxx( sst, m, l_vap_out ) bind(c)
 
       use mod_phymbl
 
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: m
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst
-      REAL(c_double), DIMENSION(m,1),    INTENT(out) :: lvap_out
+      REAL(c_double), DIMENSION(m,1),    INTENT(out) :: l_vap_out
 
-      lvap_out = Lvap(sst)
+      l_vap_out = L_vap(sst)
 
-      end subroutine lvap_cxx
+      end subroutine l_vap_cxx
 
 !==== C++ interface for using optional skin temperature shceme ====
       subroutine aerobulk_cxx_skin( calgo, zt, zu, sst, t_zt, &

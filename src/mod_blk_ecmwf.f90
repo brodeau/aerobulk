@@ -194,7 +194,7 @@ CONTAINS
          zsst   = T_s    ! save the bulk SST
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
          T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = 0.98*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
 
       !! First guess of temperature and humidity at height zu:
@@ -210,15 +210,15 @@ CONTAINS
       ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
-      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
+      ztmp2   = 10000._wp     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
       ztmp0   = LOG(zu*ztmp2)
       ztmp1   = LOG(10.*ztmp2)
       u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      z0     = charn0*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
-      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN(ABS(z0t), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = charn0*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
       ztmp2  = vkarmn/ztmp0
       Cd     = ztmp2*ztmp2    ! first guess of Cd
@@ -230,9 +230,9 @@ CONTAINS
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       func_m = ztmp0*ztmp2 ! temporary array !!
-      func_h = (1.-ztmp1) * (func_m/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (func_m*(1. + 27./9.*ztmp2/func_m))              !  BRN > 0
-      !#LOLO: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
+      func_h = (1.-ztmp1) * (func_m/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1   * (func_m*(1._wp + 27._wp/9._wp*ztmp2/func_m))           !  BRN > 0
+      !#LB: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
@@ -248,7 +248,7 @@ CONTAINS
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
          !
          dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -285,9 +285,9 @@ CONTAINS
          u_star = U_blk*vkarmn/func_m
          ztmp2  = u_star*u_star
          ztmp1  = znu_a/u_star
-         z0     = MIN( ABS( alpha_M*ztmp1 + charn0*ztmp2/grav ) , 0.001)
-         z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001)
+         z0     = MIN( ABS( alpha_M*ztmp1 + charn0*ztmp2/grav ) , 0.001_wp)
+         z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+         z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001_wp)
 
          !! Update wind at 10m taking into acount convection-related wind gustiness:
          !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
@@ -338,11 +338,11 @@ CONTAINS
             ! Non-Solar heat flux to the ocean:
             ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
             ztmp2 = T_s*T_s
-            ztmp1 = ztmp1 * ( Ce*L0vap*(q_zu - q_s) + Ch*Cp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
-               &     + 0.97*(rad_lw - sigma0*ztmp2*ztmp2)                        ! Net longwave flux
+            ztmp1 = ztmp1 * ( Ce*L0vap*(q_zu - q_s) + Ch*rCp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
+               &     + 0.97*(rad_lw - sigma0*ztmp2*ztmp2)                  ! Net longwave flux
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
-            q_s = 0.98*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
+            q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
          END IF
 
          IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
@@ -521,9 +521,9 @@ CONTAINS
       !
       !     1.1 General
       !
-      ZEPDU2  = 0.01_wp   !    security constant for velocity**2   (m2/s2)
-      ZROADRW = rho0_a/rho0_w          ! Density ratio                      (-)
-      zRhoCp_w = rho0_w*Cp0_w
+      ZEPDU2   = 0.01_wp   !    security constant for velocity**2   (m2/s2)
+      ZROADRW  = rho0_a/rho0_w          ! Density ratio                      (-)
+      zRhoCp_w = rho0_w*rCp0_w
       !
       !     1.2C Warm layer parametrization constants
       !

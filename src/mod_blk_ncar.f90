@@ -61,10 +61,7 @@ CONTAINS
       !!    - using code-wide physical constants defined into "phycst.mod" rather than redifining them
       !!      => 'vkarmn' and 'grav'
       !!
-      !!      Author:  L. Brodeau
-      !!----------------------------------------------------------------------
-
-      !!======================================================================================
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!
       !! INPUT :
       !! -------
@@ -97,10 +94,10 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature              [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature                [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity         [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity                   [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
@@ -144,8 +141,8 @@ CONTAINS
 
       !! First guess of stability:
       ztmp0 = virt_temp(t_zt, q_zt) - virt_temp(sst, ssq) ! air-sea difference of virtual pot. temp. at zt
-      stab  = 0.5 + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
-      !! 
+      stab  = 0.5_wp + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
+
       !! As a first guess: initializing transf. coeff. with the Neutral coefficients at 10m:
       Cd = cd_neutral_10m( U_blk )
       sqrt_Cd_n10 = SQRT( Cd )
@@ -171,13 +168,15 @@ CONTAINS
          ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
          
          !! Stability parameters :
-         zeta_u   = zu*ztmp0   ;  zeta_u = sign( min(abs(zeta_u),10.0_wp), zeta_u )
+         zeta_u   = zu*ztmp0
+         zeta_u = sign( min(abs(zeta_u),10.0_wp), zeta_u )
          zpsi_h_u = psi_h( zeta_u )
 
          !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Array 'stab' is free for the moment so using it to store 'zeta_t'
-            stab = zt*ztmp0 ;  stab = SIGN( MIN(ABS(stab),10.0_wp), stab )  ! Temporaty array stab == zeta_t !!!
+            stab = zt*ztmp0
+            stab = SIGN( MIN(ABS(stab),10.0_wp), stab )  ! Temporaty array stab == zeta_t !!!
             stab = LOG(zt/zu) + zpsi_h_u - psi_h(stab)                   ! stab just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*stab    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
             q_zu = q_zt - ztmp2/vkarmn*stab    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
@@ -193,7 +192,7 @@ CONTAINS
          ztmp0 = cd_neutral_10m(ztmp0)                                               ! Cd_n10
          sqrt_Cd_n10 = sqrt(ztmp0)
 
-         stab    = 0.5 + sign(0.5_wp,zeta_u)                           ! update stability
+         stab    = 0.5_wp + sign(0.5_wp,zeta_u)                        ! update stability
          Cx_n10  = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
 
          !! Update of transfer coefficients:
@@ -226,20 +225,20 @@ CONTAINS
 
 
    FUNCTION cd_neutral_10m( pw10 )
-      !!-----------------------------------------------------------------
+      !!----------------------------------------------------------------------------------      
       !! Estimate of the neutral drag coefficient at 10m as a function
       !! of neutral wind  speed at 10m
       !!
       !! Origin: Large & Yeager 2008 eq.(11a) and eq.(11b)
       !!
-      !! Author: L. Brodeau, june 2016
-      !!-----------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
       REAL(wp), DIMENSION(jpi,jpj)             :: cd_neutral_10m
       !
       INTEGER  ::     ji, jj     ! dummy loop indices
       REAL(wp) :: zgt33, zw, zw6 ! local scalars
-      !!-----------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -249,7 +248,7 @@ CONTAINS
             zw6 = zw6*zw6
             !
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
-            zgt33 = 0.5 + SIGN( 0.5_wp, (zw - 33.) )   ! If pw10 < 33. => 0, else => 1
+            zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
             !
             cd_neutral_10m(ji,jj) = 1.e-3 * ( &
                &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
@@ -263,35 +262,33 @@ CONTAINS
    END FUNCTION cd_neutral_10m
 
 
-   FUNCTION psi_m(pzeta)
-      !!-------------------------------------------------------------------------------
+   FUNCTION psi_m( pzeta )
+      !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
-      !!
-      !! pzet0 : stability paramenter, z/L where z is altitude measurement
+      !!     
+      !! pzet0 : stability paramenter, z/L where z is altitude measurement                                          
       !!         and L is M-O length
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!-------------------------------------------------------------------------------
-      !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(jpi,jpj)             :: psi_m
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pzeta
+      REAL(wp), DIMENSION(jpi,jpj)             ::   psi_m
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) :: zx2, zx, zstab   ! local scalars
-      !!-------------------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
+            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
             zx2 = MAX( zx2 , 1._wp )
             zx  = SQRT( zx2 )
-            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
+            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
-            psi_m(ji,jj) =      zstab    * (-5.*pzeta(ji,jj))       &          ! Stable
-               &          + (1. - zstab) * (2.*LOG((1. + zx)*0.5)   &          ! Unstable
-               &               + LOG((1. + zx2)*0.5) - 2.*ATAN(zx) + rpi*0.5)  !    "
+            psi_m(ji,jj) =        zstab  * (-5._wp*pzeta(ji,jj))       &          ! Stable
+               &          + (1._wp - zstab) * (2._wp*LOG((1._wp + zx)*0.5_wp)   &          ! Unstable
+               &               + LOG((1._wp + zx2)*0.5_wp) - 2._wp*ATAN(zx) + rpi*0.5_wp)  !    "
             !
          END DO
       END DO
@@ -299,37 +296,36 @@ CONTAINS
    END FUNCTION psi_m
 
 
-   FUNCTION psi_h(pzeta)
-      !!--------------------------------------------------------------------
+   FUNCTION psi_h( pzeta )
+      !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
       !!
-      !! pzet0 : stability paramenter, z/L where z is altitude measurement
+      !! pzet0 : stability paramenter, z/L where z is altitude measurement                                          
       !!         and L is M-O length
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       REAL(wp), DIMENSION(jpi,jpj)             :: psi_h
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zx2, zstab  ! local scalars
-      !!----------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1. - 16.*pzeta(ji,jj) ) )
+            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
             zx2 = MAX( zx2 , 1._wp )
-            zstab = 0.5 + SIGN( 0.5_wp , pzeta(ji,jj) )
+            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
-            psi_h(ji,jj) =      zstab     * (-5.*pzeta(ji,jj))        &  ! Stable
-               &           + (1. - zstab) * (2.*LOG( (1. + zx2)*0.5 ))   ! Unstable
+            psi_h(ji,jj) =         zstab  * (-5._wp*pzeta(ji,jj))        &  ! Stable
+               &           + (1._wp - zstab) * (2._wp*LOG( (1._wp + zx2)*0.5_wp ))   ! Unstable
             !
          END DO
       END DO
       !
    END FUNCTION psi_h
 
-
+   !!======================================================================
 END MODULE mod_blk_ncar
