@@ -36,12 +36,13 @@ MODULE mod_blk_coare
 
    PUBLIC :: TURB_COARE
 
-   !                   !! COARE own values for given constants:
+   !                                              !! COARE own values for given constants:
    REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
    REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5:
    !                         !:  -> VALUE above which the Charnock paramter levels off for winds > 18
 
+   !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE turb_coare( cver, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
@@ -99,7 +100,7 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       CHARACTER(len=3), INTENT(in   )             ::   cver     ! version of COARE to use (use '3.0' if u don't know what to chose!'
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
@@ -169,9 +170,9 @@ CONTAINS
 
 
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      IF( .NOT. l_zt_equal_zu )   ALLOCATE ( zeta_t(jpi,jpj) )
+      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
@@ -179,12 +180,12 @@ CONTAINS
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
          zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = 0.98*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
          zdelta = 0.001                    ! First guess of zdelta
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt , 199.0_wp )   ! who knows what's given on masked-continental regions...
+      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
@@ -193,13 +194,13 @@ CONTAINS
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
+      ztmp2 = 0.5_wp*0.5_wp  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
-      ztmp2   = 10000.     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
+      ztmp2   = 10000._wp     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
       ztmp0   = LOG(zu*ztmp2)
       ztmp1   = LOG(10.*ztmp2)
-      u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+      u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       ! Charnock Parameter
       SELECT CASE (cver)
@@ -213,10 +214,10 @@ CONTAINS
          STOP
       END SELECT
 
-      z0     = zalpha*u_star*u_star/grav + 0.11*znu_a/u_star
-      z0     = MIN(ABS(z0), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
-      z0t    = 1. / ( 0.1*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN(ABS(z0t), 0.001)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
+      z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
       ztmp2  = vkarmn/ztmp0
       Cd     = ztmp2*ztmp2    ! first guess of Cd
@@ -224,14 +225,13 @@ CONTAINS
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
       ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
-      !ztmp2  = grav*zu*(dt_zu + rctv0*t_zu*dq_zu)/(t_zu*U_blk*U_blk)  !! Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
 
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
-      zeta_u = (1.-ztmp1) * (ztmp0/(1.+ztmp2/(-zu/(zi0*0.004*Beta0**3)))) & !  BRN < 0
-         &  +     ztmp1   * (ztmp0*(1. + 27./9.*ztmp2/ztmp0))               !  BRN > 0
-      !#LOLO: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
+      zeta_u = (1._wp-ztmp1) * (ztmp0/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0
+         &  +     ztmp1   * (ztmp0*(1._wp + 27._wp/9._wp*ztmp2/ztmp0))               !  BRN > 0
+      !#LB: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
@@ -248,7 +248,7 @@ CONTAINS
          ztmp1 = LOG(zt/zu) + ztmp0
          t_zu = t_zt - t_star/vkarmn*ztmp1
          q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5 + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
          !
          dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -279,12 +279,12 @@ CONTAINS
          END IF
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
-         z0    = zalpha*ztmp1/grav + 0.11*znu_a/u_star  ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                        ! Re_r: roughness Reynolds number
-
+         z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
+         ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
+ 
          SELECT CASE (cver)
          CASE('3.0')
-            z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28)
+         z0t  = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28)
          CASE('3.5')
             ! Chris Fairall and Jim Edsson, private communication, March 2016 / COARE 3.5 :
             !  -> these thermal roughness lengths give CE and CH that closely approximate COARE3.0
@@ -329,8 +329,8 @@ CONTAINS
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-      END DO
-      !
+      END DO !DO j_itt = 1, nb_itt
+
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/U_blk
       Cd   = ztmp0*ztmp0
@@ -362,7 +362,7 @@ CONTAINS
       !! Wind between 10 and 18 m/s : linear increase from 0.011 to 0.018
       !! Wind greater than 18 m/s :  alfa = 0.018
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
+      !! Author: L. Brodeau, June 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p0
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! wind speed
@@ -401,7 +401,7 @@ CONTAINS
       !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
       !!       form from Beljaars and Holtslag (1991)
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_coare
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -453,7 +453,7 @@ CONTAINS
       !! al (1996) with profile constants from Grachev et al (2000) BLM stable
       !! form from Beljaars and Holtslag (1991)
       !!
-      !! Author: L. Brodeau, june 2016 / AeroBulk
+      !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
       !!
@@ -578,5 +578,5 @@ CONTAINS
 
    END SUBROUTINE CSWL_COARE
 
-
+   !!======================================================================
 END MODULE mod_blk_coare

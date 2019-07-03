@@ -69,7 +69,7 @@ CONTAINS
       &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                   rad_sw, rad_lw, slp,                &
       &                   xz0, xu_star, xL, xUN10 )
-      !!----------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
@@ -119,7 +119,7 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
@@ -183,11 +183,11 @@ CONTAINS
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
-      !
-      ! Identical first gess as in COARE, with IFS parameter values though
+
+      ! Identical first gess as in COARE, with IFS parameter values though...
       !
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
@@ -198,22 +198,22 @@ CONTAINS
       END IF
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt , 0.0_wp  )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6_wp)   !               "
+      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      znu_a = visc_air(t_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+      znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      ztmp2 = 0.5*0.5  ! initial guess for wind gustiness contribution
+      ztmp2 = 0.5_wp*0.5_wp  ! initial guess for wind gustiness contribution
       U_blk = SQRT(U_zu*U_zu + ztmp2)
 
       ztmp2   = 10000._wp     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
       ztmp0   = LOG(zu*ztmp2)
       ztmp1   = LOG(10.*ztmp2)
-      u_star = 0.035*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+      u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn0*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
@@ -230,8 +230,8 @@ CONTAINS
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       func_m = ztmp0*ztmp2 ! temporary array !!
-      func_h = (1.-ztmp1) * (func_m/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (func_m*(1._wp + 27._wp/9._wp*ztmp2/func_m))           !  BRN > 0
+      func_h = (1._wp-ztmp1) * (func_m/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
+         &  +     ztmp1   * (func_m*(1._wp + 27._wp/9._wp*ztmp2/func_m))              !  BRN > 0
       !#LB: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
@@ -275,7 +275,6 @@ CONTAINS
          !! New estimate of the inverse of the Monin-Obukhon length (Linv == zeta/zu) :
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
          !! Note: it is slightly different that the L we would get with the usual
-         !! expression, as in coare algorithm or in 'mod_phymbl.f90' (One_on_L_MO())
          Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
          !! Update func_m with new Linv:
@@ -331,7 +330,6 @@ CONTAINS
          !! -----------------
          IF( l_use_skin ) THEN
             !! compute transfer coefficients at zu : lolo: verifier...
-            Cd = vkarmn*vkarmn/(func_m*func_m)
             Ch = vkarmn*vkarmn/(func_m*func_h)
             ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
             Ce = vkarmn*vkarmn/(func_m*ztmp1)
@@ -385,7 +383,7 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -433,7 +431,7 @@ CONTAINS
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ecmwf
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
