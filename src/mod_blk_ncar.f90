@@ -143,9 +143,11 @@ CONTAINS
       ztmp0 = virt_temp(t_zt, q_zt) - virt_temp(sst, ssq) ! air-sea difference of virtual pot. temp. at zt
       stab  = 0.5_wp + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
 
-      !! As a first guess: initializing transf. coeff. with the Neutral coefficients at 10m:
-      Cd = cd_neutral_10m( U_blk )
-      sqrt_Cd_n10 = SQRT( Cd )
+      ztmp0 = cd_neutral_10m( U_blk )
+      sqrt_Cd_n10 = SQRT( ztmp0 )
+
+      !! Initializing transf. coeff. with their first guess neutral equivalents :
+      Cd = ztmp0
       Ce = 1.e-3*( 34.6 * sqrt_Cd_n10 )
       Ch = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))
       stab = sqrt_Cd_n10   ! Temporaty array !!! stab == SQRT(Cd)
