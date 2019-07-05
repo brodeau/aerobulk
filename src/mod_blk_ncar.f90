@@ -17,7 +17,7 @@ MODULE mod_blk_ncar
    !!   * the effective bulk wind speed at 10m U_blk
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
-   !!    Using the bulk formulation/param. of "CORE2" aka "NCAR", Large & Yeager (2004,2008)
+   !!    Using the bulk formulation/param. of Large & Yeager 2008
    !!
    !!       Routine turb_ncar maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -33,12 +33,13 @@ MODULE mod_blk_ncar
 
    PUBLIC :: TURB_NCAR
 
+   !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
       &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                   xz0, xu_star, xL, xUN10 )
-      !!----------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
@@ -90,7 +91,7 @@ CONTAINS
       !!    * xL          : return the Monin-Obukhov length                    [m]
       !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
@@ -123,7 +124,7 @@ CONTAINS
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!----------------------------------------------------------------------------------
-
+   
       ALLOCATE( Cx_n10(jpi,jpj), sqrt_Cd_n10(jpi,jpj), &
          &    zeta_u(jpi,jpj), stab(jpi,jpj), zpsi_h_u(jpi,jpj),  &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
@@ -135,7 +136,7 @@ CONTAINS
 
 
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 ) l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
@@ -148,8 +149,8 @@ CONTAINS
 
       !! Initializing transf. coeff. with their first guess neutral equivalents :
       Cd = ztmp0
-      Ce = 1.e-3*( 34.6 * sqrt_Cd_n10 )
-      Ch = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))
+      Ce = 1.e-3_wp*( 34.6_wp * sqrt_Cd_n10 )
+      Ch = 1.e-3_wp*sqrt_Cd_n10*(18._wp*stab + 32.7_wp*(1._wp - stab))
       stab = sqrt_Cd_n10   ! Temporaty array !!! stab == SQRT(Cd)
 
       !! Initializing values at z_u with z_t values:
@@ -171,14 +172,14 @@ CONTAINS
          
          !! Stability parameters :
          zeta_u   = zu*ztmp0
-         zeta_u = sign( min(abs(zeta_u),10.0_wp), zeta_u )
+         zeta_u = sign( min(abs(zeta_u),10._wp), zeta_u )
          zpsi_h_u = psi_h( zeta_u )
 
          !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Array 'stab' is free for the moment so using it to store 'zeta_t'
             stab = zt*ztmp0
-            stab = SIGN( MIN(ABS(stab),10.0_wp), stab )  ! Temporaty array stab == zeta_t !!!
+            stab = SIGN( MIN(ABS(stab),10._wp), stab )  ! Temporaty array stab == zeta_t !!!
             stab = LOG(zt/zu) + zpsi_h_u - psi_h(stab)                   ! stab just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*stab    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
             q_zu = q_zt - ztmp2/vkarmn*stab    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
@@ -195,20 +196,20 @@ CONTAINS
          sqrt_Cd_n10 = sqrt(ztmp0)
 
          stab    = 0.5_wp + sign(0.5_wp,zeta_u)                        ! update stability
-         Cx_n10  = 1.e-3*sqrt_Cd_n10*(18.*stab + 32.7*(1. - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
+         Cx_n10  = 1.e-3_wp*sqrt_Cd_n10*(18._wp*stab + 32.7_wp*(1._wp - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
 
          !! Update of transfer coefficients:
-         ztmp1 = 1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
+         ztmp1 = 1._wp + sqrt_Cd_n10/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
          Cd      = ztmp0 / ( ztmp1*ztmp1 )
          stab = SQRT( Cd ) ! Temporary array !!! (stab == SQRT(Cd))
 
-         ztmp0 = (LOG(zu/10.) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
+         ztmp0 = (LOG(zu/10._wp) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
          ztmp2 = stab / sqrt_Cd_n10   ! (stab == SQRT(Cd))
-         ztmp1 = 1. + Cx_n10*ztmp0    ! (Cx_n10 == Ch_n10)
+         ztmp1 = 1._wp + Cx_n10*ztmp0    ! (Cx_n10 == Ch_n10)
          Ch  = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
 
-         Cx_n10  = 1.e-3 * (34.6 * sqrt_Cd_n10)  ! L&Y 2004 eq. (6b)    ! Cx_n10 == Ce_n10
-         ztmp1 = 1. + Cx_n10*ztmp0
+         Cx_n10  = 1.e-3_wp * (34.6_wp * sqrt_Cd_n10)  ! L&Y 2004 eq. (6b)    ! Cx_n10 == Ce_n10
+         ztmp1 = 1._wp + Cx_n10*ztmp0
          Ce  = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
 
       END DO
@@ -252,9 +253,9 @@ CONTAINS
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
             zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
             !
-            cd_neutral_10m(ji,jj) = 1.e-3 * ( &
-               &       (1. - zgt33)*( 2.7/zw + 0.142 + zw/13.09 - 3.14807E-10*zw6) & ! wind <  33 m/s
-               &      +    zgt33   *      2.34 )                                     ! wind >= 33 m/s
+            cd_neutral_10m(ji,jj) = 1.e-3_wp * ( &
+               &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
+               &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
             cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6_wp)
             !
