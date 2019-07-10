@@ -1,6 +1,9 @@
-! AeroBulk / 2015 / L. Brodeau
+! AeroBulk / 2019 / L. Brodeau
 
-PROGRAM TEST_AEROBULK
+!! https://www.pmel.noaa.gov/ocs/flux-documentation
+
+
+PROGRAM TEST_AEROBULK_BUOY_SERIES
 
    USE mod_const
    USE mod_phymbl
@@ -11,8 +14,12 @@ PROGRAM TEST_AEROBULK
 
    IMPLICIT NONE
 
+   INTEGER, PARAMETER :: nb_measurements = 115
+   
    INTEGER, PARAMETER :: nb_algos = 4
 
+   CHARACTER(len=800) :: cf_data='0', cblabla
+   
    CHARACTER(len=7), DIMENSION(nb_algos), PARAMETER :: &
       &      vca = (/ 'coare  ', 'coare35', 'ncar   ', 'ecmwf  ' /)
 
@@ -33,21 +40,22 @@ PROGRAM TEST_AEROBULK
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jarg, ialgo, jq
+   INTEGER :: jarg, jl, ialgo, jq
 
-   INTEGER, PARAMETER :: lx=1, ly=1
+   INTEGER, PARAMETER :: lx=1, ly=nb_measurements
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
 
+   INTEGER(8), DIMENSION(ly) :: idate
    REAL(wp), DIMENSION(lx,ly) :: sst, Ts, qsat_zt, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
-      &  tmp
+      &  precip, rlat, rlon, tmp
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
    REAL(wp) :: zt, zu, nu_air
 
    CHARACTER(len=3) :: czt, czu
-
+   
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
@@ -73,6 +81,10 @@ PROGRAM TEST_AEROBULK
       CASE('-h')
          call usage_test()
 
+      CASE('-f')
+         jarg = jarg + 1
+         CALL get_command_ARGUMENT(jarg,cf_data)
+
       CASE('-p')
          l_ask_for_slp = .TRUE.
 
@@ -94,7 +106,11 @@ PROGRAM TEST_AEROBULK
    END DO
 
 
+   IF ( trim(cf_data) == '0' ) CALL usage_test()
 
+
+   WRITE(6,*) ''
+   WRITE(6,*) ' *** Input file is ',TRIM(cf_data)
    WRITE(6,*) ''
    WRITE(6,*) '  *** Epsilon            = Rd/Rv       (~0.622) =>', reps0
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
@@ -106,6 +122,18 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''
 
+
+   OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
+   READ(11,*) cblabla ! first commented line...
+   DO jl = 1, nb_measurements
+      READ(11,*) idate(jl), W10(1,jl), sst(1,jl), t_zt(1,jl), q_zt(1,jl), rad_sw(1,jl), rad_lw(1,jl), precip(1,jl), rlat(1,jl), rlon(1,jl), tmp(1,jl)
+   END DO
+
+
+
+
+
+   
    WRITE(6,*) 'Give "zu", height of wind speed measurement in meters (generally 10m):'
    READ(*,*) zu
    WRITE(6,*) ''
@@ -127,60 +155,70 @@ PROGRAM TEST_AEROBULK
    WRITE(czu,'(i2,"m")') INT(zu)
 
 
-   IF ( l_ask_for_slp ) THEN
-      WRITE(6,*) 'Give sea-level pressure (hPa):'
-      READ(*,*) SLP
-      SLP = SLP*100.
-   ELSE
+   !IF ( l_ask_for_slp ) THEN
+   !   WRITE(6,*) 'Give sea-level pressure (hPa):'
+   !   READ(*,*) SLP
+   !   SLP = SLP*100.
+   !ELSE
       SLP = Patm
       WRITE(6,*) 'Using a sea-level pressure of ', Patm
-   END IF
+   !END IF
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give SST (deg. C):'
-   READ(*,*) sst
+   !WRITE(6,*) 'Give SST (deg. C):'
+   !READ(*,*) sst
    sst = sst + rt0
-   WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
+   !WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'
-   READ(*,*) t_zt
+   !WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'
+   !READ(*,*) t_zt
    t_zt = t_zt + rt0
-   WRITE(6,*) ''
+   !WRITE(6,*) ''
 
 
    !! Asking for humidity:
    qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
 
-   IF ( l_use_rh ) THEN
-      WRITE(6,*) 'Give relative humidity at ',trim(czt),' [%]:'
-      READ(*,*) RH_zt
-      RH_zt = 1.E-2*RH_zt
-      q_zt = q_air_rh(RH_zt, t_zt, SLP)
-      WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
-   ELSEIF ( l_use_dp ) THEN
-      WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
-      READ(*,*) d_zt
-      d_zt = d_zt + rt0
-      q_zt = q_air_dp(d_zt, SLP)
-      WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
-   ELSE
-      WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
-         &      TRIM(czt), 1000.*qsat_zt
-      READ(*,*) q_zt
-      q_zt = 1.E-3*q_zt
-      RH_zt   = rh_air(q_zt, t_zt, SLP)
-      WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
-      !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
-   END IF
+   !IF ( l_use_rh ) THEN
+   !   WRITE(6,*) 'Give relative humidity at ',trim(czt),' [%]:'
+   !   READ(*,*) RH_zt
+   !   RH_zt = 1.E-2*RH_zt
+   !   q_zt = q_air_rh(RH_zt, t_zt, SLP)
+   !   WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+   !   !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+   !ELSEIF ( l_use_dp ) THEN
+   !   WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
+   !   READ(*,*) d_zt
+   !   d_zt = d_zt + rt0
+   !   q_zt = q_air_dp(d_zt, SLP)
+   !   WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+   !   !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+   !ELSE
+   !   WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
+   !      &      TRIM(czt), 1000.*qsat_zt
+   !   READ(*,*) q_zt
+   q_zt  = 1.E-3*q_zt
+   RH_zt = rh_air(q_zt, t_zt, SLP)
+   !   WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
+   !   !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
+   !END IF
    WRITE(6,*) ''
 
-   IF ( q_zt(1,1) > qsat_zt(1,1) ) THEN
-      WRITE(6,*) ' ERROR: you can not go belong saturation!!!' ; STOP
-   END IF
+   !IF ( q_zt(1,1) > qsat_zt(1,1) ) THEN
+   !   WRITE(6,*) ' ERROR: you can not go belong saturation!!!' ; STOP
+   !END IF
 
+
+   
+   WRITE(6,*) ' * idate, wind, SST, t_zt, q_zt, :'
+   DO jl = 1, nb_measurements
+      WRITE(6,*) idate(jl), W10(:,jl), sst(:,jl), t_zt(:,jl), q_zt(:,jl)
+   END DO
+   
+
+
+   STOP
 
 
    WRITE(6,*) ''
@@ -477,7 +515,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    CLOSE(6)
 
-END PROGRAM TEST_AEROBULK
+END PROGRAM TEST_AEROBULK_BUOY_SERIES
 
 
 
@@ -485,6 +523,8 @@ SUBROUTINE usage_test()
    !!
    PRINT *,''
    PRINT *,'   List of command line options:'
+   PRINT *,''
+   PRINT *,' -f <ascii_file>  => file containing data'
    PRINT *,''
    PRINT *,' -p   => ask for sea-level pressure, otherwize assume 1010 hPa'
    PRINT *,''
