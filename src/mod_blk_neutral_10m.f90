@@ -117,7 +117,7 @@ CONTAINS
             !IF ( (jpi==1).AND.(jpj==1) ) PRINT *, '   *** alpha = ', ztmp0
 
             !! Roughness lengthes z0, momentum: z0t (z0q = z0t) :
-            z0   = ztmp0*u_star*u_star/grav + 0.11*nu0_air/u_star ! Roughness length (eq.6)
+            z0   = ztmp0*u_star*u_star/grav + 0.11*rnu0_air/u_star ! Roughness length (eq.6)
 
 
             !! Compute drag coefficient at 10m
@@ -136,7 +136,7 @@ CONTAINS
          IF ( TRIM(calgo) == 'coare30' ) THEN
 
             ! Re_r: roughness Reynolds number:
-            ztmp1 = z0*u_star/nu0_air
+            ztmp1 = z0*u_star/rnu0_air
 
             !! Scalar roughness length z0t:
             z0t = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
@@ -147,7 +147,7 @@ CONTAINS
          IF ( TRIM(calgo) == 'coare35' ) THEN
 
             ! Re_r: roughness Reynolds number:
-            ztmp1 = z0*u_star/nu0_air
+            ztmp1 = z0*u_star/rnu0_air
 
             !! Scalar roughness length z0t:
             !! Chris Fairall, Jim Edscon, private communication, March 2016 / COARE 3.5 :
@@ -159,7 +159,7 @@ CONTAINS
 
 
          IF ( TRIM(calgo) == 'ecmwf' ) THEN
-            ztmp1  = nu0_air/u_star
+            ztmp1  = rnu0_air/u_star
             z0t    = 0.40*ztmp1                              ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
             z0q    = 0.62*ztmp1
          END IF

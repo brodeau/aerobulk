@@ -37,14 +37,14 @@ MODULE mod_const
       !!
       & rCp0_w  = 4190. ,    &  !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
       & rho0_w = 1025.  ,    &  !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
-      &  nu0_w = 1.e-6,      &  !: kinetic viscosity of water                      [m^2/s]
-      &  k0_w  = 0.6,        &  !: thermal conductivity of water (at 20C)          [W/m/K]
+      &  rnu0_w = 1.e-6,      &  !: kinetic viscosity of water                      [m^2/s]
+      &  rk0_w  = 0.6,        &  !: thermal conductivity of water (at 20C)          [W/m/K]
       !!
       &  reps0 = R_dry/R_vap,  &   !: ratio of gas constant for dry air and water vapor => ~ 0.622
       !!
       &  rctv0 = R_vap/R_dry - 1. , &   !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
       !!
-      &  nu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
+      &  rnu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
       !!
       &  rLevap = 2.46E6,    &   !: Latent heat of vaporization for sea-water in J/kg
       &  vkarmn = 0.4,       &   !: Von Karman's constant
