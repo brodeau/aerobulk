@@ -48,21 +48,6 @@ MODULE mod_blk_ecmwf
 
 !!!INTEGER , PARAMETER ::   nb_itt = 5        ! number of itterations
 
-   !! Cool-Skin / Warm-Layer related parameters:
-   REAL(wp),    PARAMETER :: &
-      &  rdt0    = 3600.*1.5, & !: time step
-      &  rd0     = 3. ,      &  !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
-      &  rNu0    = 0.5          !: Nu (exponent of temperature profile) Eq.11
-   !                            !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
-   !                            !: 0.3 to respect a warming of +3 K in calm
-   !                            !: condition for the insolation peak of +1000W/m^2
-   INTEGER,    PARAMETER :: &
-      &  nb_itt_wl = 10         !: number of sub-itterations for solving the differential equation in warm-layer part
-   !                            !:  => use "nb_itt_wl = 1" for No itteration! => way cheaper !!!
-   !                            !:    => assumes balance between the last 2 terms of Eq.11 (lhs of eq.11 = 0)
-   !                            !:    => in that case no need for sub-itterations !
-   !                            !:    => ACCEPTABLE IN MOST CONDITIONS ! (UNLESS: sunny + very calm/low-wind conditions)
-   !                            !:  => Otherwize use "nb_itt_wl = 10"
 
 CONTAINS
 

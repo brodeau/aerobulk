@@ -34,7 +34,6 @@ MODULE mod_cswl_ecmwf
    PUBLIC :: CSWL_ECMWF
 
    !! Cool-Skin / Warm-Layer related parameters:
-   REAL(wp), PARAMETER :: rdt0 = 3600.*1.5 !: time step
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
@@ -158,7 +157,7 @@ CONTAINS
 
       IF( nbi > 1 ) THEN
          !! Itterating for warm-layer solution
-         zdt   = rdt0/REAL(nbi)
+         zdt   = rdt/REAL(nbi)
          rmult = 1._wp
       ELSE
          !! No itteration! Way cheaper !!!

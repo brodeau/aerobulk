@@ -19,7 +19,9 @@ MODULE mod_const
 
    INTEGER, SAVE      :: nb_itt=5  !: number of itteration in the bulk algorithm
 
+   REAL(wp), PARAMETER, PUBLIC :: rdt = 3600.*1.5 !: time step for the cool-skin/warm-layer parameterization
 
+   
    REAL(wp), PARAMETER, PUBLIC :: &
       &   rpi  = 3.141592653589793, &
       &   rt0  = 273.15,    &      !: freezing point of fresh water [K]
