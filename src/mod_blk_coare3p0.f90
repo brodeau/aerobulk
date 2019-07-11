@@ -7,7 +7,7 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_blk_coare
+MODULE mod_blk_coare3p0
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes
    !!         according to Fairall et al. 2003 (COARE v3)
@@ -22,7 +22,7 @@ MODULE mod_blk_coare
    !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003
    !!      + consideration of cool-skin warm layer parametrization (Fairall et al. 1996)
    !!
-   !!       Routine turb_coare maintained and developed in AeroBulk
+   !!       Routine turb_coare3p0 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
@@ -35,23 +35,22 @@ MODULE mod_blk_coare
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_COARE
+   PUBLIC :: TURB_COARE3P0
 
    !                                              !! COARE own values for given constants:
    REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
-   REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5:
    !                         !:  -> VALUE above which the Charnock paramter levels off for winds > 18
 
    !!----------------------------------------------------------------------
 CONTAINS
-
-   SUBROUTINE turb_coare( cver, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
-      &                   Cd, Ch, Ce, t_zu, q_zu, U_blk,            &
-      &                   rad_sw, rad_lw, slp,                      &
-      &                   xz0, xu_star, xL, xUN10 )
+   
+   SUBROUTINE turb_coare3p0( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+      &                      rad_sw, rad_lw, slp,                &
+      &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_coare  ***
+      !!                      ***  ROUTINE  turb_coare3p0  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to Fairall et al. (2003)
@@ -65,7 +64,6 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  cver : version of COARE to use => '3.0' or '3.5'
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (generally 10m)                   [m]
       !!    *  U_zu : scalar wind speed at 10m                                [m/s]
@@ -103,7 +101,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      CHARACTER(len=3), INTENT(in   )             ::   cver     ! version of COARE to use (use '3.0' if u don't know what to chose!'
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
@@ -204,16 +201,7 @@ CONTAINS
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       ! Charnock Parameter
-      SELECT CASE (cver)
-      CASE('3.0')
-         zalpha = alfa_charn_3p0(U_zu)
-      CASE('3.5')
-         zalpha = MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
-         zalpha = MAX( zalpha , 0._wp )
-      CASE DEFAULT
-         PRINT *, 'Unknown version for COARE algorithm: ',cver ; PRINT *, ''
-         STOP
-      END SELECT
+      zalpha = alfa_charn_3p0(U_zu)
 
       z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
@@ -272,26 +260,12 @@ CONTAINS
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
          !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
-         IF( cver == '3.5' ) THEN
-            !! Need to update Charnock parameter from neutral wind speed!
-            ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
-            zalpha = MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
-            zalpha = MAX( zalpha , 0._wp )
-         END IF
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
          ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
  
-         SELECT CASE (cver)
-         CASE('3.0')
          z0t  = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28)
-         CASE('3.5')
-            ! Chris Fairall and Jim Edsson, private communication, March 2016 / COARE 3.5 :
-            !  -> these thermal roughness lengths give CE and CH that closely approximate COARE3.0
-            z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
-            !                                            !
-         END SELECT
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -350,7 +324,7 @@ CONTAINS
          DEALLOCATE ( zsst, zrhoa, zQsw, zdelta )
       END IF
 
-   END SUBROUTINE turb_coare
+   END SUBROUTINE turb_coare3p0
 
 
    FUNCTION alfa_charn_3p0( pwnd )
@@ -493,4 +467,4 @@ CONTAINS
    END FUNCTION psi_h_coare
 
    !!======================================================================
-END MODULE mod_blk_coare
+END MODULE mod_blk_coare3p0

@@ -2,12 +2,13 @@
 
 MODULE mod_aerobulk_compute
 
-   USE mod_const       !: physical constants
-   USE mod_phymbl      !: thermodynamics functions
-
-   USE mod_blk_coare   !: COAREv3   algorithm
-   USE mod_blk_ncar    !: Large & Yeager algorithm
-   USE mod_blk_ecmwf   !: following ECMWF doc...
+   USE mod_const        !: physical constants
+   USE mod_phymbl       !: thermodynamics functions
+   
+   USE mod_blk_coare3p0 !: COARE v3.0 algorithm
+   USE mod_blk_coare3p5 !: COARE v3.5 algorithm
+   USE mod_blk_ncar     !: Large & Yeager algorithm
+   USE mod_blk_ecmwf    !: following ECMWF doc...
 
    IMPLICIT NONE
 
@@ -32,7 +33,7 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  calgo: what bulk algorithm to use => 'coare'/'coare35'/'ncar'/'ecmwf'
+      !!    *  calgo: what bulk algorithm to use => 'coare3p0'/'coare3p5'/'ncar'/'ecmwf'
       !!    *  zt   : height for temperature and spec. hum. of air           [m]
       !!    *  zu   : height for wind (10m = traditional anemometric height  [m]
       !!    *  sst  : bulk SST                                               [K]
@@ -102,7 +103,7 @@ CONTAINS
 
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
-         IF((TRIM(calgo) == 'coare').OR.(TRIM(calgo) == 'coare35').OR.(TRIM(calgo) == 'ecmwf')) THEN
+         IF((TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p5').OR.(TRIM(calgo) == 'ecmwf')) THEN
             l_use_skin = .TRUE.
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
@@ -127,7 +128,7 @@ CONTAINS
       !! Approximate potential temperarure at zt meters above sea surface:
       pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
 
-      !! Mind that TURB_COARE and TURB_ECMWF will modify SST and SSQ if their
+      !! Mind that TURB_COARE* and TURB_ECMWF will modify SST and SSQ if their
       !! respective Cool Skin Warm Layer parameterization is used
       pTs = sst
       pqs = pSSQ
@@ -135,23 +136,23 @@ CONTAINS
 
       SELECT CASE(TRIM(calgo))
          !!
-      CASE('coare')
+      CASE('coare3p0')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE ( '3.0', zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+            CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,            &
                &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
-            CALL TURB_COARE ( '3.0', zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+            CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
          END IF
          !!
-      CASE('coare35')
+      CASE('coare3p5')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE ( '3.5', zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
+            CALL TURB_COARE3P5 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
                &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
-            CALL TURB_COARE ('3.5', zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+            CALL TURB_COARE3P5 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
          END IF
          !!

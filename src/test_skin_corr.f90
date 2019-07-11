@@ -5,12 +5,12 @@ PROGRAM TEST_SKIN_CORR
    USE mod_const
    USE mod_phymbl
 
-   USE mod_blk_coare
+   USE mod_blk_coare3p0
    USE mod_blk_ecmwf
 
    IMPLICIT NONE
 
-   CHARACTER(len=5) :: calgo = 'coare'
+   CHARACTER(len=5) :: calgo = 'coare3p0'
 
    REAL(wp), PARAMETER ::   &
       &   zt  =  2. ,  &
@@ -121,13 +121,13 @@ PROGRAM TEST_SKIN_CORR
    WRITE(czu,'(i2,"m")') INT(zu)
 
 
-   WRITE(6,*) 'Which algo to use? "coare" => 1 , "ecmwf" => 2 :'
+   WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 :'
    READ(*,*) ians
-   IF ( ians == 1 ) calgo = 'coare'
+   IF ( ians == 1 ) calgo = 'coare3p0'
    IF ( ians == 2 ) calgo = 'ecmwf'
    WRITE(6,*) ''
-   
-   
+
+
    IF ( l_ask_for_slp ) THEN
       WRITE(6,*) 'Give sea-level pressure (hPa):'
       READ(*,*) SLP
@@ -235,23 +235,23 @@ PROGRAM TEST_SKIN_CORR
       W10 = t_w10(jw)
 
       sst_s = sst
-      
+
       SELECT CASE (calgo)
-         
-      CASE('coare')
-         CALL turb_coare( '3.0', zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
-            &             Cd, Ch, Ce, theta_zu, q_zu, Ublk, &
-            &             rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
-         
-      CASE('ecmwf')         
+
+      CASE('coare3p0')
+         CALL turb_coare3p0( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+            &                rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+
+      CASE('ecmwf')
          CALL turb_ecmwf( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
-            &             Cd, Ch, Ce, theta_zu, q_zu, Ublk, &
+            &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
             &             rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
-         
+
       CASE DEFAULT
          PRINT *, 'Unknown algorithm: ', calgo ; PRINT *, ''
          CALL usage_test()
-         
+
       END SELECT
 
       !! Surface temperature correction as a function of wind:
@@ -267,7 +267,7 @@ PROGRAM TEST_SKIN_CORR
    PRINT *, ''
    PRINT *, ''
    PRINT *, ''
-   
+
    IF ( dtheta_v(1,1) < 0. ) THEN
       WRITE(cf_out,'("dat/dT_skin_vs_wind_",a,"_SST",i2.2,"_SW",i4.4,"_LW",i4.4,"_RH",i2.2,"_unstable.dat")') &
          &  calgo, INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
@@ -275,7 +275,7 @@ PROGRAM TEST_SKIN_CORR
       WRITE(cf_out,'("dat/dT_skin_vs_wind_",a,"_SST",i2.2,"_SW",i4.4,"_LW",i4.4,"_RH",i2.2,"_stable.dat")') &
          &  calgo, INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
    END IF
-   
+
    PRINT *, trim(cf_out)
 
    OPEN(unit = 11, file = TRIM(cf_out), status = 'unknown')

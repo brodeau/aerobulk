@@ -2,7 +2,8 @@ PROGRAM cx_vs_wind_test
 
    USE mod_const
    USE mod_phymbl
-   USE mod_blk_coare
+   USE mod_blk_coare3p0
+   USE mod_blk_coare3p0
    USE mod_blk_ncar
    USE mod_blk_ecmwf
 
@@ -27,7 +28,7 @@ PROGRAM cx_vs_wind_test
       &   n_w    = 1201, &
       &   n_q    = 10
    !!
-   CHARACTER(len=10) :: calgo = 'coare'
+   CHARACTER(len=10) :: calgo = 'coare3p0'
    CHARACTER(len=4)  :: csst, stab
    !!
    CHARACTER(len=100) :: &
@@ -67,7 +68,7 @@ PROGRAM cx_vs_wind_test
       &   t_ac, t_ublk
 
    IF ( command_argument_count() /= 2 ) THEN
-      PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare/coare35/ncar/ecmwf)> <SST (deg.C)>'
+      PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare3p0/coare3p5/ncar/ecmwf)> <SST (deg.C)>'
       STOP
    END IF
    
@@ -205,25 +206,23 @@ PROGRAM cx_vs_wind_test
             !!
 
 
-            IF ( TRIM(calgo) == 'coare' ) &
-               CALL TURB_COARE('3.0', zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us)
+            IF ( TRIM(calgo) == 'coare3p0' ) &
+               CALL TURB_COARE3P0( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
             
-            IF ( TRIM(calgo) == 'coare35' ) &
-               CALL TURB_COARE('3.5', zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us)
+            IF ( TRIM(calgo) == 'coare3p5' ) &
+               CALL TURB_COARE3P0( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
 
             IF ( TRIM(calgo) == 'ncar' ) &
                CALL TURB_NCAR( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us)
-
-            IF ( trim(calgo) == 'ecmwf' ) &
-               CALL TURB_ECMWF(zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us)
-
-
-
-            !!
+               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+            
+            IF ( TRIM(calgo) == 'ecmwf' ) &
+               CALL TURB_ECMWF( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+            
+            
             !! Recalculating eq. charnock parameter:
             tmp = us*us
             ac = z0*grav/tmp - 0.11*grav*visc_air(t10)/(tmp*us)
@@ -356,12 +355,12 @@ PROGRAM cx_vs_wind_test
       !PRINT *, 't2, q2 =', v_tq(1,1)-rt0, 1000.*v_tq(2,1)
       !!
 
-      IF ( trim(calgo) == 'coare' ) &
-         CALL TURB_COARE('3.0', zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+      IF ( trim(calgo) == 'coare3p0' ) &
+         CALL TURB_COARE3P0(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
          &               Cd, Ch, Ce, t10, q10, U_bulk)
 
-      IF ( TRIM(calgo) == 'coare35' ) &
-         CALL TURB_COARE('3.5', zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+      IF ( TRIM(calgo) == 'coare3p5' ) &
+         CALL TURB_COARE3P0(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
          &               Cd, Ch, Ce, t10, q10, U_bulk)
 
       IF ( trim(calgo) == 'ncar' ) &

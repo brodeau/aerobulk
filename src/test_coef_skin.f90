@@ -5,14 +5,14 @@ PROGRAM TEST_COEF
    USE mod_const
    USE mod_phymbl
 
-   USE mod_blk_coare
+   USE mod_blk_coare3p0
 
    IMPLICIT NONE
 
    INTEGER, PARAMETER :: nb_algos = 1
 
-   !CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare', 'ncar ', 'ecmwf' /)
-   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare' /)
+   !CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0', 'ncar ', 'ecmwf' /)
+   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' /)
 
    REAL(4), DIMENSION(nb_algos) :: vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg
 
@@ -221,10 +221,10 @@ PROGRAM TEST_COEF
    
    Ts = sst
    
-   CALL turb_coare( '3.0', zt, zu, Ts, t_zt, ssq_s, q_zt, W10, &
-      &             Cd, Ch, Ce, t_zu, q_zu, Ublk, &
-      &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP, &
-      &             xz0=zz0, xu_star=zus )
+   CALL turb_coare3p0( zt, zu, Ts, t_zt, ssq_s, q_zt, W10, &
+      &                Cd, Ch, Ce, t_zu, q_zu, Ublk, &
+      &                rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP, &
+      &                xz0=zz0, xu_star=zus )
 
    
 

@@ -5,7 +5,8 @@ PROGRAM TEST_AEROBULK
    USE mod_const
    USE mod_phymbl
 
-   USE mod_blk_coare
+   USE mod_blk_coare3p0
+   USE mod_blk_coare3p5
    USE mod_blk_ncar
    USE mod_blk_ecmwf
 
@@ -13,8 +14,8 @@ PROGRAM TEST_AEROBULK
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=7), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ 'coare  ', 'coare35', 'ncar   ', 'ecmwf  ' /)
+   CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
+      &      vca = (/ 'coare3p0', 'coare3p5', 'ncar    ', 'ecmwf   ' /)
 
    REAL(4), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -68,7 +69,7 @@ PROGRAM TEST_AEROBULK
       jarg = jarg + 1
       CALL get_command_argument(jarg,car)
 
-      SELECT CASE (trim(car))
+      SELECT CASE (TRIM(car))
 
       CASE('-h')
          call usage_test()
@@ -86,7 +87,7 @@ PROGRAM TEST_AEROBULK
          l_use_cswl = .TRUE.
 
       CASE DEFAULT
-         WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
+         WRITE(6,*) 'Unknown option: ', TRIM(car) ; WRITE(6,*) ''
          CALL usage_test()
 
       END SELECT
@@ -143,7 +144,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'
+   WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
    READ(*,*) t_zt
    t_zt = t_zt + rt0
    WRITE(6,*) ''
@@ -153,7 +154,7 @@ PROGRAM TEST_AEROBULK
    qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
 
    IF ( l_use_rh ) THEN
-      WRITE(6,*) 'Give relative humidity at ',trim(czt),' [%]:'
+      WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
       READ(*,*) RH_zt
       RH_zt = 1.E-2*RH_zt
       q_zt = q_air_rh(RH_zt, t_zt, SLP)
@@ -261,7 +262,7 @@ PROGRAM TEST_AEROBULK
 
    DO ialgo = 1, nb_algos
 
-      calgob = trim(vca(ialgo))
+      calgob = TRIM(vca(ialgo))
 
       zz0 = 0.
       zus = 0. ; zts = 0. ; zqs = 0. ; zL = 0. ; zUN10 = 0.
@@ -280,14 +281,14 @@ PROGRAM TEST_AEROBULK
 
          IF ( l_use_cswl ) THEN
 
-            CALL TURB_COARE( '3.0', zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P0( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
                &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP,      &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are updated wrt to skin temperature !
 
          ELSE
-            CALL TURB_COARE( '3.0', zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P0( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
@@ -301,7 +302,7 @@ PROGRAM TEST_AEROBULK
 
          IF ( l_use_cswl ) THEN
 
-            CALL TURB_COARE( '3.5', zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P5( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
                &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP,          &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
@@ -309,7 +310,7 @@ PROGRAM TEST_AEROBULK
 
          ELSE
 
-            CALL TURB_COARE( '3.5', zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P5( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
@@ -411,13 +412,13 @@ PROGRAM TEST_AEROBULK
 
 
    IF ( zt < zu ) THEN
-      WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',trim(czt),' :'
+      WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
       WRITE(6,*) 't_',TRIM(czt),'  =', theta_zt-rt0 ;  WRITE(6,*) 'q_',TRIM(czt),'  =', q_zt
    END IF
 
-   WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',trim(czu),' :'
+   WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:           ',trim(vca(1)),'    |    ',trim(vca(2)),'     |    ',trim(vca(3)),'    |    ',trim(vca(4))
+   WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', vTheta_u       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', vT_u      , '[deg.C]'
@@ -451,7 +452,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    WRITE(6,*) '   *** Bulk Transfer Coefficients:'
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:           ',trim(vca(1)),'    |    ',trim(vca(2)),'     |    ',trim(vca(3)),'     |    ',trim(vca(4))
+   WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', vCd        , '[10^-3]'
    WRITE(6,*) '      C_E     =   ', vCe        , '[10^-3]'
