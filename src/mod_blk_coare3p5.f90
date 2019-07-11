@@ -334,45 +334,7 @@ CONTAINS
 
    END SUBROUTINE turb_coare3p5
 
-
-   FUNCTION alfa_charn_3p5( pwnd )
-      !!-------------------------------------------------------------------
-      !! Compute the Charnock parameter as a function of the wind speed
-      !!
-      !! (Fairall et al., 2003 p.577-578)
-      !!
-      !! Wind below 10 m/s :  alfa = 0.011
-      !! Wind between 10 and 18 m/s : linear increase from 0.011 to 0.018
-      !! Wind greater than 18 m/s :  alfa = 0.018
-      !!
-      !! Author: L. Brodeau, June 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
-      !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p5
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! wind speed
-      !
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) :: zw, zgt10, zgt18
-      !!-------------------------------------------------------------------
-      !
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            !
-            zw = pwnd(ji,jj)   ! wind speed
-            !
-            ! Charnock's constant, increases with the wind :
-            zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10)) ! If zw<10. --> 0, else --> 1
-            zgt18 = 0.5 + SIGN(0.5_wp,(zw - 18.)) ! If zw<18. --> 0, else --> 1
-            !
-            alfa_charn_3p5(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
-               &     + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
-               &      *(zw - 10.)/(18. - 10.)) + zgt18*( 0.018 ) )    ! Hare et al. (1999)
-            !
-         END DO
-      END DO
-      !
-   END FUNCTION alfa_charn_3p5
-
-
+   
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
