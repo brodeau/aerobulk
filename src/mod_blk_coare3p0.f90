@@ -259,7 +259,7 @@ CONTAINS
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
-         !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
+         !! Not updating Charnock parameter...
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)

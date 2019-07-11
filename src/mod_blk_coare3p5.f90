@@ -19,7 +19,7 @@ MODULE mod_blk_coare3p5
    !!   * the effective bulk wind speed at 10m U_blk
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
-   !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003
+   !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003 + Edson et al. 2013
    !!      + consideration of cool-skin warm layer parametrization (Fairall et al. 1996)
    !!
    !!       Routine turb_coare3p5 maintained and developed in AeroBulk
@@ -40,7 +40,7 @@ MODULE mod_blk_coare3p5
    !                                              !! COARE own values for given constants:
    REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
-   REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5:
+   REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5: 
    !                         !:  -> VALUE above which the Charnock paramter levels off for winds > 18
 
    !!----------------------------------------------------------------------
@@ -202,8 +202,7 @@ CONTAINS
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       ! Charnock Parameter
-      zalpha = MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
-      zalpha = MAX( zalpha , 0._wp )
+      zalpha = MAX( MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) , 0._wp ) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
 
       z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
@@ -264,8 +263,7 @@ CONTAINS
          !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
          !! Need to update Charnock parameter from neutral wind speed!
          ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
-         zalpha = MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max)  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
-         zalpha = MAX( zalpha , 0._wp )
+         zalpha = MAX( MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max) , 0._wp )  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
