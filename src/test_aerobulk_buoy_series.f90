@@ -19,12 +19,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=800) :: cf_data='0', cblabla
+   CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat'
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
       &      vca = (/ 'coare3p0', 'coare3p5', 'ncar    ', 'ecmwf   ' /)
 
-   REAL(4), DIMENSION(nb_algos) ::  &
+   REAL(4), DIMENSION(nb_algos,nb_measurements) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
@@ -53,7 +53,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL(wp) :: zt, zu, nu_air
+   REAL(wp) :: zt, zu
 
    CHARACTER(len=3) :: czt, czu
    
@@ -129,22 +129,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    DO jl = 1, nb_measurements
       READ(11,*) idate(jl), W10(1,jl), sst(1,jl), t_zt(1,jl), q_zt(1,jl), rad_sw(1,jl), rad_lw(1,jl), precip(1,jl), rlat(1,jl), rlon(1,jl), tmp(1,jl)
    END DO
-
-
-
-
-
+   CLOSE(11)
    
+   !! zu and zt
+   !! ~~~~~~~~~
    WRITE(6,*) 'Give "zu", height of wind speed measurement in meters (generally 10m):'
    READ(*,*) zu
    WRITE(6,*) ''
-
-
    WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10m):'
    READ(*,*) zt
    WRITE(6,*) ''
-
-
    IF ( (zt > 99.).OR.(zu > 99.) ) THEN
       WRITE(6,*) 'Be reasonable in your choice of zt or zu, they should not exceed a few tenths of meters!' ; STOP
    END IF
@@ -155,31 +149,24 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    END IF
    WRITE(czu,'(i2,"m")') INT(zu)
 
-
-   !IF ( l_ask_for_slp ) THEN
-   !   WRITE(6,*) 'Give sea-level pressure (hPa):'
-   !   READ(*,*) SLP
-   !   SLP = SLP*100.
-   !ELSE
-      SLP = Patm
-      WRITE(6,*) 'Using a sea-level pressure of ', Patm
-   !END IF
+   !! SLP
+   !! ~~~
+   IF ( l_ask_for_slp ) THEN
+      WRITE(6,*) 'Give sea-level pressure (hPa):'
+      READ(*,*) SLP
+      SLP = SLP*100.
+   ELSE
+     SLP = Patm
+     WRITE(6,*) 'Using a sea-level pressure of ', Patm
+   END IF
    WRITE(6,*) ''
 
-   !WRITE(6,*) 'Give SST (deg. C):'
-   !READ(*,*) sst
-   sst = sst + rt0
-   !WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
-   WRITE(6,*) ''
-
-   !WRITE(6,*) 'Give temperature at ',trim(czt),' (deg. C):'
-   !READ(*,*) t_zt
+   !! Back to SI unit...
+   sst  = sst + rt0
    t_zt = t_zt + rt0
-   !WRITE(6,*) ''
-
-
-   !! Asking for humidity:
-   qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+   q_zt = 1.E-3*q_zt
+   
+   !qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
 
    !IF ( l_use_rh ) THEN
    !   WRITE(6,*) 'Give relative humidity at ',trim(czt),' [%]:'
@@ -199,70 +186,74 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    !   WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
    !      &      TRIM(czt), 1000.*qsat_zt
    !   READ(*,*) q_zt
-   q_zt  = 1.E-3*q_zt
-   RH_zt = rh_air(q_zt, t_zt, SLP)
+
+   !RH_zt = rh_air(q_zt, t_zt, SLP)
    !   WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
    !   !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    !END IF
-   WRITE(6,*) ''
+   !WRITE(6,*) ''
 
    !IF ( q_zt(1,1) > qsat_zt(1,1) ) THEN
    !   WRITE(6,*) ' ERROR: you can not go belong saturation!!!' ; STOP
    !END IF
 
-
-   
-   WRITE(6,*) ' * idate, wind, SST, t_zt, q_zt, :'
+   !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
+   WRITE(6,*) ' *           idate     ,   wind,          SST,            t_zt,          q_zt,          rad_sw,      rad_lw  :'
    DO jl = 1, nb_measurements
-      WRITE(6,*) idate(jl), W10(:,jl), sst(:,jl), t_zt(:,jl), q_zt(:,jl)
+      WRITE(6,*) idate(jl), REAL(W10(:,jl),4), REAL(sst(:,jl),4), REAL(t_zt(:,jl),4), REAL(q_zt(:,jl),4), REAL(rad_sw(:,jl),4), REAL(rad_lw(:,jl),4)
    END DO
    
 
 
-   STOP
+   !STOP
 
 
-   WRITE(6,*) ''
-   WRITE(6,*) '==========================================================================='
-   WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt, q_zt, SLP), '[kg/m^3]'
+   !WRITE(6,*) ''
+   !WRITE(6,*) '==========================================================================='
+   !WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt, q_zt, SLP), '[kg/m^3]'
 
-   Cp_ma = cp_air(q_zt)
-   WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
-   WRITE(6,*) ''
-   rgamma = gamma_moist(t_zt, q_zt)
+   !Cp_ma = cp_air(q_zt)
+   !!WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
+   !WRITE(6,*) ''
+   rgamma(:,:) = gamma_moist(t_zt, q_zt)
    WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
-   WRITE(6,*) '============================================================================'
+   !WRITE(6,*) '============================================================================'
+   !WRITE(6,*) ''
    WRITE(6,*) ''
-   WRITE(6,*) ''
+
+
+
 
    ssq = 0.98*q_sat(sst, SLP)
 
-   WRITE(6,*) ''
-   WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'
    WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
    WRITE(6,*) ''
 
+
+   
 
    !! Must give something more like a potential temperature at zt:
    theta_zt = t_zt + rgamma*zt
 
    WRITE(6,*) ''
    WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
-
+   WRITE(6,*) ''
 
 
    !! Checking the difference of virtual potential temperature between air at zt and sea surface:
    tmp = virt_temp(theta_zt, q_zt)
    WRITE(6,*) 'Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
+   WRITE(6,*) ''
    WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sst , 4), ' [deg.C]'
+   WRITE(6,*) ''
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
-   WRITE(6,*) ''; WRITE(6,*) ''
+   WRITE(6,*) ''
 
    
 
-   WRITE(6,*) 'Give wind speed at zu (m/s):'
-   READ(*,*) W10
-   WRITE(6,*) ''
+   !WRITE(6,*) 'Give wind speed at zu (m/s):'
+   !READ(*,*) W10
+   !WRITE(6,*) ''
 
    
    !! We have enough to calculate the bulk Richardson number:
@@ -276,7 +267,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
    WRITE(6,*) ''
    
-
    
    IF ( l_use_cswl ) THEN
 
@@ -287,11 +277,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
       WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
       WRITE(6,*) '----------------------------------------------------------'
       WRITE(6,*) ''
-      WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
-      READ(*,*) rad_sw
-      WRITE(6,*)
-      WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
-      READ(*,*) rad_lw
+      !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
+      !READ(*,*) rad_sw
+      !WRITE(6,*)
+      !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
+      !READ(*,*) rad_lw
       WRITE(6,*)
 
    END IF
@@ -385,16 +375,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
          WRITE(6,*) 'Bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
       END SELECT
-
-
+      
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
       tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
-      vBRN(ialgo) = REAL(tmp(1,1),4)
+      WRITE(6,*) ' *** Updated Bulk Richardson number:', REAL(tmp, 4)
+      WRITE(6,*) ''
+      vBRN(ialgo,:) = REAL(tmp(1,:),4)
 
 
-      vTheta_u(ialgo) = REAL(   theta_zu(1,1) -rt0 , 4)   ! Potential temperature at zu
+      vTheta_u(ialgo,:) = REAL(   theta_zu(1,:) -rt0 , 4)   ! Potential temperature at zu
 
+
+
+      
       !! Real temperature at zu
       t_zu = theta_zu ! first guess...
       DO jq = 1, 4
@@ -402,45 +396,45 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
          t_zu = theta_zu - rgamma*zu   ! Real temp.
       END DO
 
-      vCd(ialgo) = REAL(1000.*Cd(1,1) ,4)
-      vCh(ialgo) = REAL(1000.*Ch(1,1) ,4)
-      vCe(ialgo) = REAL(1000.*Ce(1,1) ,4)
+      vCd(ialgo,:) = REAL(1000.*Cd(1,:) ,4)
+      vCh(ialgo,:) = REAL(1000.*Ch(1,:) ,4)
+      vCe(ialgo,:) = REAL(1000.*Ce(1,:) ,4)
 
-      vT_u(ialgo) = REAL( t_zu(1,1) -rt0 , 4)    ! Real temp.
-      vQu(ialgo) = REAL(  q_zu(1,1) , 4)
+      vT_u(ialgo,:) = REAL( t_zu(1,:) -rt0 , 4)    ! Real temp.
+      vQu(ialgo,:) = REAL(  q_zu(1,:) , 4)
 
       !! Air density at zu (10m)
       rho_zu = rho_air(t_zu, q_zu, SLP)
       tmp = SLP - rho_zu*grav*zu
       rho_zu = rho_air(t_zu, q_zu, tmp)
-      vRho_u(ialgo) = REAL(rho_zu(1,1) ,4)
+      vRho_u(ialgo,:) = REAL(rho_zu(1,:) ,4)
 
       !! Gustiness contribution:
-      vUg(ialgo) = REAL(Ublk(1,1)-W10(1,1) , 4)
+      vUg(ialgo,:) = REAL(Ublk(1,:)-W10(1,:) , 4)
 
       !! z0 et u*:
-      vz0(ialgo) = REAL(zz0(1,1) ,4)
-      vus(ialgo) = REAL(zus(1,1) ,4)
+      vz0(ialgo,:) = REAL(zz0(1,:) ,4)
+      vus(ialgo,:) = REAL(zus(1,:) ,4)
 
       zts = Ch*(theta_zu - Ts)*Ublk/zus
       zqs = Ce*(q_zu     - qs)*Ublk/zus
 
-      vL(ialgo) = zL(1,1)
+      vL(ialgo,:) = zL(1,:)
 
-      vUN10(ialgo) = zUN10(1,1)
+      vUN10(ialgo,:) = zUN10(1,:)
       
       !! Turbulent fluxes:
-      vTau(ialgo)  = ( rho_zu(1,1) * Cd(1,1) *           W10(1,1)            * Ublk(1,1) )*1000. ! mN/m^2
+      vTau(ialgo,:)  = ( rho_zu(1,:) * Cd(1,:) *           W10(1,:)            * Ublk(1,:) )*1000. ! mN/m^2
       tmp = cp_air(q_zu)
-      vQH(ialgo)   = rho_zu(1,1)*tmp(1,1)*Ch(1,1) * ( theta_zu(1,1) - Ts(1,1)  ) * Ublk(1,1)
-      vEvap(ialgo) = rho_zu(1,1)*Ce(1,1)          * ( qs(1,1)      - q_zu(1,1) ) * Ublk(1,1)  ! mm/s
+      vQH(ialgo,:)   = rho_zu(1,:)*tmp(1,:)*Ch(1,:) * ( theta_zu(1,:) - Ts(1,:)  ) * Ublk(1,:)
+      vEvap(ialgo,:) = rho_zu(1,:)*Ce(1,:)          * ( qs(1,:)      - q_zu(1,:) ) * Ublk(1,:)  ! mm/s
       tmp = L_vap(Ts)
-      vQL(ialgo)   = -1.* ( tmp(1,1)*vEvap(ialgo) )
+      vQL(ialgo,:)   = -1.* ( tmp(1,:)*vEvap(ialgo,:) )
 
-      vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
+      vEvap(ialgo,:) = to_mm_p_day * vEvap(ialgo,:)  ! mm/day
 
-      vTs(ialgo) = Ts(1,1)
-      vqs(ialgo) = qs(1,1)
+      vTs(ialgo,:) = Ts(1,:)
+      vqs(ialgo,:) = qs(1,:)
 
 
    END DO
@@ -449,72 +443,24 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    WRITE(6,*) ''; WRITE(6,*) ''
 
 
-   IF ( zt < zu ) THEN
-      WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',trim(czt),' :'
-      WRITE(6,*) 't_',TRIM(czt),'  =', theta_zt-rt0 ;  WRITE(6,*) 'q_',TRIM(czt),'  =', q_zt
-   END IF
+   DO ialgo = 1, nb_algos
+      
+      calgob = TRIM(vca(ialgo))
 
-   WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',trim(czu),' :'
-   WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:           ',trim(vca(1)),'    |    ',trim(vca(2)),'     |    ',trim(vca(3)),'    |    ',trim(vca(4))
-   WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '    theta_',TRIM(czu),' =   ', vTheta_u       , '[deg.C]'
-   WRITE(6,*) '    t_',TRIM(czu),'     =   ', vT_u      , '[deg.C]'
-   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu ,4)  , '[g/kg]'
-   WRITE(6,*) ''
-   WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)  , '[g/kg]'
-   WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)      , '[deg.C]'
-   WRITE(6,*) '    Delta q   =   ', REAL(1000.*(vQu - qs(1,1)), 4)  , '[g/kg]'
-   WRITE(6,*) ''
-   WRITE(6,*) '    Ug (gust) =   ', vUg , '[m/s]'
-   WRITE(6,*) ''
+      WRITE(cf_out,*) 'data_'//TRIM(calgob)//'.out'
+      
+      OPEN( UNIT=12, FILE=TRIM(cf_out), FORM='FORMATTED', RECL=1024, STATUS='unknown' )
+      WRITE(12,*) '# k       date         Qsens    Qlat     SSST     Tau       WebbF   RainHF dt_skin'
+      !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
+      DO jl = 1, nb_measurements
+         WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
+            &  INT(jl,2), idate(jl), -vQH(ialgo,jl), -vQL(ialgo,jl), vTs(ialgo,jl), vTau(ialgo,jl), -999, -999, REAL(vTs(ialgo,jl)-sst(1,jl),4)
+      END DO
+      CLOSE(12)
+      
+   END DO
 
 
-
-   tmp = visc_air(t_zu)
-   nu_air = tmp(1,1)
-
-
-   WRITE(6,*) ''
-   WRITE(6,*) 'Kinematic viscosity of air =', nu_air
-   WRITE(6,*) ''
-   WRITE(6,*) 'With a pressure of', int(SLP)
-   WRITE(6,*) 'Density of air at ',TRIM(czu),' =', REAL(vRho_u,4), ' [kg/m^3]'
-   IF ( zt < zu )  WRITE(6,*) ' (density of air at ',TRIM(czt),' was ', REAL(rho_air(t_zt, q_zt, SLP),4),')'
-   WRITE(6,*) ''
-   Cp_ma = cp_air(q_zu)
-   WRITE(6,*) ' Cp of moist air at ',TRIM(czu),' => ', REAL(Cp_ma,4), ' [J/K/kg]'
-   WRITE(6,*) ''
-
-
-   WRITE(6,*) ''
-   WRITE(6,*) '   *** Bulk Transfer Coefficients:'
-   WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:           ',trim(vca(1)),'    |    ',trim(vca(2)),'     |    ',trim(vca(3)),'     |    ',trim(vca(4))
-   WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '      C_D     =   ', vCd        , '[10^-3]'
-   WRITE(6,*) '      C_E     =   ', vCe        , '[10^-3]'
-   WRITE(6,*) '      C_H     =   ', vCh        , '[10^-3]'
-   WRITE(6,*) ''
-   WRITE(6,*) '      z_0     =   ', vz0        , '[m]'
-   WRITE(6,*) '      u*      =   ', vus        , '[m/s]'
-   WRITE(6,*) '      L       =   ', vL         , '[m]'
-   WRITE(6,*) '      Ri_bulk =   ', vBRN       , '[-]'
-   WRITE(6,*) '      UN10    =   ', vUN10      , '[m/s]'
-   WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
-   WRITE(6,*) ''
-   IF ( l_use_cswl ) THEN
-      WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), '[deg.C]'
-      WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), '[g/kg]'
-      WRITE(6,*) ''
-   END IF
-   WRITE(6,*) ' Wind stress  =   ', vTau       , '[mN/m^2]'
-   WRITE(6,*) ' Evaporation  =   ', vEvap      , '[mm/day]'
-   WRITE(6,*) '    QL        =   ', vQL        , '[W/m^2]'
-   WRITE(6,*) '    QH        =   ', vQH        , '[W/m^2]'
-   WRITE(6,*) ''
-   WRITE(6,*) ''
-   CLOSE(6)
 
 END PROGRAM TEST_AEROBULK_BUOY_SERIES
 
