@@ -232,7 +232,12 @@ CONTAINS
             !
             zqa = (1._wp + rctv0*pqa(ji,jj))
             !
-            One_on_L(ji,jj) = grav*vkarmn*(pts(ji,jj) + rctv0*ptha(ji,jj)*pqs(ji,jj)) &
+            ! The main concern is to know wether, the vertical turbulent flux of virtual temperature, < u' theta_v' > is equal to:
+            !  a/  -u* [ theta* (1 + 0.61q) + 0.61 theta q* ] => this is the one that seems correct! chose this one!
+            !                      or
+            !  b/  -u* [ theta*             + 0.61 theta q* ]
+            !
+            One_on_L(ji,jj) = grav*vkarmn*( pts(ji,jj)*zqa + rctv0*ptha(ji,jj)*pqs(ji,jj) ) &
                &               / MAX( pus(ji,jj)*pus(ji,jj)*ptha(ji,jj)*zqa , 1.E-9_wp )
             !
          END DO
