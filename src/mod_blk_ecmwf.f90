@@ -15,8 +15,8 @@ MODULE mod_blk_ecmwf
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
-   !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
-   !!   * the effective bulk wind speed at 10m U_blk
+   !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
+   !!   * the "effective" bulk wind speed at zu: U_blk
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!    Using the bulk formulation/param. of ECMWF
@@ -61,7 +61,7 @@ CONTAINS
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to IFS doc. (cycle 40)
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
-      !!                Returns the effective bulk wind speed at 10m to be used in the bulk formulas
+      !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
       !!
       !!                Applies the cool-skin warm-layer correction of the SST to T_s
       !!                if the downwelling radiative fluxes at the surface (rad_sw & rad_lw)
@@ -71,8 +71,8 @@ CONTAINS
       !! INPUT :
       !! -------
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
-      !!    *  zu   : height for wind speed (generally 10m)                   [m]
-      !!    *  U_zu : scalar wind speed at 10m                                [m/s]
+      !!    *  zu   : height for wind speed (usually 10m)                     [m]
+      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    *  t_zt : potential air temperature at zt                         [K]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!
@@ -96,14 +96,14 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind speed at 10m                                [m/s]
+      !!    *  U_blk  : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
       !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star     : return u* the friction velocity                    [m/s]
       !!    * xL          : return the Monin-Obukhov length                    [m]
-      !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
+      !!    * xUN10       : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_sw   !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
