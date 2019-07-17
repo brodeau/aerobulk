@@ -19,7 +19,7 @@ $$  \theta_z \simeq T_z+\gamma z \\ q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
 In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 
 *   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
-*   COARE v3.5 ([Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
+*   COARE v3.6 ([Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
@@ -65,7 +65,7 @@ Example of an output obtained with the following setup:
 
         *** Bulk Transfer Coefficients:
      ==============================================================================================
-       Algorithm:         coare3p0   |   coare3p5    |    ncar     |    ecmwf
+       Algorithm:         coare3p0   |   coare3p6    |    ncar     |    ecmwf
      ==============================================================================================
            C_D     =      1.194853       1.077194       1.203364       1.286136     [10^-3]
            C_E     =      1.333859       1.371873       1.361128       1.314227     [10^-3]
@@ -98,7 +98,7 @@ AeroBulk can also directly compute the 3 turbulent fluxes with the routine ```ae
 
 INPUT ARGUMENTS:
 
-*   ```calgo``` : (String) algorithm to use (coare3p0/coare3p5/ncar/ecmwf)
+*   ```calgo``` : (String) algorithm to use (coare3p0/coare3p6/ncar/ecmwf)
 *   ```zt``` : (Sc,real) height for temperature and spec. hum. of air [m]
 *   ```zu``` : (Sc,real) height for wind speed (generally 10m) [m]
 *   ```sst``` : (2D,real) SST [K]
@@ -136,7 +136,7 @@ Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameter
 In AeroBulk, 3 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air temperature and humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
 
 
-**> TURB_COARE_3p0, transfer coefficients with COARE 3.0 (replace "3p0" by "3p5" to sue COARE 3.5)**
+**> TURB_COARE_3p0, transfer coefficients with COARE 3.0 (replace "3p0" by "3p6" to use COARE 3.6)**
 
 Use ```turb_coare_3p0()``` of module ```mod_blk_coare_3p0``` (mod\_blk\_coare_3p0.f90).
 Example of a call:
