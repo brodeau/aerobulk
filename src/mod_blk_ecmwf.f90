@@ -173,7 +173,7 @@ CONTAINS
       ! Identical first gess as in COARE, with IFS parameter values though...
       !
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN

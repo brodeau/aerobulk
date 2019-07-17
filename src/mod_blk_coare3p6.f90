@@ -170,7 +170,7 @@ CONTAINS
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
          zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
+         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No update needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
          zdelta = 0.001                    ! First guess of zdelta
@@ -248,12 +248,6 @@ CONTAINS
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
-         !! Roughness lengthes z0, z0t (z0q = z0t) :
-         ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
-         z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
-
          !! Stability parameters:
          zeta_u = zu*ztmp0
          zeta_u = SIGN( MIN(ABS(zeta_u),50.0_wp), zeta_u )
@@ -261,6 +255,15 @@ CONTAINS
             zeta_t = zt*ztmp0
             zeta_t = SIGN( MIN(ABS(zeta_t),50.0_wp), zeta_t )
          END IF
+
+         !! Adjustment the wind at 10m (not needed in the current algo form):
+         !IF ( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
+         
+         !! Roughness lengthes z0, z0t (z0q = z0t) :
+         ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
+         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
+         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
+         z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))   ! COARE 3.6
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)
