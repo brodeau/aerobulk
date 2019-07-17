@@ -1,4 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau
+! AeroBulk / 2019 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -7,10 +7,11 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_blk_coare3p5
+MODULE mod_blk_coare3p6
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes
-   !!         according to Fairall et al. 2003 (COARE v3)
+   !!         according to Fairall et al. 2018 (COARE v3.6)
+   !!         "THE TOGA-COARE BULK AIR-SEA FLUX ALGORITHM"
    !!
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
    !!
@@ -19,13 +20,10 @@ MODULE mod_blk_coare3p5
    !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
-   !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003 + Edson et al. 2013
-   !!      + consideration of cool-skin warm layer parametrization (Fairall et al. 1996)
-   !!
-   !!       Routine turb_coare3p5 maintained and developed in AeroBulk
+   !!       Routine turb_coare3p6 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, 2016
+   !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
    USE mod_const     !: physical and othe constants
@@ -35,22 +33,21 @@ MODULE mod_blk_coare3p5
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_COARE3P5
+   PUBLIC :: TURB_COARE3P6
 
    !                                              !! COARE own values for given constants:
-   REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
-   REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
-   REAL(wp), PARAMETER ::   charn0_max = 0.028  !: for COARE 3.5: -> VALUE above which the Charnock paramter levels off for winds > 18
+   REAL(wp), PARAMETER ::   zi0     = 600._wp     ! scale height of the atmospheric boundary layer...
+   REAL(wp), PARAMETER ::   Beta0   =   1.2_wp    ! gustiness parameter
 
    !!----------------------------------------------------------------------
 CONTAINS
    
-   SUBROUTINE turb_coare3p5( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
+   SUBROUTINE turb_coare3p6( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                      rad_sw, rad_lw, slp,                &
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_coare3p5  ***
+      !!                      ***  ROUTINE  turb_coare3p6  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to Fairall et al. (2003)
@@ -130,7 +127,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
-         &  zalpha,          & !: Charnock parameter
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  z0, z0t
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
@@ -148,13 +144,11 @@ CONTAINS
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!----------------------------------------------------------------------------------
 
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
-         &     zeta_u(jpi,jpj), zalpha(jpi,jpj),  &
-         &     dt_zu(jpi,jpj), dq_zu(jpi,jpj),    &
-         &     znu_a(jpi,jpj),   &
-         &     z0(jpi,jpj), z0t(jpi,jpj),         &
-         &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
-
+      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
+         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
+         &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
+         &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
+      
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
          l_use_skin = .TRUE.
@@ -198,10 +192,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      ! Charnock Parameter
-      zalpha = MAX( MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) , 0._wp ) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
-
-      z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = alfa_charn_3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
@@ -257,18 +248,11 @@ CONTAINS
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
-         !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
-         !! Need to update Charnock parameter from neutral wind speed!
-         ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
-         zalpha = MAX( MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max) , 0._wp )  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
-
          !! Roughness lengthes z0, z0t (z0q = z0t) :
-         z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
- 
-         ! Chris Fairall and Jim Edsson, private communication, March 2016 / COARE 3.5 :
-         !  -> these thermal roughness lengths give CE and CH that closely approximate COARE3.0
-         z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
+         ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
+         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
+         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
+         z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -320,16 +304,35 @@ CONTAINS
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
       IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
-      DEALLOCATE ( u_star, t_star, q_star, zeta_u, zalpha, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
+      DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu )   DEALLOCATE ( zeta_t )
 
       IF( l_use_skin ) THEN
          DEALLOCATE ( zsst, zrhoa, zQsw, zdelta )
       END IF
 
-   END SUBROUTINE turb_coare3p5
+   END SUBROUTINE turb_coare3p6
 
-   
+
+   FUNCTION alfa_charn_3p6( pwnd )
+      !!-------------------------------------------------------------------
+      !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
+      !!
+      !!  (Eq. 13 in Edson et al., 2013)
+      !!
+      !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p6
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! neutral wind speed at 10m
+      !
+      REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
+      !!-------------------------------------------------------------------
+      !
+      alfa_charn_3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
+      !
+   END FUNCTION alfa_charn_3p6
+
+
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
@@ -432,4 +435,4 @@ CONTAINS
    END FUNCTION psi_h_coare
 
    !!======================================================================
-END MODULE mod_blk_coare3p5
+END MODULE mod_blk_coare3p6

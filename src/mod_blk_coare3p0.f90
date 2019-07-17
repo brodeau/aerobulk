@@ -40,7 +40,6 @@ MODULE mod_blk_coare3p0
    !                                              !! COARE own values for given constants:
    REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
-   !                         !:  -> VALUE above which the Charnock paramter levels off for winds > 18
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -130,7 +129,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
-         &  zalpha,          & !: Charnock parameter
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  z0, z0t
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
@@ -148,13 +146,11 @@ CONTAINS
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!----------------------------------------------------------------------------------
 
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
-         &     zeta_u(jpi,jpj), zalpha(jpi,jpj),  &
-         &     dt_zu(jpi,jpj), dq_zu(jpi,jpj),    &
-         &     znu_a(jpi,jpj),   &
-         &     z0(jpi,jpj), z0t(jpi,jpj),         &
-         &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
-
+      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
+         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
+         &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
+         &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
+      
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
          l_use_skin = .TRUE.
@@ -198,10 +194,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      ! Charnock Parameter
-      zalpha = alfa_charn_3p0(U_zu)
-
-      z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = alfa_charn_3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
@@ -257,12 +250,11 @@ CONTAINS
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
-         !! Not updating Charnock parameter...
-
          !! Roughness lengthes z0, z0t (z0q = z0t) :
-         z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
-         z0t  = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
+         ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
+         z0    = alfa_charn_3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
+         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
+         z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -314,7 +306,7 @@ CONTAINS
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
       IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
-      DEALLOCATE ( u_star, t_star, q_star, zeta_u, zalpha, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
+      DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu )   DEALLOCATE ( zeta_t )
 
       IF( l_use_skin ) THEN
