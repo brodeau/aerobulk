@@ -19,7 +19,7 @@ $$  \theta_z \simeq T_z+\gamma z \\ q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
 In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
 
 *   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
-*   COARE v3.6 ([Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
+*   COARE v3.6 (Fairall et al., 2018 + [Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
