@@ -218,7 +218,7 @@ CONTAINS
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
-      ! What's need to be done if zt /= zu:
+      ! What needs to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
          !! First update of values at zu (or zt for wind)
          zeta_t = zt*zeta_u/zu
@@ -334,7 +334,6 @@ CONTAINS
       alfa_charn_3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
       !
    END FUNCTION alfa_charn_3p6
-
 
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------

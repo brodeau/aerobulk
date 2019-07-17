@@ -97,7 +97,7 @@ PROGRAM TEST_AEROBULK
 
 
    WRITE(6,*) ''
-   WRITE(6,*) '  *** Epsilon            = Rd/Rv       (~0.622) =>', reps0
+   WRITE(6,*) '  *** Epsilon aka reps0  = Rd/Rv       (~0.622) =>', reps0
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
    WRITE(6,*) ''
 

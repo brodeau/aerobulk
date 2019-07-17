@@ -38,8 +38,8 @@ MODULE mod_blk_coare3p0
    PUBLIC :: TURB_COARE3P0
 
    !                                              !! COARE own values for given constants:
-   REAL(wp), PARAMETER ::   zi0     = 600._wp      ! scale height of the atmospheric boundary layer...
-   REAL(wp), PARAMETER ::   Beta0   =   1.250_wp   ! gustiness parameter
+   REAL(wp), PARAMETER ::   zi0     = 600._wp     ! scale height of the atmospheric boundary layer...
+   REAL(wp), PARAMETER ::   Beta0   =   1.25_wp   ! gustiness parameter
 
    !!----------------------------------------------------------------------
 CONTAINS
