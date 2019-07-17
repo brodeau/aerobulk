@@ -34,6 +34,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE gamma_moist_vctr, gamma_moist_sclr
    END INTERFACE gamma_moist
 
+   INTERFACE e_sat
+      MODULE PROCEDURE e_sat_vctr, e_sat_sclr
+   END INTERFACE e_sat
+
    PUBLIC virt_temp
    PUBLIC rho_air
    PUBLIC visc_air
@@ -286,9 +290,9 @@ CONTAINS
    END FUNCTION Ri_bulk
 
 
-   FUNCTION e_sat(rT)
+   FUNCTION e_sat_vctr(ptak)
       !!**************************************************
-      !! rT:     air temperature [K]
+      !! ptak:     air temperature [K]
       !! e_sat:  water vapor at saturation [Pa]
       !!
       !! Recommended by WMO
@@ -297,25 +301,54 @@ CONTAINS
       !! temperature scale. Transactions of the American society of heating
       !! and ventilating engineers, 347–354.
       !!
+      !! rt0 should be 273.16 (triple point of water) and not 273.15 like here
       !!**************************************************
 
-      REAL(wp), DIMENSION(jpi,jpj)             :: e_sat !: vapour pressure at saturation  [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT    !: temperature (K)
+      REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_vctr !: vapour pressure at saturation  [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature (K)
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
 
       ALLOCATE ( ztmp(jpi,jpj) )
 
-      ztmp(:,:) = rtt0/rT(:,:)
+      ztmp(:,:) = rtt0/ptak(:,:)
 
-      e_sat = 100.*( 10.**(10.79574*(1. - ztmp) - 5.028*LOG10(rT/rtt0)         &
-         &       + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(rT/rtt0 - 1.)) )   &
+      e_sat_vctr = 100.*( 10.**(10.79574*(1. - ztmp) - 5.028*LOG10(ptak/rtt0)         &
+         &       + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(ptak/rtt0 - 1.)) )   &
          &       + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
 
       DEALLOCATE ( ztmp )
 
-   END FUNCTION e_sat
+   END FUNCTION e_sat_vctr
 
+
+   FUNCTION e_sat_sclr( ptak, pslp )
+      !!----------------------------------------------------------------------------------
+      !!                   ***  FUNCTION e_sat_sclr  ***
+      !!                  < SCALAR argument version >
+      !! ** Purpose : water vapor at saturation in [Pa]
+      !!              Based on accurate estimate by Goff, 1957
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!
+      !!    Note: what rt0 should be here, is 273.16 (triple point of water) and not 273.15 like here
+      !!----------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) ::   ptak    ! air temperature                  [K]
+      REAL(wp), INTENT(in) ::   pslp    ! sea level atmospheric pressure   [Pa]
+      REAL(wp)             ::   e_sat_sclr   ! water vapor at saturation   [kg/kg]
+      !
+      REAL(wp) ::   zta, ztmp   ! local scalar
+      !!----------------------------------------------------------------------------------
+      !
+      zta = MAX( ptak , 180._wp )   ! air temp., prevents fpe0 errors dute to unrealistically low values over masked regions...
+      ztmp = rt0 / zta
+      !
+      ! Vapour pressure at saturation [Pa] : WMO, (Goff, 1957)
+      e_sat_sclr = 100.*( 10.**( 10.79574*(1. - ztmp) - 5.028*LOG10(zta/rt0)        &
+         &    + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(zta/rt0 - 1.)) )  &
+         &    + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
+      !
+   END FUNCTION e_sat_sclr
 
 
    FUNCTION e_sat_buck(rT, slp)
@@ -424,27 +457,28 @@ CONTAINS
    END FUNCTION rh_air
 
 
-
-   FUNCTION q_air_rh(rha, ta, slp)
-
-      !! Specific humidity of air from Relative humidity
-
-      REAL(wp), DIMENSION(jpi,jpj) :: q_air_rh
-
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: &
-         &     rha,     &   !: relative humidity      [fraction, not %!!!]
-         &     ta,      &   !: air temperature        [K]
-         &     slp         !: atmospheric pressure          [Pa]
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-
-      ALLOCATE ( ztmp(jpi,jpj) )
-
-      ztmp       = rha*e_sat(ta)
-      q_air_rh = ztmp*reps0/(slp - (1. - reps0)*ztmp)
-
-      DEALLOCATE ( ztmp )
-
+   FUNCTION q_air_rh(prha, ptak, pslp)
+      !!----------------------------------------------------------------------------------
+      !! Specific humidity of air out of Relative Humidity
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: q_air_rh
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: prha        !: relative humidity      [fraction, not %!!!]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak        !: air temperature        [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp        !: atmospheric pressure   [Pa]
+      !
+      INTEGER  ::   ji, jj      ! dummy loop indices
+      REAL(wp) ::   ze      ! local scalar
+      !!----------------------------------------------------------------------------------
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            ze = prha(ji,jj)*e_sat_sclr(ptak(ji,jj), pslp(ji,jj))
+            q_air_rh(ji,jj) = ze*reps0/(pslp(ji,jj) - (1. - reps0)*ze)
+         END DO
+      END DO
+      !
    END FUNCTION q_air_rh
 
 

@@ -220,7 +220,7 @@ CONTAINS
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
-      ! What's need to be done if zt /= zu:
+      ! What needs to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
          !! First update of values at zu (or zt for wind)
          zeta_t = zt*zeta_u/zu
@@ -355,7 +355,6 @@ CONTAINS
       END DO
       !
    END FUNCTION alfa_charn_3p0
-
 
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
