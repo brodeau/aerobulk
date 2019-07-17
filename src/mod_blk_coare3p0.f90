@@ -16,7 +16,7 @@ MODULE mod_blk_coare3p0
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: U_blk
+   !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003
@@ -192,12 +192,10 @@ CONTAINS
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      ztmp2 = 0.5_wp*0.5_wp  ! initial guess for wind gustiness contribution
-      U_blk = SQRT(U_zu*U_zu + ztmp2)
+      U_blk = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
 
-      ztmp2   = 10000._wp     ! optimization: ztmp2 == 1/z0 (with z0 first guess == 0.0001)
-      ztmp0   = LOG(zu*ztmp2)
-      ztmp1   = LOG(10.*ztmp2)
+      ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
+      ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       ! Charnock Parameter
@@ -254,7 +252,7 @@ CONTAINS
 
          !! Update wind at zu taking into acount convection-related wind gustiness:
          ! Ug = Beta*w*  (Beta = 1.25, Fairall et al. 2003, Eq.8):
-         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2./3.)   ! => ztmp2 == Ug^2
+         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2./3.) ! square of wind gustiness contribution, ztmp2 == Ug^2
          !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before 600.
          U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
@@ -264,8 +262,7 @@ CONTAINS
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
          ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
- 
-         z0t  = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28)
+         z0t  = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -277,7 +274,7 @@ CONTAINS
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)
-         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
+         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LOLO: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
