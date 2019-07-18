@@ -66,7 +66,7 @@ CONTAINS
 
             ! Net longwave flux:
             zz1  = pT_s(ji,jj)*pT_s(ji,jj)
-            zQlw = 0.97*(pRlw(ji,jj) - sigma0*zz1*zz1)
+            zQlw = emiss_w*(pRlw(ji,jj) - sigma0*zz1*zz1)
 
             !! Fraction of the shortwave flux absorbed by the cool-skin sublayer:
             !zQsw_f = 0.065 + 11.*zdelta - 6.6e-5/zdelta*(1. - EXP(-zdelta/8.e-4)) ! Eq.16 (Fairall al. 1996b)

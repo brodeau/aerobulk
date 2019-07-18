@@ -48,12 +48,12 @@ MODULE mod_const
       !!
       &  rnu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
       !!
-      &  rLevap = 2.46E6,    &   !: Latent heat of vaporization for sea-water in J/kg
-      &  vkarmn = 0.4,       &   !: Von Karman's constant
+      &  rLevap = 2.46E6,     &   !: Latent heat of vaporization for sea-water in J/kg
+      &  vkarmn = 0.4,        &   !: Von Karman's constant
       &  Pi    = 3.141592654, &
-      &  twoPi = 2.*Pi,     &
-      &  eps_w = 0.987,     &    !: emissivity of water
-      &  sigma0 = 5.67E-8,   &   !: Stefan Boltzman constant
+      &  twoPi = 2.*Pi,       &
+      &  emiss_w = 0.97,      &   !: emissivity of sea water
+      &  sigma0 = 5.67E-8,    &   !: Stefan Boltzman constant
       !!
       &  oce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available      
       !!                         !: NEMO: 0.066 / ECMWF: 0.055

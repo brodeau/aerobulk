@@ -323,7 +323,7 @@ CONTAINS
             ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
             ztmp2 = T_s*T_s
             ztmp1 = ztmp1 * ( Ce*rLevap*(q_zu - q_s) + Ch*rCp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
-               &     + 0.97*(rad_lw - sigma0*ztmp2*ztmp2)                  ! Net longwave flux
+               &     + emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                  ! Net longwave flux
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( zQsw, ztmp1, u_star, zsst, T_s )
             q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
