@@ -34,7 +34,23 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
 
    PRINT *, ''
    PRINT *, ' *********** COARE 3.0 *****************'
-   CALL aerobulk_model( 'coare', 2._wp, 10._wp, zsst, zt_zt, &
+   CALL aerobulk_model( 'coare3p0', 2._wp, 10._wp, zsst, zt_zt, &
+      &                 zq_zt, zU_zu, zV_zu, zslp,   &
+      &                 zQL, zQH, zTau_x, zTau_y,    &
+      &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
+   PRINT *, ''
+   PRINT *, ' Wind speed             =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s' ; PRINT *, ''
+   PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4) ; PRINT *, ''
+   PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4) ; PRINT *, ''
+   PRINT *, ' Skin temperature: SSST =', REAL(zTs-rt0,4) ; PRINT *, ''
+   PRINT *, ' Tau_x =', REAL(zTau_x,4) ; PRINT *, ''
+   PRINT *, ' Tau_y =', REAL(zTau_y,4) ; PRINT *, ''
+   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4) ; PRINT *, ''
+   PRINT *, ''
+
+   PRINT *, ''
+   PRINT *, ' *********** COARE 3.6 *****************'
+   CALL aerobulk_model( 'coare3p6', 2._wp, 10._wp, zsst, zt_zt, &
       &                 zq_zt, zU_zu, zV_zu, zslp,   &
       &                 zQL, zQH, zTau_x, zTau_y,    &
       &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )

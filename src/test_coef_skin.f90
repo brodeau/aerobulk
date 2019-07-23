@@ -223,7 +223,7 @@ PROGRAM TEST_COEF
    
    CALL turb_coare3p0( zt, zu, Ts, t_zt, ssq_s, q_zt, W10, &
       &                Cd, Ch, Ce, t_zu, q_zu, Ublk, &
-      &                rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP, &
+      &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP, &
       &                xz0=zz0, xu_star=zus )
 
    

@@ -47,7 +47,7 @@ CONTAINS
    
    SUBROUTINE turb_coare3p5( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
-      &                      rad_sw, rad_lw, slp,                &
+      &                      Qsw, rad_lw, slp,                   &
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p5  ***
@@ -58,9 +58,9 @@ CONTAINS
       !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
       !!
       !!                Applies the cool-skin warm-layer correction of the SST to T_s
-      !!                if the downwelling radiative fluxes at the surface (rad_sw & rad_lw)
-      !!                and the SLP are provided as arguments!
-      !!
+      !!                if the net shortwave flux at the surface (Qsw), the downwelling longwave
+      !!                radiative fluxes at the surface (rad_lw), and the sea-leve pressure (slp)
+      !!                are provided as (optional) arguments!
       !!
       !! INPUT :
       !! -------
@@ -72,14 +72,17 @@ CONTAINS
       !!
       !! INPUT/OUTPUT:
       !! -------------
-      !!    *  T_s  : SST or skin temperature                                 [K]
+      !!    *  T_s  : always "bulk SST" as input                              [K]
+      !!              -> unchanged "bulk SST" as output if CSWL not used      [K]
+      !!              -> skin temperature as output if CSWL used              [K]
+      !!
       !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
       !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
       !! ---------------
-      !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
+      !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
       !!
@@ -115,7 +118,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_sw   !             [W/m^2]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
       !
@@ -142,23 +145,21 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
          &                zrhoa,  &  ! densitty of air
-         &                zQsw,   &  ! net solar flux to the ocean (after albedo)
          &                zdelta     ! thickness of the viscous (skin) layer
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!----------------------------------------------------------------------------------
 
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
-         &     zeta_u(jpi,jpj), zalpha(jpi,jpj),  &
-         &     dt_zu(jpi,jpj), dq_zu(jpi,jpj),    &
-         &     znu_a(jpi,jpj),   &
-         &     z0(jpi,jpj), z0t(jpi,jpj),         &
-         &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
+      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
+         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
+         &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
+         &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj),  &
+         &       zalpha(jpi,jpj) )
 
       ! Cool skin ?
-      IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
+      IF( PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
          l_use_skin = .TRUE.
-         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zQsw(jpi,jpj), zdelta(jpi,jpj) )
+         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zdelta(jpi,jpj) )
       END IF
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -175,8 +176,7 @@ CONTAINS
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
-         zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No updat needed! Fine enough!! For some reason seems to be negative sometimes
+         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No update needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
          zdelta = 0.001                    ! First guess of zdelta
@@ -198,9 +198,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      ! Charnock Parameter
-      zalpha = MAX( MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) , 0._wp ) !: alpha Charnock parameter (Eq. 13 Edson al. 2013)
-
+      zalpha = MAX( MIN( 0.0017_wp*U_zu - 0.005_wp , charn0_max) , 0._wp ) !: alpha = Charnock parameter (Eq. 13 Edson al. 2013)
       z0     = zalpha*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
@@ -227,7 +225,7 @@ CONTAINS
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
-      ! What's need to be done if zt /= zu:
+      ! What needs to be done if zt /= zu:
       IF( .NOT. l_zt_equal_zu ) THEN
          !! First update of values at zu (or zt for wind)
          zeta_t = zt*zeta_u/zu
@@ -259,16 +257,6 @@ CONTAINS
 
          !! Updating Charnock parameter, increases with the wind (Fairall et al., 2003 p. 577-578)
          !! Need to update Charnock parameter from neutral wind speed!
-         ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
-         zalpha = MAX( MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max) , 0._wp )  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
-
-         !! Roughness lengthes z0, z0t (z0q = z0t) :
-         z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                          ! Re_r: roughness Reynolds number
- 
-         ! Chris Fairall and Jim Edsson, private communication, March 2016 / COARE 3.5 :
-         !  -> these thermal roughness lengths give CE and CH that closely approximate COARE3.0
-         z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -277,6 +265,16 @@ CONTAINS
             zeta_t = zt*ztmp0
             zeta_t = SIGN( MIN(ABS(zeta_t),50.0_wp), zeta_t )
          END IF
+
+         !! Adjustment the wind at 10m (not needed in the current algo form):
+         !IF ( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
+         
+         !! Roughness lengthes z0, z0t (z0q = z0t) :
+         ztmp2 = u_star/vkarmn*LOG(10./z0)   ! UN10 Neutral wind at 10m!
+         zalpha = MAX( MIN( 0.0017_wp*ztmp2 - 0.005_wp , charn0_max) , 0._wp )  ! alpha Charnock parameter (Eq. 13 Edson al. 2013)
+         z0    = zalpha*ztmp1/grav + 0.11_wp*znu_a/u_star                  ! Roughness length (eq.6)
+         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
+         z0t   = MIN( 1.6e-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp)) ! COARE 3.6
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)

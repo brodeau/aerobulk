@@ -241,12 +241,12 @@ PROGRAM TEST_SKIN_CORR
       CASE('coare3p0')
          CALL turb_coare3p0( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
             &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &                rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+            &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
 
       CASE('ecmwf')
          CALL turb_ecmwf( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
             &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &             rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+            &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
 
       CASE DEFAULT
          PRINT *, 'Unknown algorithm: ', calgo ; PRINT *, ''

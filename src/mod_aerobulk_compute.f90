@@ -6,7 +6,7 @@ MODULE mod_aerobulk_compute
    USE mod_phymbl       !: thermodynamics functions
    
    USE mod_blk_coare3p0 !: COARE v3.0 algorithm
-   USE mod_blk_coare3p5 !: COARE v3.5 algorithm
+   USE mod_blk_coare3p6 !: COARE v3.5 algorithm
    USE mod_blk_ncar     !: Large & Yeager algorithm
    USE mod_blk_ecmwf    !: following ECMWF doc...
 
@@ -33,7 +33,7 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  calgo: what bulk algorithm to use => 'coare3p0'/'coare3p5'/'ncar'/'ecmwf'
+      !!    *  calgo: what bulk algorithm to use => 'coare3p0'/'coare3p6'/'ncar'/'ecmwf'
       !!    *  zt   : height for temperature and spec. hum. of air           [m]
       !!    *  zu   : height for wind (10m = traditional anemometric height  [m]
       !!    *  sst  : bulk SST                                               [K]
@@ -103,7 +103,7 @@ CONTAINS
 
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
-         IF((TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p5').OR.(TRIM(calgo) == 'ecmwf')) THEN
+         IF((TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf')) THEN
             l_use_skin = .TRUE.
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
@@ -140,19 +140,19 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,            &
-               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
             CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
          END IF
          !!
-      CASE('coare3p5')
+      CASE('coare3p6')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE3P5 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
+            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
-               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
-            CALL TURB_COARE3P5 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
          END IF
          !!
@@ -166,7 +166,7 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_ECMWF ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,   &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,      &
-               &              rad_sw=rad_sw, rad_lw=rad_lw, slp=slp )
+               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
             CALL TURB_ECMWF ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,   &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk)

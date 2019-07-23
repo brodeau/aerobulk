@@ -20,7 +20,6 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_cs_coare.f90 \
 	  src/mod_cswl_ecmwf.f90 \
 	  src/mod_blk_coare3p0.f90 \
-	  src/mod_blk_coare3p5.f90 \
 	  src/mod_blk_coare3p6.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \

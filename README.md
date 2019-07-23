@@ -114,7 +114,7 @@ INPUT ARGUMENTS:
 *   ```rad_sw``` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
 *   ```rad_lw``` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
 
-(The presence of rad_sw and rad_sw triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
+(The presence of ```rad_sw``` and ```rad_sw``` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
 
 OUTPUT ARGUMENTS:
 
@@ -150,7 +150,7 @@ Example of a call:
                   ...
                   CALL TURB_COARE_3P0( zt, zu, T_s, t_zt, q_s, q_zt, U_zu,  &
                   &                Cd, Ch, Ce, t_zu, q_zu, U_blk            &
-                  &                [ , rad_sw=Rsw, rad_lw=Rlw, slp=P ]      &
+                  &                [ , Qsw=Rsw, rad_lw=Rlw, slp=P ]         &
                   &                [ , xz0=z0, xu_star=u_s, xL=L ] )
                   ...
               END PROGRAM TEST_COEFF
@@ -174,7 +174,7 @@ Example of a call:
 
 **[ OPTIONAL INPUT ARGUMENTS: ]**
 
-*   ```rad_sw``` : (2D,real) downw. shortw. rad. at surface (>0) [W/m^2]
+*   ```Qsw``` : (2D,real) net shortw. rad. at surface (>0, after albedo!) [W/m^2]
 *   ```rad_lw``` : (2D,real) downw. longw. rad. at surface (>0) [W/m^2]
 *   ```slp``` : (2D,real) sea-level pressure [Pa]
 
@@ -224,7 +224,7 @@ Now the same but using the cool-skin warm-layer parameterization:
                   ...
                   CALL TURB_COARE_3P0( '3.0', 2., 10., Ts, t2, qs, q2, U10, &
                   &                Cd, Ch, Ce, t10, q10, U_blk,         & 
-                  &                rad_sw=Rsw, rad_lw=Rlw, slp=MSL )
+                  &                Qsw=Rsw, rad_lw=Rlw, slp=MSL )
                   ...
               END PROGRAM TEST_COEFF
 

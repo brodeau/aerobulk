@@ -43,10 +43,10 @@ MODULE mod_blk_coare3p0
 
    !!----------------------------------------------------------------------
 CONTAINS
-   
+
    SUBROUTINE turb_coare3p0( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
-      &                      rad_sw, rad_lw, slp,                &
+      &                      Qsw, rad_lw, slp,                   &
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p0  ***
@@ -57,9 +57,9 @@ CONTAINS
       !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
       !!
       !!                Applies the cool-skin warm-layer correction of the SST to T_s
-      !!                if the downwelling radiative fluxes at the surface (rad_sw & rad_lw)
-      !!                and the SLP are provided as arguments!
-      !!
+      !!                if the net shortwave flux at the surface (Qsw), the downwelling longwave
+      !!                radiative fluxes at the surface (rad_lw), and the sea-leve pressure (slp)
+      !!                are provided as (optional) arguments!
       !!
       !! INPUT :
       !! -------
@@ -71,14 +71,17 @@ CONTAINS
       !!
       !! INPUT/OUTPUT:
       !! -------------
-      !!    *  T_s  : SST or skin temperature                                 [K]
+      !!    *  T_s  : always "bulk SST" as input                              [K]
+      !!              -> unchanged "bulk SST" as output if CSWL not used      [K]
+      !!              -> skin temperature as output if CSWL used              [K]
+      !!
       !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
       !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
       !! ---------------
-      !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
+      !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
       !!
@@ -114,7 +117,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_sw   !             [W/m^2]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
       !
@@ -140,7 +143,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
          &                zrhoa,  &  ! densitty of air
-         &                zQsw,   &  ! net solar flux to the ocean (after albedo)
          &                zdelta     ! thickness of the viscous (skin) layer
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -150,11 +152,11 @@ CONTAINS
          &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
-      
+
       ! Cool skin ?
-      IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
+      IF( PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
          l_use_skin = .TRUE.
-         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zQsw(jpi,jpj), zdelta(jpi,jpj) )
+         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zdelta(jpi,jpj) )
       END IF
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -171,7 +173,6 @@ CONTAINS
       !! Initialization for cool skin:
       IF( l_use_skin ) THEN
          zsst   = T_s    ! save the bulk SST
-         zQsw   = (1. - oce_alb0)*rad_sw   ! Solar flux available for the ocean:
          zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No update needed! Fine enough!! For some reason seems to be negative sometimes
          T_s    = T_s - 0.25                      ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
@@ -288,7 +289,7 @@ CONTAINS
          !! -----------------
          IF( l_use_skin ) THEN
             CALL CS_COARE( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
-               &             zrhoa, rad_lw, zQsw, zdelta, T_s, q_s )
+               &             zrhoa, rad_lw, Qsw, zdelta, T_s, q_s )
          END IF
 
          IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
@@ -310,10 +311,10 @@ CONTAINS
       IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
-      IF( .NOT. l_zt_equal_zu )   DEALLOCATE ( zeta_t )
+      IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
       IF( l_use_skin ) THEN
-         DEALLOCATE ( zsst, zrhoa, zQsw, zdelta )
+         DEALLOCATE ( zsst, zrhoa, zdelta )
       END IF
 
    END SUBROUTINE turb_coare3p0

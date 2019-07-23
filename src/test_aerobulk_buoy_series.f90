@@ -9,7 +9,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    USE mod_phymbl
 
    USE mod_blk_coare3p0
-   USE mod_blk_coare3p5
+   USE mod_blk_coare3p6
    USE mod_blk_ncar
    USE mod_blk_ecmwf
 
@@ -22,7 +22,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat'
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ 'coare3p0', 'coare3p5', 'ncar    ', 'ecmwf   ' /)
+      &      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
 
    REAL(4), DIMENSION(nb_algos,nb_measurements) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -311,7 +311,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
 
             CALL TURB_COARE3P0( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
-               &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP,      &
+               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,      &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are updated wrt to skin temperature !
 
@@ -330,15 +330,15 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
 
          IF ( l_use_cswl ) THEN
 
-            CALL TURB_COARE3P5( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P6( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
-               &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP,          &
+               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are updated wrt to skin temperature !
 
          ELSE
 
-            CALL TURB_COARE3P5( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_COARE3P6( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
@@ -357,7 +357,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
 
             CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,        &
-               &             rad_sw=rad_sw, rad_lw=rad_lw, slp=SLP,   &
+               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,   &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
 
