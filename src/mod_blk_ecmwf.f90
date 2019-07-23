@@ -46,9 +46,8 @@ MODULE mod_blk_ecmwf
    REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
    REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
 
-!!!INTEGER , PARAMETER ::   nb_itt = 5        ! number of itterations
 
-
+   !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE TURB_ECMWF(    zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
@@ -321,8 +320,9 @@ CONTAINS
             ! Non-Solar heat flux to the ocean:
             ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
             ztmp2 = T_s*T_s
-            ztmp1 = ztmp1 * ( Ce*rLevap*(q_zu - q_s) + Ch*rCp_dry*(t_zu - T_s) ) & ! Total turb. heat flux
-               &     + emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                  ! Net longwave flux
+            ztmp1 = ztmp1 * ( Ce*L_vap(T_s)*(q_zu - q_s) + Ch*cp_air(q_zu)*(t_zu - T_s) ) & ! Total turb. heat flux
+               &       +      emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                         ! Net longwave flux
+            !!         => "ztmp1" is the net non-solar surface heat flux !
             !! Updating the values of the skin temperature T_s and q_s :
             CALL CSWL_ECMWF( Qsw, ztmp1, u_star, zsst, T_s )
             q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given

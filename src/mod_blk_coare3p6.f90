@@ -41,7 +41,7 @@ MODULE mod_blk_coare3p6
 
    !!----------------------------------------------------------------------
 CONTAINS
-   
+
    SUBROUTINE turb_coare3p6( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                      Qsw, rad_lw, slp,                   &
