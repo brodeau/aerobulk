@@ -25,7 +25,7 @@ MODULE mod_blk_ecmwf
    !!       Routine turb_ecmwf maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, 2016
+   !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
    USE mod_const       !: physical and othe constants
@@ -50,7 +50,7 @@ MODULE mod_blk_ecmwf
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE TURB_ECMWF(    zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
+   SUBROUTINE turb_ecmwf(    zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                      Qsw, rad_lw, slp,                   &
       &                      xz0, xu_star, xL, xUN10 )
@@ -204,8 +204,7 @@ CONTAINS
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
-      ztmp2  = vkarmn/ztmp0
-      Cd     = ztmp2*ztmp2    ! first guess of Cd
+      Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
@@ -272,12 +271,10 @@ CONTAINS
          z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
          z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001_wp)
 
-         !! Update wind at 10m taking into acount convection-related wind gustiness:
-         !! => Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8
-         ! Only true when unstable (L<0) => when ztmp0 < 0 => - !!!
-         ztmp2 = ztmp2 * ( MAX(-zi0*Linv/vkarmn , 0._wp))**(2._wp/3._wp) ! => w*^2  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
-         !! => equivalent using Beta=1 (gustiness parameter, 1.25 for COARE, also zi0=600 in COARE..)
-         U_blk = MAX( SQRT(U_zu*U_zu + ztmp2) , 0.2_wp )              ! eq.3.17, Chap.3, p.32, IFS doc - Cy31r1
+         !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
+         ztmp2 = Beta0*Beta0*ztmp2*(MAX(-zi0*Linv/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
+         !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
+         U_blk = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
 
@@ -356,7 +353,7 @@ CONTAINS
          DEALLOCATE ( zsst ) ! Cool skin
       END IF
 
-   END SUBROUTINE TURB_ECMWF
+   END SUBROUTINE turb_ecmwf
 
 
    FUNCTION psi_m_ecmwf( pzeta )

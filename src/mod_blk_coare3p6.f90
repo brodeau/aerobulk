@@ -198,8 +198,7 @@ CONTAINS
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
 
-      ztmp2  = vkarmn/ztmp0
-      Cd     = ztmp2*ztmp2    ! first guess of Cd
+      Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
@@ -242,11 +241,10 @@ CONTAINS
 
          ztmp1 = u_star*u_star   ! u*^2
 
-         !! Update wind at zu taking into acount convection-related wind gustiness:
-         ! Ug = Beta*w*  (Beta = 1.25, Fairall et al. 2003, Eq.8):
-         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2./3.) ! square of wind gustiness contribution, ztmp2 == Ug^2
-         !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before 600.
-         U_blk = MAX(sqrt(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
+         !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
+         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
+         !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
+         U_blk = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
 
          !! Stability parameters:
@@ -262,9 +260,9 @@ CONTAINS
          
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
-         ztmp1 = z0*u_star/znu_a                                           ! Re_r: roughness Reynolds number
-         z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1**(-0.72_wp))   ! COARE 3.6
+         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
+         z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)
@@ -275,10 +273,8 @@ CONTAINS
          u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u))
 
          IF( .NOT. l_zt_equal_zu ) THEN
-            ! What's need to be done if zt /= zu
-            !! Re-updating temperature and humidity at zu :
-            ztmp2 = ztmp0 - psi_h_coare(zeta_t)
-            ztmp1 = log(zt/zu) + ztmp2
+            !! Re-updating temperature and humidity at zu if zt /= zu :
+            ztmp1 = LOG(zt/zu) + ztmp0 - psi_h_coare(zeta_t)
             t_zu = t_zt - t_star/vkarmn*ztmp1
             q_zu = q_zt - q_star/vkarmn*ztmp1
          END IF
