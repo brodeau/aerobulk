@@ -19,7 +19,7 @@ MODULE mod_cswl_ecmwf
    !!    Using the bulk formulation/param. of ECMWF
    !!      + consideration of cool-skin warm layer parametrization (CS: Fairall et al. 1996; WL: Zeng & Beljaars, 2005 )
    !!
-   !!       Routine turb_ecmwf maintained and developed in AeroBulk
+   !!       Routine "cswl_ecmwf" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
