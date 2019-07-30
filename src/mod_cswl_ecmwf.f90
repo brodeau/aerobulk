@@ -22,7 +22,7 @@ MODULE mod_cswl_ecmwf
    !!       Routine "cswl_ecmwf" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, 2016
+   !!            Author: Laurent Brodeau, 2019
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -72,12 +72,12 @@ CONTAINS
       !!             as output =>  new estimate of skin temperature
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(IN)    :: pQsw
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(IN)    :: pQnsol
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(IN)    :: pustar
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(IN)    :: pSST
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! net solar radiation into the sea [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! net non-solar heat flux into the sea [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST
       !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(INOUT) :: pTs
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTs
       !
       INTEGER :: ji,jj
       !
