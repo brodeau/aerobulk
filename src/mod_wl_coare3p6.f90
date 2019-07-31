@@ -28,6 +28,8 @@ MODULE mod_wl_coare3p6
    REAL(wp), PARAMETER :: rich = .65_wp       !critical Richardson number
    REAL(wp), PARAMETER :: z_sst = 1._wp   !: depth at which bulk SST is taken...
 
+   !LOGICAL, PUBLIC, SAVE :: l_wl_c36_never_called
+   
 CONTAINS
    
 
@@ -53,10 +55,11 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth z_sst [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_true = pSST + pdT
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
-      INTEGER,                      INTENT(in)    :: itime_b  ! previous solar time (before) [seconds since midnight]
-      INTEGER,                      INTENT(in)    :: itime_n  ! solar time now               [seconds since midnight]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac   ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
+      INTEGER , DIMENSION(jpi,jpj), INTENT(in)    :: itime_b  ! previous solar time (before) [seconds since midnight]
+      INTEGER , DIMENSION(jpi,jpj), INTENT(in)    :: itime_n  ! solar time now               [seconds since midnight]
+      !
       !
       INTEGER :: ji,jj
       !
@@ -65,7 +68,7 @@ CONTAINS
       REAL(wp) :: Al, qjoule
       REAL(wp) :: ctd1, ctd2
 
-      INTEGER  :: jl
+      INTEGER  :: jl, it_b, it_n
       INTEGER  :: jamset, jump
 
       !! INITIALIZATION:
@@ -80,6 +83,11 @@ CONTAINS
       !pQ_ac   = 0._wp       ! accumulates heat from integral
       !pTau_ac = 0._wp     ! accumulates stress from integral
 
+      ! Just in case not initialized to 0...
+      !IF ( l_wl_c36_never_called ) THEN
+      !   pTau_ac = 0.
+      !   pQ_ac   = 0.
+      !END IF
 
       pdT = 0._wp         ! dT initially set to 0._wp
       
@@ -89,9 +97,20 @@ CONTAINS
       Qabs = 0._wp        ! total heat absorped in warm layer
       zfs = .5_wp         ! initial value of solar flux absorption
 
-      DO jj = 1, jpj
+      DO jj = 1, jpj         
          DO ji = 1, jpi
 
+                     PRINT *, ' *** jj =', jj
+            
+            it_b = itime_b(ji,jj)
+            it_n = itime_n(ji,jj)
+
+            PRINT *, ' it_b,  it_n =>',  it_b,  it_n
+
+            PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
+
+
+            
             jamset = 0
             jump = 1
 
@@ -117,11 +136,11 @@ CONTAINS
 
             !IF (icount>1) THEN                                  !not first time thru
 
-            IF ( (itime_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
+            IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
 
                jump = 0
 
-               IF (itime_n < itime_b) THEN    !re-zero at midnight
+               IF (it_n < it_b) THEN    !re-zero at midnight
                   jamset  = 0
                   zfs     = .5_wp
                   dz_wl   = dz_max
@@ -135,11 +154,19 @@ CONTAINS
                   !****   set warm layer constants  ***
                   !************************************
 
-                  dtime = itime_n - itime_b      ! delta time for integrals
+                  dtime = it_n - it_b      ! delta time for integrals
 
+                  PRINT *, 'dtime,  pQsw, pQnsol =', dtime,  pQsw(ji,jj), pQnsol(ji,jj)
+                  
                   Qabs = zfs*pQsw(ji,jj) - pQnsol(ji,jj)       ! tot heat absorbed in warm layer
+                  PRINT *, ' Qabs =', Qabs
 
+                  
                   IF ( (Qabs >= 50._wp).OR.(jamset == 1) ) THEN         ! Check for threshold
+
+                     PRINT *, ' pTau_ac, pQ_ac =', pTau_ac(ji,jj), pQ_ac(ji,jj)
+
+                     
                      jamset = 1                                         ! indicates threshold crossed
                      pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*dtime      ! momentum integral
 
@@ -174,7 +201,7 @@ CONTAINS
 
                   END IF ! IF ( (Qabs>=50).OR.(jamset==1) )
 
-               END IF  ! IF (itime_n < itime_b)
+               END IF  ! IF (it_n < it_b)
 
                IF (dz_wl < z_sst) THEN           !Compute warm layer correction
                   pdT(ji,jj) = dT_wl
@@ -182,11 +209,17 @@ CONTAINS
                   pdT(ji,jj) = dT_wl*z_sst/dz_wl
                END IF
 
-            END IF !  IF ( (itime_n<=21600).OR.(jump==0) )  end 6am start first time thru
+            END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
 
 
+            PRINT *, ' *** END => pdT =', pdT(ji,jj)
+
+            
          END DO
+         PRINT *, ''
       END DO
+      
+
 
 
 
@@ -215,7 +248,7 @@ CONTAINS
       !icount = icount+1
 
 
-
+      !l_wl_c36_never_called = .FALSE.
 
    END SUBROUTINE WL_COARE3p6
 

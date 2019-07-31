@@ -29,6 +29,7 @@ MODULE mod_blk_coare3p6
    USE mod_const     !: physical and othe constants
    USE mod_phymbl    !: thermodynamics
    USE mod_cs_coare  !: cool-skin parameterization
+   !USE mod_wl_coare3p6 !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE
