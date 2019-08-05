@@ -21,16 +21,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    INTEGER, PARAMETER :: nb_measurements = 115
 
    INTEGER, PARAMETER :: nb_algos = 1
-
+   
+   INTEGER, PARAMETER :: nb_itt_wl =1 !!LOLO
+   
    CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat'
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
                                 !&      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
       &      vca = (/ 'coare3p6' /)
-
-   REAL(4), DIMENSION(nb_algos,nb_measurements) ::  &
-      &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
    REAL(wp), PARAMETER ::   &
       & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
@@ -45,28 +43,46 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jarg, jl, ialgo, jq, jtt
+   INTEGER :: jt, jarg, jl, ialgo, jq, jtt
 
-   INTEGER, PARAMETER :: lx=1, ly=nb_measurements
-   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
+   INTEGER, PARAMETER :: nx=1, ny=1, Nt=nb_measurements
+
+   REAL(wp),    DIMENSION(nx,ny,Nt) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
 
    CHARACTER(len=19)                :: cdt
-   CHARACTER(len=19), DIMENSION(ly) :: ctime
-   CHARACTER(len=8), DIMENSION(ly)  :: cdate
-   CHARACTER(len=4), DIMENSION(ly)  :: clock
-   CHARACTER(len=4), DIMENSION(ly)  :: chh, cmm
+   CHARACTER(len=19), DIMENSION(Nt) :: ctime
+   CHARACTER(len=8),  DIMENSION(Nt) :: cdate
+   CHARACTER(len=4),  DIMENSION(Nt) :: clock
+   CHARACTER(len=2),  DIMENSION(Nt) :: chh, cmn ! hours and minutes
+   CHARACTER(len=16), DIMENSION(Nt) :: cldate ! human!
    INTEGER(4) :: iclock, ihh, imm
-   INTEGER(4)      , DIMENSION(ly)  :: isecday
+   INTEGER(4)      , DIMENSION(Nt)  :: isecday
 
 
-   INTEGER(8), DIMENSION(ly) :: idate
-   REAL(wp), DIMENSION(lx,ly) :: sst, Ts, qsat_zt, SLP, &
-      &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
-      &  precip, rlat, rlon, tmp, dT, pTau_ac, pQ_ac
+   INTEGER(8), DIMENSION(Nt) :: idate
 
-   INTEGER, DIMENSION(lx,ly) :: it_n, it_b ! time before and time now, in seconds since midnight
 
-   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
+   !! Input (or deduced from input) variables:
+   REAL(wp), DIMENSION(nx,ny,Nt) :: sst, qsat_zt, SLP, W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, &
+      &                          rad_sw, rad_lw, precip, rlat, rlon
+
+
+   REAL(wp), DIMENSION(nx,ny,Nt) :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dummy, &
+      &                             dT, pTau_ac, pQ_ac
+
+   REAL(wp), DIMENSION(nx,ny) :: ssq, rgamma, Cp_ma, tmp
+
+   !INTEGER, DIMENSION(nx,ny,Nt) :: it_n, it_b ! time before and time now, in seconds since midnight
+
+   REAL(wp), DIMENSION(nx,ny,Nt) :: Cd, Ce, Ch, QH, QL, EVAP, RiB
+
+
+
+   REAL(4), DIMENSION(nb_algos,nb_measurements) ::  &
+      &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
+
+
 
    REAL(wp) :: zt, zu
 
@@ -79,20 +95,23 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !                                       !: (Cool Skin Warm Layer parameterization)
    !                                       !:  => only in COARE and ECMWF
 
-   jpi = lx ; jpj = ly
+   jpi = nx ; jpj = ny
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
 
+
+   !----------------------------------------------
+
    jarg = 0
 
-   DO WHILE ( jarg < command_argument_count() )
+   DO WHILE ( jarg < command_argument_COUNT() )
 
       jarg = jarg + 1
       CALL get_command_argument(jarg,car)
 
-      SELECT CASE (trim(car))
+      SELECT CASE (TRIM(car))
 
       CASE('-h')
          call usage_test()
@@ -142,7 +161,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
    READ(11,*) cblabla ! first commented line...
    DO jl = 1, nb_measurements
-      READ(11,*) ctime(jl), W10(1,jl), sst(1,jl), t_zt(1,jl), q_zt(1,jl), rad_sw(1,jl), rad_lw(1,jl), precip(1,jl), rlat(1,jl), rlon(1,jl), tmp(1,jl)
+      READ(11,*) ctime(jl), W10(1,1,jl), sst(1,1,jl), t_zt(1,1,jl), q_zt(1,1,jl), rad_sw(1,1,jl), rad_lw(1,1,jl), precip(1,1,jl), rlat(1,1,jl), rlon(1,1,jl), dummy(1,1,jl)
    END DO
    CLOSE(11)
 
@@ -152,23 +171,27 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       cdate(jl) = cdt(1:8)
       clock(jl) = cdt(9:13)
       chh(jl)   = cdt(9:10)
-      cmm(jl)   = cdt(11:12)
+      cmn(jl)   = cdt(11:12)
       READ(clock(jl),'(i4.4)') iclock
       READ(chh(jl),'(i2.2)') ihh
-      READ(cmm(jl),'(i2.2)') imm
+      READ(cmn(jl),'(i2.2)') imm
       isecday(jl) = ihh*3600. + imm*60.
-      IF (ldebug) WRITE(*,'(" * date = ",a8,"(",a4,") => ",i2.2,"h",i2.2," => isecday = ",i5)')  cdate(jl), clock(jl), ihh, imm, isecday(jl)
-   END DO   
+      WRITE(cldate(jl),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jl), cmn(jl)
+      IF (ldebug) PRINT *, ' *** date = ', cldate(jl)      
+   END DO
    IF (ldebug) PRINT *, ''
 
-   it_n(1,:)  = isecday(:)
-   it_b(1,1)  = 0
-   it_b(1,2:ly) = isecday(:ly-1)
+
+
+
+   !   it_n(1,:)  = isecday(:)
+   !   it_b(1,1)  = 0
+   !   it_b(1,2:ny) = isecday(:ny-1)
    !DO jl = 1, nb_measurements
    !   PRINT *, ' it_b, it_n =', it_b(1,jl), it_n(1,jl)
    !END DO
    !STOP
-   
+
 
    !! zu and zt
    !! ~~~~~~~~~
@@ -207,201 +230,217 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    IF (ldebug) THEN
       !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
-      WRITE(6,*) ' *           idate     ,   wind,          SST,            t_zt,          q_zt,          rad_sw,      rad_lw  :'
+      WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
       DO jl = 1, nb_measurements
-         WRITE(6,*) idate(jl), REAL(W10(:,jl),4), REAL(sst(:,jl),4), REAL(t_zt(:,jl),4), REAL(q_zt(:,jl),4), REAL(rad_sw(:,jl),4), REAL(rad_lw(:,jl),4)
+         WRITE(6,*) cldate(jl), REAL(W10(:,:,jl),4), REAL(sst(:,:,jl),4), REAL(t_zt(:,:,jl),4), REAL(q_zt(:,:,jl),4), REAL(rad_sw(:,:,jl),4), REAL(rad_lw(:,:,jl),4)
       END DO
    END IF
 
 
-   !STOP
 
-
-   !WRITE(6,*) ''
-   !WRITE(6,*) '==========================================================================='
-   !WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt, q_zt, SLP), '[kg/m^3]'
-
-   !Cp_ma = cp_air(q_zt)
-   !!WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
-   !WRITE(6,*) ''
-   rgamma(:,:) = gamma_moist(t_zt, q_zt)
-   WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
-   !WRITE(6,*) '============================================================================'
-   !WRITE(6,*) ''
-   WRITE(6,*) ''
-
-
-
-
-   ssq = 0.98*q_sat(sst, SLP)
-
-   WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
-   WRITE(6,*) ''
-
-
-
-
-   !! Must give something more like a potential temperature at zt:
-   theta_zt = t_zt + rgamma*zt
-
-   WRITE(6,*) ''
-   WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
-   WRITE(6,*) ''
-
-
-   !! Checking the difference of virtual potential temperature between air at zt and sea surface:
-   tmp = virt_temp(theta_zt, q_zt)
-   WRITE(6,*) 'Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
-   WRITE(6,*) ''
-   WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sst , 4), ' [deg.C]'
-   WRITE(6,*) ''
-   WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
-   WRITE(6,*) ''
-
-
-
-   !WRITE(6,*) 'Give wind speed at zu (m/s):'
-   !READ(*,*) W10
-   !WRITE(6,*) ''
-
-
-   !! We have enough to calculate the bulk Richardson number:
-   !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
-   !tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
-   !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
-   tmp = Ri_bulk( zt, sst, theta_zt, ssq, q_zt, W10 )
-   WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
-   WRITE(6,*) ''
-
-
-   IF ( l_use_cswl ) THEN
-
-      STOP 'LOLO not like this...'
-
-      WRITE(6,*) ''
-      WRITE(6,*) '----------------------------------------------------------'
-      WRITE(6,*) '          Will consider the skin temperature!'
-      WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
-      WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
-      WRITE(6,*) '----------------------------------------------------------'
-      WRITE(6,*) ''
-      !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
-      !READ(*,*) rad_sw
-      !WRITE(6,*)
-      !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
-      !READ(*,*) rad_lw
-      WRITE(6,*)
-
-   END IF
+   !! Some initializations:
 
    ialgo = 1
-
+   
    zz0 = 0.
    zus = 0. ; zts = 0. ; zqs = 0. ; zL = 0. ; zUN10 = 0.
 
    pTau_ac = 0.
    pQ_ac   = 0.
 
-   !l_wl_c36_never_called = .TRUE.
-   
-   dT = 0.  ! skin = SST for first time step
-   Ts = sst
 
-   
-   DO jtt = 1, 7
 
-      CALL TURB_COARE3P6( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-         &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
-         &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-      !! => Ts and qs are not updated: Ts=sst and qs=ssq
+   !! Time loop:
+   DO jt = 1, Nt
 
-      !! Bulk Richardson Number for layer "sea-level -- zu":
-      tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
-      !WRITE(6,*) ' *** Updated Bulk Richardson number:', REAL(tmp, 4)
+      WRITE(6,*) ''; WRITE(6,*) ''
+      WRITE(6,*) '##############################################'
+      WRITE(6,*) '#### Time = ', cldate(jt)
+      WRITE(6,*) '##############################################'
+      WRITE(6,*) ''
+      WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]'
+      WRITE(6,*) ''
+      
+      Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
+      WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', REAL(Cp_ma,4), '[J/K/kg]'
+      WRITE(6,*) ''
+      
+      rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
+      WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
+      WRITE(6,*) ''
+      
+      ssq = 0.98*q_sat(sst(:,:,jt), SLP(:,:,jt))
+      WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
+      
+      !! Must give something more like a potential temperature at zt:
+      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt(:,:,jt) - rt0, ' [deg.C]'
+      WRITE(6,*) ''
+
+
+      !! Checking the difference of virtual potential temperature between air at zt and sea surface:
+      tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
+      WRITE(6,*) ' *** Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt(:,:,jt) - sst(:,:,jt) , 4), ' [deg.C]'
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst(:,:,jt), ssq), 4), ' [deg.C]'
+      WRITE(6,*) ''
+
+
+
+      !WRITE(6,*) 'Give wind speed at zu (m/s):'
+      !READ(*,*) W10
       !WRITE(6,*) ''
-      vBRN(ialgo,:) = REAL(tmp(1,:),4)
 
 
-      vTheta_u(ialgo,:) = REAL(   theta_zu(1,:) -rt0 , 4)   ! Potential temperature at zu
+      !! We have enough to calculate the bulk Richardson number:
+      !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
+      !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
+      !tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
+      !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
+      !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
+      !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
+      tmp = Ri_bulk( zt, sst(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) )
+      WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
+      WRITE(6,*) ''
 
 
+      IF ( l_use_cswl ) THEN
 
+         STOP 'LOLO not like this...'
 
-      !! Real temperature at zu
-      t_zu = theta_zu ! first guess...
-      DO jq = 1, 4
-         rgamma = gamma_moist(t_zu, q_zu)
-         t_zu = theta_zu - rgamma*zu   ! Real temp.
-      END DO
+         WRITE(6,*) ''
+         WRITE(6,*) '----------------------------------------------------------'
+         WRITE(6,*) '          Will consider the skin temperature!'
+         WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
+         WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
+         WRITE(6,*) '----------------------------------------------------------'
+         WRITE(6,*) ''
+         !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
+         !READ(*,*) rad_sw
+         !WRITE(6,*)
+         !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
+         !READ(*,*) rad_lw
+         WRITE(6,*)
 
-      vCd(ialgo,:) = REAL(1000.*Cd(1,:) ,4)
-      vCh(ialgo,:) = REAL(1000.*Ch(1,:) ,4)
-      vCe(ialgo,:) = REAL(1000.*Ce(1,:) ,4)
-
-      vT_u(ialgo,:) = REAL( t_zu(1,:) -rt0 , 4)    ! Real temp.
-      vQu(ialgo,:) = REAL(  q_zu(1,:) , 4)
-
-      !! Air density at zu (10m)
-      rho_zu = rho_air(t_zu, q_zu, SLP)
-      tmp = SLP - rho_zu*grav*zu
-      rho_zu = rho_air(t_zu, q_zu, tmp)
-      vRho_u(ialgo,:) = REAL(rho_zu(1,:) ,4)
-
-      !! Gustiness contribution:
-      vUg(ialgo,:) = REAL(Ublk(1,:)-W10(1,:) , 4)
-
-      !! z0 et u*:
-      vz0(ialgo,:) = REAL(zz0(1,:) ,4)
-      vus(ialgo,:) = REAL(zus(1,:) ,4)
-
-      zts = Ch*(theta_zu - Ts)*Ublk/zus
-      zqs = Ce*(q_zu     - qs)*Ublk/zus
-
-      vL(ialgo,:) = zL(1,:)
-
-      vUN10(ialgo,:) = zUN10(1,:)
-
-      !! Turbulent fluxes:
-      vTau(ialgo,:)  = ( rho_zu(1,:) * Cd(1,:) *           W10(1,:)            * Ublk(1,:) )*1000. ! mN/m^2
-      tmp = cp_air(q_zu)
-      vQH(ialgo,:)   = rho_zu(1,:)*tmp(1,:)*Ch(1,:) * ( theta_zu(1,:) - Ts(1,:)  ) * Ublk(1,:)
-      vEvap(ialgo,:) = rho_zu(1,:)*Ce(1,:)          * ( qs(1,:)      - q_zu(1,:) ) * Ublk(1,:)  ! mm/s
-      tmp = L_vap(Ts)
-      vQL(ialgo,:)   = -1.* ( tmp(1,:)*vEvap(ialgo,:) )
-
-      vEvap(ialgo,:) = to_mm_p_day * vEvap(ialgo,:)  ! mm/day
-
-      vTs(ialgo,:) = Ts(1,:)
-      vqs(ialgo,:) = qs(1,:)
-
-
-      IF ( jtt > 1 ) THEN
-
-         tmp = Ts*Ts
-
-         tmp = emiss_w*(rad_lw - sigma0*tmp*tmp) + vQH + vQL
-
-         IF (ldebug) THEN
-            PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
-            PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw ; PRINT *, ''
-         END IF
-         
-         CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, it_b, it_n )
-         
-         !PRINT *, '  => dT =', dT
-
-         STOP
-         
-         Ts = sst + dT
-         
       END IF
 
 
 
+      !l_wl_c36_never_called = .TRUE.
+
+      dT(:,:,jt) = 0.  ! skin = SST for first time step
+      Ts(:,:,jt) = sst(:,:,jt)
+
+      
+      DO jtt = 1, nb_itt_wl
+
+         CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         !! => Ts and qs are not updated: Ts=sst and qs=ssq
+
+         
+         !! Real temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
+         t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
+         DO jq = 1, 4
+            rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
+            t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
+         END DO
+         
+         !! Bulk Richardson Number for layer "sea-level -- zu":
+         RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
+
+         !! Air density at zu (10m)
+         rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
+         tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
+         rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
+
+         !! Turbulent heat fluxes
+         QH  (:,:,jt) = rho_zu(:,:,jt)*tmp(1,1)*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt)  ) * Ublk(:,:,jt)
+         EVAP(:,:,jt) = rho_zu(:,:,jt)*Ce(:,:,jt)          * ( qs(:,:,jt)      - q_zu(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
+         QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
+         
+
+
+         IF ( jtt > 1 ) THEN
+            
+            tmp = Ts(:,:,jt)*Ts(:,:,jt)
+            
+            tmp = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp*tmp) + QH(:,:,jt) + QL(:,:,jt)
+            
+            IF (ldebug) THEN
+               PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
+               PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
+            END IF
+
+            !         CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, it_b, it_n )
+
+            !PRINT *, '  => dT =', dT
+
+            STOP
+
+            Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+
+         END IF
+
+      END DO
+
+      WRITE(6,*) ''
+      WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
+      WRITE(6,*) ' .... to do ...'
+      
+
+      WRITE(6,*) ''
+      WRITE(6,*) '##############################################'
    END DO
+
+
+   STOP 'LULU'
+
+   
+   vBRN(ialgo,:) = REAL(RiB(1,1,:),4)
+   vTheta_u(ialgo,:) = REAL(   theta_zu(1,1,:) -rt0 , 4)   ! Potential temperature at zu
+
+   vCd(ialgo,:) = REAL(1000.*Cd(1,1,:) ,4)
+   vCh(ialgo,:) = REAL(1000.*Ch(1,1,:) ,4)
+   vCe(ialgo,:) = REAL(1000.*Ce(1,1,:) ,4)
+
+   vT_u(ialgo,:) = REAL( t_zu(1,1,:) -rt0 , 4)    ! Real temp.
+   vQu(ialgo,:) = REAL(  q_zu(1,1,:) , 4)
+
+   vRho_u(ialgo,:) = REAL(rho_zu(1,1,:) ,4)
+
+   !! Gustiness contribution:
+   vUg(ialgo,:) = REAL(Ublk(1,1,:)-W10(1,1,:) , 4)
+
+   !! z0 et u*:
+   vz0(ialgo,:) = REAL(zz0(1,1,:) ,4)
+   vus(ialgo,:) = REAL(zus(1,1,:) ,4)
+
+   !zts = Ch*(theta_zu - Ts)*Ublk/zus
+   !zqs = Ce*(q_zu     - qs)*Ublkblk/zus
+
+   vL(ialgo,:) = zL(1,1,:)
+
+   vUN10(ialgo,:) = zUN10(1,1,:)
+
+   !! Turbulent fluxes:
+   vTau(ialgo,:)  = ( rho_zu(1,1,:) * Cd(1,1,:) *           W10(1,1,:)            * Ublk(1,1,:) )*1000. ! mN/m^2
+
+   vQH(ialgo,:)   =   QH(1,1,:)
+   vEvap(ialgo,:) = EVAP(1,1,:)
+   vQL(ialgo,:)   =   QL(1,1,:)
+
+   vEvap(ialgo,:) = to_mm_p_day * vEvap(ialgo,:)  ! mm/day
+
+   vTs(ialgo,:) = Ts(1,1,:)
+   vqs(ialgo,:) = qs(1,1,:)
+
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
@@ -417,7 +456,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
       DO jl = 1, nb_measurements
          WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
-            &  INT(jl,2), idate(jl), -vQH(ialgo,jl), -vQL(ialgo,jl), vTs(ialgo,jl), vTau(ialgo,jl), -999, -999, REAL(vTs(ialgo,jl)-sst(1,jl),4)
+            &  INT(jl,2), idate(jl), -vQH(ialgo,jl), -vQL(ialgo,jl), vTs(ialgo,jl), vTau(ialgo,jl), -999, -999, REAL(vTs(ialgo,jl)-sst(1,1,jl),4)
       END DO
       CLOSE(12)
 

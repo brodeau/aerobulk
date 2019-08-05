@@ -8,6 +8,9 @@ All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_aerobulk_buoy_series.x bin/t
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
+
+sk: bin/test_aerobulk_buoy_series_skin.x
+
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
 #-L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
@@ -98,6 +101,14 @@ bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
 	$(CXX) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB)
+
+bin/test_aerobulk_buoy_series_skin.x: src/test_aerobulk_buoy_series_skin.f90 lib/libaerobulk.a
+	@mkdir -p bin
+	$(FC) $(FF) src/test_aerobulk_buoy_series_skin.f90 -o bin/test_aerobulk_buoy_series_skin.x $(LIB)
+
+
+
+
 
 .f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
 	@mkdir -p mod
