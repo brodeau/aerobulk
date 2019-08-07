@@ -22,7 +22,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER, PARAMETER :: nb_algos = 1
    
-   INTEGER, PARAMETER :: nb_itt_wl =1 !!LOLO
+   INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
    
    CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat'
 
@@ -71,14 +71,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &                             dT, pTau_ac, pQ_ac
 
    REAL(wp), DIMENSION(nx,ny) :: ssq, rgamma, Cp_ma, tmp
-
-   !INTEGER, DIMENSION(nx,ny,Nt) :: it_n, it_b ! time before and time now, in seconds since midnight
-
+   
+   
    REAL(wp), DIMENSION(nx,ny,Nt) :: Cd, Ce, Ch, QH, QL, EVAP, RiB
 
 
 
-   REAL(4), DIMENSION(nb_algos,nb_measurements) ::  &
+   REAL(4), DIMENSION(nb_algos,Nt) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
@@ -160,24 +159,24 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
    READ(11,*) cblabla ! first commented line...
-   DO jl = 1, nb_measurements
-      READ(11,*) ctime(jl), W10(1,1,jl), sst(1,1,jl), t_zt(1,1,jl), q_zt(1,1,jl), rad_sw(1,1,jl), rad_lw(1,1,jl), precip(1,1,jl), rlat(1,1,jl), rlon(1,1,jl), dummy(1,1,jl)
+   DO jt = 1, Nt
+      READ(11,*) ctime(jt), W10(1,1,jt), sst(1,1,jt), t_zt(1,1,jt), q_zt(1,1,jt), rad_sw(1,1,jt), rad_lw(1,1,jt), precip(1,1,jt), rlat(1,1,jt), rlon(1,1,jt), dummy(1,1,jt)
    END DO
    CLOSE(11)
 
 
-   DO jl = 1, nb_measurements
-      cdt = ctime(jl)
-      cdate(jl) = cdt(1:8)
-      clock(jl) = cdt(9:13)
-      chh(jl)   = cdt(9:10)
-      cmn(jl)   = cdt(11:12)
-      READ(clock(jl),'(i4.4)') iclock
-      READ(chh(jl),'(i2.2)') ihh
-      READ(cmn(jl),'(i2.2)') imm
-      isecday(jl) = ihh*3600. + imm*60.
-      WRITE(cldate(jl),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jl), cmn(jl)
-      IF (ldebug) PRINT *, ' *** date = ', cldate(jl)      
+   DO jt = 1, Nt
+      cdt = ctime(jt)
+      cdate(jt) = cdt(1:8)
+      clock(jt) = cdt(9:13)
+      chh(jt)   = cdt(9:10)
+      cmn(jt)   = cdt(11:12)
+      READ(clock(jt),'(i4.4)') iclock
+      READ(chh(jt),'(i2.2)') ihh
+      READ(cmn(jt),'(i2.2)') imm
+      isecday(jt) = ihh*3600. + imm*60.
+      WRITE(cldate(jt),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jt), cmn(jt)
+      IF (ldebug) PRINT *, ' *** date = ', cldate(jt)      
    END DO
    IF (ldebug) PRINT *, ''
 
@@ -187,8 +186,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !   it_n(1,:)  = isecday(:)
    !   it_b(1,1)  = 0
    !   it_b(1,2:ny) = isecday(:ny-1)
-   !DO jl = 1, nb_measurements
-   !   PRINT *, ' it_b, it_n =', it_b(1,jl), it_n(1,jl)
+   !DO jt = 1, Nt
+   !   PRINT *, ' it_b, it_n =', it_b(1,jt), it_n(1,jt)
    !END DO
    !STOP
 
@@ -231,8 +230,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    IF (ldebug) THEN
       !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
       WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
-      DO jl = 1, nb_measurements
-         WRITE(6,*) cldate(jl), REAL(W10(:,:,jl),4), REAL(sst(:,:,jl),4), REAL(t_zt(:,:,jl),4), REAL(q_zt(:,:,jl),4), REAL(rad_sw(:,:,jl),4), REAL(rad_lw(:,:,jl),4)
+      DO jt = 1, Nt
+         WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
       END DO
    END IF
 
@@ -345,7 +344,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          !! => Ts and qs are not updated: Ts=sst and qs=ssq
 
          
-         !! Real temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
+         !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
          t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
          DO jq = 1, 4
             rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
@@ -367,22 +366,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          
 
 
-         IF ( jtt > 1 ) THEN
+         IF ( jt > 1 ) THEN ! NOT jtt !???
             
-            tmp = Ts(:,:,jt)*Ts(:,:,jt)
-            
-            tmp = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp*tmp) + QH(:,:,jt) + QL(:,:,jt)
+            tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
+            tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
             
             IF (ldebug) THEN
                PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
                PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
             END IF
 
-            !         CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, it_b, it_n )
+            CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, isecday(jt-1), isecday(jt) )
 
-            !PRINT *, '  => dT =', dT
-
-            STOP
+            !PRINT *, '  => dT =', dT ; STOP
 
             Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
 
@@ -393,7 +389,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       WRITE(6,*) ''
       WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
       WRITE(6,*) ' .... to do ...'
-      
+
+
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** density of air at ',TRIM(czu),' => ',  rho_zu(:,:,jt), '[kg/m^3]'
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0,4), '[deg.C]'
+      WRITE(6,*) ''
+      WRITE(6,*) ' *** theta_zt and theta_zu => ',  REAL(theta_zt(:,:,jt)-rt0,4), REAL(theta_zu(:,:,jt)-rt0,4), '[deg.C]'
+      WRITE(6,*) ''
+      !theta_zt(:,:,jt)
 
       WRITE(6,*) ''
       WRITE(6,*) '##############################################'
@@ -454,9 +459,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       OPEN( UNIT=12, FILE=TRIM(cf_out), FORM='FORMATTED', RECL=1024, STATUS='unknown' )
       WRITE(12,*) '# k       date         Qsens    Qlat     SSST     Tau       WebbF   RainHF dt_skin'
       !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
-      DO jl = 1, nb_measurements
+      DO jt = 1, Nt
          WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
-            &  INT(jl,2), idate(jl), -vQH(ialgo,jl), -vQL(ialgo,jl), vTs(ialgo,jl), vTau(ialgo,jl), -999, -999, REAL(vTs(ialgo,jl)-sst(1,1,jl),4)
+            &  INT(jt,2), idate(jt), -vQH(ialgo,jt), -vQL(ialgo,jt), vTs(ialgo,jt), vTau(ialgo,jt), -999, -999, REAL(vTs(ialgo,jt)-sst(1,1,jt),4)
       END DO
       CLOSE(12)
 

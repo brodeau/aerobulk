@@ -33,7 +33,7 @@ MODULE mod_wl_coare3p6
 CONTAINS
    
 
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, itime_b, itime_n )
+   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, it_b, it_n )
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin Warm-Layer scheme according to COARE 3.6 (Fairall et al, 2019)
@@ -55,10 +55,10 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth z_sst [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_true = pSST + pdT
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac   ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
-      INTEGER , DIMENSION(jpi,jpj), INTENT(in)    :: itime_b  ! previous solar time (before) [seconds since midnight]
-      INTEGER , DIMENSION(jpi,jpj), INTENT(in)    :: itime_n  ! solar time now               [seconds since midnight]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
+      INTEGER ,                     INTENT(in)    :: it_b     ! previous solar time (before) [seconds since midnight]
+      INTEGER ,                     INTENT(in)    :: it_n     ! solar time now               [seconds since midnight]
       !
       !
       INTEGER :: ji,jj
@@ -68,7 +68,7 @@ CONTAINS
       REAL(wp) :: Al, qjoule
       REAL(wp) :: ctd1, ctd2
 
-      INTEGER  :: jl, it_b, it_n
+      INTEGER  :: jl
       INTEGER  :: jamset, jump
 
       !! INITIALIZATION:
@@ -100,13 +100,9 @@ CONTAINS
       DO jj = 1, jpj         
          DO ji = 1, jpi
 
-                     PRINT *, ' *** jj =', jj
+            PRINT *, ' *** jj =', jj
             
-            it_b = itime_b(ji,jj)
-            it_n = itime_n(ji,jj)
-
             PRINT *, ' it_b,  it_n =>',  it_b,  it_n
-
             PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
 
 
@@ -132,7 +128,7 @@ CONTAINS
             !loc     = (lonx+7.5)/15
             !chktime = loc+intime*24
             !IF (chktime>24) chktime = chktime-24
-            !itime_n = (chktime-24*fix(chktime/24))*3600
+            !it_n = (chktime-24*fix(chktime/24))*3600
 
             !IF (icount>1) THEN                                  !not first time thru
 
@@ -228,7 +224,7 @@ CONTAINS
       !END IF  !  IF (icount>1)
 
 
-      !itime_b = itime_n
+      !it_b = it_n
 
       !************* output from routine  *****************************
       !Output:   A=[usr tau hsb hlb hbb hsbb hlwebb tsr qsr zo  zot zoq  Cd  Ch  Ce  L zet dT_skinx dqerx tkt Urf Trf Qrf RHrf UrfN Qlw  Le rhoa UN U10 U10N Cdn_10 Chn_10 Cen_10 RF Qs Evap T10 Q10 RH10 ug Whf Edis]
