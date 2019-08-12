@@ -8,6 +8,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    USE mod_const
    USE mod_phymbl
 
+   USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
+   
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_wl_coare3p6
@@ -16,15 +18,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    IMPLICIT NONE
 
-   LOGICAL, PARAMETER :: ldebug=.true.
-
-   INTEGER, PARAMETER :: nb_measurements = 115
+   LOGICAL, PARAMETER :: ldebug=.TRUE.
+   !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
    INTEGER, PARAMETER :: nb_algos = 1
    
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
    
-   CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat'
+   CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat', cunit_t, clnm_t
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
                                 !&      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
@@ -43,41 +44,35 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jt, jarg, jl, ialgo, jq, jtt
+   INTEGER :: jt, jarg, jl, ialgo, jq, jtt, n0
 
-   INTEGER, PARAMETER :: nx=1, ny=1, Nt=nb_measurements
+   INTEGER :: nx, ny, Nt
 
-   REAL(wp),    DIMENSION(nx,ny,Nt) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zts, zqs, zL, zUN10
 
-   CHARACTER(len=19)                :: cdt
-   CHARACTER(len=19), DIMENSION(Nt) :: ctime
-   CHARACTER(len=8),  DIMENSION(Nt) :: cdate
-   CHARACTER(len=4),  DIMENSION(Nt) :: clock
-   CHARACTER(len=2),  DIMENSION(Nt) :: chh, cmn ! hours and minutes
-   CHARACTER(len=16), DIMENSION(Nt) :: cldate ! human!
-   INTEGER(4) :: iclock, ihh, imm
-   INTEGER(4)      , DIMENSION(Nt)  :: isecday
-
-
-   INTEGER(8), DIMENSION(Nt) :: idate
-
+   CHARACTER(len=19) :: cdt
+   INTEGER(4)        :: iclock, ihh, imm, isecday_n, isecday_b
+   CHARACTER(len=19), DIMENSION(:), ALLOCATABLE :: ctime
+   CHARACTER(len=8),  DIMENSION(:), ALLOCATABLE :: cdate
+   CHARACTER(len=4),  DIMENSION(:), ALLOCATABLE :: clock
+   CHARACTER(len=2),  DIMENSION(:), ALLOCATABLE :: chh, cmn ! hours and minutes
+   CHARACTER(len=16), DIMENSION(:), ALLOCATABLE :: cldate ! human!
+   INTEGER(8),        DIMENSION(:), ALLOCATABLE :: idate
+   REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime
 
    !! Input (or deduced from input) variables:
-   REAL(wp), DIMENSION(nx,ny,Nt) :: sst, qsat_zt, SLP, W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, &
-      &                          rad_sw, rad_lw, precip, rlat, rlon
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SST, qsat_zt, SLP, W10, t_zt, theta_zt, q_zt, &
+      &                                       rad_sw, rad_lw, precip, rlat, rlon, dummy
 
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, &
+      &                                       dT, pTau_ac, pQ_ac
 
-   REAL(wp), DIMENSION(nx,ny,Nt) :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dummy, &
-      &                             dT, pTau_ac, pQ_ac
-
-   REAL(wp), DIMENSION(nx,ny) :: ssq, rgamma, Cp_ma, tmp
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp
    
    
-   REAL(wp), DIMENSION(nx,ny,Nt) :: Cd, Ce, Ch, QH, QL, EVAP, RiB
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, EVAP, RiB
 
-
-
-   REAL(4), DIMENSION(nb_algos,Nt) ::  &
+   REAL(4), DIMENSION(:,:),   ALLOCATABLE ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
@@ -87,14 +82,18 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=3) :: czt, czu
 
-   LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
+   LOGICAL :: &
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
       &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
    !                                       !: (Cool Skin Warm Layer parameterization)
    !                                       !:  => only in COARE and ECMWF
 
-   jpi = nx ; jpj = ny
+
+   TYPE(t_unit_t0) :: tut_time_unit
+   TYPE(date)      :: d_idate
+
+   
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
@@ -118,9 +117,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       CASE('-f')
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
-
-      CASE('-p')
-         l_ask_for_slp = .TRUE.
 
       CASE('-r')
          l_use_rh = .TRUE.
@@ -150,47 +146,94 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
    WRITE(6,*) ''
 
-
-
-
-
    WRITE(6,*) ''
 
 
-   OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
-   READ(11,*) cblabla ! first commented line...
+   !! Getting dimmension of the case and allocating arrays: 
+   !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
+   CALL DIMS(cf_data, 'sst', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
+   IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
+      WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0
+      STOP
+   END IF
+   
+   jpi = nx ; jpj = ny
+
+   WRITE(6,*) ''
+   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
+   ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zts(nx,ny,Nt), zqs(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
+   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt) )
+   ALLOCATE (  SST(nx,ny,Nt), qsat_zt(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
+      &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt), rlat(nx,ny,Nt), rlon(nx,ny,Nt) )
+   ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), &
+      &        dT(nx,ny,Nt), pTau_ac(nx,ny,Nt), pQ_ac(nx,ny,Nt) )
+   ALLOCATE (   ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
+   ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), EVAP(nx,ny,Nt), RiB(nx,ny,Nt) )
+
+   ALLOCATE ( vCd(nb_algos,Nt), vCe(nb_algos,Nt), vCh(nb_algos,Nt), vTheta_u(nb_algos,Nt), vT_u(nb_algos,Nt), vQu(nb_algos,Nt), &
+      &       vz0(nb_algos,Nt), vus(nb_algos,Nt), vRho_u(nb_algos,Nt), vUg(nb_algos,Nt), vL(nb_algos,Nt), vBRN(nb_algos,Nt),    &
+      &       vUN10(nb_algos,Nt), vQL(nb_algos,Nt), vTau(nb_algos,Nt), vQH(nb_algos,Nt), vEvap(nb_algos,Nt), vTs(nb_algos,Nt),  &
+      &       vqs(nb_algos,Nt) )
+   WRITE(6,*) ' *** Allocation completed!'
+   WRITE(6,*) ''
+
+   !! Reading data time-series into netcdf file:
+   !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
+   CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
+   PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
+   tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
+   PRINT *, ' *** Digested time unit is: ', tut_time_unit
+
+   
+   CALL GETVAR_1D(cf_data, 'sst',    SST  )
+   SST  = SST + rt0
+   
+   CALL GETVAR_1D(cf_data, 'slp',    SLP  )
+   SLP = SLP * 100.
+   
+   CALL GETVAR_1D(cf_data, 'wndspd', W10  )
+
+   CALL GETVAR_1D(cf_data, 't_air',  t_zt )
+   t_zt = t_zt + rt0
+
+   CALL GETVAR_1D(cf_data, 'rh_air', dummy)
+   dummy = MIN(99.999 , dummy)
    DO jt = 1, Nt
-      READ(11,*) ctime(jt), W10(1,1,jt), sst(1,1,jt), t_zt(1,1,jt), q_zt(1,1,jt), rad_sw(1,1,jt), rad_lw(1,1,jt), precip(1,1,jt), rlat(1,1,jt), rlon(1,1,jt), dummy(1,1,jt)
+      q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
    END DO
-   CLOSE(11)
 
+   CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
+   CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
 
-   DO jt = 1, Nt
-      cdt = ctime(jt)
-      cdate(jt) = cdt(1:8)
-      clock(jt) = cdt(9:13)
-      chh(jt)   = cdt(9:10)
-      cmn(jt)   = cdt(11:12)
-      READ(clock(jt),'(i4.4)') iclock
-      READ(chh(jt),'(i2.2)') ihh
-      READ(cmn(jt),'(i2.2)') imm
-      isecday(jt) = ihh*3600. + imm*60.
-      WRITE(cldate(jt),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jt), cmn(jt)
-      IF (ldebug) PRINT *, ' *** date = ', cldate(jt)      
-   END DO
-   IF (ldebug) PRINT *, ''
+   !PRINT *, rad_lw
 
-
-
-
-   !   it_n(1,:)  = isecday(:)
-   !   it_b(1,1)  = 0
-   !   it_b(1,2:ny) = isecday(:ny-1)
-   !DO jt = 1, Nt
-   !   PRINT *, ' it_b, it_n =', it_b(1,jt), it_n(1,jt)
-   !END DO
    !STOP
 
+   
+   !OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
+   !READ(11,*) cblabla ! first commented line...
+   !DO jt = 1, Nt
+   !   READ(11,*) ctime(jt), W10(1,1,jt), SST(1,1,jt), t_zt(1,1,jt), q_zt(1,1,jt), rad_sw(1,1,jt), rad_lw(1,1,jt), precip(1,1,jt), rlat(1,1,jt), rlon(1,1,jt), dummy(1,1,jt)
+   !END DO
+   !CLOSE(11)
+
+
+   !DO jt = 1, Nt
+   !   cdt = ctime(jt)
+   !   cdate(jt) = cdt(1:8)
+   !   clock(jt) = cdt(9:13)
+   !   chh(jt)   = cdt(9:10)
+   !   cmn(jt)   = cdt(11:12)
+   !   READ(clock(jt),'(i4.4)') iclock
+   !   READ(chh(jt),'(i2.2)') ihh
+   !   READ(cmn(jt),'(i2.2)') imm
+   !   WRITE(cldate(jt),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jt), cmn(jt)
+   !   IF (ldebug) PRINT *, ' *** date = ', cldate(jt)      
+   !END DO
+   !IF (ldebug) PRINT *, ''
+   
 
    !! zu and zt
    !! ~~~~~~~~~
@@ -210,31 +253,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    END IF
    WRITE(czu,'(i2,"m")') INT(zu)
 
-   !! SLP
-   !! ~~~
-   IF ( l_ask_for_slp ) THEN
-      WRITE(6,*) 'Give sea-level pressure (hPa):'
-      READ(*,*) SLP
-      SLP = SLP*100.
-   ELSE
-      SLP = Patm
-      WRITE(6,*) 'Using a sea-level pressure of ', Patm
-   END IF
-   WRITE(6,*) ''
 
-   !! Back to SI unit...
-   sst  = sst + rt0
-   t_zt = t_zt + rt0
-   q_zt = 1.E-3*q_zt
 
    IF (ldebug) THEN
       !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
       WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
       DO jt = 1, Nt
-         WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
+         !WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
+         WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
       END DO
    END IF
-
 
 
    !! Some initializations:
@@ -248,46 +276,71 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    pQ_ac   = 0.
 
 
+   isecday_b = 0.
+   isecday_n = 0.
+   
 
    !! Time loop:
-   DO jt = 1, Nt
+   !DO jt = 1, Nt
+   DO jt = 1, 24*30 !LOLO
+   
 
-      WRITE(6,*) ''; WRITE(6,*) ''
-      WRITE(6,*) '##############################################'
-      WRITE(6,*) '#### Time = ', cldate(jt)
-      WRITE(6,*) '##############################################'
-      WRITE(6,*) ''
-      WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]'
-      WRITE(6,*) ''
+      ihh = d_idate%hour
+      imm = d_idate%minute
+      
+      d_idate = time_to_date( tut_time_unit, vtime(jt) )
+      WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year,  d_idate%month,  d_idate%day,  ihh, imm
+
+      isecday_n = ihh*3600 + imm*60
+      
+      IF (ldebug) THEN
+         WRITE(6,*) ''; WRITE(6,*) ''
+         WRITE(6,*) '##############################################'
+      END IF
+      WRITE(6,*) '#### Time = ', cldate(jt), ' (seconds since start of day:',isecday_n,')'
+      IF (ldebug) THEN
+         WRITE(6,*) '##############################################'
+         WRITE(6,*) ''
+         WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]'
+         WRITE(6,*) ''
+      END IF
       
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
-      WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', REAL(Cp_ma,4), '[J/K/kg]'
-      WRITE(6,*) ''
+      IF (ldebug) THEN
+         WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', REAL(Cp_ma,4), '[J/K/kg]'
+         WRITE(6,*) ''
+      END IF
       
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
-      WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
-      WRITE(6,*) ''
+      IF (ldebug) THEN
+         WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
+         WRITE(6,*) ''
+      END IF
       
       ssq = 0.98*q_sat(sst(:,:,jt), SLP(:,:,jt))
-      WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
+      IF (ldebug) WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
       
       !! Must give something more like a potential temperature at zt:
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt(:,:,jt) - rt0, ' [deg.C]'
-      WRITE(6,*) ''
+      IF (ldebug) THEN
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt(:,:,jt) - rt0, ' [deg.C]'
+         WRITE(6,*) ''
+      END IF
 
 
       !! Checking the difference of virtual potential temperature between air at zt and sea surface:
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
-      WRITE(6,*) ' *** Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt(:,:,jt) - sst(:,:,jt) , 4), ' [deg.C]'
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst(:,:,jt), ssq), 4), ' [deg.C]'
-      WRITE(6,*) ''
+      IF (ldebug) THEN
+         WRITE(6,*) ' *** Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt(:,:,jt) - sst(:,:,jt) , 4), ' [deg.C]'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst(:,:,jt), ssq), 4), ' [deg.C]'
+         WRITE(6,*) ''
+      END IF
 
 
 
@@ -304,8 +357,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
       !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
       tmp = Ri_bulk( zt, sst(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) )
-      WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
-      WRITE(6,*) ''
+      IF (ldebug) THEN
+         WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
+         WRITE(6,*) ''
+      END IF
 
 
       IF ( l_use_cswl ) THEN
@@ -336,7 +391,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       Ts(:,:,jt) = sst(:,:,jt)
 
       
-      DO jtt = 1, nb_itt_wl
+      !LOLO: DO jtt = 1, nb_itt_wl
 
          CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
@@ -366,44 +421,45 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          
 
 
-         IF ( jt > 1 ) THEN ! NOT jtt !???
-            
-            tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
-            tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
-            
-            IF (ldebug) THEN
-               PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
-               PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
-            END IF
+         !IF ( jt > 1 ) THEN ! NOT jtt !???
+         !   
+         !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
+         !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
+         !   
+         !   IF (ldebug) THEN
+         !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
+         !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
+         !   END IF
+         !
+         !   CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, isecday_b, isecday_n )
+         !
+         !   PRINT *, '  => dT =', dT ; STOP
+         !
+         !   Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+         !
+         !END IF
 
-            CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, isecday(jt-1), isecday(jt) )
+      !LOLO: END DO
 
-            !PRINT *, '  => dT =', dT ; STOP
+      IF (ldebug) THEN
+         WRITE(6,*) ''
+         WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
+         WRITE(6,*) ' .... to do ...'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** density of air at ',TRIM(czu),' => ',  rho_zu(:,:,jt), '[kg/m^3]'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0,4), '[deg.C]'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** theta_zt and theta_zu => ',  REAL(theta_zt(:,:,jt)-rt0,4), REAL(theta_zu(:,:,jt)-rt0,4), '[deg.C]'
+         WRITE(6,*) ''
+         WRITE(6,*) ' *** QL       => ',  REAL(QL(:,:,jt),4), '[W/m^2]'
+         WRITE(6,*) ''
+         WRITE(6,*) '##############################################'
+      END IF
 
-            Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
-
-         END IF
-
-      END DO
-
-      WRITE(6,*) ''
-      WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
-      WRITE(6,*) ' .... to do ...'
-
-
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** density of air at ',TRIM(czu),' => ',  rho_zu(:,:,jt), '[kg/m^3]'
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0,4), '[deg.C]'
-      WRITE(6,*) ''
-      WRITE(6,*) ' *** theta_zt and theta_zu => ',  REAL(theta_zt(:,:,jt)-rt0,4), REAL(theta_zu(:,:,jt)-rt0,4), '[deg.C]'
-      WRITE(6,*) ''
-      !theta_zt(:,:,jt)
-
-      WRITE(6,*) ''
-      WRITE(6,*) '##############################################'
+      isecday_b = isecday_n
+      
    END DO
-
 
    STOP 'LULU'
 
@@ -478,9 +534,7 @@ SUBROUTINE usage_test()
    PRINT *,''
    PRINT *,'   List of command line options:'
    PRINT *,''
-   PRINT *,' -f <ascii_file>  => file containing data'
-   PRINT *,''
-   PRINT *,' -p   => ask for sea-level pressure, otherwize assume 1010 hPa'
+   PRINT *,' -f <netcdf_file>  => file containing data'
    PRINT *,''
    PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
    PRINT *,''

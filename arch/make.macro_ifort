@@ -14,3 +14,10 @@ FF = -O2 -r8 -i4 $(DEBUG_FF) -module mod/
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
+
+
+# Root directory for Netcdf:
+NETCDF_DIR = /opt/hdf5_netcdf4_intel
+
+# Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
+L_NCDF = -lnetcdff

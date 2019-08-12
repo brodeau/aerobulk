@@ -102,11 +102,14 @@ bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a
 	@mkdir -p bin dat
 	$(CXX) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB)
 
-bin/test_aerobulk_buoy_series_skin.x: src/test_aerobulk_buoy_series_skin.f90 lib/libaerobulk.a
+bin/test_aerobulk_buoy_series_skin.x: src/test_aerobulk_buoy_series_skin.f90 lib/libaerobulk.a mod/io_ezcdf.mod
 	@mkdir -p bin
-	$(FC) $(FF) src/test_aerobulk_buoy_series_skin.f90 -o bin/test_aerobulk_buoy_series_skin.x $(LIB)
+	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_buoy_series_skin.f90 -o bin/test_aerobulk_buoy_series_skin.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
 
 
+mod/io_ezcdf.mod: src/io_ezcdf.f90
+	@mkdir -p mod
+	$(FC) $(FF) -I$(NETCDF_DIR)/include -c src/io_ezcdf.f90 -o src/io_ezcdf.o
 
 
 
