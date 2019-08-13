@@ -8,7 +8,8 @@ CXX = icc
 # Fortran compilation flags :
 
 #DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
-DEBUG_FF = -g -fpe0 -traceback -CB
+#DEBUG_FF = -g -fpe0 -traceback -CB
+DEBUG_FF = -g -traceback -CB
 
 FF = -O2 -r8 -i4 $(DEBUG_FF) -module mod/
 

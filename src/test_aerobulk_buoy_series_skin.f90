@@ -70,7 +70,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp
    
    
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, EVAP, RiB
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, Qlw, EVAP, RiB
 
    REAL(4), DIMENSION(:,:),   ALLOCATABLE ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -169,7 +169,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), &
       &        dT(nx,ny,Nt), pTau_ac(nx,ny,Nt), pQ_ac(nx,ny,Nt) )
    ALLOCATE (   ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
-   ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), EVAP(nx,ny,Nt), RiB(nx,ny,Nt) )
+   ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), EVAP(nx,ny,Nt), RiB(nx,ny,Nt) )
 
    ALLOCATE ( vCd(nb_algos,Nt), vCe(nb_algos,Nt), vCh(nb_algos,Nt), vTheta_u(nb_algos,Nt), vT_u(nb_algos,Nt), vQu(nb_algos,Nt), &
       &       vz0(nb_algos,Nt), vus(nb_algos,Nt), vRho_u(nb_algos,Nt), vUg(nb_algos,Nt), vL(nb_algos,Nt), vBRN(nb_algos,Nt),    &
@@ -282,7 +282,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !! Time loop:
    !DO jt = 1, Nt
-   DO jt = 1, 24*30 !LOLO
+   DO jt = 1, 24*90 !LOLO
    
 
       ihh = d_idate%hour
@@ -319,7 +319,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) ''
       END IF
       
-      ssq = 0.98*q_sat(sst(:,:,jt), SLP(:,:,jt))
+      ssq = rdct_qsat_salt*q_sat(sst(:,:,jt), SLP(:,:,jt))
       IF (ldebug) WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
       
       !! Must give something more like a potential temperature at zt:
@@ -389,6 +389,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       dT(:,:,jt) = 0.  ! skin = SST for first time step
       Ts(:,:,jt) = sst(:,:,jt)
+      qs(:,:,jt) = ssq(:,:)
 
       
       !LOLO: DO jtt = 1, nb_itt_wl
@@ -414,12 +415,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
          rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
 
-         !! Turbulent heat fluxes
-         QH  (:,:,jt) = rho_zu(:,:,jt)*tmp(1,1)*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt)  ) * Ublk(:,:,jt)
-         EVAP(:,:,jt) = rho_zu(:,:,jt)*Ce(:,:,jt)          * ( qs(:,:,jt)      - q_zu(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
+         !! Turbulent heat fluxes:
+         tmp(:,:) = cp_air(q_zu(:,:,jt))
+         QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
+         EVAP(:,:,jt) = -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
          QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
          
-
+         !! Radiative heat fluxes:
+         Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
+         tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
+         Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
 
          !IF ( jt > 1 ) THEN ! NOT jtt !???
          !   
@@ -448,11 +453,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) ''
          WRITE(6,*) ' *** density of air at ',TRIM(czu),' => ',  rho_zu(:,:,jt), '[kg/m^3]'
          WRITE(6,*) ''
-         WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0,4), '[deg.C]'
+         WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0  ,4), '[deg.C]'
+         WRITE(6,*) ' *** SSq and qs       => ',  REAL(ssq(:,:)*1000. ,4), REAL(qs(:,:,jt)*1000.,4), '[g/kg]'
          WRITE(6,*) ''
          WRITE(6,*) ' *** theta_zt and theta_zu => ',  REAL(theta_zt(:,:,jt)-rt0,4), REAL(theta_zu(:,:,jt)-rt0,4), '[deg.C]'
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** QL       => ',  REAL(QL(:,:,jt),4), '[W/m^2]'
          WRITE(6,*) ''
          WRITE(6,*) '##############################################'
       END IF
@@ -460,7 +464,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       isecday_b = isecday_n
       
    END DO
+   
+   CALL PT_SERIES(vtime(1:24*90), REAL(rho_zu(1,1,1:24*90),4), 'lolo.nc', 'time', &
+      &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
+      &           ct_unit=TRIM(cunit_t), &
+      &           vdt2=REAL(  QL(1,1,1:24*90),4), cv_dt2='Qlat', cun2='W/m^2', cln2='Latent Heat Flux',       &
+      &           vdt3=REAL(  QH(1,1,1:24*90),4), cv_dt3='Qsen', cun3='W/m^2', cln3='Sensible Heat Flux',     &
+      &           vdt4=REAL( Qlw(1,1,1:24*90),4), cv_dt4='Qlw',  cun4='W/m^2', cln4='Net Longwave Heat Flux', &
+      &           vdt5=REAL( Qsw(1,1,1:24*90),4), cv_dt5='Qsw',  cun5='W/m^2', cln5='Net Solar Heat Flux',    &
+      &           vdt6=REAL(EVAP(1,1,1:24*90),4), cv_dt6='E',    cun6='mm/s',  cln6='Evaporation' )
 
+   !,             &
+
+
+   
    STOP 'LULU'
 
    
