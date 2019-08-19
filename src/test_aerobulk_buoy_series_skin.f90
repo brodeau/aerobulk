@@ -48,8 +48,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER :: nx, ny, Nt
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zts, zqs, zL, zUN10
-
    CHARACTER(len=19) :: cdt
    INTEGER(4)        :: iclock, ihh, imm, isecday_n, isecday_b
    CHARACTER(len=19), DIMENSION(:), ALLOCATABLE :: ctime
@@ -61,9 +59,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime
 
    !! Input (or deduced from input) variables:
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SST, qsat_zt, SLP, W10, t_zt, theta_zt, q_zt, &
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SST, SLP, W10, t_zt, theta_zt, q_zt, &
       &                                       rad_sw, rad_lw, precip, rlat, rlon, dummy
 
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
+   
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, &
       &                                       dT, pTau_ac, pQ_ac
 
@@ -72,9 +72,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, Qlw, EVAP, RiB
 
-   REAL(4), DIMENSION(:,:),   ALLOCATABLE ::  &
-      &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
+   !REAL(4), DIMENSION(:,:),   ALLOCATABLE ::  &
+   !   &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
+   !   &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
 
 
@@ -162,19 +162,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
-   ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zts(nx,ny,Nt), zqs(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
+   ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt) )
-   ALLOCATE (  SST(nx,ny,Nt), qsat_zt(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
+   ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt), rlat(nx,ny,Nt), rlon(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), &
       &        dT(nx,ny,Nt), pTau_ac(nx,ny,Nt), pQ_ac(nx,ny,Nt) )
    ALLOCATE (   ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), EVAP(nx,ny,Nt), RiB(nx,ny,Nt) )
 
-   ALLOCATE ( vCd(nb_algos,Nt), vCe(nb_algos,Nt), vCh(nb_algos,Nt), vTheta_u(nb_algos,Nt), vT_u(nb_algos,Nt), vQu(nb_algos,Nt), &
-      &       vz0(nb_algos,Nt), vus(nb_algos,Nt), vRho_u(nb_algos,Nt), vUg(nb_algos,Nt), vL(nb_algos,Nt), vBRN(nb_algos,Nt),    &
-      &       vUN10(nb_algos,Nt), vQL(nb_algos,Nt), vTau(nb_algos,Nt), vQH(nb_algos,Nt), vEvap(nb_algos,Nt), vTs(nb_algos,Nt),  &
-      &       vqs(nb_algos,Nt) )
+   !ALLOCATE ( vCd(nb_algos,Nt), vCe(nb_algos,Nt), vCh(nb_algos,Nt), vTheta_u(nb_algos,Nt), vT_u(nb_algos,Nt), vQu(nb_algos,Nt), &
+   !   &       vz0(nb_algos,Nt), vus(nb_algos,Nt), vRho_u(nb_algos,Nt), vUg(nb_algos,Nt), vL(nb_algos,Nt), vBRN(nb_algos,Nt),    &
+   !   &       vUN10(nb_algos,Nt), vQL(nb_algos,Nt), vTau(nb_algos,Nt), vQH(nb_algos,Nt), vEvap(nb_algos,Nt), vTs(nb_algos,Nt),  &
+   !   &       vqs(nb_algos,Nt) )
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
@@ -270,7 +270,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ialgo = 1
    
    zz0 = 0.
-   zus = 0. ; zts = 0. ; zqs = 0. ; zL = 0. ; zUN10 = 0.
+   zus = 0.
+   zL  = 0.
+   zUN10 = 0.
 
    pTau_ac = 0.
    pQ_ac   = 0.
@@ -281,9 +283,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    
 
    !! Time loop:
-   !DO jt = 1, Nt
-   DO jt = 1, 24*90 !LOLO
-   
+   DO jt = 1, Nt
 
       ihh = d_idate%hour
       imm = d_idate%minute
@@ -465,14 +465,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       
    END DO
    
-   CALL PT_SERIES(vtime(1:24*90), REAL(rho_zu(1,1,1:24*90),4), 'lolo.nc', 'time', &
+   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
-      &           vdt2=REAL(  QL(1,1,1:24*90),4), cv_dt2='Qlat', cun2='W/m^2', cln2='Latent Heat Flux',       &
-      &           vdt3=REAL(  QH(1,1,1:24*90),4), cv_dt3='Qsen', cun3='W/m^2', cln3='Sensible Heat Flux',     &
-      &           vdt4=REAL( Qlw(1,1,1:24*90),4), cv_dt4='Qlw',  cun4='W/m^2', cln4='Net Longwave Heat Flux', &
-      &           vdt5=REAL( Qsw(1,1,1:24*90),4), cv_dt5='Qsw',  cun5='W/m^2', cln5='Net Solar Heat Flux',    &
-      &           vdt6=REAL(EVAP(1,1,1:24*90),4), cv_dt6='E',    cun6='mm/s',  cln6='Evaporation' )
+      &           vdt2=REAL(  QL(1,1,:),4), cv_dt2='Qlat', cun2='W/m^2', cln2='Latent Heat Flux',       &
+      &           vdt3=REAL(  QH(1,1,:),4), cv_dt3='Qsen', cun3='W/m^2', cln3='Sensible Heat Flux',     &
+      &           vdt4=REAL( Qlw(1,1,:),4), cv_dt4='Qlw',  cun4='W/m^2', cln4='Net Longwave Heat Flux', &
+      &           vdt5=REAL( Qsw(1,1,:),4), cv_dt5='Qsw',  cun5='W/m^2', cln5='Net Solar Heat Flux',    &
+      &           vdt6=REAL(EVAP(1,1,:),4), cv_dt6='E',    cun6='mm/s',  cln6='Evaporation' )
 
    !,             &
 
@@ -480,65 +480,26 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    
    STOP 'LULU'
 
-   
-   vBRN(ialgo,:) = REAL(RiB(1,1,:),4)
-   vTheta_u(ialgo,:) = REAL(   theta_zu(1,1,:) -rt0 , 4)   ! Potential temperature at zu
-
-   vCd(ialgo,:) = REAL(1000.*Cd(1,1,:) ,4)
-   vCh(ialgo,:) = REAL(1000.*Ch(1,1,:) ,4)
-   vCe(ialgo,:) = REAL(1000.*Ce(1,1,:) ,4)
-
-   vT_u(ialgo,:) = REAL( t_zu(1,1,:) -rt0 , 4)    ! Real temp.
-   vQu(ialgo,:) = REAL(  q_zu(1,1,:) , 4)
-
-   vRho_u(ialgo,:) = REAL(rho_zu(1,1,:) ,4)
-
-   !! Gustiness contribution:
-   vUg(ialgo,:) = REAL(Ublk(1,1,:)-W10(1,1,:) , 4)
-
-   !! z0 et u*:
-   vz0(ialgo,:) = REAL(zz0(1,1,:) ,4)
-   vus(ialgo,:) = REAL(zus(1,1,:) ,4)
-
-   !zts = Ch*(theta_zu - Ts)*Ublk/zus
-   !zqs = Ce*(q_zu     - qs)*Ublkblk/zus
-
-   vL(ialgo,:) = zL(1,1,:)
-
-   vUN10(ialgo,:) = zUN10(1,1,:)
-
-   !! Turbulent fluxes:
-   vTau(ialgo,:)  = ( rho_zu(1,1,:) * Cd(1,1,:) *           W10(1,1,:)            * Ublk(1,1,:) )*1000. ! mN/m^2
-
-   vQH(ialgo,:)   =   QH(1,1,:)
-   vEvap(ialgo,:) = EVAP(1,1,:)
-   vQL(ialgo,:)   =   QL(1,1,:)
-
-   vEvap(ialgo,:) = to_mm_p_day * vEvap(ialgo,:)  ! mm/day
-
-   vTs(ialgo,:) = Ts(1,1,:)
-   vqs(ialgo,:) = qs(1,1,:)
-
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
 
-   DO ialgo = 1, nb_algos
-
-      calgob = TRIM(vca(ialgo))
-
-      WRITE(cf_out,*) 'data_'//TRIM(calgob)//'.out'
-
-      OPEN( UNIT=12, FILE=TRIM(cf_out), FORM='FORMATTED', RECL=1024, STATUS='unknown' )
-      WRITE(12,*) '# k       date         Qsens    Qlat     SSST     Tau       WebbF   RainHF dt_skin'
-      !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
-      DO jt = 1, Nt
-         WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
-            &  INT(jt,2), idate(jt), -vQH(ialgo,jt), -vQL(ialgo,jt), vTs(ialgo,jt), vTau(ialgo,jt), -999, -999, REAL(vTs(ialgo,jt)-sst(1,1,jt),4)
-      END DO
-      CLOSE(12)
-
-   END DO
+   !DO ialgo = 1, nb_algos
+   !
+   !   calgob = TRIM(vca(ialgo))
+   !
+   !   WRITE(cf_out,*) 'data_'//TRIM(calgob)//'.out'
+   !
+   !   OPEN( UNIT=12, FILE=TRIM(cf_out), FORM='FORMATTED', RECL=1024, STATUS='unknown' )
+   !   WRITE(12,*) '# k       date         Qsens    Qlat     SSST     Tau       WebbF   RainHF dt_skin'
+   !   !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
+   !   DO jt = 1, Nt
+   !      WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
+   !         &  INT(jt,2), idate(jt), -vQH(ialgo,jt), -vQL(ialgo,jt), vTs(ialgo,jt), vTau(ialgo,jt), -999, -999, REAL(vTs(ialgo,jt)-sst(1,1,jt),4)
+   !   END DO
+   !   CLOSE(12)
+   !
+   !END DO
 
 
 
