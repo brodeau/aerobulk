@@ -9,7 +9,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    USE mod_phymbl
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
-   
+
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_wl_coare3p6
@@ -18,13 +18,15 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    IMPLICIT NONE
 
+   !INTEGER :: DISP_DEBUG
+
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
    INTEGER, PARAMETER :: nb_algos = 1
-   
+
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
-   
+
    CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat', cunit_t, clnm_t
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
@@ -44,7 +46,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jt, jarg, jl, ialgo, jq, jtt, n0
+   INTEGER :: jt, jarg, jl, ialgo, jq, jtt, n0, info
 
    INTEGER :: nx, ny, Nt
 
@@ -63,14 +65,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &                                       rad_sw, rad_lw, precip, rlat, rlon, dummy
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
-   
+
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, &
       &                                       dT, pTau_ac, pQ_ac
 
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp
-   
-   
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, Qlw, EVAP, RiB
+
+
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
 
    !REAL(4), DIMENSION(:,:),   ALLOCATABLE ::  &
    !   &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -93,7 +95,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    TYPE(t_unit_t0) :: tut_time_unit
    TYPE(date)      :: d_idate
 
-   
+
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
@@ -149,15 +151,15 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) ''
 
 
-   !! Getting dimmension of the case and allocating arrays: 
+   !! Getting dimmension of the case and allocating arrays:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   
+
    CALL DIMS(cf_data, 'sst', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
    IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
       WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0
       STOP
    END IF
-   
+
    jpi = nx ; jpj = ny
 
    WRITE(6,*) ''
@@ -169,7 +171,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), &
       &        dT(nx,ny,Nt), pTau_ac(nx,ny,Nt), pQ_ac(nx,ny,Nt) )
    ALLOCATE (   ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
-   ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), EVAP(nx,ny,Nt), RiB(nx,ny,Nt) )
+   ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
+      &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
    !ALLOCATE ( vCd(nb_algos,Nt), vCe(nb_algos,Nt), vCh(nb_algos,Nt), vTheta_u(nb_algos,Nt), vT_u(nb_algos,Nt), vQu(nb_algos,Nt), &
    !   &       vz0(nb_algos,Nt), vus(nb_algos,Nt), vRho_u(nb_algos,Nt), vUg(nb_algos,Nt), vL(nb_algos,Nt), vBRN(nb_algos,Nt),    &
@@ -186,13 +189,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
    PRINT *, ' *** Digested time unit is: ', tut_time_unit
 
-   
+
    CALL GETVAR_1D(cf_data, 'sst',    SST  )
    SST  = SST + rt0
-   
+
    CALL GETVAR_1D(cf_data, 'slp',    SLP  )
    SLP = SLP * 100.
-   
+
    CALL GETVAR_1D(cf_data, 'wndspd', W10  )
 
    CALL GETVAR_1D(cf_data, 't_air',  t_zt )
@@ -211,7 +214,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !STOP
 
-   
+
    !OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
    !READ(11,*) cblabla ! first commented line...
    !DO jt = 1, Nt
@@ -230,10 +233,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !   READ(chh(jt),'(i2.2)') ihh
    !   READ(cmn(jt),'(i2.2)') imm
    !   WRITE(cldate(jt),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jt), cmn(jt)
-   !   IF (ldebug) PRINT *, ' *** date = ', cldate(jt)      
+   !   IF (ldebug) PRINT *, ' *** date = ', cldate(jt)
    !END DO
    !IF (ldebug) PRINT *, ''
-   
+
 
    !! zu and zt
    !! ~~~~~~~~~
@@ -259,8 +262,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
       WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
       DO jt = 1, Nt
-         !WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
-         WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(sst(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
+         !WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
+         WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
       END DO
    END IF
 
@@ -268,7 +271,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !! Some initializations:
 
    ialgo = 1
-   
+
    zz0 = 0.
    zus = 0.
    zL  = 0.
@@ -280,19 +283,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    isecday_b = 0.
    isecday_n = 0.
-   
+
 
    !! Time loop:
    DO jt = 1, Nt
 
       ihh = d_idate%hour
       imm = d_idate%minute
-      
+
       d_idate = time_to_date( tut_time_unit, vtime(jt) )
       WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year,  d_idate%month,  d_idate%day,  ihh, imm
 
       isecday_n = ihh*3600 + imm*60
-      
+
       IF (ldebug) THEN
          WRITE(6,*) ''; WRITE(6,*) ''
          WRITE(6,*) '##############################################'
@@ -303,181 +306,160 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) ''
          WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
          WRITE(6,*) ''
-         WRITE(6,*) ' *** density of air at ',TRIM(czt),' => ',  rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]'
-         WRITE(6,*) ''
       END IF
-      
+
+      info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
+
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
-      IF (ldebug) THEN
-         WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', REAL(Cp_ma,4), '[J/K/kg]'
-         WRITE(6,*) ''
-      END IF
-      
+      info = DISP_DEBUG(ldebug, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
+
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
-      IF (ldebug) THEN
-         WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
-         WRITE(6,*) ''
-      END IF
-      
-      ssq = rdct_qsat_salt*q_sat(sst(:,:,jt), SLP(:,:,jt))
-      IF (ldebug) WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
-      
-      !! Must give something more like a potential temperature at zt:
-      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt
-      IF (ldebug) THEN
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt(:,:,jt) - rt0, ' [deg.C]'
-         WRITE(6,*) ''
-      END IF
+      info = DISP_DEBUG(ldebug, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
 
+      info = DISP_DEBUG(ldebug, 'SST', SST(:,:,jt)-rt0, '[degC]')
 
-      !! Checking the difference of virtual potential temperature between air at zt and sea surface:
+      ssq = rdct_qsat_salt*q_sat(SST(:,:,jt), SLP(:,:,jt))
+      info = DISP_DEBUG(ldebug, 'SSQ = 0.98*q_sat(SST)', 1000.*ssq, '[g/kg]')
+
+      ! Air temperatures at zt:
+      info = DISP_DEBUG(ldebug, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]')
+
+      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
+      info = DISP_DEBUG(ldebug, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
+
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
-      IF (ldebug) THEN
-         WRITE(6,*) ' *** Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt(:,:,jt) - sst(:,:,jt) , 4), ' [deg.C]'
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst(:,:,jt), ssq), 4), ' [deg.C]'
-         WRITE(6,*) ''
-      END IF
+      info = DISP_DEBUG(ldebug, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
+      info = DISP_DEBUG(ldebug, 'Pot. temp. diff. air/sea at '//TRIM(czt),    theta_zt(:,:,jt) - SST(:,:,jt), '[deg.C]')
+      info = DISP_DEBUG(ldebug, 'Virt. pot. temp. diff. air/sea at '//TRIM(czt),    tmp - virt_temp(SST(:,:,jt), ssq), '[deg.C]')
 
+      !! We know enough to estimate the bulk Richardson number:
+      info = DISP_DEBUG(ldebug, 'Initial Bulk Richardson number', Ri_bulk( zt, SST(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) ), '[--]')
 
+      !STOP
 
-      !WRITE(6,*) 'Give wind speed at zu (m/s):'
-      !READ(*,*) W10
-      !WRITE(6,*) ''
-
-
-      !! We have enough to calculate the bulk Richardson number:
-      !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
-      !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
-      !tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
-      !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
-      !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
-      !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
-      tmp = Ri_bulk( zt, sst(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) )
-      IF (ldebug) THEN
-         WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
-         WRITE(6,*) ''
-      END IF
-
-
-      IF ( l_use_cswl ) THEN
-
-         STOP 'LOLO not like this...'
-
-         WRITE(6,*) ''
-         WRITE(6,*) '----------------------------------------------------------'
-         WRITE(6,*) '          Will consider the skin temperature!'
-         WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
-         WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
-         WRITE(6,*) '----------------------------------------------------------'
-         WRITE(6,*) ''
-         !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
-         !READ(*,*) rad_sw
-         !WRITE(6,*)
-         !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
-         !READ(*,*) rad_lw
-         WRITE(6,*)
-
-      END IF
-
+      !IF ( l_use_cswl ) THEN
+      !   STOP 'LOLO not like this...'
+      !   WRITE(6,*) ''
+      !   WRITE(6,*) '----------------------------------------------------------'
+      !   WRITE(6,*) '          Will consider the skin temperature!'
+      !   WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
+      !   WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
+      !   WRITE(6,*) '----------------------------------------------------------'
+      !   WRITE(6,*) ''
+      !   !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
+      !   !READ(*,*) rad_sw
+      !   !WRITE(6,*)
+      !   !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
+      !   !READ(*,*) rad_lw
+      !   WRITE(6,*)
+      !END IF
 
 
       !l_wl_c36_never_called = .TRUE.
 
       dT(:,:,jt) = 0.  ! skin = SST for first time step
-      Ts(:,:,jt) = sst(:,:,jt)
+      Ts(:,:,jt) = SST(:,:,jt)
       qs(:,:,jt) = ssq(:,:)
 
-      
+
       !LOLO: DO jtt = 1, nb_itt_wl
 
-         CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
-            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
-            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         !! => Ts and qs are not updated: Ts=sst and qs=ssq
+      CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
+         &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
+         &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+      !! => Ts and qs are not updated: Ts=SST and qs=ssq
 
-         
-         !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
-         t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
-         DO jq = 1, 4
-            rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
-            t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
-         END DO
-         
-         !! Bulk Richardson Number for layer "sea-level -- zu":
-         RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
-         !! Air density at zu (10m)
-         rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
-         tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
-         rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
+      !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
+      t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
+      DO jq = 1, 4
+         rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
+         t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
+      END DO
 
-         !! Turbulent heat fluxes:
-         tmp(:,:) = cp_air(q_zu(:,:,jt))
-         QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
-         EVAP(:,:,jt) = -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
-         QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
-         
-         !! Radiative heat fluxes:
-         Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
-         tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
-         Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
+      !! Bulk Richardson Number for layer "sea-level -- zu":
+      RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
-         !IF ( jt > 1 ) THEN ! NOT jtt !???
-         !   
-         !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)            
-         !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
-         !   
-         !   IF (ldebug) THEN
-         !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
-         !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
-         !   END IF
-         !
-         !   CALL WL_COARE3P6( (1._wp - oce_alb0)*rad_sw, tmp, REAL(vTau/1000.,wp), sst, dT, pTau_ac, pQ_ac, isecday_b, isecday_n )
-         !
-         !   PRINT *, '  => dT =', dT ; STOP
-         !
-         !   Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
-         !
-         !END IF
+      !! Air density at zu (10m)
+      rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
+      tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
+      rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
+
+      !! Turbulent heat fluxes:
+      tmp(:,:) = cp_air(q_zu(:,:,jt))
+      QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
+      EVAP(:,:,jt) = -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
+      QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
+
+      TAU(:,:,jt)  = rho_zu(:,:,jt) * Cd(:,:,jt) * Ublk(:,:,jt)*Ublk(:,:,jt)
+
+      !! Radiative heat fluxes:
+      Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
+      tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
+      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
+
+      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
+
+      !
+      !IF ( jt > 1 ) THEN ! NOT jtt !???
+      !
+      !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
+      !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
+      !
+      !   IF (ldebug) THEN
+      !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
+      !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
+      !   END IF
+      !
+
+
+      !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT, pTau_ac, pQ_ac, isecday_b, isecday_n )
+      !
+      !   PRINT *, '  => dT =', dT ; STOP
+      !
+      !   Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+      !
+      !END IF
 
       !LOLO: END DO
 
       IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
-         WRITE(6,*) ' .... to do ...'
          WRITE(6,*) ''
-         WRITE(6,*) ' *** density of air at ',TRIM(czu),' => ',  rho_zu(:,:,jt), '[kg/m^3]'
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** SST and Ts       => ',  REAL(sst(:,:,jt)-rt0,4), REAL(Ts(:,:,jt)-rt0  ,4), '[deg.C]'
-         WRITE(6,*) ' *** SSq and qs       => ',  REAL(ssq(:,:)*1000. ,4), REAL(qs(:,:,jt)*1000.,4), '[g/kg]'
-         WRITE(6,*) ''
-         WRITE(6,*) ' *** theta_zt and theta_zu => ',  REAL(theta_zt(:,:,jt)-rt0,4), REAL(theta_zu(:,:,jt)-rt0,4), '[deg.C]'
+      END IF
+
+      info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
+      info = DISP_DEBUG(ldebug, 'Ts',                                Ts(:,:,jt)-rt0, '[deg.C]'  )
+      info = DISP_DEBUG(ldebug, 'qs',                          1000.*qs(:,:,jt),     '[g/kg]'   )
+      info = DISP_DEBUG(ldebug, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
+      info = DISP_DEBUG(ldebug, 'dT_skin',                    Ts(:,:,jt)-sst(:,:,jt), '[deg.C]'  )
+
+      IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '##############################################'
       END IF
 
+
       isecday_b = isecday_n
-      
+
    END DO
-   
+
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
       &           vdt2=REAL(  QL(1,1,:),4), cv_dt2='Qlat', cun2='W/m^2', cln2='Latent Heat Flux',       &
       &           vdt3=REAL(  QH(1,1,:),4), cv_dt3='Qsen', cun3='W/m^2', cln3='Sensible Heat Flux',     &
       &           vdt4=REAL( Qlw(1,1,:),4), cv_dt4='Qlw',  cun4='W/m^2', cln4='Net Longwave Heat Flux', &
-      &           vdt5=REAL( Qsw(1,1,:),4), cv_dt5='Qsw',  cun5='W/m^2', cln5='Net Solar Heat Flux',    &
-      &           vdt6=REAL(EVAP(1,1,:),4), cv_dt6='E',    cun6='mm/s',  cln6='Evaporation' )
+      &           vdt5=REAL( QNS(1,1,:),4), cv_dt5='QNS',  cun5='W/m^2', cln5='Non-solar Heat Flux',    &
+      &           vdt6=REAL( Qsw(1,1,:),4), cv_dt6='Qsw',  cun6='W/m^2', cln6='Net Solar Heat Flux',    &
+      &           vdt7=REAL(EVAP(1,1,:),4), cv_dt7='E',    cun7='mm/s',  cln7='Evaporation',            &
+      &           vdt8=REAL(TAU(1,1,:),4),  cv_dt8='Tau',  cun8='N/m^2', cln8='Module of Wind Stress'   )
 
    !,             &
 
 
-   
+
    STOP 'LULU'
 
 
@@ -501,6 +483,24 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !
    !END DO
 
+CONTAINS
+
+   FUNCTION DISP_DEBUG( ldbg, cstr, rval, cunit )
+      INTEGER :: DISP_DEBUG
+      LOGICAL,                  INTENT(in) :: ldbg
+      CHARACTER(len=*),         INTENT(in) :: cstr
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: rval
+      CHARACTER(len=*),         INTENT(in) :: cunit
+      !!
+      DISP_DEBUG = 0
+      IF ( ldbg ) THEN
+         !WRITE(6,*) ' *** '//TRIM(cstr)
+         !WRITE(6,*) ' *** '//TRIM(cstr), ' => ', REAL(rval(1,1),4), ' '//TRIM(cunit)
+         WRITE(6,'(" *** ",a40," => ",f10.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
+         !WRITE(6,*) ''
+         DISP_DEBUG = 1
+      END IF
+   END FUNCTION DISP_DEBUG
 
 
 END PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
