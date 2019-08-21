@@ -48,28 +48,27 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER :: jt, jarg, jl, ialgo, jq, jtt, n0, info
 
-   INTEGER :: nx, ny, Nt
+   INTEGER :: nx, ny, Nt, itlag_s
 
    CHARACTER(len=19) :: cdt
-   INTEGER(4)        :: iclock, ihh, imm, isecday_n, isecday_b
+   INTEGER(4)        :: iclock, ihh, imm, isecday_n, isecday_b, ihh_s, imm_s
    CHARACTER(len=19), DIMENSION(:), ALLOCATABLE :: ctime
    CHARACTER(len=8),  DIMENSION(:), ALLOCATABLE :: cdate
    CHARACTER(len=4),  DIMENSION(:), ALLOCATABLE :: clock
    CHARACTER(len=2),  DIMENSION(:), ALLOCATABLE :: chh, cmn ! hours and minutes
    CHARACTER(len=16), DIMENSION(:), ALLOCATABLE :: cldate ! human!
    INTEGER(8),        DIMENSION(:), ALLOCATABLE :: idate
-   REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime
+   REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime, vlon
 
    !! Input (or deduced from input) variables:
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SST, SLP, W10, t_zt, theta_zt, q_zt, &
-      &                                       rad_sw, rad_lw, precip, rlat, rlon, dummy
+      &                                       rad_sw, rad_lw, precip, dummy
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, &
-      &                                       dT, pTau_ac, pQ_ac
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
 
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
@@ -79,8 +78,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !   &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
 
-
-   REAL(wp) :: zt, zu
+   REAL(wp) :: zt, zu, rlon
 
    CHARACTER(len=3) :: czt, czu
 
@@ -165,12 +163,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
-   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt) )
+   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(1) )
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
-      &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt), rlat(nx,ny,Nt), rlon(nx,ny,Nt) )
-   ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), &
-      &        dT(nx,ny,Nt), pTau_ac(nx,ny,Nt), pQ_ac(nx,ny,Nt) )
-   ALLOCATE (   ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
+      &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
+   ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt) )
+   ALLOCATE (  ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
@@ -183,6 +180,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !! Reading data time-series into netcdf file:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
+   rlon = vlon(1)
+   
    CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
    CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
    PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
@@ -210,17 +210,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
    CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
 
-   !PRINT *, rad_lw
-
-   !STOP
-
-
-   !OPEN(11, FILE=TRIM(cf_data), FORM='formatted', STATUS='old')
-   !READ(11,*) cblabla ! first commented line...
-   !DO jt = 1, Nt
-   !   READ(11,*) ctime(jt), W10(1,1,jt), SST(1,1,jt), t_zt(1,1,jt), q_zt(1,1,jt), rad_sw(1,1,jt), rad_lw(1,1,jt), precip(1,1,jt), rlat(1,1,jt), rlon(1,1,jt), dummy(1,1,jt)
-   !END DO
-   !CLOSE(11)
 
 
    !DO jt = 1, Nt
@@ -257,12 +246,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(czu,'(i2,"m")') INT(zu)
 
 
-
    IF (ldebug) THEN
-      !                   19921125132100   4.700000       302.1500       300.8500      1.7600000E-02  0.0000000E+00   428.0000
       WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
       DO jt = 1, Nt
-         !WRITE(6,*) cldate(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
          WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
       END DO
    END IF
@@ -281,33 +267,57 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    pQ_ac   = 0.
 
 
-   isecday_b = 0.
-   isecday_n = 0.
+   isecday_b = 0
+   isecday_n = 0
+
+   dT(:,:,:) = 0.  ! skin = SST for first time step
 
 
+   !DO jt = 1, 100
+   !   PRINT *, ' vtime =>', jt, vtime(jt)
+   !   d_idate = time_to_date( tut_time_unit, vtime(jt) )
+   !   WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year, d_idate%month, d_idate%day, d_idate%hour, d_idate%minute
+   !   PRINT *, ' =>'//TRIM(cldate(jt))
+   !   PRINT *, ''
+   !END DO
+   !STOP
+   
    !! Time loop:
    DO jt = 1, Nt
 
-      ihh = d_idate%hour
-      imm = d_idate%minute
-
       d_idate = time_to_date( tut_time_unit, vtime(jt) )
+
+      ihh     = d_idate%hour
+      imm     = d_idate%minute
       WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year,  d_idate%month,  d_idate%day,  ihh, imm
 
-      isecday_n = ihh*3600 + imm*60
+      
+      !! Now need local solar time !
+      !! Hours and minutes in file are supposed to be UTC time:
+      itlag_s = INT( (360. - rlon)/15.*3600. )
+      !PRINT *, ' Lag in sec / hours for solar time =', itlag_s, REAL(itlag_s,wp)/3600._wp      
+      isecday_n = ihh*3600 + imm*60      
+      IF ( isecday_n < itlag_s ) THEN
+         isecday_n = isecday_n - itlag_s + 24.*3600.
+      ELSE
+         isecday_n = isecday_n - itlag_s
+      END IF
+      ihh_s = isecday_n/3600
+      imm_s = MOD(isecday_n,3600)/60
 
+      
       IF (ldebug) THEN
          WRITE(6,*) ''; WRITE(6,*) ''
-         WRITE(6,*) '##############################################'
+         WRITE(6,*) '##########################################################'
       END IF
-      WRITE(6,*) '#### Time = ', cldate(jt), ' (seconds since start of day:',isecday_n,')'
+      WRITE(6,'("#### Time = ",a," => local solar time = ",i2.2,":",i2.2," => isecday_n = ",i6.6)') cldate(jt), ihh_s, imm_s, isecday_n
       IF (ldebug) THEN
-         WRITE(6,*) '##############################################'
+         WRITE(6,*) '##########################################################'
          WRITE(6,*) ''
          WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
          WRITE(6,*) ''
       END IF
-
+      
       info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
 
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
@@ -321,8 +331,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       ssq = rdct_qsat_salt*q_sat(SST(:,:,jt), SLP(:,:,jt))
       info = DISP_DEBUG(ldebug, 'SSQ = 0.98*q_sat(SST)', 1000.*ssq, '[g/kg]')
 
-      ! Air temperatures at zt:
-      info = DISP_DEBUG(ldebug, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]')
+      info = DISP_DEBUG(ldebug, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
 
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(ldebug, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
@@ -357,7 +366,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       !l_wl_c36_never_called = .TRUE.
 
-      dT(:,:,jt) = 0.  ! skin = SST for first time step
+
       Ts(:,:,jt) = SST(:,:,jt)
       qs(:,:,jt) = ssq(:,:)
 
@@ -401,25 +410,35 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
 
       !
-      !IF ( jt > 1 ) THEN ! NOT jtt !???
-      !
-      !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-      !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
-      !
-      !   IF (ldebug) THEN
-      !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
-      !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
-      !   END IF
-      !
+      IF ( jt > 1 ) THEN ! NOT jtt !???
+         !
+         !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
+         !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
+         !
+         !   IF (ldebug) THEN
+         !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
+         !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
+         !   END IF
+         !
+         IF (ldebug) THEN
+            WRITE(6,*) ''
+            WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
+            WRITE(6,*) ''
+         END IF
+         info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:,jt), '[W/m^2]'   )
+         info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     QNS(:,:,jt), '[W/m^2]'   )
+         info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        TAU(:,:,jt), '[N/m^2]'   )
+         info = DISP_DEBUG(ldebug, 'SST',                                  SST(:,:,jt)-rt0, '[degC]'    )
+         info = DISP_DEBUG(ldebug, ' -- accumulated heat',                     pQ_ac(:,:),  '[J/m^2]'   )
+         info = DISP_DEBUG(ldebug, ' -- accumulated momentum',               pTau_ac(:,:),  '[N.s/m^2]' )
 
-
-      !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT, pTau_ac, pQ_ac, isecday_b, isecday_n )
-      !
-      !   PRINT *, '  => dT =', dT ; STOP
-      !
-      !   Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
-      !
-      !END IF
+         CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n )
+         !
+         !PRINT *, '  => dT =', dT(:,:,jt) ; STOP
+         !
+         Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+         !
+      END IF
 
       !LOLO: END DO
 
@@ -430,11 +449,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       END IF
 
       info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
+      info = DISP_DEBUG(ldebug, 'Warm-Layer dT increment',           dT(:,:,jt),     '[deg.C]'  )
       info = DISP_DEBUG(ldebug, 'Ts',                                Ts(:,:,jt)-rt0, '[deg.C]'  )
       info = DISP_DEBUG(ldebug, 'qs',                          1000.*qs(:,:,jt),     '[g/kg]'   )
       info = DISP_DEBUG(ldebug, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
-      info = DISP_DEBUG(ldebug, 'dT_skin',                    Ts(:,:,jt)-sst(:,:,jt), '[deg.C]'  )
-
+      !info = DISP_DEBUG(ldebug, 'dT_skin',                    Ts(:,:,jt)-sst(:,:,jt), '[deg.C]'  )
+      
       IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '##############################################'
@@ -496,7 +516,7 @@ CONTAINS
       IF ( ldbg ) THEN
          !WRITE(6,*) ' *** '//TRIM(cstr)
          !WRITE(6,*) ' *** '//TRIM(cstr), ' => ', REAL(rval(1,1),4), ' '//TRIM(cunit)
-         WRITE(6,'(" *** ",a40," => ",f10.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
+         WRITE(6,'(" *** ",a40," => ",f12.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
          !WRITE(6,*) ''
          DISP_DEBUG = 1
       END IF

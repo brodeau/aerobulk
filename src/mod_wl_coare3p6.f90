@@ -69,7 +69,7 @@ CONTAINS
       REAL(wp) :: ctd1, ctd2
 
       INTEGER  :: jl
-      INTEGER  :: jamset, jump
+      INTEGER  :: jamset
 
       !! INITIALIZATION:
 
@@ -100,15 +100,13 @@ CONTAINS
       DO jj = 1, jpj         
          DO ji = 1, jpi
 
-            PRINT *, ' *** jj =', jj
+            !PRINT *, ' *** jj =', jj
             
-            PRINT *, ' it_b,  it_n =>',  it_b,  it_n
-            PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
 
 
             
             jamset = 0
-            jump = 1
+            !jump = 1
 
             !**********************************************************
             !******************  setup read data loop  ****************
@@ -132,17 +130,29 @@ CONTAINS
 
             !IF (icount>1) THEN                                  !not first time thru
 
-            IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
+            !IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
 
-               jump = 0
+            !   jump = 0
 
+            IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
+
+               PRINT *, 'LOLO: WE DO WL !!!!'
+               PRINT *, ' it_b,  it_n =>',  it_b,  it_n
+               PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
+
+
+               
                IF (it_n < it_b) THEN    !re-zero at midnight
-                  jamset  = 0
-                  zfs     = .5_wp
-                  dz_wl   = dz_max
+
+                  PRINT *, 'LOLO: MIDNIGHT RESET !!!!'
+
+                  
+                  jamset         = 0
+                  zfs            = 0.5_wp
+                  dz_wl          = dz_max
                   pTau_ac(ji,jj) = 0._wp
                   pQ_ac(ji,jj)   = 0._wp
-                  dT_wl   = 0._wp
+                  dT_wl          = 0._wp
 
                ELSE
 
@@ -199,16 +209,19 @@ CONTAINS
 
                END IF  ! IF (it_n < it_b)
 
+               PRINT *, 'LOLO4/ dz_wl, z_sst =>', dz_wl, z_sst
+               
                IF (dz_wl < z_sst) THEN           !Compute warm layer correction
                   pdT(ji,jj) = dT_wl
                ELSE
                   pdT(ji,jj) = dT_wl*z_sst/dz_wl
                END IF
 
-            END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
+            END IF
+            !END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
 
 
-            PRINT *, ' *** END => pdT =', pdT(ji,jj)
+            !PRINT *, ' *** END => pdT =', pdT(ji,jj)
 
             
          END DO
