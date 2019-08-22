@@ -66,7 +66,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT, dz_wl
 
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
 
@@ -166,7 +166,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(1) )
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
-   ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt) )
+   ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
+      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt) )
    ALLOCATE (  ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
@@ -182,7 +183,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
    rlon = vlon(1)
-   
+
    CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
    CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
    PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
@@ -281,7 +282,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !   PRINT *, ''
    !END DO
    !STOP
-   
+
    !! Time loop:
    DO jt = 1, Nt
 
@@ -291,12 +292,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       imm     = d_idate%minute
       WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year,  d_idate%month,  d_idate%day,  ihh, imm
 
-      
+
       !! Now need local solar time !
       !! Hours and minutes in file are supposed to be UTC time:
       itlag_s = INT( (360. - rlon)/15.*3600. )
-      !PRINT *, ' Lag in sec / hours for solar time =', itlag_s, REAL(itlag_s,wp)/3600._wp      
-      isecday_n = ihh*3600 + imm*60      
+      !PRINT *, ' Lag in sec / hours for solar time =', itlag_s, REAL(itlag_s,wp)/3600._wp
+      isecday_n = ihh*3600 + imm*60
       IF ( isecday_n < itlag_s ) THEN
          isecday_n = isecday_n - itlag_s + 24.*3600.
       ELSE
@@ -305,7 +306,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       ihh_s = isecday_n/3600
       imm_s = MOD(isecday_n,3600)/60
 
-      
+
       IF (ldebug) THEN
          WRITE(6,*) ''; WRITE(6,*) ''
          WRITE(6,*) '##########################################################'
@@ -317,6 +318,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
          WRITE(6,*) ''
       END IF
+
+      info = DISP_DEBUG(ldebug, 'scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
       
       info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
 
@@ -373,88 +376,101 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       !LOLO: DO jtt = 1, nb_itt_wl
 
-      CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
-         &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
-         &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-      !! => Ts and qs are not updated: Ts=SST and qs=ssq
+      DO jtt = 1, 2
 
 
-      !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
-      t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
-      DO jq = 1, 4
-         rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
-         t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
-      END DO
+         CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         !! => Ts and qs are not updated: Ts=SST and qs=ssq
 
-      !! Bulk Richardson Number for layer "sea-level -- zu":
-      RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
-      !! Air density at zu (10m)
-      rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
-      tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
-      rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
+         !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
+         t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
+         DO jq = 1, 4
+            rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
+            t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
+         END DO
 
-      !! Turbulent heat fluxes:
-      tmp(:,:) = cp_air(q_zu(:,:,jt))
-      QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
-      EVAP(:,:,jt) = -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
-      QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
+         !! Bulk Richardson Number for layer "sea-level -- zu":
+         RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
-      TAU(:,:,jt)  = rho_zu(:,:,jt) * Cd(:,:,jt) * Ublk(:,:,jt)*Ublk(:,:,jt)
+         !! Air density at zu (10m)
+         rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
+         tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
+         rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
 
-      !! Radiative heat fluxes:
-      Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
-      tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
+         !! Turbulent heat fluxes:
+         tmp(:,:) = cp_air(q_zu(:,:,jt))
+         QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
+         EVAP(:,:,jt) = -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt)  ! mm/s
+         QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
 
-      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
+         TAU(:,:,jt)  = rho_zu(:,:,jt) * Cd(:,:,jt) * Ublk(:,:,jt)*Ublk(:,:,jt)
 
-      !
-      IF ( jt > 1 ) THEN ! NOT jtt !???
-         !
-         !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-         !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
-         !
-         !   IF (ldebug) THEN
-         !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
-         !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
-         !   END IF
-         !
-         IF (ldebug) THEN
-            WRITE(6,*) ''
-            WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
-            WRITE(6,*) ''
-         END IF
-         info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:,jt), '[W/m^2]'   )
-         info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     QNS(:,:,jt), '[W/m^2]'   )
-         info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        TAU(:,:,jt), '[N/m^2]'   )
-         info = DISP_DEBUG(ldebug, 'SST',                                  SST(:,:,jt)-rt0, '[degC]'    )
-         info = DISP_DEBUG(ldebug, ' -- accumulated heat',                     pQ_ac(:,:),  '[J/m^2]'   )
-         info = DISP_DEBUG(ldebug, ' -- accumulated momentum',               pTau_ac(:,:),  '[N.s/m^2]' )
+         !! Radiative heat fluxes:
+         Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
+         tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
+         Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
 
-         CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n )
-         !
-         !PRINT *, '  => dT =', dT(:,:,jt) ; STOP
-         !
-         Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
-         !
-      END IF
+         QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
 
-      !LOLO: END DO
+
+         IF ( jtt == 1) THEN
+            ! ... only 1st pass...
+            IF ( jt > 1 ) THEN ! NOT jtt !???
+               !
+               !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
+               !   tmp(:,:) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:)) + QH(:,:,jt) + QL(:,:,jt)
+               !
+               !   IF (ldebug) THEN
+               !      PRINT *, ' *** Non solar flux:', tmp ; PRINT *, ''
+               !      PRINT *, ' *** Solar flux:',  (1._wp - oce_alb0)*rad_sw(:,:,jt) ; PRINT *, ''
+               !   END IF
+               !
+               IF (ldebug) THEN
+                  WRITE(6,*) ''
+                  WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
+                  WRITE(6,*) ''
+               END IF
+               info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:,jt), '[W/m^2]'   )
+               info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     QNS(:,:,jt), '[W/m^2]'   )
+               info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        TAU(:,:,jt), '[N/m^2]'   )
+               info = DISP_DEBUG(ldebug, 'SST',                                  SST(:,:,jt)-rt0, '[degC]'    )
+               info = DISP_DEBUG(ldebug, ' -- accumulated heat',             0.001*  pQ_ac(:,:),  '[kJ/m^2]'   )
+               info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*pTau_ac(:,:),  '[kN.s/m^2]' )
+
+               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
+               !
+               !PRINT *, '  => dT =', dT(:,:,jt) ; STOP
+               !
+               Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+               !
+               IF (ldebug) THEN
+                  WRITE(6,*) ''
+                  WRITE(6,*) '           ---- AFTER CSWL ----'
+                  WRITE(6,*) ''
+               END IF
+               info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dT',         dz_wl(:,:,jt),     '[m]'  )
+               info = DISP_DEBUG(ldebug, 'Warm-Layer dT increment',           dT(:,:,jt),     '[deg.C]'  )
+               info = DISP_DEBUG(ldebug, 'Ts',                                Ts(:,:,jt)-rt0, '[deg.C]'  )
+               info = DISP_DEBUG(ldebug, 'qs',                          1000.*qs(:,:,jt),     '[g/kg]'   )
+               
+            END IF
+            
+         END IF !IF ( jtt == 1)
+
+      END DO !DO jtt = 1, 2
 
       IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
          WRITE(6,*) ''
       END IF
-
       info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
-      info = DISP_DEBUG(ldebug, 'Warm-Layer dT increment',           dT(:,:,jt),     '[deg.C]'  )
-      info = DISP_DEBUG(ldebug, 'Ts',                                Ts(:,:,jt)-rt0, '[deg.C]'  )
-      info = DISP_DEBUG(ldebug, 'qs',                          1000.*qs(:,:,jt),     '[g/kg]'   )
       info = DISP_DEBUG(ldebug, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
-      !info = DISP_DEBUG(ldebug, 'dT_skin',                    Ts(:,:,jt)-sst(:,:,jt), '[deg.C]'  )
-      
+
+
       IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '##############################################'
@@ -463,18 +479,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       isecday_b = isecday_n
 
-   END DO
+   END DO !DO jt = 1, Nt
+
 
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
-      &           vdt2=REAL(  QL(1,1,:),4), cv_dt2='Qlat', cun2='W/m^2', cln2='Latent Heat Flux',       &
-      &           vdt3=REAL(  QH(1,1,:),4), cv_dt3='Qsen', cun3='W/m^2', cln3='Sensible Heat Flux',     &
-      &           vdt4=REAL( Qlw(1,1,:),4), cv_dt4='Qlw',  cun4='W/m^2', cln4='Net Longwave Heat Flux', &
-      &           vdt5=REAL( QNS(1,1,:),4), cv_dt5='QNS',  cun5='W/m^2', cln5='Non-solar Heat Flux',    &
-      &           vdt6=REAL( Qsw(1,1,:),4), cv_dt6='Qsw',  cun6='W/m^2', cln6='Net Solar Heat Flux',    &
-      &           vdt7=REAL(EVAP(1,1,:),4), cv_dt7='E',    cun7='mm/s',  cln7='Evaporation',            &
-      &           vdt8=REAL(TAU(1,1,:),4),  cv_dt8='Tau',  cun8='N/m^2', cln8='Module of Wind Stress'   )
+      &           vdt02=REAL(  QL(1,1,:),4), cv_dt02='Qlat', cun02='W/m^2', cln02='Latent Heat Flux',       &
+      &           vdt03=REAL(  QH(1,1,:),4), cv_dt03='Qsen', cun03='W/m^2', cln03='Sensible Heat Flux',     &
+      &           vdt04=REAL( Qlw(1,1,:),4), cv_dt04='Qlw',  cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+      &           vdt05=REAL( QNS(1,1,:),4), cv_dt05='QNS',  cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+      &           vdt06=REAL( Qsw(1,1,:),4), cv_dt06='Qsw',  cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+      &           vdt07=REAL(dT(1,1,:),4),   cv_dt07='dT_wl',cun07='deg.C', cln07='Warm-Layer dT',          &
+      &           vdt08=REAL(W10(1,1,:),4),  cv_dt08='Wind', cun08='m/s',   cln08='Module of Wind Speed',   &
+      &           vdt09=REAL(TAU(1,1,:),4),  cv_dt09='Tau',  cun09='N/m^2', cln09='Module of Wind Stress'   )
 
    !,             &
 

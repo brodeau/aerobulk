@@ -25,15 +25,18 @@ MODULE mod_wl_coare3p6
 
    PUBLIC :: WL_COARE3P6
 
-   REAL(wp), PARAMETER :: rich = .65_wp       !critical Richardson number
-   REAL(wp), PARAMETER :: z_sst = 1._wp   !: depth at which bulk SST is taken...
+   REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
+   REAL(wp), PARAMETER :: z_sst  = 1._wp     !: depth at which bulk SST is taken...
+   REAL(wp), PARAMETER :: dz_max = 19._wp    !: maximum depth of warm layer (adjustable)
+   REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: Threshold for heat flux absorbed in WL
 
    !LOGICAL, PUBLIC, SAVE :: l_wl_c36_never_called
-   
-CONTAINS
-   
 
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, it_b, it_n )
+CONTAINS
+
+
+   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, it_b, it_n, &
+      &                    Hwl )
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin Warm-Layer scheme according to COARE 3.6 (Fairall et al, 2019)
@@ -59,11 +62,13 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
       INTEGER ,                     INTENT(in)    :: it_b     ! previous solar time (before) [seconds since midnight]
       INTEGER ,                     INTENT(in)    :: it_n     ! solar time now               [seconds since midnight]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl    ! depth of warm layer
       !
       !
       INTEGER :: ji,jj
       !
-      REAL(wp) :: dT_wl, dz_max, dz_wl, dtime, Qabs, zfs
+      REAL(wp) :: dT_wl, dz_wl, dtime, Qabs, zfs
       REAL(wp) :: zqac
       REAL(wp) :: Al, qjoule
       REAL(wp) :: ctd1, ctd2
@@ -71,6 +76,10 @@ CONTAINS
       INTEGER  :: jl
       INTEGER  :: jamset
 
+
+
+
+      
       !! INITIALIZATION:
 
       !pTau=Bx(2)  !stress
@@ -90,21 +99,20 @@ CONTAINS
       !END IF
 
       pdT = 0._wp         ! dT initially set to 0._wp
-      
-      dT_wl = 0._wp       ! total warming (amplitude) in warm layer
-      dz_max = 19._wp     ! maximum depth of warm layer (adjustable)
-      dz_wl = dz_max      ! initial depth set to max value
-      Qabs = 0._wp        ! total heat absorped in warm layer
-      zfs = .5_wp         ! initial value of solar flux absorption
 
-      DO jj = 1, jpj         
+      dT_wl = 0._wp       ! total warming (amplitude) in warm layer
+      dz_wl = dz_max      ! initial depth set to max value
+      Qabs  = 0._wp        ! total heat absorped in warm layer
+      zfs   = 0.5_wp         ! initial value of solar flux absorption
+
+      DO jj = 1, jpj
          DO ji = 1, jpi
 
             !PRINT *, ' *** jj =', jj
-            
 
 
-            
+
+
             jamset = 0
             !jump = 1
 
@@ -114,7 +122,7 @@ CONTAINS
 
 
             !*****  variables for warm layer  ***
-            Al = 2.1e-5*(pSST(ji,jj)-rt0 + 3.2_wp)**0.79
+            Al   = 2.1e-5*(pSST(ji,jj)-rt0 + 3.2_wp)**0.79
             ctd1 = SQRT(2._wp*rich*rCp0_w/(Al*grav*rho0_w))        !mess-o-constants 1
             ctd2 = SQRT(2._wp*Al*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
 
@@ -133,106 +141,93 @@ CONTAINS
             !IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
 
             !   jump = 0
-
+            
+            IF (it_n < it_b) THEN    !re-zero at midnight               
+               PRINT *, 'LOLO: MIDNIGHT RESET !!!!, it_b,  it_n =>', it_b, it_n
+               jamset         = 0
+               zfs            = 0.5_wp
+               dz_wl          = dz_max
+               pTau_ac(ji,jj) = 0._wp
+               pQ_ac(ji,jj)   = 0._wp
+               dT_wl          = 0._wp
+            END IF
+            
             IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
-
+               
                PRINT *, 'LOLO: WE DO WL !!!!'
                PRINT *, ' it_b,  it_n =>',  it_b,  it_n
                PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
-
-
                
-               IF (it_n < it_b) THEN    !re-zero at midnight
+               !************************************
+               !****   set warm layer constants  ***
+               !************************************
 
-                  PRINT *, 'LOLO: MIDNIGHT RESET !!!!'
+               dtime = it_n - it_b      ! delta time for integrals
+              
+               Qabs = zfs*pQsw(ji,jj) - pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
+               PRINT *, 'dtime,  pQsw, pQnsol, Qabs =', dtime,  pQsw(ji,jj), pQnsol(ji,jj), Qabs
+               
+               IF ( (Qabs >= Qabs_thr).OR.(jamset == 1) ) THEN         ! Check for threshold
                   
-                  jamset         = 0
-                  zfs            = 0.5_wp
-                  dz_wl          = dz_max
-                  pTau_ac(ji,jj) = 0._wp
-                  pQ_ac(ji,jj)   = 0._wp
-                  dT_wl          = 0._wp
+                  PRINT *, ' pTau_ac, pQ_ac =', pTau_ac(ji,jj), pQ_ac(ji,jj)
 
-               ELSE
-
-                  !************************************
-                  !****   set warm layer constants  ***
-                  !************************************
-
-                  dtime = it_n - it_b      ! delta time for integrals
-
-                  PRINT *, 'dtime,  pQsw, pQnsol =', dtime,  pQsw(ji,jj), pQnsol(ji,jj)
+                  jamset = 1                                         ! indicates threshold crossed
+                  pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*dtime      ! momentum integral
                   
-                  Qabs = zfs*pQsw(ji,jj) - pQnsol(ji,jj)       ! tot heat absorbed in warm layer
-                  PRINT *, ' Qabs =', Qabs
-
-                  
-                  IF ( (Qabs >= 50._wp).OR.(jamset == 1) ) THEN         ! Check for threshold
-
-                     PRINT *, ' pTau_ac, pQ_ac =', pTau_ac(ji,jj), pQ_ac(ji,jj)
-
-                     
-                     jamset = 1                                         ! indicates threshold crossed
-                     pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*dtime      ! momentum integral
-
-                     IF ( pQ_ac(ji,jj)+Qabs*dtime > 0._wp ) THEN                !check threshold for warm layer existence
-                        !******************************************
-                        ! Compute the absorption profile
-                        !******************************************
-
-                        DO jl = 1, 5                           !loop 5 times for zfs
-                           zfs = 1. - ( 0.28*0.014*(1. - EXP(-dz_wl/0.014)) + 0.27*0.357*(1. - EXP(-dz_wl/0.357)) &
-                              &        + 0.45*12.82*(1-EXP(-dz_wl/12.82)) ) / dz_wl
-                           qjoule = (zfs*pQsw(ji,jj) - pQnsol(ji,jj))*dtime
-                           zqac = pQ_ac(ji,jj) + qjoule
-                           IF (zqac > 0._wp)  dz_wl = MIN( dz_max , ctd1*pTau_ac(ji,jj)/SQRT(zqac)) !Compute warm-layer depth
-                        END DO
-
-                     ELSE             !warm layer wiped out
-                        zfs    = 0.75
-                        dz_wl  = dz_max
+                  IF ( pQ_ac(ji,jj) + Qabs*dtime > 0._wp ) THEN         !check threshold for warm layer existence
+                     !******************************************
+                     ! Compute the absorption profile
+                     !******************************************
+                     DO jl = 1, 5                           !loop 5 times for zfs
+                        zfs = 1. - ( 0.28*0.014*(1. - EXP(-dz_wl/0.014)) + 0.27*0.357*(1. - EXP(-dz_wl/0.357)) &
+                           &        + 0.45*12.82*(1-EXP(-dz_wl/12.82)) ) / dz_wl
                         qjoule = (zfs*pQsw(ji,jj) - pQnsol(ji,jj))*dtime
-                        zqac   = pQ_ac(ji,jj) + qjoule
-                     END IF
+                        zqac = pQ_ac(ji,jj) + qjoule
+                        IF (zqac > 0._wp)  dz_wl = MIN( dz_max , ctd1*pTau_ac(ji,jj)/SQRT(zqac)) !Compute warm-layer depth
+                     END DO
 
-                     pQ_ac(ji,jj) = zqac !heat integral
+                  ELSE
+                     !***********************
+                     ! Warm layer wiped out
+                     !***********************
+                     zfs    = 0.75
+                     dz_wl  = dz_max
+                     qjoule = (zfs*pQsw(ji,jj) - pQnsol(ji,jj))*dtime
+                     zqac   = pQ_ac(ji,jj) + qjoule
+                  END IF
 
-                     !*******  compute dt_warm  ******
-                     IF (pQ_ac(ji,jj) > 0._wp) THEN
-                        dT_wl = ctd2*pQ_ac(ji,jj)**1.5/pTau_ac(ji,jj)
-                     ELSE
-                        dT_wl = 0
-                     END IF
+                  pQ_ac(ji,jj) = zqac !heat integral
 
-                  END IF ! IF ( (Qabs>=50).OR.(jamset==1) )
+                  !*******  compute dt_warm  ******
+                  !LOLOnew: dT_wl = ctd2*MAX(0._wp,pQ_ac(ji,jj))**1.5/pTau_ac(ji,jj)                  
+                  IF (pQ_ac(ji,jj) > 0._wp) THEN
+                     dT_wl = ctd2*pQ_ac(ji,jj)**1.5/pTau_ac(ji,jj)
+                  ELSE
+                     dT_wl = 0._wp
+                  END IF
 
-               END IF  ! IF (it_n < it_b)
+               END IF ! IF ( (Qabs>=50).OR.(jamset==1) )
 
-               PRINT *, 'LOLO4/ dz_wl, z_sst =>', dz_wl, z_sst
-               
+
                IF (dz_wl < z_sst) THEN           !Compute warm layer correction
                   pdT(ji,jj) = dT_wl
                ELSE
                   pdT(ji,jj) = dT_wl*z_sst/dz_wl
                END IF
 
-            END IF
+            END IF ! IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
+            
             !END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
 
 
             !PRINT *, ' *** END => pdT =', pdT(ji,jj)
 
-            
+            IF ( PRESENT(Hwl) ) Hwl(ji,jj) = dz_wl
+
          END DO
          PRINT *, ''
       END DO
-      
-
-
-
-
-
       
       !END IF  !  IF (icount>1)
 
