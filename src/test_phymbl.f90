@@ -59,15 +59,15 @@ PROGRAM TEST_PHYMBL
    
 
    !! Advanced formula:
-   vqsat1(:,:) = 0.98*q_sat(vsst_k, vmsl)
+   vqsat1(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl)
 
    !! Simple with constant density
    vrho  (:,:) = 1.2
-   vqsat2(:,:) = 0.98*q_sat_simple(vsst_k, vrho)
+   vqsat2(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
 
    !! Simple with better density (density at SST! 0m, not 10m !)
    vrho  (:,:) = rho_air(vsst_k, vqsat1, vmsl) ! we use the good q_sat to get a good rho at z=0
-   vqsat3(:,:) = 0.98*q_sat_simple(vsst_k, vrho)
+   vqsat3(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
 
    !! Same but using density of air at 10m => T=SST-2 and not saturated => 80% hum!
    vrh(:,:) = 0.8                          ! Relative humidity at 10m
@@ -83,10 +83,10 @@ PROGRAM TEST_PHYMBL
    vq10(:,:) = q_air_rh(vrh, vt10, vmsl)   ! Specific humidity at 10m
    vrho(:,:) = rho_air(vt10, vq10, vmsl)    ! air density at 10m
    
-   vqsat4(:,:) = 0.98*q_sat_simple(vsst_k, vrho)
+   vqsat4(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
    
    ! Buck Formula !
-   vqsat5(:,:) = 0.98*q_sat(vsst_k, vmsl, cform='buck')
+   vqsat5(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl, cform='buck')
    
 
 

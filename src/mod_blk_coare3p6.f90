@@ -28,7 +28,7 @@ MODULE mod_blk_coare3p6
    !!====================================================================================
    USE mod_const     !: physical and othe constants
    USE mod_phymbl    !: thermodynamics
-   USE mod_cs_coare  !: cool-skin parameterization
+   USE mod_cs_coare3p6  !: cool-skin parameterization
    !USE mod_wl_coare3p6 !: cool-skin parameterization
 
    IMPLICIT NONE
@@ -283,7 +283,7 @@ CONTAINS
          !! SKIN related part
          !! -----------------
          IF( l_use_skin ) THEN
-            CALL CS_COARE( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
+            CALL CS_COARE3P6( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
                &             zrhoa, rad_lw, Qsw, zdelta, T_s, q_s )
          END IF
 

@@ -200,7 +200,7 @@ PROGRAM TEST_SKIN_CORR
    WRITE(6,*) ''
    WRITE(6,*) ''
 
-   ssq = 0.98*q_sat(sst, SLP)
+   ssq = rdct_qsat_salt*q_sat(sst, SLP)
 
    WRITE(6,*) '' ;  WRITE(6,*) 'SSQ = 0.98*q_sat(sst) =', 1000.*ssq, '[g/kg]' ; WRITE(6,*) ''
 

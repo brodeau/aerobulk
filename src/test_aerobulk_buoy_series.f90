@@ -224,7 +224,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
 
 
 
-   ssq = 0.98*q_sat(sst, SLP)
+   ssq = rdct_qsat_salt*q_sat(sst, SLP)
 
    WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
    WRITE(6,*) ''

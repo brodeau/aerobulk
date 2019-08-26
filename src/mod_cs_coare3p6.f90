@@ -7,12 +7,12 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_cs_coare
+MODULE mod_cs_coare3p6
    !!====================================================================================
    !!       Cool-Skin correction of SST
    !!    Cool-skin parametrization (Fairall et al. 1996)
    !!
-   !!       Routine CS_COARE maintained and developed in AeroBulk
+   !!       Routine CS_COARE3P6 maintained and developed in AeroBulk
    !!             (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2016
@@ -24,13 +24,13 @@ MODULE mod_cs_coare
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: CS_COARE
+   PUBLIC :: CS_COARE3P6
    
    !!----------------------------------------------------------------------
 CONTAINS
 
 
-   SUBROUTINE CS_COARE( pTzu, pqzu, psst, pslp, pU10, pus, pts, pqs, &
+   SUBROUTINE CS_COARE3P6( pTzu, pqzu, psst, pslp, pU10, pus, pts, pqs, &
       &                   prhoa, pRlw, pQsw, pdelta, pT_s, pq_s )
       !!---------------------------------------------------------------------
       !!
@@ -105,7 +105,7 @@ CONTAINS
             pdelta(ji,jj) = zdelta
 
             ! Updating pT_s and q_s ...
-            zz2 =  - zQt*zdelta/rk0_w   ! temperature increment !  Eq.13 Cool skin
+            zz2 =  MIN( - zQt*zdelta/rk0_w , 0._wp )   ! temperature increment !  Eq.13 Cool skin !LOLO get rid of warming that comes from I don't know which term...
             !
             pT_s(ji,jj) = psst(ji,jj) + zz2
             !
@@ -114,7 +114,7 @@ CONTAINS
 
       pq_s = rdct_qsat_salt*q_sat(MAX(pT_s, 200._wp), pslp)   !skin !LB: just to avoid problem on masked regions
 
-   END SUBROUTINE CS_COARE
+   END SUBROUTINE CS_COARE3P6
 
    !!======================================================================
-END MODULE mod_cs_coare
+END MODULE mod_cs_coare3p6

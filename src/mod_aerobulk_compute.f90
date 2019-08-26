@@ -123,7 +123,7 @@ CONTAINS
       pWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
       !! Computing specific humidity at saturation at sea surface temperature :
-      pSSQ (:,:) = 0.98*q_sat(sst, slp)
+      pSSQ (:,:) = rdct_qsat_salt*q_sat(sst, slp)
 
       !! Approximate potential temperarure at zt meters above sea surface:
       pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt

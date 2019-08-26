@@ -136,7 +136,7 @@ PROGRAM cx_vs_wind_test
       !!
    END DO
 
-   qsat_sst = 0.98*q_sat(sst + rt0,slp)
+   qsat_sst = rdct_qsat_salt*q_sat(sst + rt0,slp)
 
    sst_v = (sst + rt0)*(1. + rctv0*qsat_sst) ! virtual SST (K)
    PRINT *, ''; PRINT *, 'Virtual Sea Surface temperature =', REAL(sst_v - rt0,4); PRINT *, ''

@@ -197,7 +197,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    WRITE(6,*) ''
 
-   ssq = 0.98*q_sat(sst, SLP)
+   ssq = rdct_qsat_salt*q_sat(sst, SLP)
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'

@@ -10,6 +10,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
 
+
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_wl_coare3p6
@@ -66,7 +67,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT, dz_wl
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, dz_wl
 
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
 
@@ -167,7 +168,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
-      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt) )
+      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt) )
    ALLOCATE (  ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
@@ -271,7 +272,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    isecday_b = 0
    isecday_n = 0
 
-   dT(:,:,:) = 0.  ! skin = SST for first time step
+   dT(:,:,:)    = 0.  ! skin = SST for first time step
+   dT_cs(:,:,:) = 0.
+   dT_wl(:,:,:) = 0.
 
 
    !DO jt = 1, 100
@@ -374,17 +377,22 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       qs(:,:,jt) = ssq(:,:)
 
 
+      Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
+      
+
       !LOLO: DO jtt = 1, nb_itt_wl
 
       DO jtt = 1, 2
 
 
-         CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), &
-            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),             &
+         CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),    &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt),                           & ! triggers the use of cool-skin !
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         !! => Ts and qs are not updated: Ts=SST and qs=ssq
-
-
+         
+         !! => Ts and qs ARE updated, but only for cool-skin !!!!
+         IF (jtt == 1)  dT_cs(:,:,jt) = Ts(:,:,jt) - SST(:,:,jt)
+         
          !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
          t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
          DO jq = 1, 4
@@ -408,8 +416,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
          TAU(:,:,jt)  = rho_zu(:,:,jt) * Cd(:,:,jt) * Ublk(:,:,jt)*Ublk(:,:,jt)
 
-         !! Radiative heat fluxes:
-         Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt)
+         !! Longwave radiative heat fluxes:
          tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
          Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
 
@@ -418,6 +425,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
          IF ( jtt == 1) THEN
             ! ... only 1st pass...
+            
             IF ( jt > 1 ) THEN ! NOT jtt !???
                !
                !   tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
@@ -437,22 +445,25 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
                info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     QNS(:,:,jt), '[W/m^2]'   )
                info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        TAU(:,:,jt), '[N/m^2]'   )
                info = DISP_DEBUG(ldebug, 'SST',                                  SST(:,:,jt)-rt0, '[degC]'    )
+               info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
                info = DISP_DEBUG(ldebug, ' -- accumulated heat',             0.001*  pQ_ac(:,:),  '[kJ/m^2]'   )
                info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*pTau_ac(:,:),  '[kN.s/m^2]' )
 
-               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
+               tmp(:,:) = Ts(:,:,jt) 
+               
+               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
                !
-               !PRINT *, '  => dT =', dT(:,:,jt) ; STOP
+               !PRINT *, '  => dT_wl =', dT_wl(:,:,jt) ; STOP
                !
-               Ts(:,:,jt) = sst(:,:,jt) + dT(:,:,jt)
+               Ts(:,:,jt) = tmp(:,:) + dT_wl(:,:,jt)
                !
                IF (ldebug) THEN
                   WRITE(6,*) ''
                   WRITE(6,*) '           ---- AFTER CSWL ----'
                   WRITE(6,*) ''
                END IF
-               info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dT',         dz_wl(:,:,jt),     '[m]'  )
-               info = DISP_DEBUG(ldebug, 'Warm-Layer dT increment',           dT(:,:,jt),     '[deg.C]'  )
+               info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dT_wl',         dz_wl(:,:,jt),    '[m]'  )
+               info = DISP_DEBUG(ldebug, 'Warm-Layer dT_wl increment',        dT_wl(:,:,jt),  '[deg.C]'  )
                info = DISP_DEBUG(ldebug, 'Ts',                                Ts(:,:,jt)-rt0, '[deg.C]'  )
                info = DISP_DEBUG(ldebug, 'qs',                          1000.*qs(:,:,jt),     '[g/kg]'   )
                
@@ -462,6 +473,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       END DO !DO jtt = 1, 2
 
+
+      dT(:,:,jt) = Ts(:,:,jt) - SST(:,:,jt)
+
+      
       IF (ldebug) THEN
          WRITE(6,*) ''
          WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
@@ -485,14 +500,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
-      &           vdt02=REAL(  QL(1,1,:),4), cv_dt02='Qlat', cun02='W/m^2', cln02='Latent Heat Flux',       &
-      &           vdt03=REAL(  QH(1,1,:),4), cv_dt03='Qsen', cun03='W/m^2', cln03='Sensible Heat Flux',     &
-      &           vdt04=REAL( Qlw(1,1,:),4), cv_dt04='Qlw',  cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-      &           vdt05=REAL( QNS(1,1,:),4), cv_dt05='QNS',  cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-      &           vdt06=REAL( Qsw(1,1,:),4), cv_dt06='Qsw',  cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-      &           vdt07=REAL(dT(1,1,:),4),   cv_dt07='dT_wl',cun07='deg.C', cln07='Warm-Layer dT',          &
-      &           vdt08=REAL(W10(1,1,:),4),  cv_dt08='Wind', cun08='m/s',   cln08='Module of Wind Speed',   &
-      &           vdt09=REAL(TAU(1,1,:),4),  cv_dt09='Tau',  cun09='N/m^2', cln09='Module of Wind Stress'   )
+      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat', cun02='W/m^2', cln02='Latent Heat Flux',       &
+      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen', cun03='W/m^2', cln03='Sensible Heat Flux',     &
+      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',  cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',  cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',  cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+      &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs',cun07='deg.C', cln07='Cool-Skin dT',           &
+      &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl',cun08='deg.C', cln08='Warm-Layer dT',          &
+      &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind', cun09='m/s',   cln09='Module of Wind Speed',   &
+      &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',  cun10='N/m^2', cln10='Module of Wind Stress',  &
+      &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',   cun11='deg.C', cln11='SST - Ts'   )
 
    !,             &
 

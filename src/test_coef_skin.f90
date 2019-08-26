@@ -174,7 +174,7 @@ PROGRAM TEST_COEF
    PRINT *, ''
    PRINT *, ''
 
-   qsat_sst = 0.98*q_sat(sst, SLP)
+   qsat_sst = rdct_qsat_salt*q_sat(sst, SLP)
 
    PRINT *, '' ;  PRINT *, 'BEFORE: SSQ = 0.98*q_sat(sst) =', 1000.*qsat_sst, '[g/kg]' ; PRINT *, ''
 
