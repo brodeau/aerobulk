@@ -37,6 +37,8 @@ PROGRAM TEST_SKIN_CORR
    REAL(wp), DIMENSION(lx,ly) :: sst, qsat_zt, rlon, rad_sw, rad_lw, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, theta_zu, q_zu, ssq, tmp, dtheta_v
 
+   REAL(wp) :: rt_day_h_utc ! Current UTC time in number of hours since midnight
+   INTEGER  :: it_day_s_utc ! Current UTC time in number of hours since midnight
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
@@ -149,6 +151,13 @@ PROGRAM TEST_SKIN_CORR
    READ(*,*) rlon
    WRITE(6,*) ''
 
+   WRITE(6,*) 'Give the current UTC time in number of hours since midnight:'
+   READ(*,*) rt_day_h_utc
+   it_day_s_utc = INT( rt_day_h_utc*3600._wp )
+   WRITE(6,*) '  ==> UTC time in number of SECONDS since midnight:', it_day_s_utc
+   WRITE(6,*) ''
+
+   
    WRITE(6,*) 'Give RAD_SW (W/m^2):'
    READ(*,*) rad_sw
    WRITE(6,*) ''
@@ -270,7 +279,7 @@ PROGRAM TEST_SKIN_CORR
          tmp1 = 0.01
          tmp2 = 0.
          tmp3 = 0.
-         CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, 3600*7, 60. )
+         CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, it_day_s_utc, 60. )
          STOP
 
          

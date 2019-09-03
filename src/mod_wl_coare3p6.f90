@@ -302,10 +302,11 @@ CONTAINS
       REAL(wp) :: Al, qjoule
       REAL(wp) :: ctd1, ctd2
 
-      REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ 10.47 hours for Hawai
+      REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
       
-      INTEGER  :: ilag_gw_s, &  ! local solar time lag in seconds / Greenwich meridian (lon==0) => ex: ~ INT( 10.47*3600. ) seconds for Hawai
-         &    isecday_n, jl, ihh, imm, it_n, it_b
+      INTEGER  :: ilag_gw_s, &  ! local solar time LAG in seconds / Greenwich meridian (lon==0) => ex: ~ INT( -10.47*3600. ) seconds for Hawai
+         &        isd_sol,   &  ! local solar time in number of seconds since local solar midnight
+         &        jl,  it_n, it_b
       INTEGER  :: jamset
       
       !! INITIALIZATION:
@@ -340,22 +341,16 @@ CONTAINS
 
             !! Need to know the local solar time from longitude and isd
             !! *********************************************************
-
-            !! Hours and minutes in file are supposed to be UTC time:
-            rlag_gw_h = MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )            
-            PRINT *, ' Lag in hours / Greenwich for local solar time =', rlag_gw_h
+            rlag_gw_h = -1._wp * MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )
+            rlag_gw_h = -1._wp * SIGN( MIN(ABS(rlag_gw_h) , ABS(MODULO(rlag_gw_h,24._wp))), rlag_gw_h + 12._wp )            
+            PRINT *, ' Lag in hours / Greenwich for local solar time =', rlag_gw_h            
             ilag_gw_s = INT( rlag_gw_h*3600._wp )
-            
-            isecday_n = ihh*3600 + imm*60
-            IF ( isecday_n < ilag_gw_s ) THEN
-               isecday_n = isecday_n - ilag_gw_s + 24.*3600.
-            ELSE
-               isecday_n = isecday_n - ilag_gw_s
-            END IF
-            !ihh_s = isecday_n/3600
-            !imm_s = MOD(isecday_n,3600)/60
-
-
+            isd_sol = MODULO( isd + ilag_gw_s , 24*3600 )
+            PRINT *, '     UTC     time in seconds:', isd
+            PRINT *, ' Local solar time in seconds:', isd_sol
+            PRINT *, '     UTC     time in hours:',   REAL(isd    ,wp)/3600._wp
+            PRINT *, ' Local solar time in hours:',   REAL(isd_sol,wp)/3600._wp            
+            STOP'LOLO:mod_wl_coare3p6.f90'
 
 
 
