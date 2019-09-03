@@ -69,7 +69,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, dz_wl
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
 
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
@@ -169,7 +169,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
       &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt) )
-   ALLOCATE (  ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
+   ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
@@ -182,9 +182,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !! Reading data time-series into netcdf file:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
+   !CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
+   CALL GETVAR_1D(cf_data, 'lon',  xlon ) ; ! (longitude for solar time...)
    rlon = vlon(1)
 
+   STOP'1'
+   
    CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
    CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
    PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
@@ -451,7 +454,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
                tmp(:,:) = Ts(:,:,jt) 
                
-               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
+               !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
+
+               CALL WL_COARE3P6_2( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), isecday_b, isecday_n,  Hwl=dz_wl(:,:,jt) )
+
+
+               STOP'LOLO: WL_COARE3P6_2 done...'
                !
                !PRINT *, '  => dT_wl =', dT_wl(:,:,jt) ; STOP
                !

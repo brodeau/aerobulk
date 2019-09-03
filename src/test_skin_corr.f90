@@ -7,10 +7,12 @@ PROGRAM TEST_SKIN_CORR
 
    USE mod_blk_coare3p0
    USE mod_blk_ecmwf
+   !USE mod_blk_coare3p6
+   USE mod_wl_coare3p6
 
    IMPLICIT NONE
 
-   CHARACTER(len=5) :: calgo = 'coare3p0'
+   CHARACTER(len=8) :: calgo = 'coare3p0'
 
    REAL(wp), PARAMETER ::   &
       &   zt  =  2. ,  &
@@ -30,8 +32,9 @@ PROGRAM TEST_SKIN_CORR
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, sst_s, ssq_s
+   REAL(wp),    DIMENSION(lx,ly) :: tmp1, tmp2, tmp3 !LOLO remove!!!
 
-   REAL(wp), DIMENSION(lx,ly) :: sst, qsat_zt, rad_sw, rad_lw, SLP, &
+   REAL(wp), DIMENSION(lx,ly) :: sst, qsat_zt, rlon, rad_sw, rad_lw, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, theta_zu, q_zu, ssq, tmp, dtheta_v
 
 
@@ -120,13 +123,17 @@ PROGRAM TEST_SKIN_CORR
    END IF
    WRITE(czu,'(i2,"m")') INT(zu)
 
-
-   WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 :'
-   READ(*,*) ians
-   IF ( ians == 1 ) calgo = 'coare3p0'
-   IF ( ians == 2 ) calgo = 'ecmwf'
+   ians=0
+   DO WHILE ( (ians<1).OR.(ians>3) )
+      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
+      READ(*,*) ians
+      IF ( ians == 1 ) calgo = 'coare3p0'
+      IF ( ians == 2 ) calgo = 'ecmwf   '
+      IF ( ians == 3 ) calgo = 'coare3p6'
+   END DO
+   WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
-
+   
 
    IF ( l_ask_for_slp ) THEN
       WRITE(6,*) 'Give sea-level pressure (hPa):'
@@ -136,6 +143,10 @@ PROGRAM TEST_SKIN_CORR
       SLP = Patm
       WRITE(6,*) 'Using a sea-level pressure of ', Patm
    END IF
+   WRITE(6,*) ''
+
+   WRITE(6,*) 'Give the longitude (deg.East) [negative values accepted!]:'
+   READ(*,*) rlon
    WRITE(6,*) ''
 
    WRITE(6,*) 'Give RAD_SW (W/m^2):'
@@ -236,7 +247,7 @@ PROGRAM TEST_SKIN_CORR
 
       sst_s = sst
 
-      SELECT CASE (calgo)
+      SELECT CASE (TRIM(calgo))
 
       CASE('coare3p0')
          CALL turb_coare3p0( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
@@ -248,8 +259,24 @@ PROGRAM TEST_SKIN_CORR
             &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
             &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
 
+
+
+      CASE('coare3p6')
+         !CALL turb_coare3p0( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
+         !   &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+         !   &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         PRINT *, 'Booh!!! Not ready yet!'
+
+         tmp1 = 0.01
+         tmp2 = 0.
+         tmp3 = 0.
+         CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, 3600*7, 60. )
+         STOP
+
+         
+         
       CASE DEFAULT
-         PRINT *, 'Unknown algorithm: ', calgo ; PRINT *, ''
+         PRINT *, 'Unknown algorithm: ', TRIM(calgo) ; PRINT *, ''
          CALL usage_test()
 
       END SELECT
@@ -270,10 +297,10 @@ PROGRAM TEST_SKIN_CORR
 
    IF ( dtheta_v(1,1) < 0. ) THEN
       WRITE(cf_out,'("dat/dT_skin_vs_wind_",a,"_SST",i2.2,"_SW",i4.4,"_LW",i4.4,"_RH",i2.2,"_unstable.dat")') &
-         &  calgo, INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
+         &  trim(calgo), INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
    ELSE
       WRITE(cf_out,'("dat/dT_skin_vs_wind_",a,"_SST",i2.2,"_SW",i4.4,"_LW",i4.4,"_RH",i2.2,"_stable.dat")') &
-         &  calgo, INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
+         &  trim(calgo), INT(SST-rt0), INT(RAD_SW), INT(RAD_LW), INT(100.*RH_zt)
    END IF
 
    PRINT *, trim(cf_out)

@@ -79,7 +79,7 @@ CONTAINS
 
 
 
-      
+
       !! INITIALIZATION:
 
       !pTau=Bx(2)  !stress
@@ -141,8 +141,8 @@ CONTAINS
             !IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
 
             !   jump = 0
-            
-            IF (it_n < it_b) THEN    !re-zero at midnight               
+
+            IF (it_n < it_b) THEN    !re-zero at midnight
                PRINT *, 'LOLO: MIDNIGHT RESET !!!!, it_b,  it_n =>', it_b, it_n
                jamset         = 0
                zfs            = 0.5_wp
@@ -151,30 +151,30 @@ CONTAINS
                pQ_ac(ji,jj)   = 0._wp
                dT_wl          = 0._wp
             END IF
-            
+
             IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
-               
+
                PRINT *, 'LOLO: WE DO WL !!!!'
                PRINT *, ' it_b,  it_n =>',  it_b,  it_n
                PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
-               
+
                !************************************
                !****   set warm layer constants  ***
                !************************************
 
                dtime = it_n - it_b      ! delta time for integrals
-              
+
                Qabs = zfs*pQsw(ji,jj) - pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
                PRINT *, 'dtime,  pQsw, pQnsol, Qabs =', dtime,  pQsw(ji,jj), pQnsol(ji,jj), Qabs
-               
+
                IF ( (Qabs >= Qabs_thr).OR.(jamset == 1) ) THEN         ! Check for threshold
-                  
+
                   PRINT *, ' pTau_ac, pQ_ac =', pTau_ac(ji,jj), pQ_ac(ji,jj)
 
                   jamset = 1                                         ! indicates threshold crossed
                   pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*dtime      ! momentum integral
-                  
+
                   IF ( pQ_ac(ji,jj) + Qabs*dtime > 0._wp ) THEN         !check threshold for warm layer existence
                      !******************************************
                      ! Compute the absorption profile
@@ -200,7 +200,7 @@ CONTAINS
                   pQ_ac(ji,jj) = zqac !heat integral
 
                   !*******  compute dt_warm  ******
-                  !LOLOnew: dT_wl = ctd2*MAX(0._wp,pQ_ac(ji,jj))**1.5/pTau_ac(ji,jj)                  
+                  !LOLOnew: dT_wl = ctd2*MAX(0._wp,pQ_ac(ji,jj))**1.5/pTau_ac(ji,jj)
                   IF (pQ_ac(ji,jj) > 0._wp) THEN
                      dT_wl = ctd2*pQ_ac(ji,jj)**1.5/pTau_ac(ji,jj)
                   ELSE
@@ -217,7 +217,7 @@ CONTAINS
                END IF
 
             END IF ! IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
-            
+
             !END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
 
 
@@ -228,7 +228,7 @@ CONTAINS
          END DO
          PRINT *, ''
       END DO
-      
+
       !END IF  !  IF (icount>1)
 
 
@@ -262,7 +262,7 @@ CONTAINS
 
 
 
-   
+
    SUBROUTINE WL_COARE3P6_2( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, plon, isd, rdt, &
       &                    Hwl )
       !!---------------------------------------------------------------------
@@ -288,7 +288,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_true = pSST + pdT
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: plon     ! longitude ! lolo
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: plon     ! longitude ! lolo
       INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
       REAL(wp),                     INTENT(in)    :: rdt      ! time step in seconds
       !!
@@ -302,7 +302,10 @@ CONTAINS
       REAL(wp) :: Al, qjoule
       REAL(wp) :: ctd1, ctd2
 
-      INTEGER  :: jl
+      REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ 10.47 hours for Hawai
+      
+      INTEGER  :: ilag_gw_s, &  ! local solar time lag in seconds / Greenwich meridian (lon==0) => ex: ~ INT( 10.47*3600. ) seconds for Hawai
+         &    isecday_n, jl, ihh, imm, it_n, it_b
       INTEGER  :: jamset
       
       !! INITIALIZATION:
@@ -334,23 +337,25 @@ CONTAINS
          DO ji = 1, jpi
 
             !PRINT *, ' *** jj =', jj
-            
+
             !! Need to know the local solar time from longitude and isd
             !! *********************************************************
-            
-            !! Hours and minutes in file are supposed to be UTC time:                                                                                       
-            itlag_s = INT( (360. - rlon)/15.*3600. )
-            !PRINT *, ' Lag in sec / hours for solar time =', itlag_s, REAL(itlag_s,wp)/3600._wp                                                            
-            isecday_n = ihh*3600 + imm*60
-            IF ( isecday_n < itlag_s ) THEN
-               isecday_n = isecday_n - itlag_s + 24.*3600.
-            ELSE
-               isecday_n = isecday_n - itlag_s
-            END IF
-            ihh_s = isecday_n/3600
-            imm_s = MOD(isecday_n,3600)/60
 
+            !! Hours and minutes in file are supposed to be UTC time:
+            rlag_gw_h = MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )            
+            PRINT *, ' Lag in hours / Greenwich for local solar time =', rlag_gw_h
+            ilag_gw_s = INT( rlag_gw_h*3600._wp )
             
+            isecday_n = ihh*3600 + imm*60
+            IF ( isecday_n < ilag_gw_s ) THEN
+               isecday_n = isecday_n - ilag_gw_s + 24.*3600.
+            ELSE
+               isecday_n = isecday_n - ilag_gw_s
+            END IF
+            !ihh_s = isecday_n/3600
+            !imm_s = MOD(isecday_n,3600)/60
+
+
 
 
 
@@ -382,8 +387,8 @@ CONTAINS
             !IF ( (it_n <= 21600).OR.(jump == 0) ) THEN  ! (21600 == 6am)
 
             !   jump = 0
-            
-            IF (it_n < it_b) THEN    !re-zero at midnight               
+
+            IF (it_n < it_b) THEN    !re-zero at midnight
                PRINT *, 'LOLO: MIDNIGHT RESET !!!!, it_b,  it_n =>', it_b, it_n
                jamset         = 0
                zfs            = 0.5_wp
@@ -392,30 +397,30 @@ CONTAINS
                pQ_ac(ji,jj)   = 0._wp
                dT_wl          = 0._wp
             END IF
-            
+
             IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
-               
+
                PRINT *, 'LOLO: WE DO WL !!!!'
                PRINT *, ' it_b,  it_n =>',  it_b,  it_n
                PRINT *, 'pTau, pSST, pdT =', pTau(ji,jj), pSST(ji,jj), pdT(ji,jj)
-               
+
                !************************************
                !****   set warm layer constants  ***
                !************************************
 
                dtime = it_n - it_b      ! delta time for integrals
-              
+
                Qabs = zfs*pQsw(ji,jj) - pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
                PRINT *, 'dtime,  pQsw, pQnsol, Qabs =', dtime,  pQsw(ji,jj), pQnsol(ji,jj), Qabs
-               
+
                IF ( (Qabs >= Qabs_thr).OR.(jamset == 1) ) THEN         ! Check for threshold
-                  
+
                   PRINT *, ' pTau_ac, pQ_ac =', pTau_ac(ji,jj), pQ_ac(ji,jj)
 
                   jamset = 1                                         ! indicates threshold crossed
                   pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*dtime      ! momentum integral
-                  
+
                   IF ( pQ_ac(ji,jj) + Qabs*dtime > 0._wp ) THEN         !check threshold for warm layer existence
                      !******************************************
                      ! Compute the absorption profile
@@ -441,7 +446,7 @@ CONTAINS
                   pQ_ac(ji,jj) = zqac !heat integral
 
                   !*******  compute dt_warm  ******
-                  !LOLOnew: dT_wl = ctd2*MAX(0._wp,pQ_ac(ji,jj))**1.5/pTau_ac(ji,jj)                  
+                  !LOLOnew: dT_wl = ctd2*MAX(0._wp,pQ_ac(ji,jj))**1.5/pTau_ac(ji,jj)
                   IF (pQ_ac(ji,jj) > 0._wp) THEN
                      dT_wl = ctd2*pQ_ac(ji,jj)**1.5/pTau_ac(ji,jj)
                   ELSE
@@ -458,7 +463,7 @@ CONTAINS
                END IF
 
             END IF ! IF ( it_n >= 21600 ) THEN  ! (21600 == 6am)
-            
+
             !END IF !  IF ( (it_n<=21600).OR.(jump==0) )  end 6am start first time thru
 
 
@@ -469,7 +474,7 @@ CONTAINS
          END DO
          PRINT *, ''
       END DO
-      
+
       !END IF  !  IF (icount>1)
 
 
@@ -502,7 +507,7 @@ CONTAINS
 
 
 
-   
+
 END MODULE mod_wl_coare3p6
 
 !**************************************************
