@@ -30,8 +30,8 @@ MODULE mod_wl_coare3p6
    PUBLIC :: WL_COARE3P6
 
    REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
-   REAL(wp), PARAMETER :: z_sst  = 1._wp     !: depth at which bulk SST is taken...
-   REAL(wp), PARAMETER :: dz_max = 19._wp    !: maximum depth of warm layer (adjustable)
+   REAL(wp), PARAMETER :: z_sst  = 10._wp    !: depth at which bulk SST is taken...
+   REAL(wp), PARAMETER :: dz_max = 20._wp    !: maximum depth of warm layer (adjustable)
    REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL
    REAL(wp), PARAMETER :: zfs0   = 0.5_wp    !: initial value of solar flux absorption
 
@@ -40,7 +40,7 @@ MODULE mod_wl_coare3p6
 CONTAINS
 
    SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, plon, isd, rdt, &
-      &                    Hwl )
+      &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin Warm-Layer scheme according to COARE 3.6 (Fairall et al, 2019)
@@ -61,6 +61,7 @@ CONTAINS
       !!
       !!   ** OPTIONAL OUTPUT:
       !!     *Hwl*        depth of warm layer [m]
+      !!     *mask_wl*    mask for possible existence of a warm-layer (1) or not (0)
       !!
       !!------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
@@ -74,7 +75,8 @@ CONTAINS
       INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
       REAL(wp),                     INTENT(in)    :: rdt      ! physical time step between two successive call to this routine [s]
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl    ! depth of warm layer [m]
+      REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
+      INTEGER(1), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: mask_wl ! mask for possible existence of a warm-layer (1) or not (0)
       !
       !
       INTEGER :: ji,jj,iflg
@@ -97,6 +99,8 @@ CONTAINS
       zQabs  = 0._wp       ! total heat absorped in warm layer
       zfs   = zfs0        ! initial value of solar flux absorption
 
+      IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
+      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -189,10 +193,11 @@ CONTAINS
                pdT(ji,jj) = dT_wl * ( iflg + (1-iflg)*z_sst/dz_wl )
 
             END IF ! IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
-
+            
             IF ( (zQabs >= Qabs_thr).AND.(isd_sol >= 21600) ) THEN
                pQ_ac(ji,jj)   = zqac ! Updating pQ_ac, heat integral
                pTau_ac(ji,jj) = ztac !
+               IF ( PRESENT(mask_wl) ) mask_wl(ji,jj) = 1
             END IF
 
             IF ( PRESENT(Hwl) ) Hwl(ji,jj) = dz_wl

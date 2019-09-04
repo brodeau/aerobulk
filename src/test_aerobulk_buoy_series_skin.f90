@@ -72,6 +72,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, dz_wl
 
+   INTEGER(1), DIMENSION(:,:,:), ALLOCATABLE :: mskwl
+
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
 
 
@@ -166,7 +168,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
-      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt) )
+      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), mskwl(nx,ny,Nt) )
    ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
@@ -421,7 +423,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
                tmp(:,:) = Ts(:,:,jt)
 
                CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), &
-                  &             xlon(:,:), isecday_utc, dt_s,  Hwl=dz_wl(:,:,jt) )
+                  &             xlon(:,:), isecday_utc, dt_s,  Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
 
                !PRINT *, '  => dT_wl =', dT_wl(:,:,jt) ; STOP
                !
@@ -464,20 +466,23 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    END DO !DO jt = 1, Nt
 
-
+   
+   dz_wl(:,:,:) = mskwl(:,:,:)*dz_wl(:,:,:) + (1 - mskwl(:,:,:))*-9999.
+   
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
-      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat', cun02='W/m^2', cln02='Latent Heat Flux',       &
-      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen', cun03='W/m^2', cln03='Sensible Heat Flux',     &
-      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',  cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',  cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',  cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-      &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs',cun07='deg.C', cln07='Cool-Skin dT',           &
-      &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl',cun08='deg.C', cln08='Warm-Layer dT',          &
-      &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind', cun09='m/s',   cln09='Module of Wind Speed',   &
-      &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',  cun10='N/m^2', cln10='Module of Wind Stress',  &
-      &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',   cun11='deg.C', cln11='SST - Ts'   )
+      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
+      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
+      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+      &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs', cun07='deg.C', cln07='Cool-Skin dT',           &
+      &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl', cun08='deg.C', cln08='Warm-Layer dT',          &
+      &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
+      &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
+      &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
+      &           vdt12=REAL(dz_wl(1,1,:),4), cv_dt12='dz_wl', cun12='m',     cln12='Estimated depth of warm-layer')
 
    !,             &
 
