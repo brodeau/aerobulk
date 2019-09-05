@@ -8,7 +8,7 @@
 !
 !
 ! LOLO: if SST measured at a relatively shallow depth, say 1 m, then it should already include the warm-layer effect???
-!      => correction makes only sense if SST is taken relatively deep and that heat flux is so big and wind so weak that the warm layer is becomes thinner ??? 
+!      => correction makes only sense if SST is taken relatively deep and that heat flux is so big and wind so weak that the warm layer is becomes thinner ???
 !
 !
 MODULE mod_wl_coare3p6
@@ -27,21 +27,45 @@ MODULE mod_wl_coare3p6
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: WL_COARE3P6
+   PUBLIC :: WL_COARE3P6_INIT, WL_COARE3P6
 
    REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
    !REAL(wp), PARAMETER :: z_sst  = 18._wp    !: depth at which bulk SST is taken...
    REAL(wp), PARAMETER :: z_sst  = 1._wp    !: depth at which bulk SST is taken...
-   !REAL(wp), PARAMETER :: z_sst  = 0.5_wp    !: depth at which bulk SST is taken...   
+   !REAL(wp), PARAMETER :: z_sst  = 0.5_wp    !: depth at which bulk SST is taken...
    REAL(wp), PARAMETER :: dz_max = 20._wp    !: maximum depth of warm layer (adjustable)
    REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL
    REAL(wp), PARAMETER :: zfs0   = 0.5_wp    !: initial value of solar flux absorption
+
+
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
+
+
+   !REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:
+
+
 
    !LOGICAL, PUBLIC, SAVE :: l_wl_c36_never_called
 
 CONTAINS
 
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, pdT, pTau_ac, pQ_ac, plon, isd, rdt, &
+   SUBROUTINE WL_COARE3P6_INIT()
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION sbc_oce_alloc  ***
+      !!---------------------------------------------------------------------
+      INTEGER :: ierr(1)
+      !!---------------------------------------------------------------------
+      ierr(:) = 0
+      ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr(1) )
+      IF( MAXVAL(ierr) > 0 ) STOP ' WL_COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
+      pTau_ac(:,:) = 0._wp
+      pQ_ac(:,:)   = 0._wp
+      PRINT *, ' *** pTau_ac and pQ_ac allocated!'
+   END SUBROUTINE WL_COARE3P6_INIT
+
+   
+   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, rdt,  pdT, &
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
@@ -49,7 +73,6 @@ CONTAINS
       !!     ------------------------------------------------------------------
       !!
       !!  **   INPUT:
-      !!
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pTau*       surface wind stress                            [N/m^2]
@@ -58,7 +81,7 @@ CONTAINS
       !!     *isd*        current UTC time, counted in second since 00h of the current day
       !!     *rdt*        physical time step between two successive calls to this routine [s]
       !!
-      !!   **  INPUT/OUTPUT:
+      !!  **   OUTPUT:
       !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
       !!
       !!   ** OPTIONAL OUTPUT:
@@ -66,16 +89,14 @@ CONTAINS
       !!     *mask_wl*    mask for possible existence of a warm-layer (1) or not (0)
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth z_sst [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: plon     ! longitude ! lolo
-      INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
-      REAL(wp),                     INTENT(in)    :: rdt      ! physical time step between two successive call to this routine [s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
+      INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
+      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
       !!
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
       INTEGER(1), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: mask_wl ! mask for possible existence of a warm-layer (1) or not (0)
@@ -102,7 +123,7 @@ CONTAINS
       zfs   = zfs0        ! initial value of solar flux absorption
 
       IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
-      
+
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -195,7 +216,7 @@ CONTAINS
                pdT(ji,jj) = dT_wl * ( iflg + (1-iflg)*z_sst/dz_wl )
 
             END IF ! IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
-            
+
             IF ( (zQabs >= Qabs_thr).AND.(isd_sol >= 21600) ) THEN
                pQ_ac(ji,jj)   = zqac ! Updating pQ_ac, heat integral
                pTau_ac(ji,jj) = ztac !

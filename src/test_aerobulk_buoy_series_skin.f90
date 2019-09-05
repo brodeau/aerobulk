@@ -74,7 +74,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER(1), DIMENSION(:,:,:), ALLOCATABLE :: mskwl
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp, pTau_ac, pQ_ac
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp
 
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
@@ -169,13 +169,17 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
       &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), mskwl(nx,ny,Nt) )
-   ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny), pTau_ac(nx,ny), pQ_ac(nx,ny) )
+   ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
+
+   CALL WL_COARE3P6_INIT() ! allocation of accumulation arrays
+
+   
    !! Reading data time-series into netcdf file:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
@@ -268,9 +272,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    zL  = 0.
    zUN10 = 0.
 
-   pTau_ac = 0.
-   pQ_ac   = 0.
-
+   pTau_ac(:,:) = 0. !... normalyy done into WL_COARE3P6_INIT
+   pQ_ac(:,:)   = 0.
 
    isecday_utc = 0
 
@@ -422,8 +425,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
                tmp(:,:) = Ts(:,:,jt)
 
-               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), dT_wl(:,:,jt), pTau_ac(:,:), pQ_ac(:,:), &
-                  &             xlon(:,:), isecday_utc, dt_s,  Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
+               CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), xlon(:,:), isecday_utc, dt_s, dT_wl(:,:,jt), &
+                  &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
 
                !PRINT *, '  => dT_wl =', dT_wl(:,:,jt) ; STOP
                !
