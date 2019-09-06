@@ -54,18 +54,20 @@ CONTAINS
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION sbc_oce_alloc  ***
       !!---------------------------------------------------------------------
-      INTEGER :: ierr(1)
+      INTEGER :: ierr
       !!---------------------------------------------------------------------
-      ierr(:) = 0
-      ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr(1) )
-      IF( MAXVAL(ierr) > 0 ) STOP ' WL_COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
+      ierr = 0
+      PRINT *, ' *** Allocating pTau_ac and pQ_ac :', jpi,jpj
+      ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr )
+      PRINT *, 'ierr = ', ierr
+      !IF( ierr > 0 ) STOP ' WL_COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
       pTau_ac(:,:) = 0._wp
       pQ_ac(:,:)   = 0._wp
       PRINT *, ' *** pTau_ac and pQ_ac allocated!'
    END SUBROUTINE WL_COARE3P6_INIT
 
    
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, rdt,  pdT, &
+   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, rdt, iwait,  pdT, &
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
@@ -80,6 +82,7 @@ CONTAINS
       !!     *plon*       longitude                                      [deg.E]
       !!     *isd*        current UTC time, counted in second since 00h of the current day
       !!     *rdt*        physical time step between two successive calls to this routine [s]
+      !!     *iwait*      if /= 0 then wait before updating accumulated fluxes, we are within a converging itteration loop...
       !!
       !!  **   OUTPUT:
       !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
@@ -96,6 +99,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
       INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
       REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
+      INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
       !!
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
@@ -217,10 +221,13 @@ CONTAINS
 
             END IF ! IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
 
-            IF ( (zQabs >= Qabs_thr).AND.(isd_sol >= 21600) ) THEN
-               pQ_ac(ji,jj)   = zqac ! Updating pQ_ac, heat integral
-               pTau_ac(ji,jj) = ztac !
-               IF ( PRESENT(mask_wl) ) mask_wl(ji,jj) = 1
+            IF ( iwait == 0 ) THEN
+               IF ( (zQabs >= Qabs_thr).AND.(isd_sol >= 21600) ) THEN
+                  PRINT *, '  [WL_COARE3P6] WE UPDATE ACCUMULATED FLUXES !!!'
+                  pQ_ac(ji,jj)   = zqac ! Updating pQ_ac, heat integral
+                  pTau_ac(ji,jj) = ztac !
+                  IF ( PRESENT(mask_wl) ) mask_wl(ji,jj) = 1
+               END IF
             END IF
 
             IF ( PRESENT(Hwl) ) Hwl(ji,jj) = dz_wl
