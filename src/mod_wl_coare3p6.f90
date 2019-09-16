@@ -35,7 +35,7 @@ MODULE mod_wl_coare3p6
    !REAL(wp), PARAMETER :: z_sst  = 0.5_wp    !: depth at which bulk SST is taken...
    REAL(wp), PARAMETER :: dz_max = 20._wp    !: maximum depth of warm layer (adjustable)
    REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL
-   REAL(wp), PARAMETER :: zfs0   = 0.5_wp    !: initial value of solar flux absorption
+   REAL(wp), PARAMETER :: ZFI0   = 0.5_wp    !: initial value of solar flux absorption
 
 
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
@@ -94,7 +94,7 @@ CONTAINS
       !
       INTEGER :: ji,jj,iflg
       !
-      REAL(wp) :: dT_wl, dz_wl, zQabs, zfs
+      REAL(wp) :: dT_wl, dz_wl, zQabs, ZFI
       REAL(wp) :: zqac, ztac
       REAL(wp) :: zAl, zcd1, zcd2
 
@@ -110,7 +110,7 @@ CONTAINS
       dT_wl = 0._wp       ! total warming (amplitude) in warm layer
       dz_wl = dz_max      ! initial depth set to max value
       zQabs  = 0._wp       ! total heat absorped in warm layer
-      zfs   = zfs0        ! initial value of solar flux absorption
+      ZFI   = ZFI0        ! initial value of solar flux absorption
 
       IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
 
@@ -141,7 +141,7 @@ CONTAINS
 
             IF (isd_sol < rdt ) THEN    !re-zero at midnight ! LOLO improve: risky if real midnight (00:00:00) is not a time in vtime...
                PRINT *, '  [WL_COARE3P6] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
-               zfs            = zfs0
+               ZFI            = ZFI0
                dz_wl          = dz_max
                pTau_ac(ji,jj) = 0._wp
                ztac           = 0._wp
@@ -159,7 +159,7 @@ CONTAINS
                !****   set warm layer constants  ***
                !************************************
 
-               zQabs = zfs*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
+               zQabs = ZFI*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
                PRINT *, '  [WL_COARE3P6] rdt,  pQsw, pQnsol, zQabs =', rdt, REAL(pQsw(ji,jj),4), REAL(pQnsol(ji,jj),4), REAL(zQabs,4)
 
@@ -174,10 +174,10 @@ CONTAINS
                      !******************************************
                      ! Compute the absorption profile
                      !******************************************
-                     DO jl = 1, 5                           !loop 5 times for zfs
-                        zfs = 1. - ( 0.28*0.014*(1. - EXP(-dz_wl/0.014)) + 0.27*0.357*(1. - EXP(-dz_wl/0.357)) &
+                     DO jl = 1, 5                           !loop 5 times for ZFI
+                        ZFI = 1. - ( 0.28*0.014*(1. - EXP(-dz_wl/0.014)) + 0.27*0.357*(1. - EXP(-dz_wl/0.357)) &
                            &        + 0.45*12.82*(1-EXP(-dz_wl/12.82)) ) / dz_wl
-                        zqac = pQ_ac(ji,jj) + (zfs*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
+                        zqac = pQ_ac(ji,jj) + (ZFI*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
                         IF (zqac <= 0._wp) STOP'ERROR: zqac <= 0 !!! #1'
                         dz_wl = MIN( dz_max , zcd1*ztac/SQRT(zqac)) ! Warm-layer depth (normally: zqac > 0 !)
                      END DO
@@ -186,9 +186,9 @@ CONTAINS
                      !***********************
                      ! Warm layer wiped out
                      !***********************
-                     zfs    = 0.75
+                     ZFI    = 0.75
                      dz_wl  = dz_max
-                     zqac   = pQ_ac(ji,jj) + (zfs*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
+                     zqac   = pQ_ac(ji,jj) + (ZFI*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
                   END IF
 
                   ! normally: zqac > 0 !
