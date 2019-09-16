@@ -12,10 +12,10 @@ MODULE mod_cs_coare3p6
    !!       Cool-Skin correction of SST
    !!    Cool-skin parametrization (Fairall et al. 1996)
    !!
-   !!       Routine CS_COARE3P6 maintained and developed in AeroBulk
-   !!             (https://github.com/brodeau/aerobulk/)
+   !!       Routine "cs_coare3p6" maintained and developed in AeroBulk
+   !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, 2016
+   !!            Author: Laurent Brodeau, 2019
    !!
    !!====================================================================================
    USE mod_const   !: physical and othe constants
@@ -25,25 +25,36 @@ MODULE mod_cs_coare3p6
    PRIVATE
 
    PUBLIC :: CS_COARE3P6
-   
+
    !!----------------------------------------------------------------------
 CONTAINS
 
 
-   SUBROUTINE CS_COARE3P6( pTzu, pqzu, psst, pslp, pU10, pus, pts, pqs, &
-      &                   prhoa, pRlw, pQsw, pdelta, pT_s, pq_s )
+   SUBROUTINE CS_COARE3P6( pTzu, pqzu, pSST, pslp, pUzu, pus, pts, pqs, &
+      &                   prhoa, pRlw, pQsw, pdelta,  pdT )
+      !!
+      !!  **   OUTPUT:
+      !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin Warm-Layer scheme according to Fairall et al. 1996
+      !!     
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTzu ! air temperature at height zu above sea surface [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pqzu ! air specific humidity at height zu above sea surface [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST ! bulk SST [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pUzu ! scalar wind speed at height zu above sea surface [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pus, pts, pqs ! friction velocity, temperature and humidity (u*,t*,q*)
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTzu, pqzu, psst, pslp, &
-         &                                           pU10, pus, pts, pqs
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: prhoa, pRlw, pQsw
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdelta, pT_s, pq_s
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: prhoa  ! density of air at height zu above sea surface [kg/m^3]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pRlw   ! downwelling longwave radiation [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdelta ! thickness of the viscous (skin) layer [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cooling such as SSST = pSST + pdT
       !!---------------------------------------------------------------------
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zz0, zz1, zz2, zCe, zCh, zus, zQsen, zQlat, zQlw, zfr, &
-         &        zdt, zdq, ztf, &
+      REAL(wp) :: zz0, zz1, zz2, zCd, zCe, zCh, zus, zQsen, zQlat, zQlw, zfr, &
+         &        T_s, q_s, zdt, zdq, ztf, &
          &        zdelta, zlamb, zalpha, zQt
       !!---------------------------------------------------------------------
       DO jj = 1, jpj
@@ -51,21 +62,25 @@ CONTAINS
 
             zdelta = pdelta(ji,jj)
 
-            zdt = pTzu(ji,jj) - pT_s(ji,jj)  ; zdt = SIGN( MAX(ABS(zdt),1e-6_wp), zdt )
-            zdq = pqzu(ji,jj) - pq_s(ji,jj)  ; zdq = SIGN( MAX(ABS(zdq),1e-9_wp), zdq )
+            T_s = pSST(ji,jj) + pdT(ji,jj) ! actual skin temperature
+            zz0 = e_sat(MAX(T_s, 200._wp)) !
+            q_s = rdct_qsat_salt*reps0*zz0/(pslp(ji,jj) - (1. - reps0)*zz0) ! actual specific hum. at saturation at T=T_s
+
+            zdt = pTzu(ji,jj) - T_s  ; zdt = SIGN( MAX(ABS(zdt),1e-6_wp), zdt )
+            zdq = pqzu(ji,jj) - q_s  ; zdq = SIGN( MAX(ABS(zdq),1e-9_wp), zdq )
 
             !! compute transfer coefficients at zu :
-            zz0 = pus(ji,jj)/pU10(ji,jj)    !LB! not needed inside the loop !
-            zCh = zz0*pts(ji,jj)/zdt
-            zCe = zz0*pqs(ji,jj)/zdq
+            zCd = pus(ji,jj)/pUzu(ji,jj)    !LB! not needed inside the loop !
+            zCh = zCd*pts(ji,jj)/zdt
+            zCe = zCd*pqs(ji,jj)/zdq
 
             ! Turbulent heat fluxes:
-            zz1 = prhoa(ji,jj)*pU10(ji,jj)
-            zQlat = MIN( rLevap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
-            zQsen =     rCp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
+            zz1 = prhoa(ji,jj)*pUzu(ji,jj)
+            zQlat = MIN( rLevap*zCe*zz1*(pqzu(ji,jj) - q_s) , 0._wp )
+            zQsen =      rCp0_a*zCh*zz1*(pTzu(ji,jj) - T_s)
 
             ! Net longwave flux:
-            zz1  = pT_s(ji,jj)*pT_s(ji,jj)
+            zz1  = T_s*T_s
             zQlw = emiss_w*(pRlw(ji,jj) - sigma0*zz1*zz1)
 
             !! Fraction of the shortwave flux absorbed by the cool-skin sublayer:
@@ -79,7 +94,7 @@ CONTAINS
             ztf    = 0.5 + SIGN(0.5_wp, zQt) ! Qt > 0 => cooling of the layer => ztf = 1
             !                               Qt < 0 => warming of the layer => ztf = 0
 
-            zalpha = 2.1e-5*MAX(pT_s(ji,jj)-rt0 + 3.2_wp, 0._wp)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
+            zalpha = 2.1e-5*MAX(T_s-rt0 + 3.2_wp, 0._wp)**0.79  ! alpha = thermal expansion of water (~2.5E-4) LB: remove from loop, sst accurate enough!
 
             !! Term alpha*Qb (Qb is the virtual surface cooling inc. buoyancy effect of salinity due to evap):
             zz1 = zalpha*zQt - 0.026*zQlat*rCp0_w/rLevap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
@@ -91,28 +106,24 @@ CONTAINS
             zus = MAX(pus(ji,jj), 1.E-4_wp)
 
             ! Lambda (=> zz0, empirical coeff.) (Eq.14):
-            zz0 = 16. * zz1 * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w  ! (numerateur) zz1 == alpha*Q
+            zz0 = 16._wp * zz1 * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w  ! (numerateur) zz1 == alpha*Q
             zz2 = zus*zus * prhoa(ji,jj) / rho0_w * rk0_w
-            zz2 =  zz2*zz2                                             ! denominateur
+            zz2 = zz2*zz2                                             ! denominateur
             !LB:  zz0 has the sign of zz1 and therefore of Qb !
-            zlamb =  6.*( 1. + (zz0/zz2)**(3./4.) )**(-1./3.) !  Eq.14   (Saunders)
+            zlamb =  6._wp*( 1._wp + (zz0/zz2)**(3./4.) )**(-1./3.) !  Eq.14   (Saunders)
 
             ! Updating molecular sublayer thickness (delta):
             zz2    = rnu0_w/(SQRT(prhoa(ji,jj)/rho0_w)*zus)
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
-               &    + (1. - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
+               &    + (1._wp - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007
             pdelta(ji,jj) = zdelta
 
-            ! Updating pT_s and q_s ...
-            zz2 =  MIN( - zQt*zdelta/rk0_w , 0._wp )   ! temperature increment !  Eq.13 Cool skin !LOLO get rid of warming that comes from I don't know which term...
-            !
-            pT_s(ji,jj) = psst(ji,jj) + zz2
+            ! Updating temperature increment:
+            pdT(ji,jj) =  MIN( - zQt*zdelta/rk0_w , 0._wp )   ! temperature increment !  Eq.13 Cool skin !LOLO get rid of warming that comes from I don't know which term...
             !
          END DO
       END DO
-
-      pq_s = rdct_qsat_salt*q_sat(MAX(pT_s, 200._wp), pslp)   !skin !LB: just to avoid problem on masked regions
 
    END SUBROUTINE CS_COARE3P6
 

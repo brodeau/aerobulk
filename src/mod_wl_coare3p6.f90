@@ -27,7 +27,7 @@ MODULE mod_wl_coare3p6
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: WL_COARE3P6_INIT, WL_COARE3P6
+   PUBLIC :: WL_COARE3P6
 
    REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
    !REAL(wp), PARAMETER :: z_sst  = 18._wp    !: depth at which bulk SST is taken...
@@ -48,25 +48,10 @@ MODULE mod_wl_coare3p6
 
    !LOGICAL, PUBLIC, SAVE :: l_wl_c36_never_called
 
+   !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE WL_COARE3P6_INIT()
-      !!---------------------------------------------------------------------
-      !!                  ***  FUNCTION sbc_oce_alloc  ***
-      !!---------------------------------------------------------------------
-      INTEGER :: ierr
-      !!---------------------------------------------------------------------
-      ierr = 0
-      PRINT *, ' *** Allocating pTau_ac and pQ_ac :', jpi,jpj
-      ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr )
-      PRINT *, 'ierr = ', ierr
-      !IF( ierr > 0 ) STOP ' WL_COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
-      pTau_ac(:,:) = 0._wp
-      pQ_ac(:,:)   = 0._wp
-      PRINT *, ' *** pTau_ac and pQ_ac allocated!'
-   END SUBROUTINE WL_COARE3P6_INIT
 
-   
    SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, rdt, iwait,  pdT, &
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
@@ -86,6 +71,7 @@ CONTAINS
       !!
       !!  **   OUTPUT:
       !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
+      !!---------------------------------------------------------------------
       !!
       !!   ** OPTIONAL OUTPUT:
       !!     *Hwl*        depth of warm layer [m]
@@ -237,4 +223,5 @@ CONTAINS
 
    END SUBROUTINE WL_COARE3P6
 
+   !!======================================================================
 END MODULE mod_wl_coare3p6

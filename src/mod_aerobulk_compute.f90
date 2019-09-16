@@ -148,11 +148,11 @@ CONTAINS
          !!
       CASE('coare3p6')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
+            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .TRUE., .TRUE., &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
                &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          ELSE
-            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE., &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
          END IF
          !!

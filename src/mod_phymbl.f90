@@ -322,7 +322,7 @@ CONTAINS
    END FUNCTION e_sat_vctr
 
 
-   FUNCTION e_sat_sclr( ptak, pslp )
+   FUNCTION e_sat_sclr( ptak )
       !!----------------------------------------------------------------------------------
       !!                   ***  FUNCTION e_sat_sclr  ***
       !!                  < SCALAR argument version >
@@ -334,7 +334,6 @@ CONTAINS
       !!    Note: what rt0 should be here, is 273.16 (triple point of water) and not 273.15 like here
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in) ::   ptak    ! air temperature                  [K]
-      REAL(wp), INTENT(in) ::   pslp    ! sea level atmospheric pressure   [Pa]
       REAL(wp)             ::   e_sat_sclr   ! water vapor at saturation   [kg/kg]
       !
       REAL(wp) ::   zta, ztmp   ! local scalar
@@ -474,7 +473,7 @@ CONTAINS
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            ze = prha(ji,jj)*e_sat_sclr(ptak(ji,jj), pslp(ji,jj))
+            ze = prha(ji,jj)*e_sat_sclr(ptak(ji,jj))
             q_air_rh(ji,jj) = ze*reps0/(pslp(ji,jj) - (1. - reps0)*ze)
          END DO
       END DO

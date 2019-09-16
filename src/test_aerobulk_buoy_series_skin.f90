@@ -13,7 +13,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
-   USE mod_wl_coare3p6
    !USE mod_blk_ncar
    !USE mod_blk_ecmwf
 
@@ -176,9 +175,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
-
-   CALL WL_COARE3P6_INIT() ! allocation of accumulation arrays
-
    
    !! Reading data time-series into netcdf file:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,9 +268,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    zL  = 0.
    zUN10 = 0.
 
-   pTau_ac(:,:) = 0. !... normalyy done into WL_COARE3P6_INIT
-   pQ_ac(:,:)   = 0.
-
    isecday_utc = 0
 
    dT(:,:,:)    = 0.  ! skin = SST for first time step
@@ -283,9 +276,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
 
-   CALL WL_COARE3P6_INIT()
-
-   
    !! Time loop:
    DO jt = 1, Nt
 
@@ -372,10 +362,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       
       PRINT *, 'LOLO:test_aerobulk_buoy_series_skin.f90 => calling TURB_COARE3P6 !'
       
-      CALL TURB_COARE3P6( zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .FALSE., .TRUE.,  & !LOLO: not using cool-skin
+      CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  & !LOLO: not using cool-skin
          &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
-         &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt),                           & ! for cool-skin !
-         &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s,                               &
+         &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
+         &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
          &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
       
       !STOP'LOLO:test_aerobulk_buoy_series_skin.f90'
