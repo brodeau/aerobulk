@@ -6,7 +6,7 @@ MODULE mod_aerobulk_compute
    USE mod_phymbl       !: thermodynamics functions
    
    USE mod_blk_coare3p0 !: COARE v3.0 algorithm
-   USE mod_blk_coare3p6 !: COARE v3.5 algorithm
+   !USE mod_blk_coare3p6 !: COARE v3.5 algorithm
    USE mod_blk_ncar     !: Large & Yeager algorithm
    USE mod_blk_ecmwf    !: following ECMWF doc...
 
@@ -147,14 +147,16 @@ CONTAINS
          END IF
          !!
       CASE('coare3p6')
-         IF( l_use_skin ) THEN
-            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .TRUE., .TRUE., &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
-               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
-         ELSE
-            CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE., &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
-         END IF
+         PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
+         STOP
+         !IF( l_use_skin ) THEN
+         !   CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .TRUE., .TRUE., &
+         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
+         !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         !ELSE
+         !   CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE., &
+         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
+         !END IF
          !!
          !!
       CASE('ncar')

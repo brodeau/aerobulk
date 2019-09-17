@@ -38,6 +38,19 @@ MODULE mod_phymbl
       MODULE PROCEDURE e_sat_vctr, e_sat_sclr
    END INTERFACE e_sat
 
+   INTERFACE L_vap
+      MODULE PROCEDURE L_vap_vctr, L_vap_sclr
+   END INTERFACE L_vap
+
+   INTERFACE rho_air
+      MODULE PROCEDURE rho_air_vctr, rho_air_sclr
+   END INTERFACE rho_air
+
+   INTERFACE cp_air
+      MODULE PROCEDURE cp_air_vctr, cp_air_sclr
+   END INTERFACE cp_air
+
+
    PUBLIC virt_temp
    PUBLIC rho_air
    PUBLIC visc_air
@@ -56,6 +69,7 @@ MODULE mod_phymbl
    PUBLIC q_air_rh
    PUBLIC q_air_dp
    PUBLIC q_sat_simple
+   PUBLIC update_qnsol_tau
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -87,9 +101,9 @@ CONTAINS
       !
    END FUNCTION virt_temp
 
-   FUNCTION rho_air( ptak, pqa, pslp )
+   FUNCTION rho_air_vctr( ptak, pqa, pslp )
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION rho_air  ***
+      !!                           ***  FUNCTION rho_air_vctr  ***
       !!
       !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
       !!
@@ -98,12 +112,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak      ! air temperature             [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa       ! air specific humidity   [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pslp      ! pressure in                [Pa]
-      REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air   ! density of moist air   [kg/m^3]
+      REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air_vctr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
       !
-      rho_air = pslp / (  R_dry*ptak * ( 1._wp + rctv0*pqa )  )
+      rho_air_vctr = pslp / (  R_dry*ptak * ( 1._wp + rctv0*pqa )  )
       !
-   END FUNCTION rho_air
+   END FUNCTION rho_air_vctr
+
+   FUNCTION rho_air_sclr( ptak, pqa, pslp )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION rho_air_sclr  ***
+      !!
+      !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: ptak           ! air temperature             [K]
+      REAL(wp), INTENT(in) :: pqa            ! air specific humidity   [kg/kg]
+      REAL(wp), INTENT(in) :: pslp           ! pressure in                [Pa]
+      REAL(wp)             :: rho_air_sclr   ! density of moist air   [kg/m^3]
+      !!-------------------------------------------------------------------------------
+      rho_air_sclr = pslp / (  R_dry*ptak * ( 1._wp + rctv0*pqa )  )
+   END FUNCTION rho_air_sclr
+   
+
 
    FUNCTION visc_air(ptak)
       !!----------------------------------------------------------------------------------
@@ -128,37 +160,72 @@ CONTAINS
       !
    END FUNCTION visc_air
 
-   FUNCTION L_vap( psst )
+   FUNCTION L_vap_vctr( psst )
       !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION L_vap  ***
+      !!                           ***  FUNCTION L_vap_vctr  ***
       !!
       !! ** Purpose : Compute the latent heat of vaporization of water from temperature
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   L_vap   ! latent heat of vaporization   [J/kg]
+      REAL(wp), DIMENSION(jpi,jpj)             ::   L_vap_vctr   ! latent heat of vaporization   [J/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
       !!----------------------------------------------------------------------------------
       !
-      L_vap = (  2.501 - 0.00237 * ( psst(:,:) - rt0)  ) * 1.e6
+      L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
       !
-   END FUNCTION L_vap
+   END FUNCTION L_vap_vctr
 
-   FUNCTION cp_air( pqa )
+   FUNCTION L_vap_sclr( psst )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION L_vap_sclr  ***
+      !!
+      !! ** Purpose : Compute the latent heat of vaporization of water from temperature
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             ::   L_vap_sclr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), INTENT(in) ::   psst         ! water temperature                [K]
+      !!----------------------------------------------------------------------------------
+      !
+      L_vap_sclr = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
+      !
+   END FUNCTION L_vap_sclr
+
+
+
+
+   FUNCTION cp_air_vctr( pqa )
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION cp_air  ***
+      !!                           ***  FUNCTION cp_air_vctr  ***
       !!
       !! ** Purpose : Compute specific heat (Cp) of moist air
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa      ! air specific humidity         [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj)             ::   cp_air   ! specific heat of moist air   [J/K/kg]
+      REAL(wp), DIMENSION(jpi,jpj)             ::   cp_air_vctr   ! specific heat of moist air   [J/K/kg]
       !!-------------------------------------------------------------------------------
-      !
-      cp_air = rCp_dry + rCp_vap * pqa
-      !
-   END FUNCTION cp_air
+      cp_air_vctr = rCp_dry + rCp_vap * pqa
+   END FUNCTION cp_air_vctr
+
+   FUNCTION cp_air_sclr( pqa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION cp_air_sclr  ***
+      !!
+      !! ** Purpose : Compute specific heat (Cp) of moist air
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: pqa           ! air specific humidity         [kg/kg]
+      REAL(wp)             :: cp_air_sclr   ! specific heat of moist air   [J/K/kg]
+      !!-------------------------------------------------------------------------------
+      cp_air_sclr = rCp_dry + rCp_vap * pqa
+   END FUNCTION cp_air_sclr
+
+
+
+
 
    FUNCTION gamma_moist_vctr( ptak, pqa )
       !!----------------------------------------------------------------------------------
@@ -612,6 +679,65 @@ CONTAINS
    END FUNCTION dry_static_energy
 
 
+   
+   SUBROUTINE UPDATE_QNSOL_TAU( pTs, pqs, pTa, pqa, pust, ptst, pqst, pUb, pslp, prlw, &
+      &                         pQns, pTau,  &
+      &                         Qlat)
+      !!----------------------------------------------------------------------------------
+      !! Purpose: returns the non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw"
+      !!          and the module of the wind stress => pTau = Tau
+      !! ** Author: L. Brodeau, Sept. 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! air temperature at z=zu [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=zu [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pust ! u*
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: ptst ! t*
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqst ! q*
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=zu [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: prlw ! downwelling longwave radiative flux [W/m^2]
+      !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQns ! non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw" [W/m^2]]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau ! module of the wind stress [N/m^2]
+      !
+      REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(out) :: Qlat
+      !
+      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zUrho, zTs2, zz0, &
+         &        zQlat, zQsen, zQlw
+      INTEGER  ::   ji, jj     ! dummy loop indices
+      !!----------------------------------------------------------------------------------     
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zdt = pTa(ji,jj) - pTs(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+            zdq = pqa(ji,jj) - pqs(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+            zz0 = pust(ji,jj)/pUb(ji,jj)
+            zCd = zz0*zz0
+            zCh = zz0*ptst(ji,jj)/zdt
+            zCe = zz0*pqst(ji,jj)/zdq
+
+            zUrho = pUb(ji,jj)*MAX(rho_air(pTa(ji,jj), pqa(ji,jj), pslp(ji,jj)), 1._wp)     ! rho*U10
+            zTs2  = pTs(ji,jj)*pTs(ji,jj)
+
+            ! Wind stress module:
+            pTau(ji,jj) = zCd*zUrho*pUb(ji,jj) ! lolo?
+
+            ! Non-Solar heat flux to the ocean:
+            zQlat = zUrho*zCe*L_vap( pTs(ji,jj)) * zdq
+            zQsen = zUrho*zCh*cp_air(pqa(ji,jj)) * zdt
+            zQlw  = emiss_w*(prlw(ji,jj) - sigma0*zTs2*zTs2) ! Net longwave flux
+
+            pQns(ji,jj) = zQlat + zQsen + zQlw
+            
+            IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat            
+         END DO
+      END DO
+   END SUBROUTINE UPDATE_QNSOL_TAU
+
+
+   
 
 
 
@@ -716,3 +842,4 @@ END MODULE mod_phymbl
 !      END IF
 !      q_sat = reps0*e_s/(slp - (1. - reps0)*e_s)
 !   END FUNCTION q_sat
+

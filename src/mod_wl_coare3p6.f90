@@ -56,7 +56,7 @@ CONTAINS
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
-      !!  Cool-Skin Warm-Layer scheme according to COARE 3.6 (Fairall et al, 2019)
+      !!  Warm-Layer scheme according to COARE 3.6 (Fairall et al, 2019)
       !!     ------------------------------------------------------------------
       !!
       !!  **   INPUT:

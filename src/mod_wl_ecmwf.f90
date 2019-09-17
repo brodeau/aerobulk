@@ -17,7 +17,6 @@ MODULE mod_wl_ecmwf
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!    Using the bulk formulation/param. of ECMWF
-   !!      + consideration of cool-skin warm layer parametrization (CS: Fairall et al. 1996; WL: Zeng & Beljaars, 2005 )
    !!
    !!       Routine "cswl_ecmwf" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -33,7 +32,7 @@ MODULE mod_wl_ecmwf
 
    PUBLIC :: WL_ECMWF
 
-   !! Cool-Skin / Warm-Layer related parameters:
+   !!  Warm-Layer related parameters:
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
@@ -51,49 +50,51 @@ MODULE mod_wl_ecmwf
 CONTAINS
 
 
-   SUBROUTINE WL_ECMWF( pQsw, pQnsol, pustar, pSST, pTs )
+   SUBROUTINE WL_ECMWF( pQsw, pQnsol, pustar, pSST, rdt, pdT )
       !!---------------------------------------------------------------------
       !!
-      !!  Cool-Skin Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
+      !!  Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
       !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
       !!
       !!    As included in IFS Cy40   /  E.C.M.W.F.
       !!     ------------------------------------------------------------------
       !!
       !!  **   INPUT:
-      !!
-      !!     *pQsw*       net solar radiative flux to the ocean
-      !!     *pQnsol*     net non-solar heat flux to the ocean
-      !!     *pustar*     friction velocity u*
-      !!     *pSST*       SST
+      !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
+      !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      !!     *pustar*     friction velocity u*                           [m/s]
+      !!     *pSST*       bulk SST at depth z_sst                        [K]
+      !!     *rdt*        physical time step between two successive calls to this routine [s]
+
       !!
       !!   **  INPUT/OUTPUT:
-      !!     *pTs*  : as input  =>  previous estimate of skin temperature
-      !!             as output =>  new estimate of skin temperature
+      !!     *pdT*  : as input =>  previous estimate of dT warm-layer
+      !!             as output =>  new estimate of dT warm-layer
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! net solar radiation into the sea [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! net non-solar heat flux into the sea [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
+      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
       !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTs
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! ?
       !
       INTEGER :: ji,jj
       !
       REAL(wp) :: &
+         & Ts,       & !: skin temperature ( = SST + dT_coolskin )
+         & zalpha_w, & !: thermal expansion coefficient of sea-water
          & zRhoCp_w, &
          & ZCON3,ZCON4,ZCON5, zQnsol ,zQnet, zlamb, zdelta,&
-         & ZSRD,ZDSST,ZZ,ZEPDU2,&
+         & ZSRD,ZDT,ZZ,ZEPDU2,&
          & ZFI,zdL,zdL2, ztmp, &
          & ZPHI,ZROADRW, &
          & zus_a, &
          & zfs, zsgn
       !
-      REAL(wp), DIMENSION(jpi,jpj) :: &
-         &  zalpha_w, &       !: thermal expansion coefficient of seawater
-         & zus_w, zus_w2, &   !: u* and u*^2 in water
-         &       zdT_w        !: warm skin temperature increment
+      REAL(wp), DIMENSION(jpi,jpj) :: zus_w, zus_w2  !: u* and u*^2 in water
+
       !
       !!------------------------------------------------------------------
       !
@@ -119,10 +120,9 @@ CONTAINS
       zus_w(:,:)  = MAX( pustar(:,:), 1.E-4_wp)*SQRT(ZROADRW)       ! u* in the water
       zus_w2(:,:) = zus_w(:,:)*zus_w(:,:)
       !
-      ! Ocean buoyancy
-      zalpha_w(:,:) = MAX( 1.E-5_wp , 1.E-5_wp*(pTs(:,:) - rt0) ) ! thermal expansion coefficient of water
+
       !
-      zdT_w = 0._wp
+      !pdT = 0._wp
       !
       !  3. Cool skin (Fairall et al. 1996)
       !------------------------------------
@@ -151,7 +151,11 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            ZDSST = pTs(ji,jj) - pSST(ji,jj)
+            Ts = pSST(ji,jj) + pdT(ji,jj) ! Skin temperature
+
+            zalpha_w = MAX( 1.E-5_wp , 1.E-5_wp*(Ts - rt0) ) ! thermal expansion coefficient of water
+
+            ZDT = Ts - pSST(ji,jj)
 
             !! Buoyancy flux and stability parameter (zdl = -z/L) in water
             !
@@ -159,12 +163,12 @@ CONTAINS
             ZSRD = ( pQsw(ji,jj)*ZFI + pQnsol(ji,jj) )/zRhoCp_w
             !
             zsgn = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
-            ztmp = MAX(ZDSST,0._wp)
-            zdl = (zsgn+1._wp) * ( zus_w2(ji,jj) * SQRT(ztmp/(5._wp*rd0*grav*zalpha_w(ji,jj)/rNu0)) ) & ! (ZDSST > 0.0 .AND. ZSRD < 0.0)
+            ztmp = MAX(ZDT,0._wp)
+            zdl = (zsgn+1._wp) * ( zus_w2(ji,jj) * SQRT(ztmp/(5._wp*rd0*grav*zalpha_w/rNu0)) ) & ! (ZDT > 0.0 .AND. ZSRD < 0.0)
                &  +    zsgn    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = ZCON3*zalpha_w(ji,jj)*zdL/(zus_a*zus_a*zus_a)
+            zdL = ZCON3*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
             !! Stability function Phi_t(-z/L) (zdL is -z/L) :
             zsgn = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
@@ -179,15 +183,10 @@ CONTAINS
             !! Solving 11 by itteration with time step of zdt...
             ZZ = 1._wp + ZCON4*rdt*zus_w(ji,jj)/ZPHI
             ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
-            zdT_w(ji,jj) = MAX( 0._wp , (ZDSST + ZCON5*ZSRD*rdt)/ZZ )
+            pdT(ji,jj) = MAX( 0._wp , (ZDT + ZCON5*ZSRD*rdt)/ZZ )
 
          END DO ! DO ji = 1, jpi
       END DO ! DO jj = 1, jpj
-
-      ! 3. Apply warm layer and cool skin effects
-      !------------------------------------------
-      pTs(:,:) = pSST(:,:) + zdT_w(:,:)
-
 
    END SUBROUTINE WL_ECMWF
 

@@ -251,12 +251,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(czu,'(i2,"m")') INT(zu)
 
 
-   IF (ldebug) THEN
-      WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
-      DO jt = 1, Nt
-         WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
-      END DO
-   END IF
+   !IF (ldebug) THEN
+   !   WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
+   !   DO jt = 1, Nt
+   !      WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
+   !   END DO
+   !END IF
 
 
    !! Some initializations:
@@ -360,8 +360,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), xlon(:,:), isecday_utc, dt_s, dT_wl(:,:,jt), &
          !   &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
       
-      PRINT *, 'LOLO:test_aerobulk_buoy_series_skin.f90 => calling TURB_COARE3P6 !'
-      
       CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  & !LOLO: not using cool-skin
          &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
          &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
@@ -388,7 +386,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       !! Air density at zu (10m)
       rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
       tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
-      rho_zu(:,:,jt) = rho_air(t_zu, q_zu(:,:,jt), tmp(:,:))
+      rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), tmp(:,:))
       
       !! Turbulent heat fluxes:
       tmp(:,:) = cp_air(q_zu(:,:,jt))
