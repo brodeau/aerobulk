@@ -72,56 +72,33 @@ CONTAINS
       INTEGER :: ji,jj
       !
       REAL(wp) :: &
-         & Ts,       & !: skin temperature ( = SST + dT_coolskin )
-         & zalpha_w, & !: thermal expansion coefficient of sea-water
-         & zRhoCp_w, &
-         & ZCON2, zQnsol ,zQnet, zlamb, zdelta,&
-         & ZROADRW, &
-         & zfs
-      !
-      REAL(wp), DIMENSION(jpi,jpj) :: zus_w, zus_w2  !: u* and u*^2 in water
+         & zalpha_w, zusw, zusw2, & !: thermal expansion coefficient of sea-water
+         & zcon2, zQnsol ,zQnet, zlamb, zdelta,&
+         & zroadrw, &
+         & zfr
 
-      !
-      !!------------------------------------------------------------------
-      !
-      !     1. Initialize constants for ocean warm layer and cool skin
-      !
-      !     1.1 General
-      !
-      ZROADRW = rho0_a/rho0_w          ! Density ratio                      (-)
-      zRhoCp_w = rho0_w*rCp0_w
-      !
-      !     1.3 Cool skin parametrization constants
-      ZCON2 = 16._wp*grav*zRhoCp_w*rnu0_w**3/(rk0_w*rk0_w)
-      !
-      ! Friction velocities
-      ! "MAX( pustar(:,:), 1.E-4)" is u* in the air !
-      zus_w(:,:)  = MAX( pustar(:,:), 1.E-4_wp)*SQRT(ZROADRW)       ! u* in the water
-      zus_w2(:,:) = zus_w(:,:)*zus_w(:,:)
-      !
-      !pdT(:,:) = 0._wp
+      zroadrw = rho0_a/rho0_w          ! Density ratio                      (-)
+      zcon2 = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
 
-      !  3. Cool skin (Fairall et al. 1996)
-      !------------------------------------
+
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            Ts = pSST(ji,jj) + pdT(ji,jj) ! Skin temperature
+            zalpha_w = MAX( 1.E-5_wp , 1.E-5_wp*(pSST(ji,jj)-rt0) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
-            zalpha_w = MAX( 1.E-5_wp , 1.E-5_wp*(Ts - rt0) ) ! thermal expansion coefficient of water
+            zQnsol = MAX( 1._wp , - pQnsol(ji,jj) ) ! Non-solar heat loss to the atmosphere
 
-
-            ! Non-solar heat loss to the atmosphere:
-            zQnsol = MAX( 1._wp , - pQnsol(ji,jj) )
-
-            zlamb = 6._wp*(1._wp + (zQnsol*zalpha_w*ZCON2/(zus_w2(ji,jj)*zus_w2(ji,jj)))**0.75)**(-1._wp/3._wp)
-
-            zdelta = zlamb*rnu0_w/zus_w(ji,jj)
-
-            !    Solar absorption
-            zfs   = 0.065_wp + 11._wp*zdelta - (6.6E-5_wp/zdelta)*(1._wp - EXP(-zdelta/8.E-4_wp))  ! Eq. 8.131 / IFS cy40r1, doc, Part IV,
-            zfs   = MAX(zfs , 0.01_wp)
-            zQnet = MAX( 1._wp , -zfs*pQsw(ji,jj) + zQnsol )
+            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(zroadrw)    ! u* in the water
+            zusw2 = zusw*zusw
+            
+            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*zcon2/(zusw2*zusw2 ))**0.75 )**(-1./3.)
+            
+            zdelta = zlamb*rnu0_w/zusw
+            
+            zfr   = MAX( 0.065_wp + 11._wp*zdelta - (6.6E-5_wp/zdelta)*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp) ! Solar absorption; Eq. 8.131 / IFS cy40r1, doc, Part IV,
+            
+            zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
+            
             pdT(ji,jj) = -zdelta*zQnet/rk0_w
 
          END DO

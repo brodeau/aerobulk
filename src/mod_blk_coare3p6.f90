@@ -350,8 +350,7 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
-            CALL CS_COARE3P6( t_zu, q_zu, zsst, slp, u_star, &
-               &              ztmp1, Qsw, ztmp2, zdelta, pdT_cs )  ! ! Qnsol -> ztmp1
+            CALL CS_COARE3P6( Qsw, ztmp1, u_star, zsst, ztmp2, zdelta,  pdT_cs )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
             T_s(:,:) = zsst(:,:) + pdT_cs(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdT_wl(:,:)
