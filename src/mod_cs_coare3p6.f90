@@ -30,7 +30,7 @@ MODULE mod_cs_coare3p6
 CONTAINS
 
 
-   SUBROUTINE CS_COARE3P6( pTzu, pqzu, pSST, pslp, pUzu, pus, pts, pqs, &
+   SUBROUTINE CS_COARE3P6( pTzu, pqzu, pSST, pslp, pus, &
       &                    pQnsol, pQsw, pQlat, pdelta,  pdT )
       !!
       !!  **   OUTPUT:
@@ -43,8 +43,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pqzu ! air specific humidity at height zu above sea surface [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST ! bulk SST [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pslp ! sea-level atmospheric pressure [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pUzu ! scalar wind speed at height zu above sea surface [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pus, pts, pqs ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pus  ! friction velocity, temperature and humidity (u*,t*,q*)
       !!
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]

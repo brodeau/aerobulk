@@ -29,7 +29,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
-   CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat', cunit_t, clnm_t
+   CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
 
 
    
@@ -47,16 +47,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=2) :: car
 
-   CHARACTER(len=100) :: &
-      &   calgob
+   INTEGER :: jj, jt, jarg, ialgo, jq, n0, info
 
-   INTEGER :: ji, jj, jt, jarg, jl, ialgo, jq, jtt, n0, info
-
-   INTEGER :: nx, ny, Nt, itlag_s, ians
+   INTEGER :: nx, ny, Nt, ians
    
    CHARACTER(len=8) :: calgo
-   CHARACTER(len=19) :: cdt
-   INTEGER(4)        :: iclock, ihh, imm, isecday_utc
+
+   INTEGER(4)        :: ihh, imm, isecday_utc
 
    CHARACTER(len=19), DIMENSION(:), ALLOCATABLE :: ctime
    CHARACTER(len=8),  DIMENSION(:), ALLOCATABLE :: cdate
@@ -219,22 +216,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
 
 
-
-   !DO jt = 1, Nt
-   !   cdt = ctime(jt)
-   !   cdate(jt) = cdt(1:8)
-   !   clock(jt) = cdt(9:13)
-   !   chh(jt)   = cdt(9:10)
-   !   cmn(jt)   = cdt(11:12)
-   !   READ(clock(jt),'(i4.4)') iclock
-   !   READ(chh(jt),'(i2.2)') ihh
-   !   READ(cmn(jt),'(i2.2)') imm
-   !   WRITE(cldate(jt),'(a4,"/",a2,"/",a2,"-",a2,":",a2)') cdt(1:4), cdt(5:6), cdt(7:8), chh(jt), cmn(jt)
-   !   IF (ldebug) PRINT *, ' *** date = ', cldate(jt)
-   !END DO
-   !IF (ldebug) PRINT *, ''
-
-
    ians=0
    DO WHILE ( (ians<1).OR.(ians>3) )
       WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
@@ -377,17 +358,15 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), xlon(:,:), isecday_utc, dt_s, dT_wl(:,:,jt), &
          !   &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
 
-      IF     ( TRIM(calgo) == 'coare3p6' ) THEN
-      
+      IF     ( TRIM(calgo) == 'coare3p6' ) THEN      
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
             &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
+         
       ELSEIF( TRIM(calgo) == 'ecmwf2'    ) THEN
-         PRINT *, 'LOLO: calling TURB_ECMWF2 !!!'
-         CALL TURB_ECMWF2( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .FALSE., .TRUE.,  &
+         CALL TURB_ECMWF2( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
             &             dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
@@ -397,8 +376,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          STOP
       END IF
       
-      !STOP'LOLO:test_aerobulk_buoy_series_skin.f90'
-
       dT(:,:,jt) = Ts(:,:,jt) - SST(:,:,jt)
          
       !! => Ts and qs ARE updated, but only for cool-skin !!!!
@@ -482,22 +459,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) ''; WRITE(6,*) ''
 
 
-   !DO ialgo = 1, nb_algos
-   !
-   !   calgob = TRIM(vca(ialgo))
-   !
-   !   WRITE(cf_out,*) 'data_'//TRIM(calgob)//'.out'
-   !
-   !   OPEN( UNIT=12, FILE=TRIM(cf_out), FORM='FORMATTED', RECL=1024, STATUS='unknown' )
-   !   WRITE(12,*) '# k       date         Qsens    Qlat     SSST     Tau       WebbF   RainHF dt_skin'
-   !   !             037 19921126231700   -41.12  -172.80   302.11    92.15      NaN      NaN  -0.238
-   !   DO jt = 1, Nt
-   !      WRITE(12,'(" ",i3.3," ",i14.14," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f8.2," ",f7.3)') &
-   !         &  INT(jt,2), idate(jt), -vQH(ialgo,jt), -vQL(ialgo,jt), vTs(ialgo,jt), vTau(ialgo,jt), -999, -999, REAL(vTs(ialgo,jt)-sst(1,1,jt),4)
-   !   END DO
-   !   CLOSE(12)
-   !
-   !END DO
 
 CONTAINS
 

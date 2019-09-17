@@ -342,15 +342,15 @@ CONTAINS
             q_zu = q_zt - q_star/vkarmn*ztmp1
          END IF
 
-         
+
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
             !! **********************
-            
+
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
-               &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u 
-            
-            CALL CS_COARE3P6( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
+               &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
+
+            CALL CS_COARE3P6( t_zu, q_zu, zsst, slp, u_star, &
                &              ztmp1, Qsw, ztmp2, zdelta, pdT_cs )  ! ! Qnsol -> ztmp1
 
             T_s(:,:) = zsst(:,:) + pdT_cs(:,:)
@@ -359,11 +359,10 @@ CONTAINS
 
          END IF
 
-         
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
             !! ***********************
-            
+
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
@@ -416,7 +415,7 @@ CONTAINS
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
-      
+
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)

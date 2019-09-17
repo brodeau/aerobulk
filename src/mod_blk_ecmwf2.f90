@@ -30,7 +30,7 @@ MODULE mod_blk_ecmwf2
    !!====================================================================================
    USE mod_const        !: physical and othe constants
    USE mod_phymbl       !: thermodynamics
-   !USE mod_cs_ecmwf     !: cool-skin parameterization
+   USE mod_cs_ecmwf     !: cool-skin parameterization
    USE mod_wl_ecmwf     !: warm-layer parameterization
 
    IMPLICIT NONE
@@ -386,6 +386,23 @@ CONTAINS
          !   q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
          !END IF
 
+
+
+         IF( l_use_cs ) THEN
+            !! Cool-skin contribution
+            !! **********************
+
+            CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
+               &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0
+
+            CALL CS_ECMWF( Qsw, ztmp1, u_star, zsst, pdT_cs )  ! Qnsol -> ztmp1
+
+            T_s(:,:) = zsst(:,:) + pdT_cs(:,:)
+            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdT_wl(:,:)
+            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:)) ! First guess of q_s !LOLO WL too!!!
+
+         END IF
+
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
             !! ***********************
@@ -406,8 +423,6 @@ CONTAINS
             !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
 
             CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, dt_s, pdT_wl )
-            !CALL WL_COARE3P6( Qsw, ztmp1, ztmp2, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt), pdT_wl )
-            !               &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdT_wl(:,:)
@@ -450,7 +465,7 @@ CONTAINS
 
       DEALLOCATE ( u_star, t_star, q_star, func_m, func_h, &
          &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
-      
+
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_ecmwf2
