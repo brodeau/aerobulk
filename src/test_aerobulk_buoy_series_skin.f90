@@ -17,9 +17,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    USE mod_blk_ecmwf2
 
    IMPLICIT NONE
-
-   !CHARACTER(len=8), PARAMETER :: calgo = 'coare3p6'
-   CHARACTER(len=8), PARAMETER :: calgo = 'ecmwf2  '
    
    !INTEGER :: DISP_DEBUG
 
@@ -55,8 +52,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER :: ji, jj, jt, jarg, jl, ialgo, jq, jtt, n0, info
 
-   INTEGER :: nx, ny, Nt, itlag_s
-
+   INTEGER :: nx, ny, Nt, itlag_s, ians
+   
+   CHARACTER(len=8) :: calgo
    CHARACTER(len=19) :: cdt
    INTEGER(4)        :: iclock, ihh, imm, isecday_utc
 
@@ -236,6 +234,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !END DO
    !IF (ldebug) PRINT *, ''
 
+
+   ians=0
+   DO WHILE ( (ians<1).OR.(ians>3) )
+      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
+      READ(*,*) ians
+      IF ( ians == 1 ) calgo = 'coare3p0'
+      IF ( ians == 2 ) calgo = 'ecmwf2  '
+      IF ( ians == 3 ) calgo = 'coare3p6'
+   END DO
+   WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
+   WRITE(6,*) ''
+
+
+   
 
    !! zu and zt
    !! ~~~~~~~~~

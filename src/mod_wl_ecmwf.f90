@@ -33,7 +33,7 @@ MODULE mod_wl_ecmwf
    PUBLIC :: WL_ECMWF
 
    !!  Warm-Layer related parameters:
-   REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
+   REAL(wp), PARAMETER :: rd0  = 1.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
