@@ -114,9 +114,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pslp      ! pressure in                [Pa]
       REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air_vctr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
-      !
-      rho_air_vctr = pslp / (  R_dry*ptak * ( 1._wp + rctv0*pqa )  )
-      !
+      rho_air_vctr = MAX( pslp / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_vctr
 
    FUNCTION rho_air_sclr( ptak, pqa, pslp )
@@ -132,7 +130,7 @@ CONTAINS
       REAL(wp), INTENT(in) :: pslp           ! pressure in                [Pa]
       REAL(wp)             :: rho_air_sclr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
-      rho_air_sclr = pslp / (  R_dry*ptak * ( 1._wp + rctv0*pqa )  )
+      rho_air_sclr = MAX( pslp / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_sclr
    
 

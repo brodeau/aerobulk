@@ -31,7 +31,7 @@ CONTAINS
 
 
    SUBROUTINE CS_COARE3P6( pTzu, pqzu, pSST, pslp, pUzu, pus, pts, pqs, &
-      &                   prhoa, pQnsol, pQsw, pQlat, pdelta,  pdT )
+      &                    pQnsol, pQsw, pQlat, pdelta,  pdT )
       !!
       !!  **   OUTPUT:
       !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
@@ -46,7 +46,6 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pUzu ! scalar wind speed at height zu above sea surface [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pus, pts, pqs ! friction velocity, temperature and humidity (u*,t*,q*)
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: prhoa  ! density of air at height zu above sea surface [kg/m^3]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQlat  ! latent heat flux [W/m^2]
@@ -54,7 +53,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cooling such as SSST = pSST + pdT
       !!---------------------------------------------------------------------
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zz0, zz1, zz2, zus, zfr, &
+      REAL(wp) :: zz0, zz1, zz2, zus, zfr, zrho_a, &
          &        T_s, q_s, zdt, zdq, ztf, &
          &        zdelta, zlamb, zalpha, zQt
       !!---------------------------------------------------------------------
@@ -95,13 +94,14 @@ CONTAINS
 
             ! Lambda (=> zz0, empirical coeff.) (Eq.14):
             zz0 = 16._wp * zz1 * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w  ! (numerateur) zz1 == alpha*Q
-            zz2 = zus*zus * prhoa(ji,jj) / rho0_w * rk0_w
+            zrho_a = rho_air( pTzu(ji,jj), pqzu(ji,jj), pslp(ji,jj) )
+            zz2 = zus*zus * zrho_a / rho0_w * rk0_w
             zz2 = zz2*zz2                                             ! denominateur
             !LB:  zz0 has the sign of zz1 and therefore of Qb !
             zlamb =  6._wp*( 1._wp + (zz0/zz2)**(3./4.) )**(-1./3.) !  Eq.14   (Saunders)
             
             ! Updating molecular sublayer thickness (delta):
-            zz2    = rnu0_w/(SQRT(prhoa(ji,jj)/rho0_w)*zus)
+            zz2    = rnu0_w/(SQRT(zrho_a/rho0_w)*zus)
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
                &    + (1._wp - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007

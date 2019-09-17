@@ -14,10 +14,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    !USE mod_blk_ncar
-   !USE mod_blk_ecmwf
+   USE mod_blk_ecmwf2
 
    IMPLICIT NONE
 
+   !CHARACTER(len=8), PARAMETER :: calgo = 'coare3p6'
+   CHARACTER(len=8), PARAMETER :: calgo = 'ecmwf2  '
+   
    !INTEGER :: DISP_DEBUG
 
    LOGICAL, PARAMETER :: ldebug=.TRUE.
@@ -25,15 +28,17 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), PARAMETER :: dt_s = 3600. ! time step in seconds in input data !!! =>LOLO!
 
-   INTEGER, PARAMETER :: nb_algos = 1
+   INTEGER, PARAMETER :: nb_algos = 2
 
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
    CHARACTER(len=800) :: cf_data='0', cblabla, cf_out='output.dat', cunit_t, clnm_t
 
-   CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-                                !&      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
-      &      vca = (/ 'coare3p6' /)
+
+   
+   !CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
+   !                             !&      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
+   !   &      vca = (/ 'coare3p6', 'ecmwf2  ' /)
 
    REAL(wp), PARAMETER ::   &
       & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
@@ -359,12 +364,26 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          
          !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), xlon(:,:), isecday_utc, dt_s, dT_wl(:,:,jt), &
          !   &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
+
+      IF     ( TRIM(calgo) == 'coare3p6' ) THEN
       
-      CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  & !LOLO: not using cool-skin
-         &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
-         &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
-         &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
-         &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+      ELSEIF( TRIM(calgo) == 'ecmwf2'    ) THEN
+         PRINT *, 'LOLO: calling TURB_ECMWF2 !!!'
+         CALL TURB_ECMWF2( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .FALSE., .TRUE.,  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
+            &             dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+      ELSE
+         PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
+         STOP
+      END IF
       
       !STOP'LOLO:test_aerobulk_buoy_series_skin.f90'
 
@@ -426,7 +445,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    
    dz_wl(:,:,:) = mskwl(:,:,:)*dz_wl(:,:,:) + (1 - mskwl(:,:,:))*-9999.
    
-   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo.nc', 'time', &
+   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
       &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &

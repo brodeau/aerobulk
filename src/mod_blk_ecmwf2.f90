@@ -47,6 +47,7 @@ MODULE mod_blk_ecmwf2
    REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
    REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
 
+   LOGICAL, PARAMETER :: ldebug = .TRUE.
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -61,7 +62,7 @@ CONTAINS
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
       LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
-      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization      
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
       !INTEGER :: ierr
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
@@ -188,10 +189,9 @@ CONTAINS
          &  Linv,            & !: 1/L (inverse of Monin Obukhov length...
          &  z0, z0t, z0q
       !
-      ! Cool skin:
-      LOGICAL :: l_use_skin = .FALSE.
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst     ! to back up the initial bulk SST
+
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
@@ -206,10 +206,24 @@ CONTAINS
          &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
-      ! Cool skin ?
-      IF( PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
-         l_use_skin = .TRUE.
-         ALLOCATE ( zsst(jpi,jpj) )
+      !IF ( kt == 1 )
+
+      !! If cool-skin requested, checking if needed optional array arguments have been specified:
+      IF ( l_use_cs ) THEN
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(pdT_cs)) ) THEN
+            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw, rad_lw, slp & pdT_cs to use cool-skin param!'
+            STOP
+         END IF
+         !ALLOCATE ( zdelta(jpi,jpj) )
+         pdT_cs(:,:) = -0.2_wp  ! First guess of skin correction
+         !zdelta = 0.001_wp      ! First guess of zdelta
+      END IF
+
+      IF ( l_use_wl ) THEN
+         IF(   .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(dt_s) .AND. PRESENT(pdT_wl)) ) THEN
+            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw,rad_lw,slp,isecday_utc,plong,dt_s & pdT_wl to use warm-layer param!'
+            STOP
+         END IF
       END IF
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -222,11 +236,12 @@ CONTAINS
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      !! Initialization for cool skin:
-      IF( l_use_skin ) THEN
-         zsst   = T_s    ! save the bulk SST
-         T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
+      !! Initializations for cool skin and warm layer:
+      IF ( l_use_cs .OR. l_use_wl ) THEN
+         ALLOCATE ( zsst(jpi,jpj) )
+         zsst = T_s ! backing up the bulk SST
+         IF( l_use_cs ) T_s = T_s - 0.25   ! First guess of correction
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
       END IF
 
       !! First guess of temperature and humidity at height zu:
@@ -353,25 +368,66 @@ CONTAINS
          func_m = log(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
          func_h = log(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
-         !! SKIN related part
-         !! -----------------
-         IF( l_use_skin ) THEN
-            !! compute transfer coefficients at zu : lolo: verifier...
-            Ch = vkarmn*vkarmn/(func_m*func_h)
-            ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
-            Ce = vkarmn*vkarmn/(func_m*ztmp1)
-            ! Non-Solar heat flux to the ocean:
-            ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
-            ztmp2 = T_s*T_s
-            ztmp1 = ztmp1 * ( Ce*L_vap(T_s)*(q_zu - q_s) + Ch*cp_air(q_zu)*(t_zu - T_s) ) & ! Total turb. heat flux
-               &       +      emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                         ! Net longwave flux
-            !!         => "ztmp1" is the net non-solar surface heat flux !
-            !! Updating the values of the skin temperature T_s and q_s :
-            CALL CSWL_ECMWF( Qsw, ztmp1, u_star, zsst, T_s )
-            q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
+!!! SKIN related part
+!!! -----------------
+         !IF( l_use_skin ) THEN
+         !   !! compute transfer coefficients at zu : lolo: verifier...
+         !   Ch = vkarmn*vkarmn/(func_m*func_h)
+         !   ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
+         !   Ce = vkarmn*vkarmn/(func_m*ztmp1)
+         !   ! Non-Solar heat flux to the ocean:
+         !   ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
+         !   ztmp2 = T_s*T_s
+         !   ztmp1 = ztmp1 * ( Ce*L_vap(T_s)*(q_zu - q_s) + Ch*cp_air(q_zu)*(t_zu - T_s) ) & ! Total turb. heat flux
+         !      &       +      emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                         ! Net longwave flux
+         !   !!         => "ztmp1" is the net non-solar surface heat flux !
+         !   !! Updating the values of the skin temperature T_s and q_s :
+         !   CALL CSWL_ECMWF( Qsw, ztmp1, u_star, zsst, T_s )
+         !   q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
+         !END IF
+
+         IF( l_use_wl ) THEN
+            !! Warm-layer contribution
+            !! ***********************
+
+            CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
+               &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
+
+            IF (ldebug) THEN
+               WRITE(6,*) ''
+               WRITE(6,*) ' Inside turb_coare3p6@mod_blk_coare3p6.f90 !'
+               WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
+               WRITE(6,*) ''
+            END IF
+            info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:), '[W/m^2]'   )
+            info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     ztmp1(:,:), '[W/m^2]'   )
+            info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        ztmp2(:,:), '[N/m^2]'   )
+            info = DISP_DEBUG(ldebug, 'SST',                                    zsst(:,:)-rt0, '[degC]'    )
+            !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
+
+            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, dt_s, pdT_wl )
+            !CALL WL_COARE3P6( Qsw, ztmp1, ztmp2, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt), pdT_wl )
+            !               &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
+
+            !! Updating T_s and q_s !!!
+            T_s(:,:) = zsst(:,:) + pdT_wl(:,:)
+            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdT_cs(:,:)
+            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:)) ! First guess of q_s !LOLO WL too!!!
+
+            IF (ldebug) THEN
+               WRITE(6,*) ''
+               WRITE(6,*) '           ---- AFTER WL ----'
+               WRITE(6,*) ''
+            END IF
+            !info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dTwl',         dz_wl(:,:),    '[m]'  )
+            info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        pdT_wl(:,:),  '[deg.C]'  )
+            info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
+            !info = DISP_DEBUG(ldebug, 'q_s',                          1000.*qs(:,:),     '[g/kg]'   )
+
          END IF
 
-         IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
+
+         IF( ((l_use_cs .OR. l_use_wl)).OR.(.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
@@ -394,10 +450,8 @@ CONTAINS
 
       DEALLOCATE ( u_star, t_star, q_star, func_m, func_h, &
          &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
-
-      IF( l_use_skin ) THEN
-         DEALLOCATE ( zsst ) ! Cool skin
-      END IF
+      
+      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_ecmwf2
 

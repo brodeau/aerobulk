@@ -190,7 +190,6 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                zrhoa,  &  ! densitty of air
          &                zdelta     ! thickness of the viscous (skin) layer
 
       !
@@ -214,7 +213,7 @@ CONTAINS
          pdT_cs(:,:) = -0.2_wp  ! First guess of skin correction
          zdelta = 0.001_wp      ! First guess of zdelta
       END IF
-      
+
       IF ( l_use_wl ) THEN
          IF(   .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) &
             & .AND. PRESENT(plong) .AND. PRESENT(dt_s) .AND. PRESENT(pdT_wl)) ) THEN
@@ -222,7 +221,7 @@ CONTAINS
             STOP
          END IF
       END IF
-      
+
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -235,13 +234,11 @@ CONTAINS
 
       !! Initializations for cool skin and warm layer:
       IF ( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj) )
+         ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25   ! First guess of correction
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No update needed! Fine enough!! For some reason seems to be negative sometimes
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
       END IF
-
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
@@ -354,7 +351,7 @@ CONTAINS
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u 
             
             CALL CS_COARE3P6( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
-               &             zrhoa, ztmp1, Qsw, ztmp2, zdelta, pdT_cs )  ! ! Qnsol -> ztmp1
+               &              ztmp1, Qsw, ztmp2, zdelta, pdT_cs )  ! ! Qnsol -> ztmp1
 
             T_s(:,:) = zsst(:,:) + pdT_cs(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdT_wl(:,:)
@@ -406,6 +403,7 @@ CONTAINS
 
          END IF
 
+
          IF( ((l_use_cs .OR. l_use_wl)).OR.(.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -427,7 +425,7 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst , zrhoa )
+      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( zdelta )
 
    END SUBROUTINE turb_coare3p6
