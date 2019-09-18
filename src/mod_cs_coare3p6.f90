@@ -26,6 +26,10 @@ MODULE mod_cs_coare3p6
 
    PUBLIC :: CS_COARE3P6
 
+   !! Cool-skin:
+   REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
+      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
+   
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -48,15 +52,11 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cooling such as SSST = pSST + pdT
       !!---------------------------------------------------------------------
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zz0, zz1, zz2, zus, zfr, &
+      REAL(wp) :: zz1, zz2, zus, zfr, &
          &        zdt, zdq, ztf, zQnsol, &
-         &        zdelta, zlamb, zalpha_w, zQnet, &
-         &        zroadrw, zcon2
+         &        zdelta, zlamb, zalpha_w, zQnet
       !!---------------------------------------------------------------------
 
-      zroadrw = rho0_a/rho0_w          ! Density ratio
-      zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w
-      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -84,26 +84,22 @@ CONTAINS
             !! so similar to what's done in ECMWF:
             zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
 
-            !! Laurent: too low wind (u*) might cause problem in stable cases:
-            zus = MAX(pustar(ji,jj), 1.E-4_wp)
-
-            ! Lambda (=> zz0, empirical coeff.) (Eq.14):
-            zz0 = zcon2 * zz1                            ! (numerateur) zz1 == alpha*Q
-            zz2 = zus*zus * zroadrw * rk0_w
-            zz2 = zz2*zz2                                             ! denominateur
-            !LB:  zz0 has the sign of zz1 and therefore of Qb !
-            zlamb =  6._wp*( 1._wp + (zz0/zz2)**0.75 )**(-1./3.) !  Eq.14   (Saunders)
+            zus = MAX(pustar(ji,jj), 1.E-4_wp) ! Laurent: too low wind (u*) might cause problem in stable cases:            
+            zz2 = zus*zus * zroadrw
+            zz2 = zz2*zz2
+            zlamb =  6._wp*( 1._wp + (zcon2*zz1/zz2)**0.75 )**(-1./3.) ! Lambda (Eq.14) (Saunders)
             
             ! Updating molecular sublayer thickness (delta):
             zz2    = rnu0_w/(SQRT(zroadrw)*zus)
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
                &    + (1._wp - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007
-            pdelta(ji,jj) = zdelta
 
             ! Updating temperature increment:
             pdT(ji,jj) =  MIN( - zQnet*zdelta/rk0_w , 0._wp )   ! temperature increment !  Eq.13 Cool skin !LOLO get rid of warming that comes from I don't know which term...
-            !
+            
+            pdelta(ji,jj) = zdelta
+
          END DO
       END DO
       

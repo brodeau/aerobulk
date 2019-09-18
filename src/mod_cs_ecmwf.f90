@@ -33,6 +33,10 @@ MODULE mod_cs_ecmwf
 
    PUBLIC :: CS_ECMWF
 
+   !! Cool-skin:
+   REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
+      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
+
    !! Cool-Skin / Warm-Layer related parameters:
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
@@ -73,13 +77,8 @@ CONTAINS
       !
       REAL(wp) :: &
          & zalpha_w, zusw, zusw2, & !: thermal expansion coefficient of sea-water
-         & zcon2, zQnsol ,zQnet, zlamb, zdelta,&
-         & zroadrw, &
+         & zQnsol ,zQnet, zlamb, zdelta,&
          & zfr
-
-      zroadrw = rho0_a/rho0_w          ! Density ratio                      (-)
-      zcon2 = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
-
 
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -90,15 +89,15 @@ CONTAINS
 
             zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(zroadrw)    ! u* in the water
             zusw2 = zusw*zusw
-            
+
             zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*zcon2/(zusw2*zusw2 ))**0.75 )**(-1./3.)
-            
+
             zdelta = zlamb*rnu0_w/zusw
-            
+
             zfr   = MAX( 0.065_wp + 11._wp*zdelta - (6.6E-5_wp/zdelta)*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp) ! Solar absorption; Eq. 8.131 / IFS cy40r1, doc, Part IV,
-            
+
             zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
-            
+
             pdT(ji,jj) = -zdelta*zQnet/rk0_w
 
          END DO
