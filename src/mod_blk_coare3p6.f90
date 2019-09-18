@@ -61,13 +61,14 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating pTau_ac and pQ_ac :', jpi,jpj
-         ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr )
+         PRINT *, ' *** coare3p6_init: WL => allocating pTau_ac, pQ_ac, and H_wl :', jpi,jpj
+         ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
          PRINT *, 'ierr = ', ierr
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
          pTau_ac(:,:) = 0._wp
          pQ_ac(:,:)   = 0._wp
-         PRINT *, ' *** pTau_ac and pQ_ac allocated!'
+         H_wl(:,:)    = H_wl_max
+         PRINT *, ' *** pTau_ac , pQ_ac, and H_wl allocated!'
       END IF
       IF ( l_use_cs ) THEN
          PRINT *, ' *** coare3p6_init: DOING NOTHING for cool-skin! ***'
@@ -79,7 +80,7 @@ CONTAINS
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, dt_s, pdT_wl,                            & ! optionals for warm-layer only
+      &                      isecday_utc, plong, dt_s, pdT_wl, Hwl,                       & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p6  ***
@@ -125,6 +126,7 @@ CONTAINS
       !!    *  plong  : longitude array                                       [deg.E]
       !!    *  dt_s   : time step in seconds                                  [s]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
+      !!    * Hwl     : depth of warm layer                                   [m]
       !!
       !! OUTPUT :
       !! --------
@@ -169,7 +171,8 @@ CONTAINS
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL                     ::   dt_s     !             [s]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
@@ -190,7 +193,8 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                zdelta     ! thickness of the viscous (skin) layer
+         &                zdelta, &  ! thickness of the viscous (skin) layer
+         &                zHwl       ! depth of warm-layer [m]
 
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -220,6 +224,7 @@ CONTAINS
             PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw,rad_lw,slp,isecday_utc,plong,dt_s & pdT_wl to use warm-layer param!'
             STOP
          END IF
+         IF (PRESENT(Hwl)) ALLOCATE ( zHwl(jpi,jpj) )
       END IF
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -381,8 +386,11 @@ CONTAINS
 
 
             !! In WL_COARE3P6 or , pTau_ac and pQ_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt), pdT_wl )
-            !               &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
+            IF (PRESENT(Hwl)) THEN
+               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt),  pdT_wl,  Hwl=zHwl )
+            ELSE            
+               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt),  pdT_wl )
+            END IF
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdT_wl(:,:)
@@ -394,7 +402,7 @@ CONTAINS
                WRITE(6,*) '           ---- AFTER WL ----'
                WRITE(6,*) ''
             END IF
-            !info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dTwl',         dz_wl(:,:),    '[m]'  )
+            IF (PRESENT(Hwl)) info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer',zHwl(:,:),   '[m]'  )
             info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        pdT_wl(:,:),  '[deg.C]'  )
             info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
             !info = DISP_DEBUG(ldebug, 'q_s',                          1000.*qs(:,:),     '[g/kg]'   )
@@ -425,6 +433,8 @@ CONTAINS
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( zdelta )
+
+      IF ( l_use_wl .AND. PRESENT(Hwl) ) Hwl = zHwl
 
    END SUBROUTINE turb_coare3p6
 

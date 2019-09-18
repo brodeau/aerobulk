@@ -34,6 +34,9 @@ MODULE mod_wl_ecmwf
 
    !!  Warm-Layer related parameters:
    REAL(wp), PARAMETER :: rd0  = 1.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
+
+   REAL(wp), PARAMETER :: dz_max = 20._wp  !: maximum depth of warm layer (adjustable)
+   
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
@@ -83,11 +86,12 @@ CONTAINS
       !
       REAL(wp) :: &
          & Ts,       & !: skin temperature ( = SST + dT_coolskin )
+         & dz_wl,    & !: thickness of the warm-layer [m]
          & zalpha_w, & !: thermal expansion coefficient of sea-water
          & zRhoCp_w, &
          & ZCON3,ZCON4,ZCON5, &
          & ZSRD,ZDT,ZZ,ZEPDU2,&
-         & ZFI,zdL,zdL2, ztmp, &
+         & zfr0,zdL,zdL2, ztmp, &
          & ZPHI,ZROADRW, &
          & zus_a, &
          & zsgn
@@ -107,8 +111,14 @@ CONTAINS
       !
       !     1.2C Warm layer parametrization constants
       !
-      !    ZFI = Fraction of solar radiation absorbed in warm layer (-)
-      ZFI = 1._wp - 0.28_wp*EXP(-71.5_wp*rd0) - 0.27_wp*EXP(-2.8_wp*rd0) - 0.45_wp*EXP(-0.07_wp*rd0)  !: Eq. 8.157
+      dz_wl = dz_max ! initial depth set to max value
+
+      !LOLO: => so normally we should use dz_wl instead of rd0, but then dz_wl also needs to be updated!!!
+      
+      !    zfr0 = Fraction of solar radiation absorbed in warm layer (-)
+      zfr0 = 1._wp - 0.28_wp*EXP(-71.5_wp*rd0) - 0.27_wp*EXP(-2.8_wp*rd0) - 0.45_wp*EXP(-0.07_wp*rd0)  !: Eq. 8.157
+      
+      
       !
       ZCON3 = rd0*vkarmn*grav/(ZROADRW)**1.5_wp
       ZCON4 = (rNu0 + 1._wp)*vkarmn/rd0
@@ -128,14 +138,14 @@ CONTAINS
 
             Ts = pSST(ji,jj) + pdT(ji,jj) ! Skin temperature
 
-            zalpha_w = MAX( 1.E-5_wp , 1.E-5_wp*(Ts - rt0) ) ! thermal expansion coefficient of water
+            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
             ZDT = Ts - pSST(ji,jj)
 
             !! Buoyancy flux and stability parameter (zdl = -z/L) in water
             !
             !! Qt/(rho_w*Cpw):
-            ZSRD = ( pQsw(ji,jj)*ZFI + pQnsol(ji,jj) )/zRhoCp_w
+            ZSRD = ( pQsw(ji,jj)*zfr0 + pQnsol(ji,jj) )/zRhoCp_w
             !
             zsgn = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
             ztmp = MAX(ZDT,0._wp)

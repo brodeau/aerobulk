@@ -69,7 +69,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, dz_wl
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, zHwl
 
    INTEGER(1), DIMENSION(:,:,:), ALLOCATABLE :: mskwl
 
@@ -167,7 +167,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
-      &        dz_wl(nx,ny,Nt), dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), mskwl(nx,ny,Nt) )
+      &        dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), zHwl(nx,ny,Nt), mskwl(nx,ny,Nt) )
    ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
@@ -271,6 +271,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    dT(:,:,:)    = 0.  ! skin = SST for first time step
    dT_cs(:,:,:) = 0.
    dT_wl(:,:,:) = 0.
+   zHwl(:,:,:)  = 0.
 
 
 
@@ -355,14 +356,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
          
-         !CALL WL_COARE3P6( Qsw(:,:,jt), QNS(:,:,jt), TAU(:,:,jt), SST(:,:,jt), xlon(:,:), isecday_utc, dt_s, dT_wl(:,:,jt), &
-         !   &                         Hwl=dz_wl(:,:,jt), mask_wl=mskwl(:,:,jt) )
 
       IF     ( TRIM(calgo) == 'coare3p6' ) THEN      
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
-            &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt), Hwl=zHwl(:,:,jt), &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
       ELSEIF( TRIM(calgo) == 'ecmwf2'    ) THEN
@@ -432,7 +431,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    END DO !DO jt = 1, Nt
 
    
-   dz_wl(:,:,:) = mskwl(:,:,:)*dz_wl(:,:,:) + (1 - mskwl(:,:,:))*-9999.
+   !zHwl(:,:,:) = mskwl(:,:,:)*zHwl(:,:,:) + (1 - mskwl(:,:,:))*-9999.
    
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
@@ -447,7 +446,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
       &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
       &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
-      &           vdt12=REAL(dz_wl(1,1,:),4), cv_dt12='dz_wl', cun12='m',     cln12='Estimated depth of warm-layer')
+      &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer')
 
    !,             &
 
