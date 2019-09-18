@@ -50,6 +50,11 @@ MODULE mod_phymbl
       MODULE PROCEDURE cp_air_vctr, cp_air_sclr
    END INTERFACE cp_air
 
+      INTERFACE alpha_sw
+      MODULE PROCEDURE alpha_sw_vctr, alpha_sw_sclr
+   END INTERFACE alpha_sw
+
+
 
    PUBLIC virt_temp
    PUBLIC rho_air
@@ -70,6 +75,7 @@ MODULE mod_phymbl
    PUBLIC q_air_dp
    PUBLIC q_sat_simple
    PUBLIC update_qnsol_tau
+   PUBLIC alpha_sw
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -811,6 +817,39 @@ CONTAINS
    !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
    !END FUNCTION Ri_bulk_coare
 
+
+   FUNCTION alpha_sw_vctr( psst )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION alpha_sw_vctr  ***
+      !!
+      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
+      !!----------------------------------------------------------------------------------
+      alpha_sw_vctr = 2.1e-5_wp * MAX(psst(:,:)-rt0 + 3.2_wp, 0._wp)**0.79
+   END FUNCTION alpha_sw_vctr
+
+   FUNCTION alpha_sw_sclr( psst )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION alpha_sw_sclr  ***
+      !!
+      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             ::   alpha_sw_sclr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
+      !!----------------------------------------------------------------------------------
+      alpha_sw_sclr = 2.1e-5_wp * MAX(psst-rt0 + 3.2_wp, 0._wp)**0.79
+   END FUNCTION alpha_sw_sclr
+
+
+
+
+   
 
 END MODULE mod_phymbl
 
