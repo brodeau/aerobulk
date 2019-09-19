@@ -3,8 +3,11 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_aerobulk_buoy_series.x bin/test_skin_corr.x bin/test_coef_skin.x \
+All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
 	bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x
+
+#  bin/test_aerobulk_buoy_series.x
+
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 

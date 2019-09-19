@@ -276,10 +276,10 @@ PROGRAM TEST_SKIN_CORR
          !   &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          PRINT *, 'Booh!!! Not ready yet!'
 
-         tmp1 = 0.01
-         tmp2 = 0.
-         tmp3 = 0.
-         CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, it_day_s_utc, 60. )
+         !tmp1 = 0.01
+         !tmp2 = 0.
+         !tmp3 = 0.
+         !CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, it_day_s_utc, 60. )
          STOP
 
          

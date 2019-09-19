@@ -299,23 +299,13 @@ PROGRAM TEST_AEROBULK
 
 
       CASE(2)
-
-         IF ( l_use_cswl ) THEN
-
-            CALL TURB_COARE3P6( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
-               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-            !! => Ts and qs are updated wrt to skin temperature !
-
-         ELSE
-
-            CALL TURB_COARE3P6( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-            !! => Ts and qs are not updated: Ts=sst and qs=ssq
-         END IF
-
+         
+         CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+            &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
+            &                isecday_utc=43200, plong=SLP*0._wp, dt_s=3600._wp,                  &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         !! => Ts and qs are updated wrt to skin temperature !         
 
       CASE(3)
          CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, &
