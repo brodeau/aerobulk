@@ -33,14 +33,14 @@ MODULE mod_wl_ecmwf
    PUBLIC :: WL_ECMWF
 
    !!  Warm-Layer related parameters:
-   REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
+   REAL(wp), PARAMETER :: rd0  = 1.        !: Depth scale [m], "d" in Eq.11 (Zeng & Beljaars 2005)
 
-   REAL(wp), PARAMETER :: z_sst  = 1._wp    !: depth at which bulk SST is taken... [m]
-   
    REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
       &                   zRhoCp_w = rho0_w*rCp0_w
 
 
+   REAL(wp), PARAMETER :: dz_max = 20._wp  !: maximum depth of warm layer (adjustable)
+   
    REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
@@ -84,26 +84,48 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
       REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
       !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! difference between "almost surface (right below viscous layer) and depth of bulk SST
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! ?
       !
       INTEGER :: ji,jj
       !
       REAL(wp) :: &
-         & zdz,    & !: thickness of the warm-layer [m]
+         & Ts,       & !: skin temperature ( = SST + dT_coolskin )
+         & dz_wl,    & !: thickness of the warm-layer [m]
          & zalpha_w, & !: thermal expansion coefficient of sea-water
-         & ZCON4,ZCON5, &
-         & ZSRD,   &
-         & dT_wl,   & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
-         & zfr,zdL,zdL2, ztmp, &
+         & ZCON3,ZCON4,ZCON5, &
+         & ZSRD, ZDT, ZZ, &
+         & zfr0,zdL,zdL2, ztmp, &
          & ZPHI, &
-         & zus_a, zusw, zusw2, &
-         & flg, zQabs, ZL1, ZL2
+         & zus_a, &
+         & flg
       !
-      
-      !ZCON4 = (rNu0 + 1._wp)*vkarmn/rd0
-      !ZCON5 = (rNu0 + 1._wp)/(rNu0*rd0)
-      
+      REAL(wp), DIMENSION(jpi,jpj) :: zus_w, zus_w2  !: u* and u*^2 in water
 
+      !
+      !!------------------------------------------------------------------
+      !
+      !     1. Initialize constants for ocean warm layer and cool skin
+      !
+      !     1.2C Warm layer parametrization constants
+      !
+      dz_wl = dz_max ! initial depth set to max value
+
+      !LOLO: => so normally we should use dz_wl instead of rd0, but then dz_wl also needs to be updated!!!
+      
+      ! *** zfr0 = Fraction of solar radiation absorbed in warm layer (-)
+      zfr0 = 1._wp - 0.28_wp*EXP(-71.5_wp*rd0) - 0.27_wp*EXP(-2.8_wp*rd0) - 0.45_wp*EXP(-0.07_wp*rd0)  !: Eq. 8.157
+      
+      
+      !
+      ZCON3 = rd0*vkarmn*grav/(zroadrw)**1.5_wp
+      ZCON4 = (rNu0 + 1._wp)*vkarmn/rd0
+      ZCON5 = (rNu0 + 1._wp)/(rNu0*rd0)
+      !
+      ! Friction velocities
+      ! "MAX( pustar(:,:), 1.E-4)" is u* in the air !
+      zus_w(:,:)  = MAX( pustar(:,:), 1.E-4_wp)*SQRT(zroadrw)       ! u* in the water
+      zus_w2(:,:) = zus_w(:,:)*zus_w(:,:)
+      !
 
       ! 2.2 Warm layer; formulation C (Xubin Zeng)
       !!--------------------------------------------
@@ -111,65 +133,40 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zdz = rd0 ! first guess for warm-layer depth
-            
-            ! dT_wl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
-            ! pdT         "                          "                                    and depth of bulk SST (here z_sst)!
-            !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
-            !! => so here since pdT is difference between surface and z_sst, need to increase fof dT_wl !
-            flg = 0.5_wp + SIGN( 0.5_wp , z_sst-zdz )               ! => 1 when z_sst>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
-            dT_wl = pdT(ji,jj) / ( flg + (1._wp-flg)*z_sst/zdz )
-            !PRINT *, 'LOLO/mod_wl_ecmwf.f90: dT_wl2=', dT_wl
-            !PRINT *, ''
-            
+            Ts = pSST(ji,jj) + pdT(ji,jj) ! Skin temperature
+
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
-            
-            
-            ! *** zfr = Fraction of solar radiation absorbed in warm layer (-)
-            zfr = 1._wp - 0.28_wp*EXP(-71.5_wp*zdz) - 0.27_wp*EXP(-2.8_wp*zdz) - 0.45_wp*EXP(-0.07_wp*zdz)  !: Eq. 8.157            
-            
-            zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(zroadrw)    ! u* in the water
-            zusw2 = zusw*zusw
-
-            
-            !! *** 1st rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL1 = zQabs / ( zdz * zRhoCp_w * rNu0 ) * (rNu0 + 1._wp)
-
+            ZDT = Ts - pSST(ji,jj)
 
             !! Buoyancy flux and stability parameter (zdl = -z/L) in water
-            ZSRD = zQabs/zRhoCp_w
+            !
+            !! Qt/(rho_w*Cpw):
+            ZSRD = ( pQsw(ji,jj)*zfr0 + pQnsol(ji,jj) )/zRhoCp_w
             !
             flg = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
-            ztmp = MAX(dT_wl,0._wp)
-            zdl = (flg+1._wp) * ( zusw2 * SQRT(ztmp/(5._wp*zdz*grav*zalpha_w/rNu0)) ) & ! (dT_wl > 0.0 .AND. ZSRD < 0.0)
+            ztmp = MAX(ZDT,0._wp)
+            zdl = (flg+1._wp) * ( zus_w2(ji,jj) * SQRT(ztmp/(5._wp*rd0*grav*zalpha_w/rNu0)) ) & ! (ZDT > 0.0 .AND. ZSRD < 0.0)
                &  +    flg    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = zdz*vkarmn*grav/(zroadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
+            zdL = ZCON3*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
             !! Stability function Phi_t(-z/L) (zdL is -z/L) :
             flg = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
-            zdL2 = zdL*zdL            
+            zdL2 = zdL*zdL
+            
             ZPHI =    flg      * ( 1._wp + (5._wp*zdL + 4._wp*zdL2)/(1._wp + 3._wp*zdL + 0.25_wp*zdL2) ) &  ! (zdL > 0) Takaya et al.
                & + (flg+1._wp) * ( 1._wp/SQRT(1._wp - 16._wp*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
+            !
             !! FOR zdL > 0.0, old relations:
             !         ZPHI = 1.+5._wp*zdL                                ! Eq. 8.136 (Large et al. 1994)
             !         ZPHI = 1.+5.0*(zdL+zdL**2)/(1.0+3.0*zdL+zdL**2) ! SHEBA, Grachev et al. 2007
-            
-            !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * ZPHI )
-                        
-            ! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == pdT(ji,jj) ; f_n == dT_wl)
-            dT_wl = MAX ( dT_wl + rdt*ZL1 + rdt*ZL2*dT_wl , 0._wp )
 
-            ! dT_wl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
-            !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
-
-            flg = 0.5_wp + SIGN( 0.5_wp , z_sst-zdz )               ! => 1 when z_sst>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
-            pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*z_sst/zdz )
-            
+            !! Solving 11 by itteration with time step of zdt...
+            ZZ = 1._wp + ZCON4*rdt*zus_w(ji,jj)/ZPHI
+            ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
+            pdT(ji,jj) = MAX( 0._wp , (ZDT + ZCON5*ZSRD*rdt)/ZZ )
 
          END DO ! DO ji = 1, jpi
       END DO ! DO jj = 1, jpj
