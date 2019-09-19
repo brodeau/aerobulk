@@ -81,15 +81,15 @@ CONTAINS
       !!     *mask_wl*    mask for possible existence of a warm-layer (1) or not (0)
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
-      INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
-      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
-      INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth z_sst [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: plon     ! longitude ! lolo
+      INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
+      REAL(wp),                     INTENT(in)    :: rdt      ! physical time step between two successive call to this routine [s]
+      INTEGER ,                     INTENT(in)    :: iwait    ! if /= 0 then wait before updating accumulated fluxes
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
       !!
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
       INTEGER(1), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: mask_wl ! mask for possible existence of a warm-layer (1) or not (0)
@@ -99,7 +99,7 @@ CONTAINS
       !
       REAL(wp) :: dT_wl, zQabs, zfr, zdz
       REAL(wp) :: zqac, ztac
-      REAL(wp) :: zAl, zcd1, zcd2
+      REAL(wp) :: zalpha_w, zcd1, zcd2
 
       REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
 
@@ -108,18 +108,17 @@ CONTAINS
          &        jl
 
       !! INITIALIZATION:
-      pdT   = 0._wp         ! dT initially set to 0._wp
+      pdT   = 0._wp       ! dT initially set to 0._wp
       dT_wl = 0._wp       ! total warming (amplitude) in warm layer
       zQabs = 0._wp       ! total heat absorped in warm layer
       zfr   = zfr0        ! initial value of solar flux absorption
-
       IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
 
+      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            !! Need to know the local solar time from longitude and isd
-            !! *********************************************************
+            !! Need to know the local solar time from longitude and isd:
             rlag_gw_h = -1._wp * MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )
             rlag_gw_h = -1._wp * SIGN( MIN(ABS(rlag_gw_h) , ABS(MODULO(rlag_gw_h,24._wp))), rlag_gw_h + 12._wp )
             ilag_gw_s = INT( rlag_gw_h*3600._wp )
@@ -132,9 +131,10 @@ CONTAINS
             !**********************************************************
 
             !*****  variables for warm layer  ***
-            zAl   = 2.1e-5*(pSST(ji,jj)-rt0 + 3.2_wp)**0.79
-            zcd1 = SQRT(2._wp*rich*rCp0_w/(zAl*grav*rho0_w))        !mess-o-constants 1
-            zcd2 = SQRT(2._wp*zAl*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
+            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+
+            zcd1 = SQRT(2._wp*rich*rCp0_w/(zalpha_w*grav*rho0_w))        !mess-o-constants 1
+            zcd2 = SQRT(2._wp*zalpha_w*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
 
             !********************************************************
             !****  Compute apply warm layer  correction *************
@@ -190,9 +190,9 @@ CONTAINS
                      !***********************
                      ! Warm layer wiped out
                      !***********************
-                     zfr    = 0.75
+                     zfr  = 0.75
                      zdz  = H_wl_max
-                     zqac   = pQ_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
+                     zqac = pQ_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
 
                   END IF !IF ( pQ_ac(ji,jj) + zQabs*rdt > 0._wp )
 
