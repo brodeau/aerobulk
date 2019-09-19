@@ -81,15 +81,15 @@ CONTAINS
       !!     *mask_wl*    mask for possible existence of a warm-layer (1) or not (0)
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth z_sst [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: plon     ! longitude ! lolo
-      INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
-      REAL(wp),                     INTENT(in)    :: rdt      ! physical time step between two successive call to this routine [s]
-      INTEGER ,                     INTENT(in)    :: iwait    ! if /= 0 then wait before updating accumulated fluxes
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
+      INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
+      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
+      INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
       !!
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
       INTEGER(1), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: mask_wl ! mask for possible existence of a warm-layer (1) or not (0)
@@ -118,6 +118,8 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
+            zdz   = H_wl(ji,jj) ! depth of warm layer
+
             !! Need to know the local solar time from longitude and isd:
             rlag_gw_h = -1._wp * MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )
             rlag_gw_h = -1._wp * SIGN( MIN(ABS(rlag_gw_h) , ABS(MODULO(rlag_gw_h,24._wp))), rlag_gw_h + 12._wp )
@@ -143,7 +145,7 @@ CONTAINS
             IF (isd_sol < rdt ) THEN    !re-zero at midnight ! LOLO improve: risky if real midnight (00:00:00) is not a time in vtime...
                PRINT *, '  [WL_COARE3P6] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
                zfr            = zfr0
-               H_wl(ji,jj)    = H_wl_max
+               zdz    = H_wl_max
                pTau_ac(ji,jj) = 0._wp
                ztac           = 0._wp
                pQ_ac(ji,jj)   = 0._wp
@@ -152,12 +154,11 @@ CONTAINS
             END IF
 
 
-            zdz = H_wl(ji,jj) ! depth of warm layer!
 
             IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
 
-               PRINT *, '  [WL_COARE3P6] WE DO WL !'
-               PRINT *, '  [WL_COARE3P6] isd_sol, pTau, pSST, pdT =', isd_sol, REAL(pTau(ji,jj),4), REAL(pSST(ji,jj),4), REAL(pdT(ji,jj),4)
+               !PRINT *, '  [WL_COARE3P6] WE DO WL !'
+               !PRINT *, '  [WL_COARE3P6] isd_sol, pTau, pSST, pdT =', isd_sol, REAL(pTau(ji,jj),4), REAL(pSST(ji,jj),4), REAL(pdT(ji,jj),4)
 
                !************************************
                !****   set warm layer constants  ***
@@ -165,11 +166,11 @@ CONTAINS
 
                zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-               PRINT *, '  [WL_COARE3P6] rdt,  pQsw, pQnsol, zQabs =', rdt, REAL(pQsw(ji,jj),4), REAL(pQnsol(ji,jj),4), REAL(zQabs,4)
+               !PRINT *, '  [WL_COARE3P6] rdt,  pQsw, pQnsol, zQabs =', rdt, REAL(pQsw(ji,jj),4), REAL(pQnsol(ji,jj),4), REAL(zQabs,4)
 
                IF ( zQabs >= Qabs_thr ) THEN         ! Check for threshold
 
-                  PRINT *, '  [WL_COARE3P6] pTau_ac, pQ_ac =', REAL(pTau_ac(ji,jj),4), REAL(pQ_ac(ji,jj),4)
+                  !PRINT *, '  [WL_COARE3P6] pTau_ac, pQ_ac =', REAL(pTau_ac(ji,jj),4), REAL(pQ_ac(ji,jj),4)
 
                   !pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! momentum integral
                   ztac = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! updated momentum integral
@@ -182,7 +183,7 @@ CONTAINS
                         zfr = 1. - ( 0.28*0.014*(1. - EXP(-zdz/0.014)) + 0.27*0.357*(1. - EXP(-zdz/0.357)) &
                            &        + 0.45*12.82*(1-EXP(-zdz/12.82)) ) / zdz
                         zqac = pQ_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
-                        IF (zqac <= 0._wp) STOP'ERROR: zqac <= 0 !!! #1'
+                        !IF (zqac <= 0._wp) STOP'ERROR: zqac <= 0 !!! #1'
                         zdz = MIN( H_wl_max , zcd1*ztac/SQRT(zqac)) ! Warm-layer depth (normally: zqac > 0 !)
                      END DO
 
