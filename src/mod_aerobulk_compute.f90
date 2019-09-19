@@ -194,7 +194,7 @@ CONTAINS
       Tau_y = pCd*pRHO * V_zu * pUblk
 
       !! *** Latent and Sensible heat fluxes ***
-      QL = pCe*pRHO*L_vap(pTs)   * (pQzu - pqs) * pUblk
+      QL = MIN( pCe*pRHO*L_vap(pTs)   * (pQzu - pqs) * pUblk , 0._wp ) ! we do not want Qlat > 0 !
       QH = pCh*pRHO*cp_air(pQzu) * (pTzu - pTs) * pUblk
 
       !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
