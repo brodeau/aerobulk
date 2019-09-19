@@ -41,7 +41,8 @@ MODULE mod_wl_ecmwf
       &                   zRhoCp_w = rho0_w*rCp0_w
 
 
-   REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
+   REAL(wp), PARAMETER :: rNu0 = 1.0       !:  be closer to COARE3p6 ???!LOLO
+   !REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
    !                                       !: condition for the insolation peak of +1000W/m^2
@@ -91,7 +92,6 @@ CONTAINS
       REAL(wp) :: &
          & zdz,    & !: thickness of the warm-layer [m]
          & zalpha_w, & !: thermal expansion coefficient of sea-water
-         & ZCON4,ZCON5, &
          & ZSRD,   &
          & dT_wl,   & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
          & zfr,zdL,zdL2, ztmp, &
@@ -100,10 +100,6 @@ CONTAINS
          & flg, zQabs, ZL1, ZL2
       !
       
-      !ZCON4 = (rNu0 + 1._wp)*vkarmn/rd0
-      !ZCON5 = (rNu0 + 1._wp)/(rNu0*rd0)
-      
-
 
       ! 2.2 Warm layer; formulation C (Xubin Zeng)
       !!--------------------------------------------

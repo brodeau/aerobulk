@@ -68,7 +68,7 @@ CONTAINS
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) :: zQnet, zQnsol, zlamb, zdelta, zalpha_w, zfr, &
          &        zz1, zz2, zus, &
-         &        zdt, zdq, ztf
+         &        ztf
       !!---------------------------------------------------------------------
 
       DO jj = 1, jpj

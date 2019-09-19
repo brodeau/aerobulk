@@ -83,11 +83,11 @@ CONTAINS
 
 
 
-   SUBROUTINE turb_ecmwf2(  kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
-      &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      dt_s, pdT_wl,                                                & ! optionals for warm-layer only
-      &                      xz0, xu_star, xL, xUN10 )
+   SUBROUTINE turb_ecmwf2( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
+      &                    Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+      &                    Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
+      &                    dt_s, pdT_wl,                                                & ! optionals for warm-layer only
+      &                    xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf2  ***
       !!
@@ -103,7 +103,6 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  t_zt : potential air temperature at zt                         [K]
@@ -149,7 +148,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in   )                     ::   kt       ! current time step
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
@@ -205,8 +203,6 @@ CONTAINS
          &     znu_a(jpi,jpj), Linv(jpi,jpj),   &
          &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
-
-      !IF ( kt == 1 )
 
       !! If cool-skin requested, checking if needed optional array arguments have been specified:
       IF ( l_use_cs ) THEN
