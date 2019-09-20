@@ -30,11 +30,14 @@ MODULE mod_cs_coare3p6
    REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
       &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
 
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: delta_vl  !: thickness of the surface viscous layer (in the water) right below the air-sea interface [m]
+
+
    !!----------------------------------------------------------------------
 CONTAINS
 
 
-   SUBROUTINE CS_COARE3P6( pQsw, pQnsol, pustar, pSST, pQlat, pdelta,  pdT )
+   SUBROUTINE CS_COARE3P6( pQsw, pQnsol, pustar, pSST, pQlat,  pdT )
       !!
       !!  **   OUTPUT:
       !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
@@ -49,7 +52,6 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST at depth z_sst                        [K]
       !!     *pQlat*      surface latent heat flux                       [K]
-      !!     *pdelta*     thickness of the viscous (skin) layer          [m]
       !!
       !!   **  INPUT/OUTPUT:
       !!     *pdT*  : as input =>  previous estimate of dT cool-skin
@@ -61,7 +63,6 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST ! bulk SST [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQlat  ! latent heat flux [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdelta ! thickness of the viscous (skin) layer [m]
       !!
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cool-skin effect
       !!---------------------------------------------------------------------
@@ -78,7 +79,7 @@ CONTAINS
 
             zQnsol = MAX( 1._wp , - pQnsol(ji,jj) ) ! Non-solar heat loss to the atmosphere
 
-            zdelta = pdelta(ji,jj)   ! using last value of delta
+            zdelta = delta_vl(ji,jj)   ! using last value of delta
 
             !! Fraction of the shortwave flux absorbed by the cool-skin sublayer:
             zfr   = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Eq.16 (Fairall al. 1996b) /  !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
@@ -111,7 +112,7 @@ CONTAINS
 
             !! Update!
             pdT(ji,jj) =  MIN( - zQnet*zdelta/rk0_w , 0._wp )   ! temperature increment
-            pdelta(ji,jj) = zdelta
+            delta_vl(ji,jj) = zdelta
 
          END DO
       END DO

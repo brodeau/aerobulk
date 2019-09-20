@@ -259,7 +259,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES
    !! We have enough to calculate the bulk Richardson number:
    !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
    !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
-   !tmp = Ri_bulk_ecmwf2( zt, sst, theta_zt, ssq, q_zt, W10 )
+   !tmp = Ri_bulk_ecmwf( zt, sst, theta_zt, ssq, q_zt, W10 )
    !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
    !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
    !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)

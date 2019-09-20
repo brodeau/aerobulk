@@ -40,7 +40,7 @@ MODULE mod_blk_coare3p6
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
    
-   LOGICAL, PARAMETER :: ldebug = .true.
+   LOGICAL, PARAMETER :: ldebug = .TRUE.
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -63,15 +63,20 @@ CONTAINS
          ierr = 0
          PRINT *, ' *** coare3p6_init: WL => allocating pTau_ac, pQ_ac, and H_wl :', jpi,jpj
          ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
-         PRINT *, 'ierr = ', ierr
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
          pTau_ac(:,:) = 0._wp
          pQ_ac(:,:)   = 0._wp
          H_wl(:,:)    = H_wl_max
          PRINT *, ' *** pTau_ac , pQ_ac, and H_wl allocated!'
       END IF
+      !!
       IF ( l_use_cs ) THEN
-         PRINT *, ' *** coare3p6_init: DOING NOTHING for cool-skin! ***'
+         ierr = 0
+         PRINT *, ' *** coare3p6_init: CS => allocating delta_vl :', jpi,jpj
+         ALLOCATE ( delta_vl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of delta_vl and pQ_ac failed!'
+         delta_vl(:,:) = 0.001_wp      ! First guess of zdelta [m]
+         PRINT *, ' *** delta_vl allocated!'
       END IF
    END SUBROUTINE coare3p6_init
 
@@ -195,7 +200,6 @@ CONTAINS
          &                zsst,   &  ! to back up the initial bulk SST
          &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
          &                pdTw,   &  ! SST increment "dT" for warm layer correction          [K]
-         &                zdelta, &  ! thickness of the viscous (skin) layer
          &                zHwl       ! depth of warm-layer [m]
 
       !
@@ -213,7 +217,7 @@ CONTAINS
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
-      
+
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
@@ -224,8 +228,7 @@ CONTAINS
             PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
             STOP
          END IF
-         ALLOCATE ( zdelta(jpi,jpj) , pdTc(jpi,jpj) )
-         zdelta = 0.001_wp      ! First guess of zdelta
+         ALLOCATE ( pdTc(jpi,jpj) )
          pdTc(:,:) = -0.2_wp  ! First guess of skin correction
       END IF
       
@@ -356,7 +359,7 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
-            CALL CS_COARE3P6( Qsw, ztmp1, u_star, zsst, ztmp2, zdelta,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
+            CALL CS_COARE3P6( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
             T_s(:,:) = zsst(:,:) + pdTc(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
@@ -431,12 +434,11 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF ( l_use_wl .AND. PRESENT(Hwl)    ) Hwl    = zHwl
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
       
-      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE (  zsst  )
-      IF (          l_use_cs      ) DEALLOCATE ( zdelta , pdTc )
+      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF (          l_use_cs      ) DEALLOCATE ( pdTc )
       IF (          l_use_wl      ) DEALLOCATE ( pdTw )
 
 

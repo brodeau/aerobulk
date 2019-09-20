@@ -767,13 +767,13 @@ CONTAINS
    !   !
    !END FUNCTION Ri_bulk_ecmwf
 
-   !FUNCTION Ri_bulk_ecmwf2( pz, psst, ptha, pssq, pqa, pub )
+   !FUNCTION Ri_bulk_ecmwf_b( pz, psst, ptha, pssq, pqa, pub )
    !   !!----------------------------------------------------------------------------------
    !   !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
    !   !!
    !   !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
    !   !!----------------------------------------------------------------------------------
-   !   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf2
+   !   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf_b
    !   REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
    !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
    !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
@@ -795,13 +795,13 @@ CONTAINS
    !         zs0 =           (rCp_dry + rCp_vap*pssq(ji,jj))*psst(ji,jj)  ! dry static energy at air-sea interface (z=0)
    !         zsz = grav*pz + (rCp_dry + rCp_vap* pqa(ji,jj))*zta          ! dry static energy at z=pz
    !         !
-   !         Ri_bulk_ecmwf2(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
+   !         Ri_bulk_ecmwf_b(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
    !            &  * ( 2._wp*(zsz - zs0)/(zsz + zs0 - grav*pz) + rctv0*(pqa(ji,jj) - pssq(ji,jj)) )
    !         !
    !      END DO
    !   END DO
    !   !
-   !END FUNCTION Ri_bulk_ecmwf2
+   !END FUNCTION Ri_bulk_ecmwf_b
 
    !FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
    !   !!----------------------------------------------------------------------------------

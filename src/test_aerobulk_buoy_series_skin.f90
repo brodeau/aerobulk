@@ -14,7 +14,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    !USE mod_blk_ncar
-   USE mod_blk_ecmwf2
+   USE mod_blk_ecmwf
 
    IMPLICIT NONE
    
@@ -35,7 +35,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    
    !CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
    !                             !&      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
-   !   &      vca = (/ 'coare3p6', 'ecmwf2  ' /)
+   !   &      vca = (/ 'coare3p6', 'ecmwf  ' /)
 
    REAL(wp), PARAMETER ::   &
       & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
@@ -221,7 +221,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
       READ(*,*) ians
       IF ( ians == 1 ) calgo = 'coare3p0'
-      IF ( ians == 2 ) calgo = 'ecmwf2  '
+      IF ( ians == 2 ) calgo = 'ecmwf  '
       IF ( ians == 3 ) calgo = 'coare3p6'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
@@ -364,8 +364,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
             &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt), Hwl=zHwl(:,:,jt), &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
-      ELSEIF( TRIM(calgo) == 'ecmwf2'    ) THEN
-         CALL TURB_ECMWF2(       zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+      ELSEIF( TRIM(calgo) == 'ecmwf'    ) THEN
+         CALL TURB_ECMWF(       zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
             &             dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
