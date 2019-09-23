@@ -23,8 +23,8 @@ MODULE mod_phymbl
    !!   One_on_L      : 1. / ( Monin-Obukhov length )
    !!   Ri_bulk       : bulk Richardson number aka BRN
    !!   q_sat         : saturation humidity as a function of SLP and temperature
-
-
+   !!   q_air_rh      : specific humidity as a function of RH, t_air and SLP
+   
    USE mod_const
 
    IMPLICIT NONE
@@ -195,8 +195,6 @@ CONTAINS
       L_vap_sclr = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
       !
    END FUNCTION L_vap_sclr
-
-
 
 
    FUNCTION cp_air_vctr( pqa )
@@ -741,13 +739,43 @@ CONTAINS
    END SUBROUTINE UPDATE_QNSOL_TAU
 
 
-   
+   FUNCTION alpha_sw_vctr( psst )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION alpha_sw_vctr  ***
+      !!
+      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
+      !!----------------------------------------------------------------------------------
+      alpha_sw_vctr = 2.1e-5_wp * MAX(psst(:,:)-rt0 + 3.2_wp, 0._wp)**0.79
+   END FUNCTION alpha_sw_vctr
+
+   FUNCTION alpha_sw_sclr( psst )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION alpha_sw_sclr  ***
+      !!
+      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             ::   alpha_sw_sclr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
+      !!----------------------------------------------------------------------------------
+      alpha_sw_sclr = 2.1e-5_wp * MAX(psst-rt0 + 3.2_wp, 0._wp)**0.79
+   END FUNCTION alpha_sw_sclr
+
+
+
+END MODULE mod_phymbl
 
 
 
 
 
-   !FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
+!FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
    !   !!----------------------------------------------------------------------------------
    !   !! Bulk Richardson number (Eq. 3.25 IFS doc)
    !   !!
@@ -816,67 +844,3 @@ CONTAINS
    !   !!----------------------------------------------------------------------------------
    !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
    !END FUNCTION Ri_bulk_coare
-
-
-   FUNCTION alpha_sw_vctr( psst )
-      !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION alpha_sw_vctr  ***
-      !!
-      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! latent heat of vaporization   [J/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
-      !!----------------------------------------------------------------------------------
-      alpha_sw_vctr = 2.1e-5_wp * MAX(psst(:,:)-rt0 + 3.2_wp, 0._wp)**0.79
-   END FUNCTION alpha_sw_vctr
-
-   FUNCTION alpha_sw_sclr( psst )
-      !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION alpha_sw_sclr  ***
-      !!
-      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp)             ::   alpha_sw_sclr   ! latent heat of vaporization   [J/kg]
-      REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
-      !!----------------------------------------------------------------------------------
-      alpha_sw_sclr = 2.1e-5_wp * MAX(psst-rt0 + 3.2_wp, 0._wp)**0.79
-   END FUNCTION alpha_sw_sclr
-
-
-
-
-   
-
-END MODULE mod_phymbl
-
-
-
-!   FUNCTION q_sat(temp, slp,  cform)
-!      !! Specific humidity at saturation
-!      REAL(wp), DIMENSION(jpi,jpj) :: q_sat
-!      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::  &
-!         &                  temp,  &   !: sea surface temperature         [K]
-!         &                  slp       !: sea level atmospheric pressure  [Pa]
-!      CHARACTER(len=*), OPTIONAL, INTENT(in) :: cform
-!      !! Local :
-!      LOGICAL :: lbuck  !: we use Buck formula to compute e_sat instead of Goff 1957
-!      REAL(wp), DIMENSION(jpi,jpj) :: e_s
-!      lbuck = .FALSE.
-!      IF ( PRESENT(cform) ) THEN
-!         IF ( (TRIM(cform) == 'buck').OR.(TRIM(cform) == 'Buck').OR.(TRIM(cform) == 'BUCK') ) THEN
-!            lbuck = .TRUE.
-!         END IF
-!      END IF
-!      !! Vapour pressure at saturation :
-!      IF ( lbuck ) THEN
-!         e_s = e_sat_buck(temp, slp)
-!      ELSE
-!         e_s = e_sat(temp)  ! using Goff !
-!      END IF
-!      q_sat = reps0*e_s/(slp - (1. - reps0)*e_s)
-!   END FUNCTION q_sat
-

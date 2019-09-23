@@ -30,8 +30,7 @@ MODULE mod_blk_ecmwf
    !!====================================================================================
    USE mod_const        !: physical and othe constants
    USE mod_phymbl       !: thermodynamics
-   USE mod_cs_ecmwf     !: cool-skin parameterization
-   USE mod_wl_ecmwf     !: warm-layer parameterization
+   USE mod_skin_ecmwf   !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE

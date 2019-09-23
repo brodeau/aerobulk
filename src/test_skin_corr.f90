@@ -8,7 +8,7 @@ PROGRAM TEST_SKIN_CORR
    USE mod_blk_coare3p0
    USE mod_blk_ecmwf
    !USE mod_blk_coare3p6
-   USE mod_wl_coare3p6
+   !USE mod_wl_coare3p6
 
    IMPLICIT NONE
 
