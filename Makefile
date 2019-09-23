@@ -36,6 +36,9 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_aerobulk.f90
 
 LIB_OBJ = $(LIB_SRC:.f90=.o)
+#LIB_OBO = $(LIB_SRC:.f90=.o)
+#LIB_OBJ = $(patsubst src%,obj%,$(LIB_OBO))
+
 
 LIB_CXX = -L./lib -laerobulk_cxx
 

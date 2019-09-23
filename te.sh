@@ -4,10 +4,7 @@
 
 fout="out_test_aerobulk_buoy_ecmwf.out"
 
-
-
-DSTOR="/data/gcm_setup/STATION_ASF/STATION_ASF-I"
-
+if [ `hostname` = "luitel"  ]; then DSTOR="/data/gcm_setup/STATION_ASF/STATION_ASF-I"; fi
 if [ `hostname` = "lacroix" ]; then DSTOR="/data1/laurent/STATION_ASF/STATION_ASF-I" ; fi
 if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/STATION_ASF-I"    ; fi
 

@@ -38,9 +38,6 @@ CONTAINS
 
 
    SUBROUTINE CS_COARE3P6( pQsw, pQnsol, pustar, pSST, pQlat,  pdT )
-      !!
-      !!  **   OUTPUT:
-      !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin scheme according to Fairall et al. 1996, revisited for COARE 3.6 (Fairall et al., 2019)

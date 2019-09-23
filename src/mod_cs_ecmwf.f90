@@ -10,14 +10,7 @@
 MODULE mod_cs_ecmwf
    !!====================================================================================
    !!       Cool-Skin correction of SST
-   !!
-   !!   * bulk transfer coefficients C_D, C_E and C_H
-   !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
-   !!   * the effective bulk wind speed at 10m U_blk
-   !!   => all these are used in bulk formulas in sbcblk.F90
-   !!
-   !!    Using the bulk formulation/param. of ECMWF
-   !!      + consideration of cool-skin parametrization (Fairall et al. 1996)
+   !!    Cool-skin parametrization (doc IFS@ECMWF, cy45r1)
    !!
    !!       Routine "cs_ecmwf" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -35,13 +28,11 @@ MODULE mod_cs_ecmwf
 
    !! Cool-skin:
    REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
-      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
-
-   !! Cool-Skin / Warm-Layer related parameters:
-   REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
-   !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
-   !                                       !: 0.3 to respect a warming of +3 K in calm
-   !                                       !: condition for the insolation peak of +1000W/m^2
+      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w), &
+      &                   rNu0     = 0.5                !: Nu (exponent of temperature profile) Eq.11
+   !                                                    !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
+   !                                                    !: 0.3 to respect a warming of +3 K in calm
+   !                                                    !: condition for the insolation peak of +1000W/m^2
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -51,8 +42,7 @@ CONTAINS
       !!
       !!  Cool-Skin scheme according to Fairall et al. 1996
       !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
-      !!
-      !!    As included in IFS Cy40   /  E.C.M.W.F.
+      !!     as parameterized in IFS Cy45r1 / E.C.M.W.F.
       !!     ------------------------------------------------------------------
       !!
       !!  **   INPUT:
