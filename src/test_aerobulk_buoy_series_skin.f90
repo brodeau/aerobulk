@@ -403,7 +403,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       
       !! Longwave radiative heat fluxes:
       tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - sigma0*tmp(:,:)*tmp(:,:))
+      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
          
       QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
       

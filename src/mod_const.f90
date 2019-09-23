@@ -58,7 +58,7 @@ MODULE mod_const
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,       &
       &  emiss_w = 0.97,      &   !: emissivity of sea water
-      &  sigma0 = 5.67E-8,    &   !: Stefan Boltzman constant
+      &  stefan = 5.67E-8,    &   !: Stefan Boltzman constant
       !!
       &  oce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available      
       !!                         !: NEMO: 0.066 / ECMWF: 0.055
@@ -70,7 +70,11 @@ MODULE mod_const
       &  Sol0 = 1366.  , &       !: Solar constant W/m^2
       &  rdct_qsat_salt = 0.98   !: factor to apply to q_sat(SST) to account for salt
 
+   REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio
+   REAL(wp), PARAMETER, PUBLIC :: rcst_cs = 16._wp*grav*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) ! for cool-skin parameterizations...     
 
+
+   
    INTEGER, DIMENSION(12), PARAMETER, PUBLIC :: &
       &   tdmn = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /), &
       &   tdml = (/ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)

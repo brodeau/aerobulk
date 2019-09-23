@@ -38,7 +38,7 @@ MODULE mod_blk_coare3p6
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
-   
+
    !LOGICAL, PARAMETER :: ldebug = .TRUE.
    LOGICAL, PARAMETER :: ldebug = .FALSE.
 
@@ -121,7 +121,7 @@ CONTAINS
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
-      !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
+      !! OPTIONAL INPUT :
       !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
@@ -228,7 +228,7 @@ CONTAINS
             STOP
          END IF
          ALLOCATE ( pdTc(jpi,jpj) )
-         pdTc(:,:) = -0.2_wp  ! First guess of skin correction
+         pdTc(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
 
       IF ( l_use_wl ) THEN
@@ -247,7 +247,7 @@ CONTAINS
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
       END IF
 
-      
+
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
@@ -367,7 +367,7 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-            
+
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
@@ -389,10 +389,9 @@ CONTAINS
             !! In WL_COARE3P6 or , pTau_ac and pQ_ac must be updated at the final itteration step => add a flag to do this!
             IF (PRESENT(Hwl)) THEN
                CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
-            ELSE            
+            ELSE
                CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
             END IF
-
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
@@ -417,13 +416,13 @@ CONTAINS
          END IF
 
       END DO !DO j_itt = 1, nb_itt
-      
+
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/U_blk
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
-      
+
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
@@ -434,11 +433,13 @@ CONTAINS
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
-      
+
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( pdTc )
-      IF (          l_use_wl      ) DEALLOCATE ( pdTw )
-
+      IF (          l_use_wl      ) THEN
+         DEALLOCATE ( pdTw )
+         IF (PRESENT(Hwl)) DEALLOCATE ( zHwl )
+      END IF
 
    END SUBROUTINE turb_coare3p6
 

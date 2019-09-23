@@ -729,7 +729,7 @@ CONTAINS
             ! Non-Solar heat flux to the ocean:
             zQlat = MIN ( zUrho*zCe*L_vap( pTs(ji,jj)) * zdq , 0._wp )  ! we do not want a Qlat > 0 !
             zQsen = zUrho*zCh*cp_air(pqa(ji,jj)) * zdt
-            zQlw  = emiss_w*(prlw(ji,jj) - sigma0*zTs2*zTs2) ! Net longwave flux
+            zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
 
             pQns(ji,jj) = zQlat + zQsen + zQlw
             

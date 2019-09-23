@@ -181,8 +181,7 @@ CONTAINS
          &                zsst,   &  ! to back up the initial bulk SST
          &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
          &                pdTw       ! SST increment "dT" for warm layer correction          [K]
-
-
+      !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       !
@@ -213,9 +212,9 @@ CONTAINS
             STOP
          END IF
          ALLOCATE ( pdTc(jpi,jpj) )
-         pdTc(:,:) = -0.2_wp  ! First guess of skin correction
+         pdTc(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
-      
+
       IF ( l_use_wl ) THEN
          IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
             PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'
@@ -228,13 +227,13 @@ CONTAINS
       IF ( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
-         IF( l_use_cs ) T_s = T_s - 0.25   ! First guess of correction
+         IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
       END IF
 
 
       ! Identical first gess as in COARE, with IFS parameter values though...
-      !      
+      !
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
@@ -359,25 +358,6 @@ CONTAINS
          func_m = log(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
          func_h = log(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
-!!! SKIN related part
-!!! -----------------
-         !IF( l_use_skin ) THEN
-         !   !! compute transfer coefficients at zu : lolo: verifier...
-         !   Ch = vkarmn*vkarmn/(func_m*func_h)
-         !   ztmp1 = LOG(zu) - LOG(z0q) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0q*Linv)   ! func_q
-         !   Ce = vkarmn*vkarmn/(func_m*ztmp1)
-         !   ! Non-Solar heat flux to the ocean:
-         !   ztmp1 = U_blk*MAX(rho_air(t_zu, q_zu, slp), 1._wp)     ! rho*U10
-         !   ztmp2 = T_s*T_s
-         !   ztmp1 = ztmp1 * ( Ce*L_vap(T_s)*(q_zu - q_s) + Ch*cp_air(q_zu)*(t_zu - T_s) ) & ! Total turb. heat flux
-         !      &       +      emiss_w*(rad_lw - sigma0*ztmp2*ztmp2)                         ! Net longwave flux
-         !   !!         => "ztmp1" is the net non-solar surface heat flux !
-         !   !! Updating the values of the skin temperature T_s and q_s :
-         !   CALL CSWL_ECMWF( Qsw, ztmp1, u_star, zsst, T_s )
-         !   q_s = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp)  ! 200 -> just to avoid numerics problem on masked regions if silly values are given
-         !END IF
-
-
 
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
@@ -395,7 +375,7 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-            
+
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
 
@@ -457,7 +437,7 @@ CONTAINS
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
-      
+
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( pdTc )
       IF (          l_use_wl      ) DEALLOCATE ( pdTw )

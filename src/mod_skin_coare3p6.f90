@@ -27,9 +27,6 @@ MODULE mod_skin_coare3p6
    PUBLIC :: CS_COARE3P6, WL_COARE3P6
 
    !! Cool-skin related parameters:
-   REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
-      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
-   !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: delta_vl  !: thickness of the surface viscous layer (in the water) right below the air-sea interface [m]
 
    !! Warm-layer related parameters:
@@ -103,12 +100,12 @@ CONTAINS
             zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
 
             zus = MAX(pustar(ji,jj), 1.E-4_wp) ! Laurent: too low wind (u*) might cause problem in stable cases:
-            zz2 = zus*zus * zroadrw
+            zz2 = zus*zus * roadrw
             zz2 = zz2*zz2
-            zlamb =  6._wp*( 1._wp + (zcon2*zz1/zz2)**0.75 )**(-1./3.) ! Lambda (Eq.14) (Saunders)
+            zlamb =  6._wp*( 1._wp + (rcst_cs*zz1/zz2)**0.75 )**(-1./3.) ! Lambda (Eq.14) (Saunders)
 
             ! Updating molecular sublayer thickness (delta):
-            zz2    = rnu0_w/(SQRT(zroadrw)*zus)
+            zz2    = rnu0_w/(SQRT(roadrw)*zus)
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
                &    + (1._wp - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007

@@ -27,9 +27,8 @@ MODULE mod_skin_ecmwf
    PUBLIC :: CS_ECMWF, WL_ECMWF
 
    !! Cool-skin related parameters:
-   REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
-      &                   zcon2   = 16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / (rk0_w*rk0_w)
-
+   !...
+   
    !! Warm-layer related parameters:
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
@@ -80,10 +79,10 @@ CONTAINS
 
             zQnsol = MAX( 1._wp , - pQnsol(ji,jj) ) ! Non-solar heat loss to the atmosphere
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(zroadrw)    ! u* in the water
+            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
             zusw2 = zusw*zusw
 
-            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*zcon2/(zusw2*zusw2 ))**0.75 )**(-1./3.)   ! w.r.t COARE 3p6 => seems to ommit absorbed zfr*Qsw (Qnet i.o. Qnsol) and effect of evap...
+            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*rcst_cs/(zusw2*zusw2 ))**0.75 )**(-1./3.)   ! w.r.t COARE 3p6 => seems to ommit absorbed zfr*Qsw (Qnet i.o. Qnsol) and effect of evap...
             !                                                                                  ! so zlamb not implicit in terms of zdelta (zfr(delta)), so no need to have last guess of delta as in COARE 3.6...
             zdelta = zlamb*rnu0_w/zusw
 
@@ -163,7 +162,7 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(zroadrw)    ! u* in the water
+            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
             zusw2 = zusw*zusw
 
 
@@ -180,7 +179,7 @@ CONTAINS
                &  +    flg    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = zdz*vkarmn*grav/(zroadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
+            zdL = zdz*vkarmn*grav/(roadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
             !! Stability function Phi_t(-z/L) (zdL is -z/L) :
             flg = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
