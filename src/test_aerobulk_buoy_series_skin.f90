@@ -23,8 +23,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   REAL(wp), PARAMETER :: dt_s = 3600. ! time step in seconds in input data !!! =>LOLO!
-
    INTEGER, PARAMETER :: nb_algos = 2
 
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
@@ -361,14 +359,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
-            &             isecday_utc=isecday_utc, plong=xlon(:,:), dt_s=dt_s, pdt_wl=dT_wl(:,:,jt), Hwl=zHwl(:,:,jt), &
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), pdt_wl=dT_wl(:,:,jt), Hwl=zHwl(:,:,jt), &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
       ELSEIF( TRIM(calgo) == 'ecmwf'    ) THEN
          CALL TURB_ECMWF(       zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
-            &             dt_s=dt_s, pdt_wl=dT_wl(:,:,jt),         &
+            &             pdt_wl=dT_wl(:,:,jt),         &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
       ELSE
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'

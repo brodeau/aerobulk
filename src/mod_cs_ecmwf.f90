@@ -49,7 +49,7 @@ CONTAINS
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pustar*     friction velocity u*                           [m/s]
-      !!     *pSST*       bulk SST at depth z_sst                        [K]
+      !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!
       !!  **  INPUT/OUTPUT:
       !!     *pdT*  : as input =>  previous estimate of dT cool-skin

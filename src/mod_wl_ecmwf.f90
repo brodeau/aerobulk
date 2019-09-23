@@ -28,8 +28,6 @@ MODULE mod_wl_ecmwf
    !!  Warm-Layer related parameters:
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
 
-   REAL(wp), PARAMETER :: z_sst  = 1._wp    !: depth at which bulk SST is taken... [m]
-   
    REAL(wp), PARAMETER :: zroadrw = rho0_a/rho0_w , &         ! Density ratio
       &                   zRhoCp_w = rho0_w*rCp0_w
 
@@ -43,7 +41,7 @@ MODULE mod_wl_ecmwf
 CONTAINS
 
 
-   SUBROUTINE WL_ECMWF( pQsw, pQnsol, pustar, pSST, rdt, pdT )
+   SUBROUTINE WL_ECMWF( pQsw, pQnsol, pustar, pSST, pdT )
       !!---------------------------------------------------------------------
       !!
       !!  Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
@@ -56,8 +54,7 @@ CONTAINS
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pustar*     friction velocity u*                           [m/s]
-      !!     *pSST*       bulk SST at depth z_sst                        [K]
-      !!     *rdt*        physical time step between two successive calls to this routine [s]
+      !!     *pSST*       bulk SST  (taken at depth gdept_1d(1))         [K]
       !!
       !!   **  INPUT/OUTPUT:
       !!     *pdT*  : as input =>  previous estimate of dT warm-layer
@@ -67,8 +64,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar   ! friction velocity [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
-      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
       !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! difference between "almost surface (right below viscous layer) and depth of bulk SST
       !
@@ -92,11 +88,11 @@ CONTAINS
             zdz = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
             
             ! dT_wl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
-            ! pdT         "                          "                                    and depth of bulk SST (here z_sst)!
+            ! pdT         "                          "                                    and depth of bulk SST (here gdept_1d(1))!
             !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
-            !! => so here since pdT is difference between surface and z_sst, need to increase fof dT_wl !
-            flg = 0.5_wp + SIGN( 0.5_wp , z_sst-zdz )               ! => 1 when z_sst>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
-            dT_wl = pdT(ji,jj) / ( flg + (1._wp-flg)*z_sst/zdz )
+            !! => so here since pdT is difference between surface and gdept_1d(1), need to increase fof dT_wl !
+            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
+            dT_wl = pdT(ji,jj) / ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
             !PRINT *, 'LOLO/mod_wl_ecmwf.f90: dT_wl2=', dT_wl
             !PRINT *, ''
 
@@ -145,8 +141,8 @@ CONTAINS
             ! dT_wl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
             !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
 
-            flg = 0.5_wp + SIGN( 0.5_wp , z_sst-zdz )               ! => 1 when z_sst>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
-            pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*z_sst/zdz )
+            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
+            pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
             
 
          END DO ! DO ji = 1, jpi

@@ -11,15 +11,20 @@ MODULE mod_const
    INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12,307)   !: double precision (real 8)
    INTEGER, PARAMETER :: wp = dp                           !: working precision
 
-   INTEGER, SAVE :: jpi, jpj   !: 2D dimensions of array to be used in AeroBulk
+   ! THINGS THAT NEED TO BE GIVEN A VALUE, anh have the same name and type as in NEMO...
+   ! Stupid values here to prevent to ommit to give them a value:
+   INTEGER,                  SAVE :: jpi, jpj    !: 2D dimensions of array to be used in AeroBulk
+   INTEGER,  PARAMETER            :: jpk = 1
+   REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
+   REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
+   INTEGER,                  SAVE :: nb_itt=5  !: number of itteration in the bulk algorithm
 
+   
    LOGICAL, SAVE :: l_first_call=.true. , l_last_call=.false.
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
-   INTEGER, SAVE      :: nb_itt=5  !: number of itteration in the bulk algorithm
 
-   REAL(wp), PARAMETER, PUBLIC :: rdt = 3600.*1.5 !: time step for the cool-skin/warm-layer parameterization
 
    
    REAL(wp), PARAMETER, PUBLIC :: &

@@ -79,7 +79,7 @@ CONTAINS
    SUBROUTINE turb_ecmwf( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                        &
       &                      Qsw, rad_lw, slp, pdT_cs,                             & ! optionals for cool-skin (and warm-layer)
-      &                      dt_s, pdT_wl,                                         & ! optionals for warm-layer only
+      &                      pdT_wl,                                               & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
@@ -120,7 +120,6 @@ CONTAINS
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
       !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
-      !!    *  dt_s   : time step in seconds                                  [s]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
       !!
       !! OUTPUT :
@@ -162,7 +161,6 @@ CONTAINS
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
       !
-      REAL(wp), INTENT(in   ), OPTIONAL                     ::   dt_s     !             [s]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
@@ -220,8 +218,8 @@ CONTAINS
       END IF
       
       IF ( l_use_wl ) THEN
-         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(dt_s))) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw, slp, & dt_s to use warm-layer param!'
+         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'
             STOP
          END IF
          ALLOCATE ( pdTw(jpi,jpj) )
@@ -414,7 +412,7 @@ CONTAINS
             info = DISP_DEBUG(ldebug, 'SST',                                    zsst(:,:)-rt0, '[degC]'    )
             !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
 
-            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, dt_s, pdTw )
+            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, pdTw )
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)

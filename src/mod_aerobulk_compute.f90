@@ -168,8 +168,7 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_ECMWF ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, l_use_skin, l_use_skin, &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk,      &
-               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp,  &
-               &              dt_s=3600._wp )  !LOLO: use a real rdt !!!
+               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
          ELSE
             CALL TURB_ECMWF ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE.,  &
                &              pCd, pCh, pCe, pTzu, pQzu, pUblk)

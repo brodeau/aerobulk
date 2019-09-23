@@ -28,7 +28,6 @@ MODULE mod_wl_coare3p6
    REAL(wp), PARAMETER, PUBLIC :: H_wl_max = 20._wp    !: maximum depth of warm layer (adjustable)
 
    REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
-   REAL(wp), PARAMETER :: z_sst  = 1._wp    !: depth at which bulk SST is taken...
 
    REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL
    REAL(wp), PARAMETER :: zfr0   = 0.5_wp    !: initial value of solar flux absorption
@@ -40,7 +39,7 @@ MODULE mod_wl_coare3p6
 CONTAINS
 
 
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, rdt, iwait,  pdT, &
+   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT, &
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
@@ -51,10 +50,9 @@ CONTAINS
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pTau*       surface wind stress                            [N/m^2]
-      !!     *pSST*       bulk SST at depth z_sst                        [K]
+      !!     *pSST*       bulk SST  (taken at depth gdept_1d(1))         [K]
       !!     *plon*       longitude                                      [deg.E]
       !!     *isd*        current UTC time, counted in second since 00h of the current day
-      !!     *rdt*        physical time step between two successive calls to this routine [s]
       !!     *iwait*      if /= 0 then wait before updating accumulated fluxes, we are within a converging itteration loop...
       !!
       !!  **   OUTPUT:
@@ -69,10 +67,9 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
       INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
-      REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
       INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
       !!
@@ -184,8 +181,8 @@ CONTAINS
                END IF ! IF ( zQabs >= Qabs_thr )
 
                ! Warm layer correction
-               flg = 0.5_wp + SIGN( 0.5_wp , z_sst-zdz )               ! => 1 when z_sst>zdz (pdT(ji,jj) = dT_wl) | 0 when z_sst<zdz (pdT(ji,jj) = dT_wl*z_sst/zdz)
-               pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*z_sst/zdz )
+               flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = dT_wl) | 0 when gdept_1d(1)<zdz (pdT(ji,jj) = dT_wl*gdept_1d(1)/zdz)
+               pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
 
             END IF ! IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
 

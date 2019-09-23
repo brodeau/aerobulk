@@ -86,7 +86,7 @@ CONTAINS
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, dt_s, pdT_wl, Hwl,                       & ! optionals for warm-layer only
+      &                      isecday_utc, plong, pdT_wl, Hwl,                             & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p6  ***
@@ -130,7 +130,6 @@ CONTAINS
       !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * isecday_utc:
       !!    *  plong  : longitude array                                       [deg.E]
-      !!    *  dt_s   : time step in seconds                                  [s]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
       !!    * Hwl     : depth of warm layer                                   [m]
       !!
@@ -176,7 +175,6 @@ CONTAINS
       !
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [W/m^2]
-      REAL(wp), INTENT(in   ), OPTIONAL                     ::   dt_s     !             [s]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
@@ -234,17 +232,9 @@ CONTAINS
          pdTc(:,:) = -0.2_wp  ! First guess of skin correction
       END IF
 
-      IF (PRESENT(Qsw)) PRINT *, 'Qsw present!!'
-      IF (PRESENT(rad_lw)) PRINT *, 'rad_lw present!!'
-      IF (PRESENT(slp)) PRINT *, 'slp present!!'
-      IF (PRESENT(isecday_utc)) PRINT *, 'isecday_utc present!!'
-      IF (PRESENT(plong)) PRINT *, 'plong present!!'
-      IF (PRESENT(dt_s)) PRINT *, 'dt_s present!!'
-      PRINT *, .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong) .AND. PRESENT(dt_s))
-      
       IF ( l_use_wl ) THEN
-         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong) .AND. PRESENT(dt_s))) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw,rad_lw,slp,isecday_utc,plong, & dt_s to use warm-layer param!'
+         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong))) THEN
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'
             STOP
          END IF
          ALLOCATE ( pdTw(jpi,jpj) )
@@ -399,9 +389,9 @@ CONTAINS
 
             !! In WL_COARE3P6 or , pTau_ac and pQ_ac must be updated at the final itteration step => add a flag to do this!
             IF (PRESENT(Hwl)) THEN
-               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
+               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
             ELSE            
-               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, dt_s, MOD(nb_itt,j_itt),  pdTw )
+               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
             END IF
 
             !! Updating T_s and q_s !!!

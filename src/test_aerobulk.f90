@@ -305,7 +305,7 @@ PROGRAM TEST_AEROBULK
             CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
                &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
-               &                isecday_utc=43200, plong=SLP*0._wp, dt_s=3600._wp,              &
+               &                isecday_utc=43200, plong=SLP*0._wp,                             &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are updated wrt to skin temperature !
 
@@ -331,7 +331,6 @@ PROGRAM TEST_AEROBULK
             CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                            &
                &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,       &
-               &             dt_s=3600._wp,                                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
             

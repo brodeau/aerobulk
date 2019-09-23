@@ -265,8 +265,7 @@ PROGRAM TEST_SKIN_CORR
       CASE('ecmwf')
          CALL turb_ecmwf( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, .TRUE., .TRUE., &
             &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                          &
-            &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp,     &
-         &                dt_s=3600._wp )
+            &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
 
 
 
