@@ -11,13 +11,6 @@ MODULE mod_wl_ecmwf
    !!====================================================================================
    !!       Warm-Layer correction of SST
    !!
-   !!   * bulk transfer coefficients C_D, C_E and C_H
-   !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
-   !!   * the effective bulk wind speed at 10m U_blk
-   !!   => all these are used in bulk formulas in sbcblk.F90
-   !!
-   !!    Using the bulk formulation/param. of ECMWF
-   !!
    !!       Routine "wl_ecmwf" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
@@ -46,14 +39,6 @@ MODULE mod_wl_ecmwf
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
    !                                       !: condition for the insolation peak of +1000W/m^2
-
-   INTEGER, PARAMETER :: nb_itt_wl = 10    !: number of sub-itterations for solving the differential equation in warm-layer part
-   !                                       !:  => use "nb_itt_wl = 1" for No itteration! => way cheaper !!!
-   !                                       !:    => assumes balance between the last 2 terms of Eq.11 (lhs of eq.11 = 0)
-   !                                       !:    => in that case no need for sub-itterations !
-   !                                       !:    => ACCEPTABLE IN MOST CONDITIONS ! (UNLESS: sunny + very calm/low-wind conditions)
-   !                                       !:  => Otherwize use "nb_itt_wl = 10"
-   !
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -64,7 +49,7 @@ CONTAINS
       !!  Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
       !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
       !!
-      !!    As included in IFS Cy40   /  E.C.M.W.F.
+      !!    As included in IFS Cy45r1   /  E.C.M.W.F.
       !!     ------------------------------------------------------------------
       !!
       !!  **   INPUT:
@@ -81,7 +66,7 @@ CONTAINS
       !!------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar   ! friction velocity [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth z_sst [K]
       REAL(wp),                     INTENT(in)  :: rdt      ! physical time step between two successive call to this routine [s]
       !
@@ -98,16 +83,13 @@ CONTAINS
          & ZPHI, &
          & zus_a, zusw, zusw2, &
          & flg, zQabs, ZL1, ZL2
-      !
-      
+      !!---------------------------------------------------------------------
 
-      ! 2.2 Warm layer; formulation C (Xubin Zeng)
-      !!--------------------------------------------
 
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zdz = rd0 ! first guess for warm-layer depth
+            zdz = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
             
             ! dT_wl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
             ! pdT         "                          "                                    and depth of bulk SST (here z_sst)!
@@ -117,7 +99,7 @@ CONTAINS
             dT_wl = pdT(ji,jj) / ( flg + (1._wp-flg)*z_sst/zdz )
             !PRINT *, 'LOLO/mod_wl_ecmwf.f90: dT_wl2=', dT_wl
             !PRINT *, ''
-            
+
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
             
             

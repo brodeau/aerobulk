@@ -4,9 +4,9 @@
 include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/test_skin_corr.x bin/test_coef_skin.x \
-	bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x
+	bin/example_call_aerobulk.x bin/test_phymbl.x
 
-#  bin/test_aerobulk_buoy_series.x
+#  bin/test_aerobulk_buoy_series.x bin/cx_vs_wind_test.x
 
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
@@ -23,7 +23,7 @@ LIB = -L./lib -laerobulk
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_phymbl.f90 \
 	  src/mod_blk_neutral_10m.f90 \
-          src/mod_cs_coare.f90 \
+          src/mod_cs_coare3p0.f90 \
           src/mod_cs_coare3p6.f90 \
           src/mod_cs_ecmwf.f90 \
           src/mod_wl_coare3p6.f90 \

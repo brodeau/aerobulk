@@ -220,13 +220,13 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
 
-   
+
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
    READ(*,*) W10
    WRITE(6,*) ''
 
-   
+
    !! We have enough to calculate the bulk Richardson number:
    !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sst, q_zt, q_zt-ssq, W10 )
    !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
@@ -237,9 +237,9 @@ PROGRAM TEST_AEROBULK
    tmp = Ri_bulk( zt, sst, theta_zt, ssq, q_zt, W10 )
    WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
    WRITE(6,*) ''
-   
 
-   
+
+
    IF ( l_use_cswl ) THEN
 
       WRITE(6,*) ''
@@ -300,12 +300,23 @@ PROGRAM TEST_AEROBULK
 
       CASE(2)
          
-         CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
-            &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
-            &                isecday_utc=43200, plong=SLP*0._wp, dt_s=3600._wp,                  &
-            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         !! => Ts and qs are updated wrt to skin temperature !         
+         IF ( l_use_cswl ) THEN
+            PRINT *, ' BOOOO! LOLO'
+            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
+               &                isecday_utc=43200, plong=SLP*0._wp, dt_s=3600._wp,              &
+               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+            !! => Ts and qs are updated wrt to skin temperature !
+
+         ELSE
+            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+
+            !! => Ts and qs are not updated: Ts=sst and qs=ssq
+
+         END IF
 
       CASE(3)
          CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, &
@@ -316,16 +327,17 @@ PROGRAM TEST_AEROBULK
       CASE(4)
 
          IF ( l_use_cswl ) THEN
-
-            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,        &
-               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,   &
+            
+            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                            &
+               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,       &
+               &             dt_s=3600._wp,                                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
-
+            
          ELSE
 
-            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
+            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,        &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
@@ -380,7 +392,7 @@ PROGRAM TEST_AEROBULK
       vL(ialgo) = zL(1,1)
 
       vUN10(ialgo) = zUN10(1,1)
-      
+
       !! Turbulent fluxes:
       vTau(ialgo)  = ( rho_zu(1,1) * Cd(1,1) *           W10(1,1)            * Ublk(1,1) )*1000. ! mN/m^2
       tmp = cp_air(q_zu)

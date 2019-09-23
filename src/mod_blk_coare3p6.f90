@@ -40,7 +40,8 @@ MODULE mod_blk_coare3p6
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
    
-   LOGICAL, PARAMETER :: ldebug = .TRUE.
+   !LOGICAL, PARAMETER :: ldebug = .TRUE.
+   LOGICAL, PARAMETER :: ldebug = .FALSE.
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -204,6 +205,7 @@ CONTAINS
 
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
       !!----------------------------------------------------------------------------------
 
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
@@ -225,17 +227,24 @@ CONTAINS
       !! Initializations for cool skin and warm layer:
       IF ( l_use_cs ) THEN
          IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
             STOP
          END IF
          ALLOCATE ( pdTc(jpi,jpj) )
          pdTc(:,:) = -0.2_wp  ! First guess of skin correction
       END IF
+
+      IF (PRESENT(Qsw)) PRINT *, 'Qsw present!!'
+      IF (PRESENT(rad_lw)) PRINT *, 'rad_lw present!!'
+      IF (PRESENT(slp)) PRINT *, 'slp present!!'
+      IF (PRESENT(isecday_utc)) PRINT *, 'isecday_utc present!!'
+      IF (PRESENT(plong)) PRINT *, 'plong present!!'
+      IF (PRESENT(dt_s)) PRINT *, 'dt_s present!!'
+      PRINT *, .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong) .AND. PRESENT(dt_s))
       
       IF ( l_use_wl ) THEN
-         IF(   .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) &
-            & .AND. PRESENT(plong) .AND. PRESENT(dt_s)) ) THEN
-            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw,rad_lw,slp,isecday_utc,plong, & dt_s to use warm-layer param!'
+         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong) .AND. PRESENT(dt_s))) THEN
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw,rad_lw,slp,isecday_utc,plong, & dt_s to use warm-layer param!'
             STOP
          END IF
          ALLOCATE ( pdTw(jpi,jpj) )
@@ -375,7 +384,7 @@ CONTAINS
 
             IF (ldebug) THEN
                WRITE(6,*) ''
-               WRITE(6,*) ' Inside turb_coare3p6@mod_blk_coare3p6.f90 !'
+               WRITE(6,*) ' Inside '//trim(crtnm)//' !'
                WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
                WRITE(6,*) ''
             END IF

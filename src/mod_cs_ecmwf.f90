@@ -51,9 +51,9 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST at depth z_sst                        [K]
       !!
-      !!   **  INPUT/OUTPUT:
+      !!  **  INPUT/OUTPUT:
       !!     *pdT*  : as input =>  previous estimate of dT cool-skin
-      !!             as output =>  new estimate of dT cool-skin
+      !!              as output =>  new estimate of dT cool-skin
       !!
       !!------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]

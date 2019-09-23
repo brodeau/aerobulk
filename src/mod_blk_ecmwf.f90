@@ -66,16 +66,9 @@ CONTAINS
       !INTEGER :: ierr
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
-         !ierr = 0
-         !PRINT *, ' *** Allocating pTau_ac and pQ_ac :', jpi,jpj
-         !ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), STAT=ierr )
-         !PRINT *, 'ierr = ', ierr
-         !!IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
-         !pTau_ac(:,:) = 0._wp
-         !pQ_ac(:,:)   = 0._wp
-         !  pTau_ac and pQ_ac allocated!'
          PRINT *, ' *** ecmwf_init: DOING NOTHING for warm-layer! ***'
       END IF
+      !!
       IF ( l_use_cs ) THEN
          PRINT *, ' *** ecmwf_init: DOING NOTHING for cool-skin! ***'
       END IF
@@ -197,6 +190,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ecmwf@mod_blk_ecmwf.f90'
       !!----------------------------------------------------------------------------------
 
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
@@ -218,7 +212,7 @@ CONTAINS
       !! Initializations for cool skin and warm layer:
       IF ( l_use_cs ) THEN
          IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
             STOP
          END IF
          ALLOCATE ( pdTc(jpi,jpj) )
@@ -226,8 +220,8 @@ CONTAINS
       END IF
       
       IF ( l_use_wl ) THEN
-         IF(   .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(dt_s)) ) THEN
-            PRINT *, ' * PROBLEM (turb_coare3p6@mod_blk_coare3p6.f90): you need to provide Qsw,rad_lw,slp,isecday_utc,plong, & dt_s to use warm-layer param!'
+         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(dt_s))) THEN
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw, slp, & dt_s to use warm-layer param!'
             STOP
          END IF
          ALLOCATE ( pdTw(jpi,jpj) )
@@ -410,7 +404,7 @@ CONTAINS
 
             IF (ldebug) THEN
                WRITE(6,*) ''
-               WRITE(6,*) ' Inside turb_coare3p6@mod_blk_coare3p6.f90 !'
+               WRITE(6,*) ' Inside '//trim(crtnm)//' !'
                WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
                WRITE(6,*) ''
             END IF

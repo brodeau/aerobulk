@@ -30,7 +30,7 @@ MODULE mod_blk_coare3p0
    !!====================================================================================
    USE mod_const     !: physical and othe constants
    USE mod_phymbl    !: thermodynamics
-   USE mod_cs_coare  !: cool-skin parameterization
+   USE mod_cs_coare3p0  !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE
@@ -284,8 +284,8 @@ CONTAINS
          !! SKIN related part
          !! -----------------
          IF( l_use_skin ) THEN
-            CALL CS_COARE( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
-               &             zrhoa, rad_lw, Qsw, zdelta, T_s, q_s )
+            CALL CS_COARE3P0( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
+               &              zrhoa, rad_lw, Qsw, zdelta, T_s, q_s )
          END IF
 
          IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN

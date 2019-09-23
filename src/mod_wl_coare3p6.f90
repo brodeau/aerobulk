@@ -7,13 +7,9 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-! LOLO: if SST measured at a relatively shallow depth, say 1 m, then it should already include the warm-layer effect???
-!      => correction makes only sense if SST is taken relatively deep and that heat flux is so big and wind so weak that the warm layer is becomes thinner ???
-!
-!
 MODULE mod_wl_coare3p6
    !!====================================================================================
-   !!       Warm-Layer correction of SST (if needed)
+   !!       Warm-Layer correction of SST
    !!
    !!       Routine "wl_coare3p6" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -89,6 +85,7 @@ CONTAINS
       REAL(wp) :: dT_wl, zQabs, zfr, zdz
       REAL(wp) :: zqac, ztac
       REAL(wp) :: zalpha_w, zcd1, zcd2, flg
+      !!---------------------------------------------------------------------
 
       REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
 
@@ -105,7 +102,6 @@ CONTAINS
       zqac           = 0._wp
       IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
 
-      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -121,7 +117,6 @@ CONTAINS
             !PRINT *, ' Local solar time in seconds:', isd_sol
             !PRINT *, '     UTC     time in hours:',   REAL(isd    ,wp)/3600._wp
             !PRINT *, '  [WL_COARE3P6] Local solar time in hours:',   REAL(isd_sol,wp)/3600._wp
-            !**********************************************************
 
             !*****  variables for warm layer  ***
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)

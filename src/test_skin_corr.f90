@@ -32,7 +32,6 @@ PROGRAM TEST_SKIN_CORR
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, sst_s, ssq_s
-   REAL(wp),    DIMENSION(lx,ly) :: tmp1, tmp2, tmp3 !LOLO remove!!!
 
    REAL(wp), DIMENSION(lx,ly) :: sst, qsat_zt, rlon, rad_sw, rad_lw, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, theta_zu, q_zu, ssq, tmp, dtheta_v
@@ -264,9 +263,10 @@ PROGRAM TEST_SKIN_CORR
             &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
 
       CASE('ecmwf')
-         CALL turb_ecmwf( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, &
-            &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         CALL turb_ecmwf( zt, zu, sst_s, theta_zt, ssq_s, q_zt, W10, .TRUE., .TRUE., &
+            &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                          &
+            &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp,     &
+         &                dt_s=3600._wp )
 
 
 
@@ -276,9 +276,6 @@ PROGRAM TEST_SKIN_CORR
          !   &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          PRINT *, 'Booh!!! Not ready yet!'
 
-         !tmp1 = 0.01
-         !tmp2 = 0.
-         !tmp3 = 0.
          !CALL WL_COARE3P6_2( rad_sw, rad_sw*0.-500., rad_sw*0.+0.001, sst_s, tmp1, tmp2, tmp3, rlon, it_day_s_utc, 60. )
          STOP
 
