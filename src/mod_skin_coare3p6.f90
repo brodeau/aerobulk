@@ -37,8 +37,8 @@ MODULE mod_skin_coare3p6
    REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL
    REAL(wp), PARAMETER :: zfr0   = 0.5_wp    !: initial value of solar flux absorption
    !
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: pTau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: pQ_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: Tau_ac  ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: Qnt_ac    ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: H_wl     ! depth of warm-layer [m]
    !!----------------------------------------------------------------------
 CONTAINS
@@ -155,7 +155,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude ! lolo
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude [deg.E]
       INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
       INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
@@ -166,36 +166,38 @@ CONTAINS
       !
       INTEGER :: ji,jj
       !
-      REAL(wp) :: dT_wl, zQabs, zfr, zdz
+      REAL(wp) :: zdT_wl, zQabs, zfr, zdz
       REAL(wp) :: zqac, ztac
       REAL(wp) :: zalpha_w, zcd1, zcd2, flg
       !!---------------------------------------------------------------------
 
-      REAL(wp) :: rlag_gw_h  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
+      REAL(wp) :: rlag_gw_h, &  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
+         &        rhr_sol       ! local solar time in hours since midnight
 
       INTEGER  :: ilag_gw_s, &  ! local solar time LAG in seconds / Greenwich meridian (lon==0) => ex: ~ INT( -10.47*3600. ) seconds for Hawai
          &        isd_sol,   &  ! local solar time in number of seconds since local solar midnight
          &        jl
 
       !! INITIALIZATION:
-      pdT   = 0._wp       ! dT initially set to 0._wp
-      dT_wl = 0._wp       ! total warming (amplitude) in warm layer
-      zQabs = 0._wp       ! total heat absorped in warm layer
-      zfr   = zfr0        ! initial value of solar flux absorption
-      ztac           = 0._wp
-      zqac           = 0._wp
+      pdT(:,:) = 0._wp    ! dT initially set to 0._wp
+      zdT_wl = 0._wp       ! total warming (amplitude) in warm layer
+      zQabs  = 0._wp       ! total heat absorped in warm layer
+      zfr    = zfr0        ! initial value of solar flux absorption
+      ztac   = 0._wp
+      zqac   = 0._wp
       IF ( PRESENT(mask_wl) ) mask_wl(:,:) = 0
 
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zdz   = H_wl(ji,jj) ! depth of warm layer
+            zdz   = MAX( MIN(H_wl(ji,jj),H_wl_max) , 0.1_wp) ! depth of warm layer
 
             !! Need to know the local solar time from longitude and isd:
             rlag_gw_h = -1._wp * MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )
             rlag_gw_h = -1._wp * SIGN( MIN(ABS(rlag_gw_h) , ABS(MODULO(rlag_gw_h,24._wp))), rlag_gw_h + 12._wp )
             ilag_gw_s = INT( rlag_gw_h*3600._wp )
             isd_sol = MODULO( isd + ilag_gw_s , 24*3600 )
+            rhr_sol = REAL( isd_sol , wp) / 3600._wp
             !PRINT *, ' Lag in hours / Greenwich for local solar time =', rlag_gw_h
             !PRINT *, '     UTC     time in seconds:', isd
             !PRINT *, ' Local solar time in seconds:', isd_sol
@@ -211,17 +213,16 @@ CONTAINS
             !********************************************************
             !****  Compute apply warm layer  correction *************
             !********************************************************
-
-            IF (isd_sol < rdt ) THEN    !re-zero at midnight ! LOLO improve: risky if real midnight (00:00:00) is not a time in vtime...
-               PRINT *, '  [WL_COARE3P6] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
-               zdz            = H_wl_max
-               pTau_ac(ji,jj) = 0._wp
-               pQ_ac(ji,jj)   = 0._wp
+            
+            !IF (isd_sol <= rdt ) THEN    !re-zero at midnight ! LOLO improve: risky if real midnight (00:00:00) is not a time in vtime...
+            IF ( (rhr_sol > 23.5_wp).OR.(rhr_sol < 4._wp) ) THEN
+               !PRINT *, '  [WL_COARE3P6] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
+               zdz           = H_wl_max
+               Tau_ac(ji,jj) = 0._wp
+               Qnt_ac(ji,jj) = 0._wp
             END IF
 
-
-
-            IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
+            IF ( rhr_sol > 5._wp ) THEN  ! ( 5am)
 
                !PRINT *, '  [WL_COARE3P6] WE DO WL !'
                !PRINT *, '  [WL_COARE3P6] isd_sol, pTau, pSST, pdT =', isd_sol, REAL(pTau(ji,jj),4), REAL(pSST(ji,jj),4), REAL(pdT(ji,jj),4)
@@ -236,21 +237,20 @@ CONTAINS
 
                IF ( zQabs >= Qabs_thr ) THEN         ! Check for threshold
 
-                  !PRINT *, '  [WL_COARE3P6] pTau_ac, pQ_ac =', REAL(pTau_ac(ji,jj),4), REAL(pQ_ac(ji,jj),4)
+                  !PRINT *, '  [WL_COARE3P6] Tau_ac, Qnt_ac =', REAL(Tau_ac(ji,jj),4), REAL(Qnt_ac(ji,jj),4)
 
-                  !pTau_ac(ji,jj) = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! momentum integral
-                  ztac = pTau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! updated momentum integral
+                  !Tau_ac(ji,jj) = Tau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! momentum integral
+                  ztac = Tau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! updated momentum integral
 
-                  IF ( pQ_ac(ji,jj) + zQabs*rdt > 0._wp ) THEN         !check threshold for warm layer existence
+                  IF ( Qnt_ac(ji,jj) + zQabs*rdt > 0._wp ) THEN         !check threshold for warm layer existence
                      !******************************************
                      ! Compute the absorption profile
                      !******************************************
                      DO jl = 1, 5                           !loop 5 times for zfr
                         zfr = 1. - ( 0.28*0.014*(1. - EXP(-zdz/0.014)) + 0.27*0.357*(1. - EXP(-zdz/0.357)) &
                            &        + 0.45*12.82*(1-EXP(-zdz/12.82)) ) / zdz
-                        zqac = pQ_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
-                        !IF (zqac <= 0._wp) STOP'ERROR: zqac <= 0 !!! #1'
-                        zdz = MIN( H_wl_max , zcd1*ztac/SQRT(zqac)) ! Warm-layer depth (normally: zqac > 0 !)
+                        zqac = Qnt_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
+                        IF ( zqac > 1._wp ) zdz = MAX( MIN( H_wl_max , zcd1*ztac/SQRT(zqac)) , 0.1_wp ) ! Warm-layer depth
                      END DO
 
                   ELSE
@@ -259,25 +259,25 @@ CONTAINS
                      !***********************
                      zfr  = 0.75
                      zdz  = H_wl_max
-                     zqac = pQ_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
+                     zqac = Qnt_ac(ji,jj) + (zfr*pQsw(ji,jj) + pQnsol(ji,jj))*rdt ! updated heat absorbed
 
-                  END IF !IF ( pQ_ac(ji,jj) + zQabs*rdt > 0._wp )
+                  END IF !IF ( Qnt_ac(ji,jj) + zQabs*rdt > 0._wp )
 
-                  dT_wl = zcd2*zqac**1.5/ztac * MAX(zqac/ABS(zqac),0._wp)  !! => IF(zqac>0._wp): dT_wl=zcd2*zqac**1.5/ztac ; ELSE: dT_wl=0. / ! normally: zqac > 0 !
-
+                  IF ( zqac > 1._wp ) zdT_wl = zcd2*zqac**1.5/ztac * MAX(zqac/ABS(zqac),0._wp)  !! => IF(zqac>0._wp): zdT_wl=zcd2*zqac**1.5/ztac ; ELSE: zdT_wl=0. / ! normally: zqac > 0 !
+                  
+                  ! Warm layer correction
+                  flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = zdT_wl) | 0 when gdept_1d(1)<zdz (pdT(ji,jj) = zdT_wl*gdept_1d(1)/zdz)
+                  pdT(ji,jj) = zdT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
+                  
                END IF ! IF ( zQabs >= Qabs_thr )
-
-               ! Warm layer correction
-               flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = dT_wl) | 0 when gdept_1d(1)<zdz (pdT(ji,jj) = dT_wl*gdept_1d(1)/zdz)
-               pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
 
             END IF ! IF ( isd_sol >= 21600 ) THEN  ! (21600 == 6am)
 
             IF ( iwait == 0 ) THEN
-               IF ( (zQabs >= Qabs_thr).AND.(isd_sol >= 21600) ) THEN
-                  PRINT *, '  [WL_COARE3P6] WE UPDATE ACCUMULATED FLUXES !!!'
-                  pQ_ac(ji,jj)   = zqac ! Updating pQ_ac, heat integral
-                  pTau_ac(ji,jj) = ztac !
+               IF ( (zQabs >= Qabs_thr).AND.(rhr_sol >= 5._wp) ) THEN
+                  !PRINT *, '  [WL_COARE3P6] WE UPDATE ACCUMULATED FLUXES !!!'
+                  Qnt_ac(ji,jj) = zqac ! Updating Qnt_ac, heat integral
+                  Tau_ac(ji,jj) = ztac !
                   IF ( PRESENT(mask_wl) ) mask_wl(ji,jj) = 1
                END IF
             END IF
@@ -291,6 +291,6 @@ CONTAINS
 
    END SUBROUTINE WL_COARE3P6
 
-   
+
    !!======================================================================
 END MODULE mod_skin_coare3p6

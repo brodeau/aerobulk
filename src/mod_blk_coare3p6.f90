@@ -61,20 +61,20 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating pTau_ac, pQ_ac, and H_wl :', jpi,jpj
-         ALLOCATE ( pTau_ac(jpi,jpj) , pQ_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of pTau_ac and pQ_ac failed!'
-         pTau_ac(:,:) = 0._wp
-         pQ_ac(:,:)   = 0._wp
+         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and H_wl :', jpi,jpj
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         Tau_ac(:,:) = 0._wp
+         Qnt_ac(:,:)   = 0._wp
          H_wl(:,:)    = H_wl_max
-         PRINT *, ' *** pTau_ac , pQ_ac, and H_wl allocated!'
+         PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
          ierr = 0
          PRINT *, ' *** coare3p6_init: CS => allocating delta_vl :', jpi,jpj
          ALLOCATE ( delta_vl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of delta_vl and pQ_ac failed!'
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of delta_vl and Qnt_ac failed!'
          delta_vl(:,:) = 0.001_wp      ! First guess of zdelta [m]
          PRINT *, ' *** delta_vl allocated!'
       END IF
@@ -173,7 +173,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
       !
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [W/m^2]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
@@ -367,7 +367,6 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
@@ -382,11 +381,11 @@ CONTAINS
             info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        zeta_u(:,:), '[N/m^2]'   )
             info = DISP_DEBUG(ldebug, 'SST',                                    zsst(:,:)-rt0, '[degC]'    )
             !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
-            info = DISP_DEBUG(ldebug, ' -- accumulated heat',             0.001*  pQ_ac(:,:),  '[kJ/m^2]'   )
-            info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*pTau_ac(:,:),  '[kN.s/m^2]' )
+            info = DISP_DEBUG(ldebug, ' -- accumulated heat',             0.001*  Qnt_ac(:,:),  '[kJ/m^2]'   )
+            info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*Tau_ac(:,:),  '[kN.s/m^2]' )
 
 
-            !! In WL_COARE3P6 or , pTau_ac and pQ_ac must be updated at the final itteration step => add a flag to do this!
+            !! In WL_COARE3P6 or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
             IF (PRESENT(Hwl)) THEN
                CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
             ELSE
