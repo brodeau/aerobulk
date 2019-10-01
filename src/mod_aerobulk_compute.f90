@@ -137,14 +137,16 @@ CONTAINS
       SELECT CASE(TRIM(calgo))
          !!
       CASE('coare3p0')
-         IF( l_use_skin ) THEN
-            CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk,            &
-               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
-         ELSE
-            CALL TURB_COARE3P0 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
-         END IF
+         PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
+         STOP
+         !IF( l_use_skin ) THEN
+         !   CALL TURB_COARE3P0 ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu, . &
+         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk,            &
+         !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         !ELSE
+         !   CALL TURB_COARE3P0 ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
+         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
+         !END IF
          !!
       CASE('coare3p6')
          PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
