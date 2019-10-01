@@ -47,22 +47,6 @@ CONTAINS
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
       !!                Returns the effective bulk wind speed at 10m to be used in the bulk formulas
       !!
-      !! ** Method : Monin Obukhov Similarity Theory
-      !!             + Large & Yeager (2004,2008) closure: CD_n10 = f(U_n10)
-      !!
-      !! ** References :   Large & Yeager, 2004 / Large & Yeager, 2008
-      !!
-      !! ** Last update: Laurent Brodeau, June 2014:
-      !!    - handles both cases zt=zu and zt/=zu
-      !!    - optimized: less 2D arrays allocated and less operations
-      !!    - better first guess of stability by checking air-sea difference of virtual temperature
-      !!       rather than temperature difference only...
-      !!    - added function "cd_neutral_10m" that uses the improved parametrization of
-      !!      Large & Yeager 2008. Drag-coefficient reduction for Cyclone conditions!
-      !!    - using code-wide physical constants defined into "phycst.mod" rather than redifining them
-      !!      => 'vkarmn' and 'grav'
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!
       !! INPUT :
       !! -------

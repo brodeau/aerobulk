@@ -26,9 +26,9 @@ MODULE mod_blk_coare3p6
    !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
-   USE mod_const        !: physical and othe constants
-   USE mod_phymbl       !: thermodynamics
-   USE mod_skin_coare3p6  !: cool-skin parameterization
+   USE mod_const       !: physical and othe constants
+   USE mod_phymbl      !: thermodynamics
+   USE mod_skin_coare  !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE
@@ -121,7 +121,7 @@ CONTAINS
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
-      !! OPTIONAL INPUT :
+      !! OPTIONAL INPUT:
       !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
@@ -332,7 +332,7 @@ CONTAINS
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
          z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
-         ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
+         ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
          z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
 
          !! Turbulent scales at zu :
@@ -357,7 +357,7 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
-            CALL CS_COARE3P6( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
+            CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
             T_s(:,:) = zsst(:,:) + pdTc(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
@@ -385,11 +385,11 @@ CONTAINS
             info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*Tau_ac(:,:),  '[kN.s/m^2]' )
 
 
-            !! In WL_COARE3P6 or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
+            !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
             IF (PRESENT(Hwl)) THEN
-               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
+               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
             ELSE
-               CALL WL_COARE3P6( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
             END IF
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)

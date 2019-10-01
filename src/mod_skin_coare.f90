@@ -7,12 +7,12 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_skin_coare3p6
+MODULE mod_skin_coare
    !!====================================================================================
    !!       Cool-Skin and warm-layer correction of SST
    !!    Cool-skin and warm-layer parametrization (Fairall et al. 1996)
    !!
-   !!       Routine "cs_coare3p6" and "wl_coare3p6" maintained and developed in AeroBulk
+   !!       Routine "cs_coare" and "wl_coare" maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, 2019
@@ -24,7 +24,7 @@ MODULE mod_skin_coare3p6
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: CS_COARE3P6, WL_COARE3P6
+   PUBLIC :: CS_COARE, WL_COARE
 
    !! Cool-skin related parameters:
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: delta_vl  !: thickness of the surface viscous layer (in the water) right below the air-sea interface [m]
@@ -44,7 +44,7 @@ MODULE mod_skin_coare3p6
 CONTAINS
 
 
-   SUBROUTINE CS_COARE3P6( pQsw, pQnsol, pustar, pSST, pQlat,  pdT )
+   SUBROUTINE CS_COARE( pQsw, pQnsol, pustar, pSST, pQlat,  pdT )
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin scheme according to Fairall et al. 1996, revisited for COARE 3.6 (Fairall et al., 2019)
@@ -54,7 +54,7 @@ CONTAINS
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pustar*     friction velocity u*                           [m/s]
-      !!     *pSST*       bulk SST (taken at depth gdept_1d(1))           [K]
+      !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!     *pQlat*      surface latent heat flux                       [K]
       !!
       !!  **  INPUT/OUTPUT:
@@ -121,12 +121,12 @@ CONTAINS
          END DO
       END DO
 
-   END SUBROUTINE CS_COARE3P6
+   END SUBROUTINE CS_COARE
 
 
 
 
-   SUBROUTINE WL_COARE3P6( pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT, &
+   SUBROUTINE WL_COARE( kt,  pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT, &
       &                    Hwl, mask_wl )
       !!---------------------------------------------------------------------
       !!
@@ -143,7 +143,7 @@ CONTAINS
       !!     *iwait*      if /= 0 then wait before updating accumulated fluxes, we are within a converging itteration loop...
       !!
       !!  **   OUTPUT:
-      !!     *pdT*        dT due to warming at depth of pSST such that SST_actual = pSST + pdT
+      !!     *pdT*   dT due to warm-layer effect => difference between "almost surface (right below viscous layer) and depth of bulk SST
       !!---------------------------------------------------------------------
       !!
       !!   ** OPTIONAL OUTPUT:
@@ -151,6 +151,7 @@ CONTAINS
       !!     *mask_wl*    mask for possible existence of a warm-layer (1) or not (0)
       !!
       !!------------------------------------------------------------------
+      INTEGER ,                     INTENT(in)  :: kt
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
@@ -158,7 +159,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude [deg.E]
       INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
       INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warming at depth of pSST such that pSST_actual = pSST + pdT
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT      ! dT due to warm-layer effect => difference between "almost surface (right below viscous layer) and depth of bulk SST
       !!
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: Hwl     ! depth of warm layer [m]
       INTEGER(1), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: mask_wl ! mask for possible existence of a warm-layer (1) or not (0)
@@ -202,7 +203,7 @@ CONTAINS
             !PRINT *, '     UTC     time in seconds:', isd
             !PRINT *, ' Local solar time in seconds:', isd_sol
             !PRINT *, '     UTC     time in hours:',   REAL(isd    ,wp)/3600._wp
-            !PRINT *, '  [WL_COARE3P6] Local solar time in hours:',   REAL(isd_sol,wp)/3600._wp
+            !PRINT *, '  [WL_COARE] Local solar time in hours:',   REAL(isd_sol,wp)/3600._wp
 
             !*****  variables for warm layer  ***
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
@@ -216,7 +217,7 @@ CONTAINS
             
             !IF (isd_sol <= rdt ) THEN    !re-zero at midnight ! LOLO improve: risky if real midnight (00:00:00) is not a time in vtime...
             IF ( (rhr_sol > 23.5_wp).OR.(rhr_sol < 4._wp) ) THEN
-               !PRINT *, '  [WL_COARE3P6] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
+               !PRINT *, '  [WL_COARE] MIDNIGHT RESET !!!!, isd_sol =>', isd_sol
                zdz           = H_wl_max
                Tau_ac(ji,jj) = 0._wp
                Qnt_ac(ji,jj) = 0._wp
@@ -224,8 +225,8 @@ CONTAINS
 
             IF ( rhr_sol > 5._wp ) THEN  ! ( 5am)
 
-               !PRINT *, '  [WL_COARE3P6] WE DO WL !'
-               !PRINT *, '  [WL_COARE3P6] isd_sol, pTau, pSST, pdT =', isd_sol, REAL(pTau(ji,jj),4), REAL(pSST(ji,jj),4), REAL(pdT(ji,jj),4)
+               !PRINT *, '  [WL_COARE] WE DO WL !'
+               !PRINT *, '  [WL_COARE] isd_sol, pTau, pSST, pdT =', isd_sol, REAL(pTau(ji,jj),4), REAL(pSST(ji,jj),4), REAL(pdT(ji,jj),4)
 
                !************************************
                !****   set warm layer constants  ***
@@ -233,11 +234,11 @@ CONTAINS
 
                zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-               !PRINT *, '  [WL_COARE3P6] rdt,  pQsw, pQnsol, zQabs =', rdt, REAL(pQsw(ji,jj),4), REAL(pQnsol(ji,jj),4), REAL(zQabs,4)
+               !PRINT *, '  [WL_COARE] rdt,  pQsw, pQnsol, zQabs =', rdt, REAL(pQsw(ji,jj),4), REAL(pQnsol(ji,jj),4), REAL(zQabs,4)
 
                IF ( zQabs >= Qabs_thr ) THEN         ! Check for threshold
 
-                  !PRINT *, '  [WL_COARE3P6] Tau_ac, Qnt_ac =', REAL(Tau_ac(ji,jj),4), REAL(Qnt_ac(ji,jj),4)
+                  !PRINT *, '  [WL_COARE] Tau_ac, Qnt_ac =', REAL(Tau_ac(ji,jj),4), REAL(Qnt_ac(ji,jj),4)
 
                   !Tau_ac(ji,jj) = Tau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! momentum integral
                   ztac = Tau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! updated momentum integral
@@ -275,7 +276,7 @@ CONTAINS
 
             IF ( iwait == 0 ) THEN
                IF ( (zQabs >= Qabs_thr).AND.(rhr_sol >= 5._wp) ) THEN
-                  !PRINT *, '  [WL_COARE3P6] WE UPDATE ACCUMULATED FLUXES !!!'
+                  !PRINT *, '  [WL_COARE] WE UPDATE ACCUMULATED FLUXES !!!'
                   Qnt_ac(ji,jj) = zqac ! Updating Qnt_ac, heat integral
                   Tau_ac(ji,jj) = ztac !
                   IF ( PRESENT(mask_wl) ) mask_wl(ji,jj) = 1
@@ -289,8 +290,8 @@ CONTAINS
          END DO
       END DO
 
-   END SUBROUTINE WL_COARE3P6
+   END SUBROUTINE WL_COARE
 
 
    !!======================================================================
-END MODULE mod_skin_coare3p6
+END MODULE mod_skin_coare

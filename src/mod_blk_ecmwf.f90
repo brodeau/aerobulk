@@ -113,7 +113,7 @@ CONTAINS
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
-      !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
+      !! OPTIONAL INPUT:
       !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
@@ -375,39 +375,13 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
-
-            IF (ldebug) THEN
-               WRITE(6,*) ''
-               WRITE(6,*) ' Inside '//trim(crtnm)//' !'
-               WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
-               WRITE(6,*) ''
-            END IF
-            info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:), '[W/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     ztmp1(:,:), '[W/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        ztmp2(:,:), '[N/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'SST',                                    zsst(:,:)-rt0, '[degC]'    )
-            !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
-
             CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, pdTw )
-
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-
-            IF (ldebug) THEN
-               WRITE(6,*) ''
-               WRITE(6,*) '           ---- AFTER WL ----'
-               WRITE(6,*) ''
-            END IF
-            !info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer dTwl',         dz_wl(:,:),    '[m]'  )
-            info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        pdTw(:,:),  '[deg.C]'  )
-            info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
-            !info = DISP_DEBUG(ldebug, 'q_s',                          1000.*qs(:,:),     '[g/kg]'   )
-
          END IF
 
 
@@ -537,22 +511,6 @@ CONTAINS
       !
    END FUNCTION psi_h_ecmwf
 
-   FUNCTION DISP_DEBUG( ldbg, cstr, rval, cunit )
-      INTEGER :: DISP_DEBUG
-      LOGICAL,                  INTENT(in) :: ldbg
-      CHARACTER(len=*),         INTENT(in) :: cstr
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: rval
-      CHARACTER(len=*),         INTENT(in) :: cunit
-      !!
-      DISP_DEBUG = 0
-      IF ( ldbg ) THEN
-         !WRITE(6,*) ' *** '//TRIM(cstr)
-         !WRITE(6,*) ' *** '//TRIM(cstr), ' => ', REAL(rval(1,1),4), ' '//TRIM(cunit)
-         WRITE(6,'(" *** ",a40," => ",f12.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
-         !WRITE(6,*) ''
-         DISP_DEBUG = 1
-      END IF
-   END FUNCTION DISP_DEBUG
 
    !!======================================================================
 END MODULE mod_blk_ecmwf

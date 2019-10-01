@@ -1,4 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau
+! AeroBulk / 2019 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -10,7 +10,8 @@
 MODULE mod_blk_coare3p0
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes
-   !!         according to Fairall et al. 2003 (COARE v3)
+   !!         according to Fairall et al. 2018 (COARE v3.6)
+   !!         "THE TOGA-COARE BULK AIR-SEA FLUX ALGORITHM"
    !!
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
    !!
@@ -19,34 +20,68 @@ MODULE mod_blk_coare3p0
    !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
-   !!    Using the bulk formulation/param. of COARE v3, Fairall et al. 2003
-   !!      + consideration of cool-skin warm layer parametrization (Fairall et al. 1996)
-   !!
    !!       Routine turb_coare3p0 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
-   USE mod_const     !: physical and othe constants
-   USE mod_phymbl    !: thermodynamics
-   USE mod_cs_coare3p0  !: cool-skin parameterization
+   USE mod_const       !: physical and othe constants
+   USE mod_phymbl      !: thermodynamics
+   USE mod_skin_coare  !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_COARE3P0
+   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0
 
-   !                                              !! COARE own values for given constants:
-   REAL(wp), PARAMETER ::   zi0     = 600._wp     ! scale height of the atmospheric boundary layer...
-   REAL(wp), PARAMETER ::   Beta0   =   1.25_wp   ! gustiness parameter
-
+   !! COARE own values for given constants:
+   REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
+   REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_coare3p0( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
-      &                      Qsw, rad_lw, slp,                   &
+
+   SUBROUTINE coare3p0_init(l_use_cs, l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION coare3p0_init  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_cs : use the cool-skin parameterization
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF ( l_use_wl ) THEN
+         ierr = 0
+         PRINT *, ' *** coare3p0_init: WL => allocating Tau_ac, Qnt_ac, and H_wl :', jpi,jpj
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         Tau_ac(:,:) = 0._wp
+         Qnt_ac(:,:)   = 0._wp
+         H_wl(:,:)    = H_wl_max
+         PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
+      END IF
+      !!
+      IF ( l_use_cs ) THEN
+         ierr = 0
+         PRINT *, ' *** coare3p0_init: CS => allocating delta_vl :', jpi,jpj
+         ALLOCATE ( delta_vl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of delta_vl and Qnt_ac failed!'
+         delta_vl(:,:) = 0.001_wp      ! First guess of zdelta [m]
+         PRINT *, ' *** delta_vl allocated!'
+      END IF
+   END SUBROUTINE coare3p0_init
+
+
+
+   SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
+      &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
+      &                      isecday_utc, plong, pdT_wl, Hwl,                             & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p0  ***
@@ -63,11 +98,14 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
+      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
-      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    *  t_zt : potential air temperature at zt                         [K]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
+      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
+      !!    * l_use_cs : use the cool-skin parameterization
+      !!    * l_use_wl : use the warm-layer parameterization
       !!
       !! INPUT/OUTPUT:
       !! -------------
@@ -76,14 +114,19 @@ CONTAINS
       !!              -> skin temperature as output if CSWL used              [K]
       !!
       !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
-      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
-      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
+      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_cs=True or l_use_wl=True)
+      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_cs=False or l_use_wl=False)
       !!
-      !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
+      !! OPTIONAL INPUT:
       !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
+      !!    * isecday_utc:
+      !!    *  plong  : longitude array                                       [deg.E]
+      !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
+      !!    * Hwl     : depth of warm layer                                   [m]
       !!
       !! OUTPUT :
       !! --------
@@ -103,6 +146,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
+      INTEGER,  INTENT(in   )                     ::   kt       ! current time step
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
@@ -110,6 +154,8 @@ CONTAINS
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   q_s      ! sea surface specific humidity           [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
+      LOGICAL , INTENT(in   )                     ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in   )                     ::   l_use_wl ! use the warm-layer parameterization
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
@@ -120,13 +166,19 @@ CONTAINS
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
+      !
+      INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt
+      INTEGER :: j_itt, info
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -138,14 +190,15 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_t        ! stability parameter at height zt
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       !
-      ! Cool skin:
-      LOGICAL :: l_use_skin = .FALSE.
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                zrhoa,  &  ! densitty of air
-         &                zdelta     ! thickness of the viscous (skin) layer
+         &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
+         &                pdTw,   &  ! SST increment "dT" for warm layer correction          [K]
+         &                zHwl       ! depth of warm-layer [m]
+
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p0@mod_blk_coare3p0.f90'
       !!----------------------------------------------------------------------------------
 
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
@@ -153,31 +206,43 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      ! Cool skin ?
-      IF( PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) ) THEN
-         l_use_skin = .TRUE.
-         ALLOCATE ( zsst(jpi,jpj) , zrhoa(jpi,jpj), zdelta(jpi,jpj) )
-      END IF
+      IF ( kt == 1 ) CALL COARE3P0_INIT(l_use_cs, l_use_wl) ! allocation of accumulation arrays
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
-
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
-
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
-      !! Initialization for cool skin:
-      IF( l_use_skin ) THEN
-         zsst   = T_s    ! save the bulk SST
-         zrhoa  = MAX(rho_air(t_zt, q_zt, slp), 1._wp) ! No update needed! Fine enough!! For some reason seems to be negative sometimes
-         T_s    = T_s - 0.25                      ! First guess of correction
-         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
-         zdelta = 0.001                    ! First guess of zdelta
+      !! Initializations for cool skin and warm layer:
+      IF ( l_use_cs ) THEN
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
+            STOP
+         END IF
+         ALLOCATE ( pdTc(jpi,jpj) )
+         pdTc(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
+
+      IF ( l_use_wl ) THEN
+         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong))) THEN
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'
+            STOP
+         END IF
+         ALLOCATE ( pdTw(jpi,jpj) )
+         IF (PRESENT(Hwl)) ALLOCATE ( zHwl(jpi,jpj) )
+      END IF
+
+      IF ( l_use_cs .OR. l_use_wl ) THEN
+         ALLOCATE ( zsst(jpi,jpj) )
+         zsst = T_s ! backing up the bulk SST
+         IF( l_use_cs ) T_s = T_s - 0.25   ! First guess of correction
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
+      END IF
+
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
@@ -259,11 +324,11 @@ CONTAINS
 
          !! Adjustment the wind at 10m (not needed in the current algo form):
          !IF ( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
-         
+
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
          z0    = alfa_charn_3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
-         ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp     ! (1./Re_r)^0.6 (Re_r: roughness Reynolds number)
+         ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp    ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
          z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
 
          !! Turbulent scales at zu :
@@ -281,14 +346,40 @@ CONTAINS
             q_zu = q_zt - q_star/vkarmn*ztmp1
          END IF
 
-         !! SKIN related part
-         !! -----------------
-         IF( l_use_skin ) THEN
-            CALL CS_COARE3P0( t_zu, q_zu, zsst, slp, U_blk, u_star, t_star, q_star, &
-               &              zrhoa, rad_lw, Qsw, zdelta, T_s, q_s )
+
+         IF( l_use_cs ) THEN
+            !! Cool-skin contribution
+
+            CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
+               &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
+
+            CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
+
+            T_s(:,:) = zsst(:,:) + pdTc(:,:)
+            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
+            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
+
          END IF
 
-         IF( (l_use_skin).OR.(.NOT. l_zt_equal_zu) ) THEN
+         IF( l_use_wl ) THEN
+            !! Warm-layer contribution
+            CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
+               &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
+            !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
+            IF (PRESENT(Hwl)) THEN
+               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
+            ELSE
+               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+            END IF
+            !! Updating T_s and q_s !!!
+            T_s(:,:) = zsst(:,:) + pdTw(:,:)
+            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
+            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
+
+         END IF
+
+
+         IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
@@ -309,8 +400,14 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF( l_use_skin ) THEN
-         DEALLOCATE ( zsst, zrhoa, zdelta )
+      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
+      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
+
+      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF (          l_use_cs      ) DEALLOCATE ( pdTc )
+      IF (          l_use_wl      ) THEN
+         DEALLOCATE ( pdTw )
+         IF (PRESENT(Hwl)) DEALLOCATE ( zHwl )
       END IF
 
    END SUBROUTINE turb_coare3p0
@@ -341,7 +438,7 @@ CONTAINS
             zw = pwnd(ji,jj)   ! wind speed
             !
             ! Charnock's constant, increases with the wind :
-            zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10)) ! If zw<10. --> 0, else --> 1
+            zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10))  ! If zw<10. --> 0, else --> 1
             zgt18 = 0.5 + SIGN(0.5_wp,(zw - 18.)) ! If zw<18. --> 0, else --> 1
             !
             alfa_charn_3p0(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s

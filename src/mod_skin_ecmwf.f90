@@ -27,8 +27,8 @@ MODULE mod_skin_ecmwf
    PUBLIC :: CS_ECMWF, WL_ECMWF
 
    !! Cool-skin related parameters:
-   !...
-   
+   ! ...
+
    !! Warm-layer related parameters:
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
@@ -45,6 +45,7 @@ CONTAINS
       !!---------------------------------------------------------------------
       !!
       !!  Cool-Skin scheme according to Fairall et al. 1996
+      !! Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
       !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
       !!     as parameterized in IFS Cy45r1 / E.C.M.W.F.
       !!     ------------------------------------------------------------------
@@ -124,7 +125,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar   ! friction velocity [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
       !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! difference between "almost surface (right below viscous layer) and depth of bulk SST
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to warm-layer effect => difference between "almost surface (right below viscous layer) and depth of bulk SST
       !
       INTEGER :: ji,jj
       !
@@ -202,9 +203,8 @@ CONTAINS
             flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (pdT(ji,jj) = dT_wl) | 0 when z_s$
             pdT(ji,jj) = dT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
 
-
-         END DO ! DO ji = 1, jpi
-      END DO ! DO jj = 1, jpj
+         END DO
+      END DO
 
    END SUBROUTINE WL_ECMWF
 
