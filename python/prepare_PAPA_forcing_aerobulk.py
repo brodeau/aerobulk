@@ -8,7 +8,8 @@ from netCDF4 import Dataset
 import string
 from os.path import exists,basename
 
-cdir_in = '/home/laurent/PAPA_2012-2018'
+#cdir_in = '/home/laurent/PAPA_2012-2018'
+cdir_in = '.'
 
 fext='.cdf'
 
@@ -41,6 +42,10 @@ def __chck4f__(cf, script_name=''):
 
 
 
+# First checking if all files are here:
+for cf in list_file: __chck4f__(cdir_in+'/'+cf+fext)
+print '\n ** All files are here, good!\n'
+        
 
 iv = 0
 for cf in list_file:
@@ -49,7 +54,6 @@ for cf in list_file:
     cv_in = list_vari[iv]
 
     print '\n\n====================================================='
-    __chck4f__(cf_in)
     print '\n *** Doing variable "'+cv_in+'" in file "'+cf_in+'" !'
 
     #####################################################
