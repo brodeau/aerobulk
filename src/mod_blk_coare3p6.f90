@@ -446,7 +446,7 @@ CONTAINS
    FUNCTION alfa_charn_3p6( pwnd )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
-      !!
+      !!  "wind speed dependent formulation"
       !!  (Eq. 13 in Edson et al., 2013)
       !!
       !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
@@ -456,11 +456,29 @@ CONTAINS
       !
       REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
       !!-------------------------------------------------------------------
-      !
       alfa_charn_3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
-      !
+      !!
    END FUNCTION alfa_charn_3p6
 
+   FUNCTION alfa_charn_3p6_wave( pus, pwsh, pwps )
+      !!-------------------------------------------------------------------
+      !! Computes the Charnock parameter as a function of wave information and u*
+      !!
+      !!  (COARE 3.6, Fairall et al., 2018)
+      !!
+      !! Author: L. Brodeau, October 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p6_wave
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! friction velocity             [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwsh  ! significant wave height       [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwps  ! phase speed of dominant waves [m/s]
+      !!-------------------------------------------------------------------
+      alfa_charn_3p6_wave = ( pwsh*0.2_wp*(pus/pwps)**2.2_wp ) * grav/(pus*pus)
+      !!
+   END FUNCTION alfa_charn_3p6_wave
+
+
+   
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
