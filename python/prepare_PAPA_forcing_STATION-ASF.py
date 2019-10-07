@@ -11,13 +11,19 @@ from os.path import exists,basename
 #cdir_in = '/home/laurent/PAPA_2012-2018'
 cdir_in = '.'
 
+cf_atm = 'Station_PAPA_50N-145W_atm_y2018.nc'
+cf_oce = 'Station_PAPA_50N-145W_oce_y2018.nc'
+
 fext='.cdf'
 
-list_file = [ 'w50n145w_hr' , 'airt50n145w_hr' , 'rh50n145w_hr', 'lw50n145w_hr', 'rad50n145w_hr', 'bp50n145w_hr', 'sst50n145w_hr' ]
-list_vari = [  'WS_401'     ,    'AT_21'       ,   'RH_910'    ,    'Ql_136'   ,    'RD_495'    ,    'BP_915'   ,    'T_25'       ]
-list_varo = [  'wndspd'     ,    't_air'       ,   'rh_air'    ,    'rad_lw'   ,    'rad_sw'    ,      'slp'    ,     'sst'       ]
+list_vari = [  'WU_422'     ,  'WV_423'     ,  'WS_401'     ,    'AT_21'       ,   'RH_910'    ,    'Ql_136'   ,    'RD_495'    ,    'BP_915'   ,    'T_25'      ,     'S_41'     , 'U_320'        , 'V_321'         ] #, 'RN_485'         ]
+list_file = [ 'w50n145w_hr' , 'w50n145w_hr' , 'w50n145w_hr' , 'airt50n145w_hr' , 'rh50n145w_hr', 'lw50n145w_hr', 'rad50n145w_hr', 'bp50n145w_hr', 'sst50n145w_hr', 'sss50n145w_hr', 'cur50n145w_hr', 'cur50n145w_hr' ] #, 'rain50n145w_hr' ]
+list_varo = [  'u_air'      ,  'v_air'      ,  'wndspd'     ,    't_air'       ,   'rh_air'    ,    'rad_lw'   ,    'rad_sw'    ,    'slp'      ,     'sst'      ,     'sss'      , 'ssu'          , 'ssv'           ] #, 'rain'           ]
+list_real = [  'atm'        ,  'atm'        ,  'atm'        ,    'atm'         ,   'atm'       ,    'atm'        ,  'atm'        ,   'atm'      ,      'oce'     ,     'oce'      , 'oce'          , 'oce'           ] #, 'atm'            ]
+list_rmlt = [    1.         ,    1.         ,    1.         ,      1.          ,     1.        ,      1.         ,    1.         ,     100.     ,        1.      ,       1.       ,  0.01          ,   0.01          ] #,   1.             ]
+list_rofs = [    0.         ,    0.         ,    0.         ,    273.15        ,     0.        ,      0.         ,    0.         ,     0.       ,        0.      ,       0.       ,  0.            ,   0.            ] #,   1.             ]
 
-cf_out = 'Station_PAPA_50N-145W_2012-2018.nc4'
+
 
 cv_lon = 'nav_lon'
 cv_lat = 'nav_lat'
@@ -38,14 +44,30 @@ def __chck4f__(cf, script_name=''):
 # First checking if all files are here:
 for cf in list_file: __chck4f__(cdir_in+'/'+cf+fext)
 print '\n ** All files are here, good!\n'
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 iv = 0
-for cf in list_file:
+for cv_in in list_vari:
 
-    cf_in = cdir_in+'/'+cf+fext
-    cv_in = list_vari[iv]
+    cf_in = cdir_in+'/'+list_file[iv]+fext
 
+    rmlt = list_rmlt[iv]
+    rofs = list_rofs[iv]
+    
     print '\n\n====================================================='
     print '\n *** Doing variable "'+cv_in+'" in file "'+cf_in+'" !'
 
@@ -70,8 +92,8 @@ for cf in list_file:
     clnm_in  = f_in.variables[cv_in].long_name
 
     (Nt, nk,nj,ni) = nmp.shape(xfin0)
-    if Nt != Nt0:             print 'ERROR #1 / (Nt != Nt0)';             sys.exit(1)
-    if (nk,nj,ni) != (1,1,1): print 'ERROR #2 / ((nk,nj,ni) != (1,1,1))'; sys.exit(2)
+    if Nt != Nt0:             print 'ERROR #1 / (Nt != Nt0)', Nt, Nt0 ;       sys.exit(1)
+    if (nj,ni) != (1,1) or nk > 2: print 'ERROR #2 / ((nk,nj,ni) != (1,1,1))'; sys.exit(2)
     print 'ni, nj, nk, Nt = ', ni, nj, nk, Nt
     vfin = nmp.zeros(Nt)
     vfin[:] = xfin0[:,0,0,0]
@@ -130,43 +152,87 @@ for cf in list_file:
     nj = 3
     
     if iv == 0:
-        # Creating output file
-        # ~~~~~~~~~~~~~~~~~~~~
-        f_out = Dataset(cf_out, 'w', format='NETCDF4')
-
+        # Creating output file for atmosphere:
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        f_atm = Dataset(cf_atm, 'w', format='NETCDF4')
         # Dimensions:
-        f_out.createDimension('x'   , ni  )
-        f_out.createDimension('y'   , nj  )
-        f_out.createDimension(cv_tim, None)
-
+        f_atm.createDimension('x'   , ni  )
+        f_atm.createDimension('y'   , nj  )
+        f_atm.createDimension(cv_tim, None)
         # Variables
-        id_lon = f_out.createVariable(cv_lon, 'f4', ('y','x',), zlib=True)
-        id_lat = f_out.createVariable(cv_lat, 'f4', ('y','x',), zlib=True)
-        id_tim = f_out.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True)
-
+        ida_lon = f_atm.createVariable(cv_lon, 'f4', ('y','x',), zlib=True)
+        ida_lat = f_atm.createVariable(cv_lat, 'f4', ('y','x',), zlib=True)
+        ida_tim = f_atm.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True)
         # Attributes
-        id_tim.units     = cunt_time
-        id_lat.units     = cunt_lat
-        id_lon.units     = cunt_lon
-
-        f_out.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'
-        
+        ida_tim.units     = cunt_time
+        ida_lat.units     = cunt_lat
+        ida_lon.units     = cunt_lon
+        f_atm.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
         # Filling variables:
-        id_lat[:,:] = vlat[0]
-        id_lon[:,:] = vlon[0]
-        for jt in range(Nt): id_tim[jt] = vtime[jt]
+        ida_lat[:,:] = vlat[0]
+        ida_lon[:,:] = vlon[0]
+        for jt in range(Nt): ida_tim[jt] = vtime[jt]
 
-        
-    id_out  = f_out.createVariable(list_varo[iv], 'f4',(cv_tim,'y','x',), zlib=True) ;#, fill_value=rmiss)
-    id_out.units     = cunt_in
-    id_out.long_name = clnm_in    
-    for jt in range(Nt):
-        id_out[jt,:,:] = vfin[jt]
+        # Creating output file for ocean:
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        f_oce = Dataset(cf_oce, 'w', format='NETCDF4')
+        # Dimensions:
+        f_oce.createDimension('x'   , ni  )
+        f_oce.createDimension('y'   , nj  )
+        f_oce.createDimension(cv_tim, None)
+        # Variables
+        ido_lon = f_oce.createVariable(cv_lon, 'f4', ('y','x',), zlib=True)
+        ido_lat = f_oce.createVariable(cv_lat, 'f4', ('y','x',), zlib=True)
+        ido_tim = f_oce.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True)
+        # Attributes
+        ido_tim.units     = cunt_time
+        ido_lat.units     = cunt_lat
+        ido_lon.units     = cunt_lon
+        f_oce.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
+        # Filling variables:
+        ido_lat[:,:] = vlat[0]
+        ido_lon[:,:] = vlon[0]
+        for jt in range(Nt): ido_tim[jt] = vtime[jt]
+
+    if list_real[iv] == 'atm':
+        id_atm       = f_atm.createVariable(list_varo[iv], 'f4',(cv_tim,'y','x',), zlib=True) ;#, fill_value=rmiss)
+        id_atm.units = cunt_in    
+        if cv_in in ['AT_21']:  id_atm.units = 'K'
+        if cv_in in ['BP_915']: id_atm.units = 'Pa'
+        id_atm.long_name = clnm_in            
+        for jt in range(Nt): id_atm[jt,:,:] = rmlt*vfin[jt] + rofs
+            
+    elif list_real[iv] == 'oce':
+        id_oce       = f_oce.createVariable(list_varo[iv], 'f4',(cv_tim,'y','x',), zlib=True) ;#, fill_value=rmiss)
+        id_oce.units = cunt_in
+        if cv_in in ['U_320','V_321']: id_oce.units = 'm/s'
+        id_oce.long_name = clnm_in        
+        for jt in range(Nt): id_oce[jt,:,:] = rmlt*vfin[jt] + rofs
 
 
     iv = iv + 1
-        
-f_out.close()
+
+
+# Missing fields for ATM:
+for cv in ['rain','snow']:
+    print '\n Creating empty variable '+cv+' into '+cf_atm+' ...'
+    id_atm  = f_atm.createVariable(cv, 'f4',(cv_tim,'y','x',), zlib=True)
+    id_atm.units = '...'
+    id_atm.long_name = 'MISSING!'
+    for jt in range(Nt): id_atm[jt,:,:] = 0.
+    
+f_atm.close()
+
+
+# Missing fields for OCE:
+for cv in ['ssh','e3t_m','frq_m']:
+    print '\n Creating empty variable '+cv+' into '+cf_oce+' ...'
+    id_oce  = f_oce.createVariable(cv, 'f4',(cv_tim,'y','x',), zlib=True)
+    id_oce.units = '...'
+    id_oce.long_name = 'MISSING!'
+    for jt in range(Nt): id_oce[jt,:,:] = 0.
+
+f_oce.close()
 
 
 print 'Bye!'
