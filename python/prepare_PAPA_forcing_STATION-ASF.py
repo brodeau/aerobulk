@@ -11,8 +11,6 @@ from os.path import exists,basename
 #cdir_in = '/home/laurent/PAPA_2012-2018'
 cdir_in = '.'
 
-cf_atm = 'Station_PAPA_50N-145W_atm_y2018.nc'
-cf_oce = 'Station_PAPA_50N-145W_oce_y2018.nc'
 
 fext='.cdf'
 
@@ -41,23 +39,19 @@ def __chck4f__(cf, script_name=''):
 
 
 
+
+if len(sys.argv) != 2:
+    print 'Usage: '+sys.argv[0]+' <year>\n'
+    sys.exit(0)
+cyear = sys.argv[1]
+
+cf_atm = 'Station_PAPA_50N-145W_atm_hourly_y'+cyear+'.nc'
+cf_oce = 'Station_PAPA_50N-145W_oce_hourly_y'+cyear+'.nc'
+
+
 # First checking if all files are here:
 for cf in list_file: __chck4f__(cdir_in+'/'+cf+fext)
 print '\n ** All files are here, good!\n'
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 iv = 0
@@ -110,39 +104,40 @@ for cv_in in list_vari:
         if vfin[jt] > 10000. and vfin[jt-1] < 10000. and vfin[jt+1] < 10000.: vfin[jt] = 0.5*(vfin[jt-1] + vfin[jt+1])
     #
     ( idx_miss, ) = nmp.where(vfin > 10000.)
-    print ' idx_miss =', idx_miss
     nmiss = len(idx_miss)
-    jt0 = idx_miss[0]
-    jtN = idx_miss[nmiss-1]
-    print ' jt0, jtN = ', jt0, jtN
-    ibndmiss = nmp.zeros(nmiss)
-    ii = 0
-    ibndmiss[ii] = 1
-    while ii < nmiss-1:
-        ii = ii + 1
-        if idx_miss[ii] > idx_miss[ii-1] + 1 :
-            ibndmiss[ii-1] = 2
-            ibndmiss[ii] = 1
-    ibndmiss[nmiss-1] = 2
-    print ' ibndmiss =', ibndmiss
-    (idx1,) = nmp.where(ibndmiss==1)
-    (idx2,) = nmp.where(ibndmiss==2)    
-    if len(idx1) != len(idx2): print 'PROBLEM with idx1 and idx2 !'; sys.exit(3)
-    # => if only 1 missing point 
-    nseg = len(idx1)
-    print ' idx1, idx2 =', idx1, idx2
-    print '\nThere are '+str(nseg)+' segments of missing values:'
-    for isg in range(nseg):
-        jt1 = idx_miss[idx1[isg]] ; jta = jt1 - 1
-        jt2 = idx_miss[idx2[isg]] ; jtb = jt2 + 1
-        print ' *** Seg. #'+str(isg)+' starts at '+str(jt1)+' and stops at '+str(jt2)
-        #
-        # Linear interpolation to fill the gap defined by the segment:
-        print ' => linear interpolation to fill the gap...'
-        print ' BEFORE: ', vfin[jta:jtb+1]
-        rslp = (vfin[jtb] - vfin[jta]) / (vtime[jtb] - vtime[jta])
-        for jt in range(jt1,jt2+1): vfin[jt] = vfin[jta] + (vtime[jt] - vtime[jta])*rslp
-        print ' AFTER: ', vfin[jta:jtb+1], '\n'
+    if nmiss > 0:
+        print ' idx_miss =', idx_miss
+        jt0 = idx_miss[0]
+        jtN = idx_miss[nmiss-1]
+        print ' jt0, jtN = ', jt0, jtN
+        ibndmiss = nmp.zeros(nmiss)
+        ii = 0
+        ibndmiss[ii] = 1
+        while ii < nmiss-1:
+            ii = ii + 1
+            if idx_miss[ii] > idx_miss[ii-1] + 1 :
+                ibndmiss[ii-1] = 2
+                ibndmiss[ii] = 1
+        ibndmiss[nmiss-1] = 2
+        print ' ibndmiss =', ibndmiss
+        (idx1,) = nmp.where(ibndmiss==1)
+        (idx2,) = nmp.where(ibndmiss==2)    
+        if len(idx1) != len(idx2): print 'PROBLEM with idx1 and idx2 !'; sys.exit(3)
+        # => if only 1 missing point 
+        nseg = len(idx1)
+        print ' idx1, idx2 =', idx1, idx2
+        print '\nThere are '+str(nseg)+' segments of missing values:'
+        for isg in range(nseg):
+            jt1 = idx_miss[idx1[isg]] ; jta = jt1 - 1
+            jt2 = idx_miss[idx2[isg]] ; jtb = jt2 + 1
+            print ' *** Seg. #'+str(isg)+' starts at '+str(jt1)+' and stops at '+str(jt2)
+            #
+            # Linear interpolation to fill the gap defined by the segment:
+            print ' => linear interpolation to fill the gap...'
+            print ' BEFORE: ', vfin[jta:jtb+1]
+            rslp = (vfin[jtb] - vfin[jta]) / (vtime[jtb] - vtime[jta])
+            for jt in range(jt1,jt2+1): vfin[jt] = vfin[jta] + (vtime[jt] - vtime[jta])*rslp
+            print ' AFTER: ', vfin[jta:jtb+1], '\n'
 
     ########################################################
 
@@ -214,12 +209,12 @@ for cv_in in list_vari:
 
 
 # Missing fields for ATM:
-for cv in ['rain','snow']:
-    print '\n Creating empty variable '+cv+' into '+cf_atm+' ...'
-    id_atm  = f_atm.createVariable(cv, 'f4',(cv_tim,'y','x',), zlib=True)
-    id_atm.units = '...'
-    id_atm.long_name = 'MISSING!'
-    for jt in range(Nt): id_atm[jt,:,:] = 0.
+#for cv in ['rain','snow']:
+#    print '\n Creating empty variable '+cv+' into '+cf_atm+' ...'
+#    id_atm  = f_atm.createVariable(cv, 'f4',(cv_tim,'y','x',), zlib=True)
+#    id_atm.units = '...'
+#    id_atm.long_name = 'MISSING!'
+#    for jt in range(Nt): id_atm[jt,:,:] = 0.
     
 f_atm.close()
 
@@ -234,5 +229,75 @@ for cv in ['ssh','e3t_m','frq_m']:
 
 f_oce.close()
 
+
+
+del vlon, vlat, vtime
+
+
+
+# Daily PRECIP:
+
+# Reading
+cf_in = cdir_in+'/'+'rain50n145w_dy.cdf' ; cv_in = 'RN_485' ; cv_out = 'precip' ; rmlt=1./3600. ; rofs=0.
+__chck4f__(cf_in)
+f_in = Dataset(cf_in)
+# Extracting the longitude 1D array:
+vlon     = f_in.variables['lon'][:]
+cunt_lon = f_in.variables['lon'].units
+# Extracting the latitude 1D array:
+vlat     = f_in.variables['lat'][:]
+cunt_lat = f_in.variables['lat'].units
+# Extracting time 1D array:
+vtime     = f_in.variables['time'][:]
+cunt_time = f_in.variables['time'].units
+Nt0       = len(vtime)
+# How does the variable looks like:
+xfin0    = f_in.variables[cv_in][:,:,:,:] ; #LOLO: there is this 'depth'
+#cunt_in  = f_in.variables[cv_in].units
+clnm_in  = f_in.variables[cv_in].long_name
+(Nt, nk,nj,ni) = nmp.shape(xfin0)
+if Nt != Nt0:             print 'ERROR #1 / (Nt != Nt0)', Nt, Nt0 ;       sys.exit(1)
+if (nj,ni) != (1,1) or nk > 2: print 'ERROR #2 / ((nk,nj,ni) != (1,1,1))'; sys.exit(2)
+print 'ni, nj, nk, Nt = ', ni, nj, nk, Nt
+vfin = nmp.zeros(Nt)
+vfin[:] = xfin0[:,0,0,0]
+f_in.close()
+# FOR C1D of NEMO, on which STATION-ASF is built upon, time series are 3x3 in space...
+ni = 3
+nj = 3
+
+
+# Writing
+cf_atm = 'Station_PAPA_50N-145W_precip_daily_y'+cyear+'.nc'
+f_atm = Dataset(cf_atm, 'w', format='NETCDF4')
+# Dimensions:
+f_atm.createDimension('x'   , ni  )
+f_atm.createDimension('y'   , nj  )
+f_atm.createDimension(cv_tim, None)
+# Variables
+ida_lon = f_atm.createVariable(cv_lon, 'f4', ('y','x',), zlib=True)
+ida_lat = f_atm.createVariable(cv_lat, 'f4', ('y','x',), zlib=True)
+ida_tim = f_atm.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True)
+# Attributes
+ida_tim.units     = cunt_time
+ida_lat.units     = cunt_lat
+ida_lon.units     = cunt_lon
+f_atm.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
+# Filling variables:
+ida_lat[:,:] = vlat[0]
+ida_lon[:,:] = vlon[0]
+for jt in range(Nt): ida_tim[jt] = vtime[jt]
+#
+id_atm       = f_atm.createVariable(cv_out, 'f4',(cv_tim,'y','x',), zlib=True) ;#, fill_value=rmiss)
+id_atm.units = 'kg/m^2/s'    
+id_atm.long_name = clnm_in            
+for jt in range(Nt): id_atm[jt,:,:] = rmlt*vfin[jt] + rofs
+#
+id_atm       = f_atm.createVariable('snow', 'f4',(cv_tim,'y','x',), zlib=True) ;#, fill_value=rmiss)
+id_atm.units = 'kg/m^2/s'
+id_atm.long_name = 'Solid precipitation'
+for jt in range(Nt): id_atm[jt,:,:] = 0.
+
+f_atm.close()
 
 print 'Bye!'
