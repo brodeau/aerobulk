@@ -93,7 +93,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
 
-   nb_itt = 20  ! 20 itterations in bulk algorithm...
+   nb_itt = 1 !LOLO  ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
 

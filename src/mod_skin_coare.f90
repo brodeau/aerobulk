@@ -174,12 +174,14 @@ CONTAINS
       zdT_wl = 0._wp       ! total warming (amplitude) in warm layer
       zQabs  = 0._wp       ! total heat flux absorped in warm layer
       zfr    = zfr0        ! initial value of solar flux absorption !LOLO: save it and use previous value !!!
-      ztac   = 0._wp
-      zqac   = 0._wp
-
+      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
+            zqac = Qnt_ac(ji,jj) ! previous time step Qnt_ac
+            ztac = Tau_ac(ji,jj)
+
+            
             !! Need to know the local solar time from longitude and isd:
             rlag_gw_h = -1._wp * MODULO( ( 360._wp - MODULO(plon(ji,jj),360._wp) ) / 15._wp , 24._wp )
             rlag_gw_h = -1._wp * SIGN( MIN(ABS(rlag_gw_h) , ABS(MODULO(rlag_gw_h,24._wp))), rlag_gw_h + 12._wp )
@@ -235,8 +237,7 @@ CONTAINS
                PRINT *, '#LBD:======================================================'
                PRINT *, '#LBD: current values for Qac and Tac=', REAL(Qnt_ac(ji,jj),4), REAL(Tau_ac(ji,jj),4)
 
-               zqac = Qnt_ac(ji,jj) ! previous time step Qnt_ac
-
+               
                ztac = Tau_ac(ji,jj) + MAX(.002_wp , pTau(ji,jj))*rdt      ! updated momentum integral
                PRINT *, '#LBD: updated value for Tac=',  REAL(ztac,4)
 
@@ -268,12 +269,6 @@ CONTAINS
 
                H_wl(ji,jj) = zdz
                PRINT *, '#LBD: Hwl at the end:',  REAL(H_wl(ji,jj),4)
-
-               IF ( iwait == 0 ) THEN
-                  Qnt_ac(ji,jj) = zqac ! Updating Qnt_ac, heat integral
-                  Tau_ac(ji,jj) = ztac
-                  PRINT *, '#LBD: Updating values for Qac & Tac:', REAL(Qnt_ac(ji,jj),4), REAL(Tau_ac(ji,jj),4)
-               END IF            
 
                !STOP'lolo0'
 
@@ -333,7 +328,14 @@ CONTAINS
             END IF !IF ( (ABS(pdT(ji,ji)) < 1.E-6_wp) .AND. (zQabs <= 0._wp) )
 
 
-            PRINT *, '#LBD'
+            PRINT *, '#LBD: exit values for Qac & Tac:', REAL(zqac,4), REAL(ztac,4)
+            
+            IF ( iwait == 0 ) THEN
+               Qnt_ac(ji,jj) = zqac ! Updating Qnt_ac, heat integral
+               Tau_ac(ji,jj) = ztac
+               PRINT *, '#LBD: FINAL EXIT values for Qac & Tac:', REAL(Qnt_ac(ji,jj),4), REAL(Tau_ac(ji,jj),4)
+               PRINT *, '#LBD'
+            END IF
             
          END DO
       END DO

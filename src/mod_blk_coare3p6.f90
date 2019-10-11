@@ -299,6 +299,7 @@ CONTAINS
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       END IF
 
+
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
