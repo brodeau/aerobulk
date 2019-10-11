@@ -13,6 +13,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
+   USE mod_skin_coare, ONLY: H_wl, Qnt_ac, Tau_ac
+   !USE mod_
    !USE mod_blk_ncar
    USE mod_blk_ecmwf
 
@@ -67,9 +69,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, zHwl
-
-   INTEGER(1), DIMENSION(:,:,:), ALLOCATABLE :: mskwl
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dT_cs, dT_wl, dT, zHwl, zQac, zTac
 
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp
 
@@ -165,7 +165,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
-      &        dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), zHwl(nx,ny,Nt), mskwl(nx,ny,Nt) )
+      &        dummy(nx,ny,Nt), dT(nx,ny,Nt), dT_cs(nx,ny,Nt), dT_wl(nx,ny,Nt), zHwl(nx,ny,Nt), zQac(nx,ny,Nt), zTac(nx,ny,Nt) )
    ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
@@ -270,6 +270,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    dT_cs(:,:,:) = 0.
    dT_wl(:,:,:) = 0.
    zHwl(:,:,:)  = 0.
+   zQac(:,:,:)  = 0.
+   zTac(:,:,:)  = 0.
 
 
 
@@ -351,16 +353,18 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
       Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
-
-
-         
-
+      
       IF     ( TRIM(calgo) == 'coare3p6' ) THEN      
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
-            &             isecday_utc=isecday_utc, plong=xlon(:,:), pdt_wl=dT_wl(:,:,jt), Hwl=zHwl(:,:,jt), &
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), pdt_wl=dT_wl(:,:,jt),                    &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+         zHwl(:,:,jt) =   H_wl(:,:) ! H_wl known from module "mod_skin_coare"         
+         zQac(:,:,jt) = Qnt_ac(:,:) !                "
+         zTac(:,:,jt) = Tau_ac(:,:) !                "
+         
          
       ELSEIF( TRIM(calgo) == 'ecmwf'    ) THEN
          CALL TURB_ECMWF(       zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
@@ -428,9 +432,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    END DO !DO jt = 1, Nt
 
-   
-   !zHwl(:,:,:) = mskwl(:,:,:)*zHwl(:,:,:) + (1 - mskwl(:,:,:))*-9999.
-   
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
@@ -444,10 +445,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
       &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
       &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
-      &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer')
-
-   !,             &
-
+      &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer', &
+      &           vdt13=REAL( zQac(1,1,:),4), cv_dt13='Qnt_ac',cun13='J/m2',  cln13='Accumulated absorbed heat in WL', &
+      &           vdt14=REAL( zTac(1,1,:),4), cv_dt14='Tau_ac',cun14='N.s/m2',cln14='Accumulated absorbed momentum in WL' )
 
 
    STOP 'LULU'

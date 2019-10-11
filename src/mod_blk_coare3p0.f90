@@ -62,7 +62,7 @@ CONTAINS
          !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:)   = 0._wp
-         H_wl(:,:)    = H_wl_max
+         H_wl(:,:)    = Hwl_max
          PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
       END IF
       !!
@@ -366,11 +366,8 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            IF (PRESENT(Hwl)) THEN
-               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
-            ELSE
-               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
-            END IF
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)

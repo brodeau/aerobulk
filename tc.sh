@@ -8,7 +8,7 @@ if [ `hostname` = "luitel"  ]; then DSTOR="/data/gcm_setup/STATION_ASF/STATION_A
 if [ `hostname` = "lacroix" ]; then DSTOR="/data1/laurent/STATION_ASF/STATION_ASF-I" ; fi
 if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/STATION_ASF-I"    ; fi
 
-rm -f lolo_coare3p6.nc ${fout}
+rm -f lolo_coare3p6.nc ${fout} short.nc
 
 ./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012.nc4 1>${fout} <<EOF
 3
@@ -17,3 +17,4 @@ rm -f lolo_coare3p6.nc ${fout}
 EOF
 
 
+ncks -O -d time,3500,4500 lolo_coare3p6.nc -o short.nc

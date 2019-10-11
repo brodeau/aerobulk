@@ -65,8 +65,8 @@ CONTAINS
          ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
-         Qnt_ac(:,:)   = 0._wp
-         H_wl(:,:)    = H_wl_max
+         Qnt_ac(:,:) = 0._wp
+         H_wl(:,:)   = Hwl_max
          PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
       END IF
       !!
@@ -85,7 +85,7 @@ CONTAINS
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, pdT_wl, Hwl,                             & ! optionals for warm-layer only
+      &                      isecday_utc, plong, pdT_wl,                                  & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p6  ***
@@ -121,8 +121,8 @@ CONTAINS
       !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
       !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
       !!
-      !! OPTIONAL INPUT:
-      !! ---------------
+      !! OPTIONAL INPUT/OUTPUT:
+      !! ----------------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
@@ -130,7 +130,6 @@ CONTAINS
       !!    * isecday_utc:
       !!    *  plong  : longitude array                                       [deg.E]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
-      !!    * Hwl     : depth of warm layer                                   [m]
       !!
       !! OUTPUT :
       !! --------
@@ -175,14 +174,13 @@ CONTAINS
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt, info
+      INTEGER :: j_itt, info, ierr
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -197,10 +195,8 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
          &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
-         &                pdTw,   &  ! SST increment "dT" for warm layer correction          [K]
-         &                zHwl       ! depth of warm-layer [m]
+         &                pdTw       ! SST increment "dT" for warm layer correction          [K]
 
-      !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
       !!----------------------------------------------------------------------------------
@@ -237,7 +233,7 @@ CONTAINS
             STOP
          END IF
          ALLOCATE ( pdTw(jpi,jpj) )
-         IF (PRESENT(Hwl)) ALLOCATE ( zHwl(jpi,jpj) )
+         pdTw(:,:) = 0._wp
       END IF
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
@@ -386,11 +382,8 @@ CONTAINS
 
 
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            IF (PRESENT(Hwl)) THEN
-               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw,  Hwl=zHwl )
-            ELSE
-               CALL WL_COARE( kt, Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
-            END IF
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+            !    WL_COARE( pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT )
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + pdTw(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
@@ -401,10 +394,9 @@ CONTAINS
                WRITE(6,*) '           ---- AFTER WL ----'
                WRITE(6,*) ''
             END IF
-            IF (PRESENT(Hwl)) info = DISP_DEBUG(ldebug, 'Depth of Warm-Layer',zHwl(:,:),   '[m]'  )
+
             info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        pdTw(:,:),  '[deg.C]'  )
             info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
-            !info = DISP_DEBUG(ldebug, 'q_s',                          1000.*qs(:,:),     '[g/kg]'   )
 
          END IF
 
@@ -435,13 +427,11 @@ CONTAINS
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( pdTc )
-      IF (          l_use_wl      ) THEN
-         DEALLOCATE ( pdTw )
-         IF (PRESENT(Hwl)) DEALLOCATE ( zHwl )
-      END IF
-
+      IF (          l_use_wl      ) DEALLOCATE ( pdTw )
+      
    END SUBROUTINE turb_coare3p6
 
+   
 
    FUNCTION alfa_charn_3p6( pwnd )
       !!-------------------------------------------------------------------
