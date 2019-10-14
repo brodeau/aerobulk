@@ -62,11 +62,12 @@ CONTAINS
       IF ( l_use_wl ) THEN
          ierr = 0
          PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and H_wl :', jpi,jpj
-         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
          H_wl(:,:)   = Hwl_max
+         dT_wl(:,:)  = 0._wp
          PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
       END IF
       !!
@@ -194,8 +195,8 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
-         &                pdTw       ! SST increment "dT" for warm layer correction          [K]
+         &                pdTc  ! SST increment "dT" for cool-skin correction           [K]
+
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
@@ -232,8 +233,6 @@ CONTAINS
             PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'
             STOP
          END IF
-         ALLOCATE ( pdTw(jpi,jpj) )
-         pdTw(:,:) = 0._wp
       END IF
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
@@ -357,7 +356,7 @@ CONTAINS
             CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
             T_s(:,:) = zsst(:,:) + pdTc(:,:)
-            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
+            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
          END IF
@@ -383,10 +382,10 @@ CONTAINS
 
 
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
             !    WL_COARE( pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT )
             !! Updating T_s and q_s !!!
-            T_s(:,:) = zsst(:,:) + pdTw(:,:)
+            T_s(:,:) = zsst(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
@@ -396,7 +395,7 @@ CONTAINS
                WRITE(6,*) ''
             END IF
 
-            info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        pdTw(:,:),  '[deg.C]'  )
+            info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        dT_wl(:,:),  '[deg.C]'  )
             info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
 
          END IF
@@ -424,12 +423,11 @@ CONTAINS
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
+      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl !
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( pdTc )
-      IF (          l_use_wl      ) DEALLOCATE ( pdTw )
-      
+
    END SUBROUTINE turb_coare3p6
 
    
