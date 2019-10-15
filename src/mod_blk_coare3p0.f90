@@ -57,13 +57,14 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p0_init: WL => allocating Tau_ac, Qnt_ac, and H_wl :', jpi,jpj
-         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and Hz_wl :', jpi,jpj
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
-         Qnt_ac(:,:)   = 0._wp
-         H_wl(:,:)    = Hwl_max
-         PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
+         Qnt_ac(:,:) = 0._wp
+         Hz_wl(:,:)  = Hwl_max
+         dT_wl(:,:)  = 0._wp
+         PRINT *, ' *** Tau_ac , Qnt_ac, Hz_wl and dT_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
@@ -81,7 +82,7 @@ CONTAINS
    SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, pdT_wl, Hwl,                             & ! optionals for warm-layer only
+      &                      isecday_utc, plong, pdT_wl,                                  & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p0  ***
@@ -126,7 +127,6 @@ CONTAINS
       !!    * isecday_utc:
       !!    *  plong  : longitude array                                       [deg.E]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
-      !!    * Hwl     : depth of warm layer                                   [m]
       !!
       !! OUTPUT :
       !! --------
@@ -171,14 +171,13 @@ CONTAINS
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   Hwl      !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt, info
+      INTEGER :: j_itt, info, ierr
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -192,11 +191,8 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
-         &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
-         &                pdTw,   &  ! SST increment "dT" for warm layer correction          [K]
-         &                zHwl       ! depth of warm-layer [m]
+         &                pdTc  ! SST increment "dT" for cool-skin correction           [K]
 
-      !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p0@mod_blk_coare3p0.f90'
       !!----------------------------------------------------------------------------------
@@ -232,8 +228,6 @@ CONTAINS
             PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'
             STOP
          END IF
-         ALLOCATE ( pdTw(jpi,jpj) )
-         IF (PRESENT(Hwl)) ALLOCATE ( zHwl(jpi,jpj) )
       END IF
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
@@ -356,7 +350,7 @@ CONTAINS
             CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
             T_s(:,:) = zsst(:,:) + pdTc(:,:)
-            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
+            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
          END IF
@@ -366,10 +360,10 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt),  pdTw )
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
 
             !! Updating T_s and q_s !!!
-            T_s(:,:) = zsst(:,:) + pdTw(:,:)
+            T_s(:,:) = zsst(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
@@ -398,17 +392,14 @@ CONTAINS
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
+      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl !
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
       IF (          l_use_cs      ) DEALLOCATE ( pdTc )
-      IF (          l_use_wl      ) THEN
-         DEALLOCATE ( pdTw )
-         IF (PRESENT(Hwl)) DEALLOCATE ( zHwl )
-      END IF
 
    END SUBROUTINE turb_coare3p0
 
+   
 
    FUNCTION alfa_charn_3p0( pwnd )
       !!-------------------------------------------------------------------
@@ -446,6 +437,7 @@ CONTAINS
       END DO
       !
    END FUNCTION alfa_charn_3p0
+
 
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------

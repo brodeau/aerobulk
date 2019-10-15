@@ -38,10 +38,6 @@ MODULE mod_blk_coare3p6
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
-
-   !LOGICAL, PARAMETER :: ldebug = .TRUE.
-   LOGICAL, PARAMETER :: ldebug = .FALSE.
-
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -61,14 +57,14 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and H_wl :', jpi,jpj
-         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), H_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
+         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and Hz_wl :', jpi,jpj
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
-         H_wl(:,:)   = Hwl_max
+         Hz_wl(:,:)  = Hwl_max
          dT_wl(:,:)  = 0._wp
-         PRINT *, ' *** Tau_ac , Qnt_ac, and H_wl allocated!'
+         PRINT *, ' *** Tau_ac , Qnt_ac, Hz_wl and dT_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
@@ -119,11 +115,11 @@ CONTAINS
       !!              -> skin temperature as output if CSWL used              [K]
       !!
       !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
-      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
-      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
+      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_cs=True or l_use_wl=True)
+      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_cs=False or l_use_wl=False)
       !!
-      !! OPTIONAL INPUT/OUTPUT:
-      !! ----------------------
+      !! OPTIONAL INPUT:
+      !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
@@ -196,7 +192,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &                zsst,   &  ! to back up the initial bulk SST
          &                pdTc  ! SST increment "dT" for cool-skin correction           [K]
-
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
@@ -298,7 +293,6 @@ CONTAINS
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       END IF
 
-
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
@@ -365,38 +359,13 @@ CONTAINS
             !! Warm-layer contribution
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
-
-            IF (ldebug) THEN
-               WRITE(6,*) ''
-               WRITE(6,*) ' Inside '//trim(crtnm)//' !'
-               WRITE(6,*) '           ---- AFTER BULK ALGO and BEFORE CSWL ----'
-               WRITE(6,*) ''
-            END IF
-            info = DISP_DEBUG(ldebug, 'Shortwave flux "Qsw"',                     Qsw(:,:), '[W/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'Non-solar flux "QNS"',                     ztmp1(:,:), '[W/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'Wind Stress "TAU"',                        zeta_u(:,:), '[N/m^2]'   )
-            info = DISP_DEBUG(ldebug, 'SST',                                    zsst(:,:)-rt0, '[degC]'    )
-            !info = DISP_DEBUG(ldebug, 'Ts',                                    Ts(:,:,jt)-rt0, '[deg.C]'  )
-            info = DISP_DEBUG(ldebug, ' -- accumulated heat',             0.001*  Qnt_ac(:,:),  '[kJ/m^2]'   )
-            info = DISP_DEBUG(ldebug, ' -- accumulated momentum',         0.001*Tau_ac(:,:),  '[kN.s/m^2]' )
-
-
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
             CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
-            !    WL_COARE( pQsw, pQnsol, pTau, pSST, plon, isd, iwait,  pdT )
+
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-
-            IF (ldebug) THEN
-               WRITE(6,*) ''
-               WRITE(6,*) '           ---- AFTER WL ----'
-               WRITE(6,*) ''
-            END IF
-
-            info = DISP_DEBUG(ldebug, 'Warm-Layer dTwl increment',        dT_wl(:,:),  '[deg.C]'  )
-            info = DISP_DEBUG(ldebug, 'T_s',                               T_s(:,:)-rt0, '[deg.C]'  )
 
          END IF
 
@@ -467,7 +436,6 @@ CONTAINS
    END FUNCTION alfa_charn_3p6_wave
 
 
-   
    FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum

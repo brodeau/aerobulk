@@ -131,7 +131,7 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
-	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp
+	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc
 
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp
 

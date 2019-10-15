@@ -13,7 +13,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
-   USE mod_skin_coare, ONLY: H_wl, Qnt_ac, Tau_ac
+   USE mod_skin_coare, ONLY: Hz_wl, Qnt_ac, Tau_ac
    !USE mod_
    !USE mod_blk_ncar
    USE mod_blk_ecmwf
@@ -361,7 +361,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
             &             isecday_utc=isecday_utc, plong=xlon(:,:), pdt_wl=dT_wl(:,:,jt),                    &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-         zHwl(:,:,jt) =   H_wl(:,:) ! H_wl known from module "mod_skin_coare"         
+         zHwl(:,:,jt) =  Hz_wl(:,:) ! Hz_wl known from module "mod_skin_coare"         
          zQac(:,:,jt) = Qnt_ac(:,:) !                "
          zTac(:,:,jt) = Tau_ac(:,:) !                "
          

@@ -33,7 +33,7 @@ MODULE mod_skin_coare
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
       &                        dT_wl,     &  ! dT due to warm-layer effect => difference between "almost surface (right below viscous layer) and depth of bulk SST
-      &                        H_wl,      &  ! depth of warm-layer [m]
+      &                        Hz_wl,      &  ! depth of warm-layer [m]
       &                        Qnt_ac,    &  ! time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
       &                        Tau_ac        ! time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
 
@@ -154,7 +154,7 @@ CONTAINS
       !!
       INTEGER :: ji,jj
       !
-      REAL(wp) :: zdT_wl, zH_wl, zQabs, zfr
+      REAL(wp) :: zdTwl, zHwl, zQabs, zfr
       REAL(wp) :: zqac, ztac
       REAL(wp) :: zalpha_w, zcd1, zcd2, flg
       !!---------------------------------------------------------------------
@@ -178,8 +178,9 @@ CONTAINS
             l_exit       = .FALSE.
             l_destroy_wl = .FALSE.
             
-            zdT_wl =  dT_wl(ji,jj)
-            zH_wl  = MAX( MIN(H_wl(ji,jj),Hwl_max) , 0.1_wp) ! depth of warm layer
+            zdTwl =  dT_wl(ji,jj)                          ! value of previous time step as first guess
+            zHwl  = MAX( MIN(Hz_wl(ji,jj),Hwl_max),0.1_wp) !   "                  "           "
+            
             zqac = Qnt_ac(ji,jj) ! previous time step Qnt_ac
             ztac = Tau_ac(ji,jj)
 
@@ -191,10 +192,9 @@ CONTAINS
             rhr_sol = REAL( isd_sol , wp) / 3600._wp
 
             PRINT *, '#LBD:'
-            PRINT *, '#LBD: dT_wl at former ts:', zdT_wl
-            PRINT *, '#LBD:  H_wl at former ts:', zH_wl
-            PRINT *, '#LBD:  H_wl (H_wl) we use to start:', zH_wl
-
+            PRINT *, '#LBD: dT_wl at former ts:', zdTwl
+            PRINT *, '#LBD:  Hz_wl at former ts:', zHwl
+            
             !*****  variables for warm layer  ***
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
@@ -212,42 +212,42 @@ CONTAINS
             
             IF ( .NOT. l_exit ) THEN
                !! Initial test on initial guess of absorbed heat flux in warm-layer:
-               zfr = 1._wp - ( 0.28*0.014*(1. - EXP(-zH_wl/0.014)) + 0.27*0.357*(1. - EXP(-zH_wl/0.357)) &
-                  &        + 0.45*12.82*(1-EXP(-zH_wl/12.82)) ) / zH_wl
+               zfr = 1._wp - ( 0.28*0.014*(1. - EXP(-zHwl/0.014)) + 0.27*0.357*(1. - EXP(-zHwl/0.357)) &
+                  &        + 0.45*12.82*(1-EXP(-zHwl/12.82)) ) / zHwl
                zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj) ! first guess of tot. heat flux absorbed in warm layer !LOLO: depends of zfr, which is wild guess... Wrong!!!
                PRINT *, '#LBD:  Initial Qsw & Qnsol:', NINT(pQsw(ji,jj)), NINT(pQnsol(ji,jj))
                PRINT *, '#LBD:       =>Qabs:', zQabs,' zfr=', zfr
                
-               IF ( (ABS(zdT_wl) < 1.E-6_wp) .AND. (zQabs <= 0._wp) ) THEN
+               IF ( (ABS(zdTwl) < 1.E-6_wp) .AND. (zQabs <= 0._wp) ) THEN
                   ! We have not started to build a WL yet (dT==0) and there's no way it can occur now
                   ! since zQabs <= 0._wp
                   ! => no need to go further
                   PRINT *, '#LBD: we have not started to to build a WL yet (dT==0)'
                   PRINT *, '#LBD: and theres no way it can occur now since zQabs=', zQabs
                   PRINT *, '#LBD: => leaving without changing anything...'
-                  l_exit = .true.
+                  l_exit = .TRUE.
                END IF
 
             END IF
 
             ! Okay test on updated absorbed flux:
             !LOLO: remove??? has a strong influence !!!
-            IF ( .NOT.(l_exit) .AND. (Qnt_ac(ji,jj) + zQabs*rdt <= 0._wp) ) THEN
+            IF ( (.NOT.(l_exit)) .AND. (Qnt_ac(ji,jj) + zQabs*rdt <= 0._wp) ) THEN
                PRINT *, '#LBD: Oh boy! Next Qnt_ac looking weak! =>', Qnt_ac(ji,jj) + zQabs*rdt
                PRINT *, '#LBD:  => time to destroy the warm-layer!'
                l_exit       = .TRUE.
                l_destroy_wl = .TRUE.
             END IF
-
+            
 
             IF ( .NOT. l_exit) THEN
-
+               
                ! Two possibilities at this point:
                ! 1/ A warm layer already exists (dT>0) but it is cooling down because Qabs<0
                ! 2/ Regardless of WL formed (dT==0 or dT>0), we are in the process to initiate one or warm further it !
 
                PRINT *, '#LBD:======================================================'
-               PRINT *, '#LBD: WL action makes sense now! => zQabs,dT_wl=', REAL(zQabs,4), REAL(zdT_wl,4)
+               PRINT *, '#LBD: WL action makes sense now! => zQabs,dT_wl=', REAL(zQabs,4), REAL(zdTwl,4)
                PRINT *, '#LBD:======================================================'
                PRINT *, '#LBD: current values for Qac and Tac=', REAL(Qnt_ac(ji,jj),4), REAL(Tau_ac(ji,jj),4)
 
@@ -257,14 +257,14 @@ CONTAINS
                !! We update the value of absorbtion and zQabs:
                !! some part is useless if Qsw=0 !!!
                DO jl = 1, 5
-                  zfr = 1. - ( 0.28*0.014*(1. - EXP(-zH_wl/0.014)) + 0.27*0.357*(1. - EXP(-zH_wl/0.357)) &
-                     &        + 0.45*12.82*(1-EXP(-zH_wl/12.82)) ) / zH_wl
+                  zfr = 1. - ( 0.28*0.014*(1. - EXP(-zHwl/0.014)) + 0.27*0.357*(1. - EXP(-zHwl/0.357)) &
+                     &        + 0.45*12.82*(1-EXP(-zHwl/12.82)) ) / zHwl
                   zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)
                   zqac  = Qnt_ac(ji,jj) + zQabs*rdt ! updated heat absorbed
                   IF ( zqac <= 0._wp ) EXIT
-                  zH_wl = MAX( MIN( Hwl_max , zcd1*ztac/SQRT(zqac)) , 0.1_wp ) ! Warm-layer depth
+                  zHwl = MAX( MIN( Hwl_max , zcd1*ztac/SQRT(zqac)) , 0.1_wp ) ! Warm-layer depth
                END DO
-               PRINT *, '#LBD: updated absorption and WL depth=',  REAL(zfr,4), REAL(zH_wl,4)
+               PRINT *, '#LBD: updated absorption and WL depth=',  REAL(zfr,4), REAL(zHwl,4)
                PRINT *, '#LBD: updated value for Qabs=',  REAL(zQabs,4), 'W/m2'
                PRINT *, '#LBD: updated value for Qac =',  REAL(zqac,4), 'J'
 
@@ -272,29 +272,30 @@ CONTAINS
                   l_destroy_wl = .TRUE.
                   l_exit       = .TRUE.
                ELSE
-                  zdT_wl = zcd2*zqac**1.5/ztac * MAX(zqac/ABS(zqac),0._wp)  !! => IF(zqac>0._wp): zdT_wl=zcd2*zqac**1.5/ztac ; ELSE: zdT_wl=0. / ! normally: zqac > 0 !
-                  PRINT *, '#LBD: updated preliminary value for dT_wl=',  REAL(zdT_wl,4)
+                  zdTwl = zcd2*zqac**1.5/ztac * MAX(zqac/ABS(zqac),0._wp)  !! => IF(zqac>0._wp): zdTwl=zcd2*zqac**1.5/ztac ; ELSE: zdTwl=0. / ! normally: zqac > 0 !
+                  PRINT *, '#LBD: updated preliminary value for dT_wl=',  REAL(zdTwl,4)
                   ! Warm layer correction
-                  flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zH_wl )               ! => 1 when gdept_1d(1)>zH_wl (zdT_wl = zdT_wl) | 0 when gdept_1d(1)<zH_wl (zdT_wl = zdT_wl*gdept_1d(1)/zH_wl)
-                  zdT_wl = zdT_wl * ( flg + (1._wp-flg)*gdept_1d(1)/zH_wl )
+                  flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (zdTwl = zdTwl) | 0 when gdept_1d(1)<zHwl (zdTwl = zdTwl*gdept_1d(1)/zHwl)
+                  zdTwl = zdTwl * ( flg + (1._wp-flg)*gdept_1d(1)/zHwl )
                END IF
-
+               
             END IF !IF ( .NOT. l_exit)
             
             IF ( l_destroy_wl ) THEN
-               zdT_wl = 0._wp
-               zfr    = 0.75
-               zH_wl  = Hwl_max
-               zqac   = 0._wp
-               ztac   = 0._wp
+               zdTwl = 0._wp
+               zfr   = 0.75_wp
+               zHwl  = Hwl_max
+               zqac  = 0._wp
+               ztac  = 0._wp
             END IF
             
             PRINT *, '#LBD: exit values for Qac & Tac:', REAL(zqac,4), REAL(ztac,4)
 
             IF ( iwait == 0 ) THEN
-               dT_wl(ji,jj)  = zdT_wl
-               H_wl(ji,jj)   = zH_wl
-               PRINT *, '#LBD: FINAL EXIT values for dT_wl & H_wl:', REAL(dT_wl(ji,jj),4), REAL(H_wl(ji,jj),4)
+               !! Iteration loop within bulk algo is over, time to update what needs to be updated:
+               dT_wl(ji,jj)  = zdTwl
+               Hz_wl(ji,jj)  = zHwl
+               PRINT *, '#LBD: FINAL EXIT values for dT_wl & Hz_wl:', REAL(dT_wl(ji,jj),4), REAL(Hz_wl(ji,jj),4)
                Qnt_ac(ji,jj) = zqac ! Updating Qnt_ac, heat integral
                Tau_ac(ji,jj) = ztac
                PRINT *, '#LBD: FINAL EXIT values for Qac & Tac:', REAL(Qnt_ac(ji,jj),4), REAL(Tau_ac(ji,jj),4)
