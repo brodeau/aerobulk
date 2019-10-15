@@ -256,10 +256,37 @@ CONTAINS
 
       delta_skin_layer = zlamb*rnu0_w/zusw
       
-      !delta_skin_layer =  (1._wp + ztf) * zlamb*rnu0_w/zusw    &         ! see eq.(12) in Fairall et al., 1996
+      !delta_skin_layer =  (1._wp - ztf) * zlamb*rnu0_w/zusw    &         ! see eq.(12) in Fairall et al., 1996
       !   &               +     ztf  * MIN(6._wp*rnu0_w/zusw , 0.007_wp)
       
    END FUNCTION delta_skin_layer
 
+
+
+   FUNCTION psi( pzeta)
+      !!---------------------------------------------------------------------
+      !!
+      !! Takaya et al., 2010
+      !!  Eq.(5)
+      !! L. Brodeau, october 2019
+      !!---------------------------------------------------------------------
+      REAL(wp)                :: psi
+      REAL(wp), INTENT(in)    :: pzeta    ! stability parameter
+      !!---------------------------------------------------------------------
+      REAL(wp) :: ztf, zzt2
+      !!---------------------------------------------------------------------
+
+      zzt2 = pzeta*pzeta
+      
+      ztf = 0.5_wp + SIGN(0.5_wp, pzeta)  ! pzeta > 0 => ztf = 1
+      !                                   ! pzeta < 0 => ztf = 0      
+      psi =    ztf       * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! pzeta > 0
+         &  + (1. - ztf) * ( 1. - 16.*pzeta )**(-0.5)                                    ! pzeta < 0
+      
+   END FUNCTION psi
+
+
+
+   
    !!======================================================================
 END MODULE mod_skin_new
