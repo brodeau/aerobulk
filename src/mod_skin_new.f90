@@ -232,6 +232,11 @@ CONTAINS
 
       
       !! Then remove "rcst_cs" into mod_const.f90 !!!
+      !!
+      !! In mod_const.f90:
+      !! REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio                                                                                                                                
+      !! REAL(wp), PARAMETER, PUBLIC :: rcst_cs = 16._wp*grav*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) ! for cool-skin parameterizations...      
+
       
       DO jj = 1, jpj
          DO ji = 1, jpi
