@@ -13,6 +13,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !USE mod_blk_coare3p0
    USE mod_blk_coare3p6
+   USE mod_blk_coare3p6n
    USE mod_skin_coare, ONLY: Hz_wl, Qnt_ac, Tau_ac
    !USE mod_
    !USE mod_blk_ncar
@@ -25,7 +26,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   INTEGER, PARAMETER :: nb_algos = 2
+   INTEGER, PARAMETER :: nb_algos = 3
 
    INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
@@ -51,7 +52,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER :: nx, ny, Nt, ians
    
-   CHARACTER(len=8) :: calgo
+   CHARACTER(len=9) :: calgo
 
    INTEGER(4)        :: ihh, imm, isecday_utc
 
@@ -215,12 +216,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
    ians=0
-   DO WHILE ( (ians<1).OR.(ians>3) )
-      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
+   DO WHILE ( (ians<1).OR.(ians>4) )
+      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 , "coare3p6n" => 4 :'
       READ(*,*) ians
-      IF ( ians == 1 ) calgo = 'coare3p0'
-      IF ( ians == 2 ) calgo = 'ecmwf  '
-      IF ( ians == 3 ) calgo = 'coare3p6'
+      IF ( ians == 1 ) calgo = 'coare3p0 '
+      IF ( ians == 2 ) calgo = 'ecmwf    '
+      IF ( ians == 3 ) calgo = 'coare3p6 '
+      IF ( ians == 4 ) calgo = 'coare3p6n'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -354,7 +356,18 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
       
-      IF     ( TRIM(calgo) == 'coare3p6' ) THEN      
+      IF     ( TRIM(calgo) == 'coare3p6n' ) THEN
+         CALL TURB_COARE3P6N( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), pdt_wl=dT_wl(:,:,jt),                    &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+         !zHwl(:,:,jt) =  Hz_wl(:,:) ! Hz_wl known from module "mod_skin_coare"         
+         !zQac(:,:,jt) = Qnt_ac(:,:) !                "
+         !zTac(:,:,jt) = Tau_ac(:,:) !                "
+         
+      ELSEIF ( TRIM(calgo) == 'coare3p6' ) THEN      
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
@@ -432,24 +445,45 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    END DO !DO jt = 1, Nt
 
-   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
-      &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
-      &           ct_unit=TRIM(cunit_t), &
-      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
-      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
-      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-      &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs', cun07='deg.C', cln07='Cool-Skin dT',           &
-      &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl', cun08='deg.C', cln08='Warm-Layer dT',          &
-      &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
-      &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
-      &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
-      &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer', &
-      &           vdt13=REAL( zQac(1,1,:),4), cv_dt13='Qnt_ac',cun13='J/m2',  cln13='Accumulated absorbed heat in WL', &
-      &           vdt14=REAL( zTac(1,1,:),4), cv_dt14='Tau_ac',cun14='N.s/m2',cln14='Accumulated absorbed momentum in WL' )
 
+   IF     ( TRIM(calgo) == 'coare3p6' ) THEN      
+   
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+         &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
+         &           ct_unit=TRIM(cunit_t), &
+         &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
+         &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
+         &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+         &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+         &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+         &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs', cun07='deg.C', cln07='Cool-Skin dT',           &
+         &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl', cun08='deg.C', cln08='Warm-Layer dT',          &
+         &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
+         &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
+         &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
+         &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer', &
+         &           vdt13=REAL( zQac(1,1,:),4), cv_dt13='Qnt_ac',cun13='J/m2',  cln13='Accumulated absorbed heat in WL', &
+         &           vdt14=REAL( zTac(1,1,:),4), cv_dt14='Tau_ac',cun14='N.s/m2',cln14='Accumulated absorbed momentum in WL' )
 
+   ELSE
+
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+         &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
+         &           ct_unit=TRIM(cunit_t), &
+         &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
+         &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
+         &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+         &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+         &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+         &           vdt07=REAL(dT_cs(1,1,:),4), cv_dt07='dT_cs', cun07='deg.C', cln07='Cool-Skin dT',           &
+         &           vdt08=REAL(dT_wl(1,1,:),4), cv_dt08='dT_wl', cun08='deg.C', cln08='Warm-Layer dT',          &
+         &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
+         &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
+         &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts'   )
+
+   END IF
+
+      
    STOP 'LULU'
 
 

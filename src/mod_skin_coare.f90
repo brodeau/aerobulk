@@ -76,8 +76,8 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cool-skin effect
       !!---------------------------------------------------------------------
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zQnet, zQnsol, zlamb, zdelta, zalpha_w, zfr, &
-         &        zz1, zz2, zus, &
+      REAL(wp) :: zQabs, zQnsol, zlamb, zdelta, zalpha_w, zfr, &
+         &        zz1, zz2, zusw, &
          &        ztf
       !!---------------------------------------------------------------------
 
@@ -93,34 +93,35 @@ CONTAINS
             !! Fraction of the shortwave flux absorbed by the cool-skin sublayer:
             zfr   = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Eq.16 (Fairall al. 1996b) /  !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
 
-            zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) )  ! Total cooling at the interface
+            zQabs = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) )  ! Total cooling at the interface
 
-            ztf = 0.5 + SIGN(0.5_wp, zQnet) ! Qt > 0 => cooling of the layer => ztf = 1
+            ztf = 0.5 + SIGN(0.5_wp, zQabs) ! Qt > 0 => cooling of the layer => ztf = 1
             !                                 Qt < 0 => warming of the layer => ztf = 0
 
             !! Term alpha*Qb (Qb is the virtual surface cooling inc. buoyancy effect of salinity due to evap):
-            zz1 = zalpha_w*zQnet - 0.026*MIN(pQlat(ji,jj),0._wp)*rCp0_w/rLevap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
+            zz1 = zalpha_w*zQabs - 0.026*MIN(pQlat(ji,jj),0._wp)*rCp0_w/rLevap  ! alpha*(Eq.8) == alpha*Qb "-" because Qlat < 0
             !! LB: this terms only makes sense if > 0 i.e. in the cooling case
             !! so similar to what's done in ECMWF:
             zz1 = MAX(0._wp , zz1)    ! 1. instead of 0.1 though ZQ = MAX(1.0,-pQlw(ji,jj) - pQsen(ji,jj) - pQlat(ji,jj))
 
-            zus = MAX(pustar(ji,jj), 1.E-4_wp) ! Laurent: too low wind (u*) might cause problem in stable cases:
-            zz2 = zus*zus * roadrw
+            zusw = MAX(pustar(ji,jj), 1.E-4_wp) * sq_radrw   ! u* in water / ! Laurent: too low wind (u*) might cause problem in stable cases:
+            zz2 = zusw*zusw
             zz2 = zz2*zz2
+            
             zlamb =  6._wp*( 1._wp + (rcst_cs*zz1/zz2)**0.75 )**(-1./3.) ! Lambda (Eq.14) (Saunders)
 
             ! Updating molecular sublayer thickness (delta):
-            zz2    = rnu0_w/(SQRT(roadrw)*zus)
+            zz2    = rnu0_w/zusw
             zdelta =      ztf    *          zlamb*zz2   &  ! Eq.12 (when alpha*Qb>0 / cooling of layer)
                &    + (1._wp - ztf) * MIN(0.007_wp , 6._wp*zz2 )    ! Eq.12 (when alpha*Qb<0 / warming of layer)
             !LB: changed 0.01 to 0.007
 
             !! Once again with the new zdelta:
             zfr   = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption / Eq.16 (Fairall al. 1996b)
-            zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
+            zQabs = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
 
             !! Update!
-            pdT(ji,jj) =  MIN( - zQnet*zdelta/rk0_w , 0._wp )   ! temperature increment
+            pdT(ji,jj) =  MIN( - zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
             delta_vl(ji,jj) = zdelta
 
          END DO

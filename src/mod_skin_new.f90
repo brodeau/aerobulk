@@ -30,6 +30,8 @@ MODULE mod_skin_new
    ! ...
 
    !! Warm-layer related parameters:
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
+      &                        dT_wl
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
    REAL(wp), PARAMETER :: rNu0 = 1.0       !:  be closer to COARE3p6 ???!LOLO
@@ -37,6 +39,16 @@ MODULE mod_skin_new
    !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
    !                                       !: 0.3 to respect a warming of +3 K in calm
    !                                       !: condition for the insolation peak of +1000W/m^2
+   !
+   !! Then remove "rcst_cs" into mod_const.f90 !!!
+   !!
+   !! In mod_const.f90:
+   !! REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio
+   !! REAL(wp), PARAMETER, PUBLIC :: rcst_cs = 16._wp*grav*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) ! for cool-skin parameterizations...
+
+   REAL(wp), PARAMETER :: zcon0 = -16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / ( rk0_w*rk0_w ) ! "-" because ocean convention: Qabs > 0 => gain of heat for ocean!
+   !!                             => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)
+
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -59,43 +71,39 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!
-      !!  **  INPUT/OUTPUT:
-      !!     *pdT*  : as input =>  previous estimate of dT cool-skin
-      !!              as output =>  new estimate of dT cool-skin
+      !!  ** OUTPUT:
+      !!     *pdT*  :     new estimate of dT cool-skin  [K]
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST ! bulk SST [K]
-      !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdT    ! dT due to cool-skin effect
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST ! bulk SST [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pdT    ! dT due to cool-skin effect
       !!---------------------------------------------------------------------
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zQnet, zQnsol, zlamb, zdelta, zalpha_w, zfr, &
-         & zusw, zusw2
+      INTEGER  :: ji, jj, jc
+      REAL(wp) :: zQabs, zdelta, zfr
       !!---------------------------------------------------------------------
-
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+            zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) ) ! first guess, we do not miss a lot assuming 0 solar flux absorbed in the tiny layer of thickness delta...
+            !  ! also, we ONLY consider when the viscous layer is loosing heat to the atmosphere, we only deal with cool-skin! => hence the "MIN( -0.1_wp, Q)"
+            !zQabs  = pQnsol(ji,jj)
 
-            zQnsol = MAX( 1._wp , - pQnsol(ji,jj) ) ! Non-solar heat loss to the atmosphere !LOLO: But only considering loss, removing gain???
+            zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
-            zusw2 = zusw*zusw
+            DO jc = 1, 4 ! because implicit in terms of zdelta...
+               zfr   = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.(5) Zeng & Beljaars, 2005
+               !              =>  (WARNING: 0.065 rather than 0.137 in Fairal et al. 1996)
+               zQabs = MIN( -0.1_wp , pQnsol(ji,jj) + zfr*pQsw(ji,jj) ) ! Total cooling at the interface
+               !zQabs = pQnsol(ji,jj) + zfr*pQsw(ji,jj)
+               zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
+            END DO
 
-            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*rcst_cs/(zusw2*zusw2 ))**0.75 )**(-1./3.)   ! w.r.t COARE 3p6 => seems to ommit absorbed zfr*Qsw (Qnet i.o. Qnsol) and effect of evap...
-            !                                                                                  ! so zlamb not implicit in terms of zdelta (zfr(delta)), so no need to have last guess of delta as in COARE 3.6...
-            zdelta = zlamb*rnu0_w/zusw
-
-            zfr   = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption / Eq. 8.131 / IFS cy40r1, doc, Part IV,
-            zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
-
-            !! Update!
-            pdT(ji,jj) =  MIN( - zQnet*zdelta/rk0_w , 0._wp )   ! temperature increment
-
+            pdT(ji,jj) =  MIN( zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
+            !pdT(ji,jj) =  zQabs*zdelta/rk0_w  ! temperature increment
+            
          END DO
       END DO
 
@@ -166,7 +174,7 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
+            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*sq_radrw    ! u* in the water
             zusw2 = zusw*zusw
 
 
@@ -213,7 +221,7 @@ CONTAINS
 
 
 
-   FUNCTION DELTA_SKIN_LAYER( pSST, pQabs, pustar_a )
+   FUNCTION delta_skin_layer( pSST, pQabs, pustar_a )
       !!---------------------------------------------------------------------
       !! Computes the thickness (m) of the viscous skin layer.
       !! Based on Fairall et al., 1996
@@ -225,37 +233,33 @@ CONTAINS
       !!
       !! L. Brodeau, october 2019
       !!---------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST   ! bulk SST [K] => to know the thermal expansion
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQabs  ! part of the net heat flux actuall absorbed in the WL => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp)                :: delta_skin_layer
+      REAL(wp), INTENT(in)    :: pSST     ! bulk SST [K] => to know the thermal expansion [K]
+      REAL(wp), INTENT(in)    :: pQabs    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
+      REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
+      !!---------------------------------------------------------------------
+      REAL(wp) :: zusw, zusw2, zlamb, zalpha_w !, ztf, zQ
+      !!---------------------------------------------------------------------
 
+      !zQ = MIN( -0.1_wp , pQabs )
       
-      !! Then remove "rcst_cs" into mod_const.f90 !!!
-      !!
-      !! In mod_const.f90:
-      !! REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio                                                                                                                                
-      !! REAL(wp), PARAMETER, PUBLIC :: rcst_cs = 16._wp*grav*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) ! for cool-skin parameterizations...      
+      !ztf = 0.5_wp + SIGN(0.5_wp, zQ)  ! Qabs < 0 => cooling of the layer => ztf = 0 (normal case)
+      !                                   ! Qabs > 0 => warming of the layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
+      zalpha_w = alpha_sw( pSST ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
+      zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
+      zusw2 = zusw*zusw
+
+      zlamb = 6._wp*( 1._wp + (zalpha_w*zcon0/(zusw2*zusw2)*pQabs)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+
+      !zlamb = 6._wp*( 1._wp + MAX(zalpha_w*zcon0/(zusw2*zusw2)*zQ, 0._wp)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+
+      delta_skin_layer = zlamb*rnu0_w/zusw
       
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-
-            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
-            
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
-            zusw2 = zusw*zusw
-
-            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*rcst_cs/(zusw2*zusw2 ))**0.75 )**(-1./3.)   ! w.r.t COARE 3p6 => seems to ommit absorbed zfr*Qsw (Qnet i.o. Qnsol) and effect of evap...
-            !                                                                                  ! so zlamb not implicit in terms of zdelta (zfr(delta)), so no need to have last guess of delta as in COARE 3.6...
-            zdelta = zlamb*rnu0_w/zusw
-
-
-            
-            
-         END DO
-      END DO
+      !delta_skin_layer =  (1._wp + ztf) * zlamb*rnu0_w/zusw    &         ! see eq.(12) in Fairall et al., 1996
+      !   &               +     ztf  * MIN(6._wp*rnu0_w/zusw , 0.007_wp)
       
-   END FUNCTION DELTA_SKIN_LAYER
+   END FUNCTION delta_skin_layer
+
    !!======================================================================
 END MODULE mod_skin_new
