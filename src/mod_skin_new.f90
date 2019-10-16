@@ -263,27 +263,27 @@ CONTAINS
 
 
 
-   FUNCTION psi( pzeta)
+   FUNCTION phi( pzeta)
       !!---------------------------------------------------------------------
       !!
       !! Takaya et al., 2010
       !!  Eq.(5)
       !! L. Brodeau, october 2019
       !!---------------------------------------------------------------------
-      REAL(wp)                :: psi
+      REAL(wp)                :: phi
       REAL(wp), INTENT(in)    :: pzeta    ! stability parameter
       !!---------------------------------------------------------------------
       REAL(wp) :: ztf, zzt2
       !!---------------------------------------------------------------------
-
+      !
       zzt2 = pzeta*pzeta
-      
-      ztf = 0.5_wp + SIGN(0.5_wp, pzeta)  ! pzeta > 0 => ztf = 1
-      !                                   ! pzeta < 0 => ztf = 0      
-      psi =    ztf       * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! pzeta > 0
-         &  + (1. - ztf) * ( 1. - 16.*pzeta )**(-0.5)                                    ! pzeta < 0
-      
-   END FUNCTION psi
+      !
+      ztf = 0.5_wp + SIGN(0.5_wp, pzeta)  ! zeta > 0 => ztf = 1
+      !                                   ! zeta < 0 => ztf = 0      
+      phi =      ztf     * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! zeta > 0
+         &  + (1. - ztf) * 1./SQRT( 1. - 16.*(-ABS(pzeta)) )                             ! zeta < 0
+      !
+   END FUNCTION phi
 
 
 

@@ -135,7 +135,6 @@ CONTAINS
          & ZSRD,   &
          & dT_wl,   & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
          & zfr,zdL,zdL2, ztmp, &
-         & ZPHI, &
          & zus_a, zusw, zusw2, &
          & flg, zQabs, ZL1, ZL2
       !!---------------------------------------------------------------------
@@ -176,23 +175,14 @@ CONTAINS
             !
             flg = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
             ztmp = MAX(dT_wl,0._wp)
-            zdl = (flg+1._wp) * ( zusw2 * SQRT(ztmp/(5._wp*zdz*grav*zalpha_w/rNu0)) ) & ! (dT_wl > 0.0 .AND. ZSRD < 0.0)
-               &  +    flg    *  ZSRD                                                                  !   otherwize
+            zdl = (1.-flg) * ( zusw2 * SQRT(ztmp/(5._wp*zdz*grav*zalpha_w/rNu0)) ) & ! (dT_wl > 0.0 .AND. ZSRD < 0.0)
+               & +  flg    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
             zdL = zdz*vkarmn*grav/(roadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
-
-            !! Stability function Phi_t(-z/L) (zdL is -z/L) :
-            flg = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
-            zdL2 = zdL*zdL
-            ZPHI =    flg      * ( 1._wp + (5._wp*zdL + 4._wp*zdL2)/(1._wp + 3._wp*zdL + 0.25_wp*zdL2) ) &  ! (zdL > 0) Takaya et al.
-               & + (flg+1._wp) * ( 1._wp/SQRT(1._wp - 16._wp*(-ABS(zdL))) )        ! (zdl < 0) Eq. 8.136
-            !! FOR zdL > 0.0, old relations:
-            !         ZPHI = 1.+5._wp*zdL                                ! Eq. 8.136 (Large et al. 1994)
-            !         ZPHI = 1.+5.0*(zdL+zdL**2)/(1.0+3.0*zdL+zdL**2) ! SHEBA, Grachev et al. 2007
-
+            
             !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * ZPHI )
+            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * PHI(zdl) )
 
             ! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == pdT(ji,jj) ; f_n == dT_wl)
             dT_wl = MAX ( dT_wl + rdt*ZL1 + rdt*ZL2*dT_wl , 0._wp )
@@ -207,6 +197,38 @@ CONTAINS
       END DO
 
    END SUBROUTINE WL_ECMWF
+
+
+   FUNCTION PHI( pzeta)
+      !!---------------------------------------------------------------------
+      !!
+      !! Zeng & Beljaars
+      !!
+      !! L. Brodeau, october 2019
+      !!---------------------------------------------------------------------
+      REAL(wp)                :: PHI
+      REAL(wp), INTENT(in)    :: pzeta    ! stability parameter
+      !!---------------------------------------------------------------------
+      REAL(wp) :: ztf, zzt2
+      !!---------------------------------------------------------------------
+      !
+      !!! Stability function PHI_t(-z/L) (zdL is -z/L) :
+      !flg = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
+      !zdL2 = zdL*zdL
+      !ZPHI =    flg   * ( 1._wp + (5._wp*zdL + 4._wp*zdL2)/(1._wp + 3._wp*zdL + 0.25_wp*zdL2) ) &  ! (zdL > 0) 
+      !   & + (1.-flg) * ( 1._wp/SQRT(1._wp - 16._wp*(-ABS(zdL))) )                                 ! (zdl < 0) 
+      !!! FOR zdL > 0.0, old relations:
+      !!         ZPHI = 1.+5._wp*zdL                                ! Eq. 8.136 (Large et al. 1994)
+      !!         ZPHI = 1.+5.0*(zdL+zdL**2)/(1.0+3.0*zdL+zdL**2) ! SHEBA, Grachev et al. 2007
+      !!
+      zzt2 = pzeta*pzeta
+      !
+      ztf = 0.5_wp + SIGN(0.5_wp, pzeta)  ! zeta > 0 => ztf = 1
+      !                                   ! zeta < 0 => ztf = 0
+      PHI =      ztf     * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! zeta > 0 Takaya et al.
+         &  + (1. - ztf) * 1./SQRT( 1. - 16.*(-ABS(pzeta)) )                             ! zeta < 0 Eq.(8.136)
+      !
+   END FUNCTION PHI  
 
    !!======================================================================
 END MODULE mod_skin_ecmwf
