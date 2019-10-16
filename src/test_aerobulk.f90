@@ -280,18 +280,20 @@ PROGRAM TEST_AEROBULK
       CASE(1)
 
          IF ( l_use_cswl ) THEN
+            PRINT *, 'Oops skin param not really finished yet for COARE3P0 in this test!'; STOP
+            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
+               &                isecday_utc=43200, plong=SLP*0._wp,                             &
+               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
-            CALL TURB_COARE3P0( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
-               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,      &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are updated wrt to skin temperature !
 
          ELSE
-            CALL TURB_COARE3P0( zt, zu, Ts, theta_zt, qs, q_zt, W10, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-
+            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+            
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
 
 
@@ -301,7 +303,7 @@ PROGRAM TEST_AEROBULK
       CASE(2)
          
          IF ( l_use_cswl ) THEN
-            PRINT *, ' BOOOO! LOLO'
+            PRINT *, 'Oops skin param not really finished yet for COARE3P6 in this test!'; STOP
             CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
                &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
@@ -327,17 +329,17 @@ PROGRAM TEST_AEROBULK
       CASE(4)
 
          IF ( l_use_cswl ) THEN
-            
-            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                            &
-               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,       &
+            PRINT *, 'Oops skin param not really finished yet for ECMWF in this test!'; STOP
+            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
             
          ELSE
 
-            CALL TURB_ECMWF( zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,        &
+            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
 
