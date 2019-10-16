@@ -29,6 +29,8 @@ MODULE mod_skin_ecmwf
    !! Cool-skin related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
       &                        dT_cs         !: dT due to cool-skin effect => temperature difference between air-sea interface (z=0) and right below viscous layer (z=delta)
+   REAL(wp), PARAMETER :: zcon0 = -16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / ( rk0_w*rk0_w ) ! "-" because ocean convention: Qabs > 0 => gain of heat for ocean!
+   !!                             => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)
 
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
@@ -48,11 +50,14 @@ CONTAINS
    SUBROUTINE CS_ECMWF( pQsw, pQnsol, pustar, pSST )
       !!---------------------------------------------------------------------
       !!
-      !!  Cool-Skin scheme according to Fairall et al. 1996
-      !! Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
-      !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
-      !!     as parameterized in IFS Cy45r1 / E.C.M.W.F.
-      !!     ------------------------------------------------------------------
+      !! Cool-skin parameterization, based on Fairall et al., 1996:
+      !!
+      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
+      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
+      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
+      !! doi:10.1029/95JC03190.
+      !!
+      !!------------------------------------------------------------------
       !!
       !!  **   INPUT:
       !!     *pQsw*       surface net solar radiation into the ocean     [W/m^2] => >= 0 !
@@ -60,35 +65,30 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST ! bulk SST [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pSST ! bulk SST [K]
       !!---------------------------------------------------------------------
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zQnet, zQnsol, zlamb, zdelta, zalpha_w, zfr, &
-         & zusw, zusw2
+      INTEGER  :: ji, jj, jc
+      REAL(wp) :: zQabs, zdelta, zfr
       !!---------------------------------------------------------------------
-      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+            zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) ) ! first guess, we do not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes$
+            !                                       ! also, we ONLY consider when the viscous layer is loosing heat to the atmosphere, we only deal with cool-skin! => hence the "MIN( -0$
 
-            zQnsol = MAX( 1._wp , - pQnsol(ji,jj) ) ! Non-solar heat loss to the atmosphere
+            zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
-            zusw2 = zusw*zusw
+            DO jc = 1, 4 ! because implicit in terms of zdelta...
+               zfr    = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.(5) Zeng & Beljaars, 2005
+               !              =>  (WARNING: 0.065 rather than 0.137 in Fairal et al. 1996)
+               zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) + zfr*pQsw(ji,jj) ) ! Total cooling at the interface
+               zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
+            END DO
 
-            zlamb = 6._wp*( 1._wp + (zQnsol*zalpha_w*rcst_cs/(zusw2*zusw2 ))**0.75 )**(-1./3.)   ! w.r.t COARE 3p6 => seems to ommit absorbed zfr*Qsw (Qnet i.o. Qnsol) and effect of evap...
-            !                                                                                  ! so zlamb not implicit in terms of zdelta (zfr(delta)), so no need to have last guess of delta as in COARE 3.6...
-            zdelta = zlamb*rnu0_w/zusw
-
-            zfr   = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption / Eq. 8.131 / IFS cy40r1, doc, Part IV,
-            zQnet = MAX( 1._wp , zQnsol - zfr*pQsw(ji,jj) ) ! Total cooling at the interface
-
-            !! Update!
-            dT_cs(ji,jj) = MIN( - zQnet*zdelta/rk0_w , 0._wp )   ! temperature increment
+            dT_cs(ji,jj) = MIN( zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
 
          END DO
       END DO
@@ -170,7 +170,7 @@ CONTAINS
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
             zdL = zdz*vkarmn*grav/(roadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
-            
+
             !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
             ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * PHI(zdl) )
 
@@ -189,6 +189,49 @@ CONTAINS
    END SUBROUTINE WL_ECMWF
 
 
+
+   FUNCTION delta_skin_layer( pSST, pQabs, pustar_a )
+      !!---------------------------------------------------------------------
+      !! Computes the thickness (m) of the viscous skin layer.
+      !! Based on Fairall et al., 1996
+      !!
+      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
+      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
+      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
+      !! doi:10.1029/95JC03190.
+      !!
+      !! L. Brodeau, october 2019
+      !!---------------------------------------------------------------------
+      REAL(wp)                :: delta_skin_layer
+      REAL(wp), INTENT(in)    :: pSST     ! bulk SST [K] => to know the thermal expansion [K]
+      REAL(wp), INTENT(in)    :: pQabs    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
+      REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
+      !!---------------------------------------------------------------------
+      REAL(wp) :: zusw, zusw2, zlamb, zalpha_w, zQb !, ztf, zQ
+      !!---------------------------------------------------------------------
+
+      zQb = pQabs
+
+      !zQ = MIN( -0.1_wp , pQabs )
+
+      !ztf = 0.5_wp + SIGN(0.5_wp, zQ)  ! Qabs < 0 => cooling of the layer => ztf = 0 (normal case)
+      !                                   ! Qabs > 0 => warming of the layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
+      zalpha_w = alpha_sw( pSST ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+
+      zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
+      zusw2 = zusw*zusw
+
+      zlamb = 6._wp*( 1._wp + (zalpha_w*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+      !zlamb = 6._wp*( 1._wp + MAX(zalpha_w*zcon0/(zusw2*zusw2)*zQ, 0._wp)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+
+      delta_skin_layer = zlamb*rnu0_w/zusw
+
+      !delta_skin_layer =  (1._wp - ztf) * zlamb*rnu0_w/zusw    &         ! see eq.(12) in Fairall et al., 1996
+      !   &               +     ztf  * MIN(6._wp*rnu0_w/zusw , 0.007_wp)
+   END FUNCTION delta_skin_layer
+
+
+
    FUNCTION PHI( pzeta)
       !!---------------------------------------------------------------------
       !!
@@ -202,12 +245,12 @@ CONTAINS
       REAL(wp) :: ztf, zzt2
       !!---------------------------------------------------------------------
       !
-      !!! Stability function PHI_t(-z/L) (zdL is -z/L) :
+!!! Stability function PHI_t(-z/L) (zdL is -z/L) :
       !flg = 0.5_wp + SIGN(0.5_wp, zdL)  ! zdl > 0. => 1.  / zdl < 0. => 0.
       !zdL2 = zdL*zdL
-      !ZPHI =    flg   * ( 1._wp + (5._wp*zdL + 4._wp*zdL2)/(1._wp + 3._wp*zdL + 0.25_wp*zdL2) ) &  ! (zdL > 0) 
-      !   & + (1.-flg) * ( 1._wp/SQRT(1._wp - 16._wp*(-ABS(zdL))) )                                 ! (zdl < 0) 
-      !!! FOR zdL > 0.0, old relations:
+      !ZPHI =    flg   * ( 1._wp + (5._wp*zdL + 4._wp*zdL2)/(1._wp + 3._wp*zdL + 0.25_wp*zdL2) ) &  ! (zdL > 0)
+      !   & + (1.-flg) * ( 1._wp/SQRT(1._wp - 16._wp*(-ABS(zdL))) )                                 ! (zdl < 0)
+!!! FOR zdL > 0.0, old relations:
       !!         ZPHI = 1.+5._wp*zdL                                ! Eq. 8.136 (Large et al. 1994)
       !!         ZPHI = 1.+5.0*(zdL+zdL**2)/(1.0+3.0*zdL+zdL**2) ! SHEBA, Grachev et al. 2007
       !!
@@ -218,7 +261,7 @@ CONTAINS
       PHI =      ztf     * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! zeta > 0 Takaya et al.
          &  + (1. - ztf) * 1./SQRT( 1. - 16.*(-ABS(pzeta)) )                             ! zeta < 0 Eq.(8.136)
       !
-   END FUNCTION PHI  
+   END FUNCTION PHI
 
    !!======================================================================
 END MODULE mod_skin_ecmwf

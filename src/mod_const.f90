@@ -71,7 +71,6 @@ MODULE mod_const
 
    REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
-   REAL(wp), PARAMETER, PUBLIC :: rcst_cs = 16._wp*grav*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) ! for cool-skin parameterizations...     
 
 
    
