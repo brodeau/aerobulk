@@ -154,7 +154,7 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*SQRT(roadrw)    ! u* in the water
+            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*sq_radrw    ! u* in the water
             zusw2 = zusw*zusw
 
 
@@ -171,7 +171,7 @@ CONTAINS
                & +  flg    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = zdz*vkarmn*grav/(roadrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
+            zdL = zdz*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
             !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
             ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * PHI(zdl) )

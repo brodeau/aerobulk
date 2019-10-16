@@ -69,7 +69,7 @@ MODULE mod_const
       &  Sol0 = 1366.  , &       !: Solar constant W/m^2
       &  rdct_qsat_salt = 0.98   !: factor to apply to q_sat(SST) to account for salt
 
-   REAL(wp), PARAMETER, PUBLIC :: roadrw = rho0_a/rho0_w !: Density ratio
+   REAL(wp), PARAMETER, PUBLIC :: radrw    = rho0_a/rho0_w !: Density ratio
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
 
