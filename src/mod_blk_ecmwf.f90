@@ -28,14 +28,14 @@ MODULE mod_blk_ecmwf
    !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
-   USE mod_const        !: physical and othe constants
-   USE mod_phymbl       !: thermodynamics
-   USE mod_skin_ecmwf   !: cool-skin parameterization
+   USE mod_const       !: physical and othe constants
+   USE mod_phymbl      !: thermodynamics
+   USE mod_skin_ecmwf  !: cool-skin parameterization
 
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_ECMWF
+   PUBLIC :: ECMWF_INIT, TURB_ECMWF
 
    !                   !! ECMWF own values for given constants, taken form IFS documentation...
    REAL(wp), PARAMETER ::   charn0 = 0.018    ! Charnock constant (pretty high value here !!!
@@ -51,6 +51,7 @@ MODULE mod_blk_ecmwf
    !!----------------------------------------------------------------------
 CONTAINS
 
+
    SUBROUTINE ecmwf_init(l_use_cs, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION ecmwf_init  ***
@@ -62,20 +63,30 @@ CONTAINS
       !!---------------------------------------------------------------------
       LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
       LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
-      !INTEGER :: ierr
+      INTEGER :: ierr
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
-         PRINT *, ' *** ecmwf_init: DOING NOTHING for warm-layer! ***'
+         ierr = 0
+         PRINT *, ' *** ecmwf_init: WL => allocating dT_wl :', jpi,jpj
+         ALLOCATE ( dT_wl(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         dT_wl(:,:)  = 0._wp
+         PRINT *, ' *** dT_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
-         PRINT *, ' *** ecmwf_init: DOING NOTHING for cool-skin! ***'
+         ierr = 0
+         PRINT *, ' *** ecmwf_init: CS => allocating dT_cs :', jpi,jpj
+         ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_cs and Qnt_ac failed!'
+         dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+         PRINT *, ' *** dT_cs allocated!'
       END IF
    END SUBROUTINE ecmwf_init
 
 
 
-   SUBROUTINE turb_ecmwf( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
+   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                        &
       &                      Qsw, rad_lw, slp, pdT_cs,                             & ! optionals for cool-skin (and warm-layer)
       &                      pdT_wl,                                               & ! optionals for warm-layer only
@@ -95,6 +106,7 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
+      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  t_zt : potential air temperature at zt                         [K]
@@ -110,14 +122,16 @@ CONTAINS
       !!              -> skin temperature as output if CSWL used              [K]
       !!
       !!    *  q_s  : SSQ aka saturation specific humidity at temp. T_s       [kg/kg]
-      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_skin=True)
-      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_skin=False)
+      !!              -> doesn't need to be given a value if skin temp computed (in case l_use_cs=True or l_use_wl=True)
+      !!              -> MUST be given the correct value if not computing skint temp. (in case l_use_cs=False or l_use_wl=False)
       !!
       !! OPTIONAL INPUT:
       !! ---------------
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
+      !! OPTIONAL OUTPUT:
+      !! ----------------
       !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
       !!
@@ -139,6 +153,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
+      INTEGER,  INTENT(in   )                     ::   kt       ! current time step
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
@@ -159,7 +174,6 @@ CONTAINS
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
-      !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
@@ -177,10 +191,7 @@ CONTAINS
          &  Linv,            & !: 1/L (inverse of Monin Obukhov length...
          &  z0, z0t, z0q
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
-         &                zsst,   &  ! to back up the initial bulk SST
-         &                pdTc,   &  ! SST increment "dT" for cool-skin correction           [K]
-         &                pdTw       ! SST increment "dT" for warm layer correction          [K]
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst  ! to back up the initial bulk SST
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
@@ -196,6 +207,7 @@ CONTAINS
          &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
+      IF ( kt == 1 ) CALL ECMWF_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -208,20 +220,14 @@ CONTAINS
       !! Initializations for cool skin and warm layer:
       IF ( l_use_cs ) THEN
          IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
-            STOP
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'; STOP
          END IF
-         ALLOCATE ( pdTc(jpi,jpj) )
-         pdTc(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
 
       IF ( l_use_wl ) THEN
          IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'
-            STOP
+            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'; STOP
          END IF
-         ALLOCATE ( pdTw(jpi,jpj) )
-         pdTw(:,:) = 0._wp
       END IF
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
@@ -365,10 +371,10 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0
 
-            CALL CS_ECMWF( Qsw, ztmp1, u_star, zsst, pdTc )  ! Qnsol -> ztmp1
+            CALL CS_ECMWF( Qsw, ztmp1, u_star, zsst )  ! Qnsol -> ztmp1
 
-            T_s(:,:) = zsst(:,:) + pdTc(:,:)
-            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + pdTw(:,:)
+            T_s(:,:) = zsst(:,:) + dT_cs(:,:)
+            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
          END IF
@@ -377,10 +383,10 @@ CONTAINS
             !! Warm-layer contribution
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
-            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst, pdTw )
+            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst )
             !! Updating T_s and q_s !!!
-            T_s(:,:) = zsst(:,:) + pdTw(:,:)
-            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
+            T_s(:,:) = zsst(:,:) + dT_wl(:,:)
+            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
          END IF
 
@@ -409,12 +415,10 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, func_m, func_h, &
          &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
 
-      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = pdTw
+      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
+      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
-      IF (          l_use_cs      ) DEALLOCATE ( pdTc )
-      IF (          l_use_wl      ) DEALLOCATE ( pdTw )
 
    END SUBROUTINE turb_ecmwf
 

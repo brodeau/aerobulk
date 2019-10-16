@@ -747,7 +747,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! latent heat of vaporization   [J/kg]
+      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! thermal expansion coefficient of sea-water [1/K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
       !!----------------------------------------------------------------------------------
       alpha_sw_vctr = 2.1e-5_wp * MAX(psst(:,:)-rt0 + 3.2_wp, 0._wp)**0.79
@@ -761,7 +761,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             ::   alpha_sw_sclr   ! latent heat of vaporization   [J/kg]
+      REAL(wp)             ::   alpha_sw_sclr   ! thermal expansion coefficient of sea-water [1/K]
       REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
       !!----------------------------------------------------------------------------------
       alpha_sw_sclr = 2.1e-5_wp * MAX(psst-rt0 + 3.2_wp, 0._wp)**0.79

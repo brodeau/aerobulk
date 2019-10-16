@@ -16,4 +16,4 @@ rm -f lolo_ecmwf.nc ${fout}
 14
 EOF
 
-
+ncks -O -d time,3500,4500 lolo_ecmwf.nc -o short_e.nc

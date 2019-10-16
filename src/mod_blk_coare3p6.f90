@@ -57,23 +57,23 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, and Hz_wl :', jpi,jpj
+         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, Hz_wl, and dT_wl :', jpi,jpj
          ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
          Hz_wl(:,:)  = Hwl_max
          dT_wl(:,:)  = 0._wp
-         PRINT *, ' *** Tau_ac , Qnt_ac, Hz_wl and dT_wl allocated!'
+         PRINT *, ' *** Tau_ac, Qnt_ac, Hz_wl, and dT_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: CS => allocating delta_vl :', jpi,jpj
-         ALLOCATE ( delta_vl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of delta_vl and Qnt_ac failed!'
-         delta_vl(:,:) = 0.001_wp      ! First guess of zdelta [m]
-         PRINT *, ' *** delta_vl allocated!'
+         PRINT *, ' *** coare3p6_init: CS => allocating dT_cs :', jpi,jpj
+         ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of dT_cs and Qnt_ac failed!'
+         dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+         PRINT *, ' *** dT_cs allocated!'
       END IF
    END SUBROUTINE coare3p6_init
 
@@ -177,7 +177,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt, info, ierr
+      INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -185,13 +185,12 @@ CONTAINS
          &  dt_zu, dq_zu,    &
          &  znu_a,           & !: Nu_air, Viscosity of air
          &  z0, z0t
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_t        ! stability parameter at height zt
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
-         &                zsst,   &  ! to back up the initial bulk SST
-         &                pdTc  ! SST increment "dT" for cool-skin correction           [K]
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
+
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
@@ -202,7 +201,7 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      IF ( kt == 1 ) CALL COARE3P6_INIT(l_use_cs, l_use_wl) ! allocation of accumulation arrays
+      IF ( kt == 1 ) CALL COARE3P6_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -216,24 +215,20 @@ CONTAINS
       !! Initializations for cool skin and warm layer:
       IF ( l_use_cs ) THEN
          IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'
-            STOP
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'; STOP
          END IF
-         ALLOCATE ( pdTc(jpi,jpj) )
-         pdTc(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
 
       IF ( l_use_wl ) THEN
          IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong))) THEN
-            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'
-            STOP
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'; STOP
          END IF
       END IF
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
-         IF( l_use_cs ) T_s = T_s - 0.25   ! First guess of correction
+         IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
       END IF
 
@@ -347,9 +342,9 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_blk, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
-            CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2,  pdTc )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
+            CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2 )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
 
-            T_s(:,:) = zsst(:,:) + pdTc(:,:)
+            T_s(:,:) = zsst(:,:) + dT_cs(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
@@ -364,9 +359,8 @@ CONTAINS
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)
-            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + pdTc(:,:)
+            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-
          END IF
 
 
@@ -391,15 +385,14 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = pdTc
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl !
+      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
+      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
-      IF (          l_use_cs      ) DEALLOCATE ( pdTc )
 
    END SUBROUTINE turb_coare3p6
 
-   
+
 
    FUNCTION alfa_charn_3p6( pwnd )
       !!-------------------------------------------------------------------
@@ -536,24 +529,6 @@ CONTAINS
       END DO
       !
    END FUNCTION psi_h_coare
-
-
-   FUNCTION DISP_DEBUG( ldbg, cstr, rval, cunit )
-      INTEGER :: DISP_DEBUG
-      LOGICAL,                  INTENT(in) :: ldbg
-      CHARACTER(len=*),         INTENT(in) :: cstr
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: rval
-      CHARACTER(len=*),         INTENT(in) :: cunit
-      !!
-      DISP_DEBUG = 0
-      IF ( ldbg ) THEN
-         !WRITE(6,*) ' *** '//TRIM(cstr)
-         !WRITE(6,*) ' *** '//TRIM(cstr), ' => ', REAL(rval(1,1),4), ' '//TRIM(cunit)
-         WRITE(6,'(" *** ",a40," => ",f12.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
-         !WRITE(6,*) ''
-         DISP_DEBUG = 1
-      END IF
-   END FUNCTION DISP_DEBUG
 
    !!======================================================================
 END MODULE mod_blk_coare3p6

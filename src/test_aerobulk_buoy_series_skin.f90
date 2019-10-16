@@ -28,7 +28,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER, PARAMETER :: nb_algos = 3
 
-   INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
+   !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
 
@@ -94,7 +94,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
 
-   nb_itt = 1 !LOLO  ! 20 itterations in bulk algorithm...
+   !nb_itt = 1 !LOLO  ! 20 itterations in bulk algorithm...
+   nb_itt = 7 !LOLO  ! 7 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
 
@@ -380,7 +381,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          
          
       ELSEIF( TRIM(calgo) == 'ecmwf'    ) THEN
-         CALL TURB_ECMWF(       zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+         CALL TURB_ECMWF(    jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
             &             pdt_wl=dT_wl(:,:,jt),         &

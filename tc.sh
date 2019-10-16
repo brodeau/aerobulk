@@ -11,9 +11,8 @@ if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/STATION_ASF-I
 rm -f lolo_coare3p6.nc ${fout} short.nc aa.out
 
 
-###./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012.nc4 1>${fout} <<EOF
-
-./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012_short.nc4 1>${fout} <<EOF
+###./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012_short.nc4 1>${fout} <<EOF
+./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012.nc4 1>${fout} <<EOF
 3
 14
 14
@@ -21,4 +20,4 @@ EOF
 
 
 cat ${fout} | grep '#LBD' > aa.out
-#ncks -O -d time,3500,4500 lolo_coare3p6.nc -o short.nc
+ncks -O -d time,3500,4500 lolo_coare3p6.nc -o short_c.nc
