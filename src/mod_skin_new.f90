@@ -34,8 +34,9 @@ MODULE mod_skin_new
 
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_wl         !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
-
+      &                        dT_wl,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
+      &                        Hz_wl       !: depth of warm-layer [m]
+   !
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
    REAL(wp), PARAMETER :: rNu0 = 1.0       !:  be closer to COARE3p6 ???!LOLO
@@ -122,7 +123,7 @@ CONTAINS
       INTEGER :: ji,jj
       !
       REAL(wp) :: &
-         & zdz,    & !: thickness of the warm-layer [m]
+         & zHwl,    & !: thickness of the warm-layer [m]
          & zalpha_w, & !: thermal expansion coefficient of sea-water
          & ZSRD,    &
          & zdTwl,   & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
@@ -135,14 +136,14 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zdz = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
+            zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
 
-            ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
+            ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
             ! pdT         "                          "                                    and depth of bulk SST (here gdept_1d(1))!
-            !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
+            !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
             !! => so here since pdT is difference between surface and gdept_1d(1), need to increase fof zdTwl !
-            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
-            zdTwl = dT_wl(ji,jj) / ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
+            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
+            zdTwl = dT_wl(ji,jj) / ( flg + (1._wp-flg)*gdept_1d(1)/zHwl )
             !PRINT *, 'LOLO/mod_wl_ecmwf.f90: zdTwl2=', zdTwl
             !PRINT *, ''
 
@@ -150,7 +151,7 @@ CONTAINS
 
 
             ! *** zfr = Fraction of solar radiation absorbed in warm layer (-)
-            zfr = 1._wp - 0.28_wp*EXP(-71.5_wp*zdz) - 0.27_wp*EXP(-2.8_wp*zdz) - 0.45_wp*EXP(-0.07_wp*zdz)  !: Eq. 8.157
+            zfr = 1._wp - 0.28_wp*EXP(-71.5_wp*zHwl) - 0.27_wp*EXP(-2.8_wp*zHwl) - 0.45_wp*EXP(-0.07_wp*zHwl)  !: Eq. 8.157
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
@@ -159,7 +160,7 @@ CONTAINS
 
 
             !! *** 1st rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL1 = zQabs / ( zdz * zRhoCp_w * rNu0 ) * (rNu0 + 1._wp)
+            ZL1 = zQabs / ( zHwl * zRhoCp_w * rNu0 ) * (rNu0 + 1._wp)
 
 
             !! Buoyancy flux and stability parameter (zdl = -z/L) in water
@@ -167,23 +168,23 @@ CONTAINS
             !
             flg = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
             ztmp = MAX(zdTwl,0._wp)
-            zdl = (1.-flg) * ( zusw2 * SQRT(ztmp/(5._wp*zdz*grav*zalpha_w/rNu0)) ) & ! (zdTwl > 0.0 .AND. ZSRD < 0.0)
+            zdl = (1.-flg) * ( zusw2 * SQRT(ztmp/(5._wp*zHwl*grav*zalpha_w/rNu0)) ) & ! (zdTwl > 0.0 .AND. ZSRD < 0.0)
                & +  flg    *  ZSRD                                                                  !   otherwize
             !
             zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = zdz*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
+            zdL = zHwl*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
             !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zdz * PHI(zdl) )
+            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zHwl * PHI(zdl) )
 
             ! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == dT_wl(ji,jj) ; f_n == zdTwl)
             zdTwl = MAX ( zdTwl + rdt*ZL1 + rdt*ZL2*zdTwl , 0._wp )
 
-            ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zdz)
-            !! => but of course in general the bulk SST is taken shallower than zdz !!! So correction less pronounced!
+            ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
+            !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
 
-            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zdz )               ! => 1 when gdept_1d(1)>zdz (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
-            dT_wl(ji,jj) = zdTwl * ( flg + (1._wp-flg)*gdept_1d(1)/zdz )
+            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
+            dT_wl(ji,jj) = zdTwl * ( flg + (1._wp-flg)*gdept_1d(1)/zHwl )
 
          END DO
       END DO
