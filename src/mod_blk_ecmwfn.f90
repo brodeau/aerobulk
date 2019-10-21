@@ -67,11 +67,11 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** ecmwfn_init: WL => allocating dT_wl & Hz_wl :', jpi,jpj
-         ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
+         PRINT *, ' *** ecmwfn_init: WL => allocating dT_wl :', jpi,jpj
+         ALLOCATE ( dT_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' ECMWFN_INIT => allocation of Tau_ac and Qnt_ac failed!'
          dT_wl(:,:)  = 0._wp
-         Hz_wl(:,:)  = rd0
+         !Hz_wl(:,:)  = rd0
          PRINT *, ' *** dT_wl allocated!'
       END IF
       !!
@@ -208,7 +208,7 @@ CONTAINS
          &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
-      IF ( kt == 1 ) CALL ECMWFN_INIT(l_use_cs, l_use_wl)
+      IF ( kt == nit000 ) CALL ECMWFN_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -518,4 +518,4 @@ CONTAINS
 
 
    !!======================================================================
-END MODULE mod_blk_ecmwf
+END MODULE mod_blk_ecmwfn

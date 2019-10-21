@@ -34,8 +34,8 @@ MODULE mod_skin_new
 
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_wl,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
-      &                        Hz_wl       !: depth of warm-layer [m]
+      &                        dT_wl!,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
+      !&                        Hz_wl       !: depth of warm-layer [m]
    !
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
@@ -100,11 +100,13 @@ CONTAINS
 
 
 
-   SUBROUTINE WL_NEW( pQsw, pQnsol, pustar, pSST )
+   SUBROUTINE WL_NEW( pQsw, pQnsol, pustar, pSST,  pustk )
       !!---------------------------------------------------------------------
       !!
       !!  Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
       !!  " A prognostic scheme of sea surface skin temperature for modeling and data assimilation "
+      !!
+      !!  STIL NO PROGNOSTIC EQUATION FOR THE DEPTH OF THE WARM-LAYER!
       !!
       !!    As included in IFS Cy45r1   /  E.C.M.W.F.
       !!     ------------------------------------------------------------------
@@ -119,34 +121,43 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar   ! friction velocity [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(in) :: pustk ! surface Stokes velocity [m/s]
       !
       INTEGER :: ji,jj
       !
       REAL(wp) :: &
          & zHwl,    & !: thickness of the warm-layer [m]
+         & ztcorr,  &
          & zalpha_w, & !: thermal expansion coefficient of sea-water
          & ZSRD,    &
-         & zdTwl,   & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
-         & zfr,zdL, ztmp, &
-         & zus_a, zusw, zusw2, &
-         & flg, zQabs, ZL1, ZL2
+         & zdTwl_b, zdTwl_n, & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
+         & zfr, zQb, zeta, ztmp, &
+         & zusa, zusw, zusw2, &
+         & zLa, zfLa, &
+         & flg, zwf, zQabs !, ZL1, ZL2
+      !
+      LOGICAL :: l_pustk_known
       !!---------------------------------------------------------------------
-
+      
+      l_pustk_known = .FALSE.
+      IF ( PRESENT(pustk) ) l_pustk_known = .TRUE.
 
       DO jj = 1, jpj
          DO ji = 1, jpi
+            
+            !zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
+            zHwl = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
 
-            zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
-
+            !! Previous value of dT / warm-layer, adapted to depth:
+            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
+            ztcorr = flg + (1._wp - flg)*gdept_1d(1)/zHwl
+            zdTwl_b = MAX ( dT_wl(ji,jj) / ztcorr , 0._wp )
             ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
             ! pdT         "                          "                                    and depth of bulk SST (here gdept_1d(1))!
             !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
             !! => so here since pdT is difference between surface and gdept_1d(1), need to increase fof zdTwl !
-            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
-            zdTwl = dT_wl(ji,jj) / ( flg + (1._wp-flg)*gdept_1d(1)/zHwl )
-            !PRINT *, 'LOLO/mod_wl_ecmwf.f90: zdTwl2=', zdTwl
-            !PRINT *, ''
-
+            
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
 
@@ -155,36 +166,69 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusw  = MAX(pustar(ji,jj), 1.E-4_wp)*sq_radrw    ! u* in the water
+
+            zusa = MAX( pustar(ji,jj), 1.E-4_wp )            
+            zusw  = zusa*sq_radrw    ! u* in the water
             zusw2 = zusw*zusw
 
 
-            !! *** 1st rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL1 = zQabs / ( zHwl * zRhoCp_w * rNu0 ) * (rNu0 + 1._wp)
+
+            ! Buoyancy flux:
+!            zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
+!            zQb = (1.-zwf) * ( zusw2 * SQRT(zdTwl_b/(5._wp*zHwl*grav*zalpha_w/rNu0)) * zRhoCp_w ) & ! (zdTwl > 0.0 .AND. zQabs < 0.0)
+!               & +  zwf    *  zQabs                                                               !   otherwize
+!            
+!            ! Stability parameter "zeta":
+!            zeta = - zHwl * vkarmn * grav * zalpha_w * zQb / ( zRhoCp_w * zusw2*zusw ) 
+!            
+!            ! Contribution from Langmuir circulation:
+            IF ( l_pustk_known ) THEN
+               zLa = SQRT(zusw/MAX(pustk(ji,jj),1.E-6))
+            ELSE
+               zla = 0.3_wp
+            END IF
+            zfLa = MAX( zla**(-2._wp/3._wp) , 1._wp )   ! Eq.(6)
+!            
+!            !! Explicit forward time: (explicit in terms of "zdTwl_b":
+!            zdTwl_n = zdTwl_b + rdt*(rNu0 + 1._wp) * &                              ! Eq.(7)
+!               &   (       zQabs / ( zHwl * zRhoCp_w * rNu0 ) &
+!               &     - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) ) * zdTwl_b )
+
+!            ! Updating dT_wl:
+!            dT_wl(ji,jj) = MAX ( zdTwl_n , 0._wp ) * ztcorr  ! We multipl
 
 
-            !! Buoyancy flux and stability parameter (zdl = -z/L) in water
-            ZSRD = zQabs/zRhoCp_w
-            !
-            flg = 0.5_wp + SIGN(0.5_wp, ZSRD)  ! ZSRD > 0. => 1.  / ZSRD < 0. => 0.
-            ztmp = MAX(zdTwl,0._wp)
-            zdl = (1.-flg) * ( zusw2 * SQRT(ztmp/(5._wp*zHwl*grav*zalpha_w/rNu0)) ) & ! (zdTwl > 0.0 .AND. ZSRD < 0.0)
-               & +  flg    *  ZSRD                                                                  !   otherwize
-            !
-            zus_a = MAX( pustar(ji,jj), 1.E-4_wp )
-            zdL = zHwl*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zdL/(zus_a*zus_a*zus_a)
 
+            
+            !! *** 1st rhs term in eq.(7)
+            !ZL1 = zQabs / ( rNu0 * zHwl * zRhoCp_w )
+
+
+            
+            !!! Buoyancy flux:
+            zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
+
+            zQb = (1.-zwf) * ( zusw2 * SQRT(zdTwl_b/(5._wp*zHwl*grav*zalpha_w/rNu0)) * zRhoCp_w ) & ! (zdTwl > 0.0 .AND. zQabs < 0.0)
+               & +  zwf    *  zQabs                                                                  !   otherwize
+
+            ! Stability PARAMETER (zeta = -z/L) in water:
+            !zeta = zHwl*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zQb/(zRhoCp_w*zusa*zusa*zusa)
+            zeta = zHwl*vkarmn*grav*zalpha_w*zQb/(zRhoCp_w*zusw2*zusw)
+
+            
             !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
-            ZL2 = - (rNu0 + 1._wp) * vkarmn * zusw / ( zHwl * PHI(zdl) )
-
-            ! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == dT_wl(ji,jj) ; f_n == zdTwl)
-            zdTwl = MAX ( zdTwl + rdt*ZL1 + rdt*ZL2*zdTwl , 0._wp )
-
-            ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
-            !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
-
-            flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
-            dT_wl(ji,jj) = zdTwl * ( flg + (1._wp-flg)*gdept_1d(1)/zHwl )
+            !ZL2 = - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) )
+            !
+            !! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == dT_wl(ji,jj) ; f_n == zdTwl)
+            !zdTwl_n = MAX ( zdTwl_b + rdt*ZL1 + rdt*ZL2*zdTwl_b , 0._wp )
+            zdTwl_n = MAX ( zdTwl_b + rdt * (rNu0 + 1._wp) * ( &
+               &               zQabs / ( rNu0 * zHwl * zRhoCp_w ) &
+               &           - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) ) * zdTwl_b) , 0._wp )
+            !
+            !! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
+            !!! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
+            !
+            dT_wl(ji,jj) = zdTwl_n * ztcorr
 
          END DO
       END DO

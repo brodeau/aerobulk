@@ -18,6 +18,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !USE mod_
    !USE mod_blk_ncar
    USE mod_blk_ecmwf
+   USE mod_blk_ecmwfn
 
    IMPLICIT NONE
    
@@ -26,7 +27,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   INTEGER, PARAMETER :: nb_algos = 3
+   INTEGER, PARAMETER :: nb_algos = 5
 
    !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
@@ -217,13 +218,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
    ians=0
-   DO WHILE ( (ians<1).OR.(ians>4) )
-      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 , "coare3p6n" => 4 :'
+   DO WHILE ( (ians<1).OR.(ians>nb_algos) )
+      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 , "coare3p6n" => 4 , "ecmwfn" => 5 :'
       READ(*,*) ians
       IF ( ians == 1 ) calgo = 'coare3p0 '
       IF ( ians == 2 ) calgo = 'ecmwf    '
       IF ( ians == 3 ) calgo = 'coare3p6 '
       IF ( ians == 4 ) calgo = 'coare3p6n'
+      IF ( ians == 5 ) calgo = 'ecmwfn   '
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -386,6 +388,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
             &             pdt_wl=dT_wl(:,:,jt),         &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+      ELSEIF( TRIM(calgo) == 'ecmwfn'    ) THEN
+         CALL TURB_ECMWFN(   jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dT_cs(:,:,jt),     & ! for cool-skin !
+            &             pdt_wl=dT_wl(:,:,jt),         &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
       ELSE
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP

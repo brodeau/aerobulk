@@ -201,7 +201,7 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      IF ( kt == 1 ) CALL COARE3P0_INIT(l_use_cs, l_use_wl) ! allocation of accumulation arrays
+      IF ( kt == nit000 ) CALL COARE3P0_INIT(l_use_cs, l_use_wl) ! allocation of accumulation arrays
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
