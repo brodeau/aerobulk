@@ -30,7 +30,8 @@ MODULE mod_blk_ecmwf
    !!====================================================================================
    USE mod_const       !: physical and othe constants
    USE mod_phymbl      !: thermodynamics
-   USE mod_skin_ecmwf  !: cool-skin parameterization
+   USE mod_skin_ecmwf  !: cool-skin & warm-layer parameterizations of
+   !                   !: Zeng and Beljaars, 1995 WITH update from Takaya et al. 2010...
 
    IMPLICIT NONE
    PRIVATE
@@ -67,10 +68,11 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** ecmwf_init: WL => allocating dT_wl :', jpi,jpj
-         ALLOCATE ( dT_wl(jpi,jpj), STAT=ierr )
+         PRINT *, ' *** ecmwf_init: WL => allocating dT_wl & Hz_wl :', jpi,jpj
+         ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of Tau_ac and Qnt_ac failed!'
          dT_wl(:,:)  = 0._wp
+         Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
          PRINT *, ' *** dT_wl allocated!'
       END IF
       !!
@@ -89,7 +91,7 @@ CONTAINS
    SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                        &
       &                      Qsw, rad_lw, slp, pdT_cs,                             & ! optionals for cool-skin (and warm-layer)
-      &                      pdT_wl,                                               & ! optionals for warm-layer only
+      &                      pdT_wl, pHz_wl,                                       & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
@@ -130,10 +132,12 @@ CONTAINS
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
+      !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]     
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
+      !!    * pHz_wl  : thickness of warm-layer                               [m]
       !!
       !! OUTPUT :
       !! --------
@@ -175,6 +179,7 @@ CONTAINS
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pHz_wl   !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
@@ -390,7 +395,6 @@ CONTAINS
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
          END IF
 
-
          IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -417,6 +421,7 @@ CONTAINS
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
+      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 

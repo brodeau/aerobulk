@@ -82,7 +82,7 @@ CONTAINS
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, pdT_wl,                                  & ! optionals for warm-layer only
+      &                      isecday_utc, plong, pdT_wl, pHz_wl,                          & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p6  ***
@@ -123,10 +123,14 @@ CONTAINS
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
-      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * isecday_utc:
       !!    *  plong  : longitude array                                       [deg.E]
+      !!
+      !! OPTIONAL OUTPUT:
+      !! ----------------
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]     
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
+      !!    * pHz_wl  : thickness of warm-layer                               [m]
       !!
       !! OUTPUT :
       !! --------
@@ -171,6 +175,7 @@ CONTAINS
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pHz_wl   !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
@@ -363,7 +368,6 @@ CONTAINS
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
          END IF
 
-
          IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -387,6 +391,7 @@ CONTAINS
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
+      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 

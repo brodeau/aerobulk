@@ -26,13 +26,10 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_cs_coare3p0.f90 \
           src/mod_skin_coare.f90 \
           src/mod_skin_ecmwf.f90 \
-          src/mod_skin_new.f90 \
 	  src/mod_blk_coare3p0.f90 \
 	  src/mod_blk_coare3p6.f90 \
-	  src/mod_blk_coare3p6n.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \
-	  src/mod_blk_ecmwfn.f90 \
           src/mod_aerobulk_compute.f90 \
           src/mod_aerobulk.f90
 
