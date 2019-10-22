@@ -35,7 +35,7 @@ MODULE mod_skin_new
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
       &                        dT_wl!,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
-      !&                        Hz_wl       !: depth of warm-layer [m]
+   !&                        Hz_wl       !: depth of warm-layer [m]
    !
    REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
    REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
@@ -124,7 +124,7 @@ CONTAINS
       !!
       REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(in) :: pustk ! surface Stokes velocity [m/s]
       !
-      INTEGER :: ji,jj
+      INTEGER :: ji, jj, jc
       !
       REAL(wp) :: &
          & zHwl,    & !: thickness of the warm-layer [m]
@@ -135,17 +135,17 @@ CONTAINS
          & zfr, zQb, zeta, ztmp, &
          & zusa, zusw, zusw2, &
          & zLa, zfLa, &
-         & flg, zwf, zQabs !, ZL1, ZL2
+         & flg, zwf, zQabs, ZL1, ZL2, zc0
       !
       LOGICAL :: l_pustk_known
       !!---------------------------------------------------------------------
-      
+
       l_pustk_known = .FALSE.
       IF ( PRESENT(pustk) ) l_pustk_known = .TRUE.
 
       DO jj = 1, jpj
          DO ji = 1, jpi
-            
+
             !zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
             zHwl = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
 
@@ -157,7 +157,7 @@ CONTAINS
             ! pdT         "                          "                                    and depth of bulk SST (here gdept_1d(1))!
             !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
             !! => so here since pdT is difference between surface and gdept_1d(1), need to increase fof zdTwl !
-            
+
             zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
 
@@ -166,69 +166,49 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-
-            zusa = MAX( pustar(ji,jj), 1.E-4_wp )            
+            zusa = MAX( pustar(ji,jj), 1.E-4_wp )
             zusw  = zusa*sq_radrw    ! u* in the water
             zusw2 = zusw*zusw
 
-
-
-            ! Buoyancy flux:
-!            zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
-!            zQb = (1.-zwf) * ( zusw2 * SQRT(zdTwl_b/(5._wp*zHwl*grav*zalpha_w/rNu0)) * zRhoCp_w ) & ! (zdTwl > 0.0 .AND. zQabs < 0.0)
-!               & +  zwf    *  zQabs                                                               !   otherwize
-!            
-!            ! Stability parameter "zeta":
-!            zeta = - zHwl * vkarmn * grav * zalpha_w * zQb / ( zRhoCp_w * zusw2*zusw ) 
-!            
-!            ! Contribution from Langmuir circulation:
+            ! Langmuir:
             IF ( l_pustk_known ) THEN
                zLa = SQRT(zusw/MAX(pustk(ji,jj),1.E-6))
             ELSE
                zla = 0.3_wp
             END IF
             zfLa = MAX( zla**(-2._wp/3._wp) , 1._wp )   ! Eq.(6)
-!            
-!            !! Explicit forward time: (explicit in terms of "zdTwl_b":
-!            zdTwl_n = zdTwl_b + rdt*(rNu0 + 1._wp) * &                              ! Eq.(7)
-!               &   (       zQabs / ( zHwl * zRhoCp_w * rNu0 ) &
-!               &     - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) ) * zdTwl_b )
-
-!            ! Updating dT_wl:
-!            dT_wl(ji,jj) = MAX ( zdTwl_n , 0._wp ) * ztcorr  ! We multipl
-
 
 
             
-            !! *** 1st rhs term in eq.(7)
-            !ZL1 = zQabs / ( rNu0 * zHwl * zRhoCp_w )
-
-
-            
-            !!! Buoyancy flux:
             zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
 
-            zQb = (1.-zwf) * ( zusw2 * SQRT(zdTwl_b/(5._wp*zHwl*grav*zalpha_w/rNu0)) * zRhoCp_w ) & ! (zdTwl > 0.0 .AND. zQabs < 0.0)
-               & +  zwf    *  zQabs                                                                  !   otherwize
+            !! T R U L L Y   I M P L I C I T
+            !! => have to itterate just because the zQb term uses dT...
+            zdTwl_n = zdTwl_b
+            DO jc = 1, 10
 
-            ! Stability PARAMETER (zeta = -z/L) in water:
-            !zeta = zHwl*vkarmn*grav/(radrw)**1.5_wp*zalpha_w*zQb/(zRhoCp_w*zusa*zusa*zusa)
-            zeta = zHwl*vkarmn*grav*zalpha_w*zQb/(zRhoCp_w*zusw2*zusw)
+               ! 1/L when zdTwl > 0 .AND. zQabs < 0 :
+               zL1 =        SQRT( zdTwl_n*vkarmn*grav*zalpha_w / ( 5._wp*zHwl ) ) / zusw !!! Or??? => vkarmn * SQRT( zdTwl_n*grav*zalpha_w/( 5._wp*zHwl ) ) / zusw
+               !zL1 = vkarmn*SQRT( zdTwl_n       *grav*zalpha_w / ( 5._wp*zHwl ) ) / zusw   ! ???
+               
+               ! 1/L otherwize :
+               zL2 = vkarmn*grav*zalpha_w*zQabs / (zRhoCp_w*zusw2*zusw)
+               !
+               ! Stability parameter (z/L):
+               zeta =  (1. - zwf) * zHwl*zL1   +   zwf * zHwl*zL2
 
-            
-            !! *** 2nd rhs term in eq. 8.156 (IFS doc Cy45r1):
-            !ZL2 = - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) )
-            !
-            !! Forward time / explicit solving of eq. 8.156 (IFS doc Cy45r1): (f_n+1 == dT_wl(ji,jj) ; f_n == zdTwl)
-            !zdTwl_n = MAX ( zdTwl_b + rdt*ZL1 + rdt*ZL2*zdTwl_b , 0._wp )
-            zdTwl_n = MAX ( zdTwl_b + rdt * (rNu0 + 1._wp) * ( &
-               &               zQabs / ( rNu0 * zHwl * zRhoCp_w ) &
-               &           - vkarmn * zusw * zfLa / ( zHwl * PHI(zeta) ) * zdTwl_b) , 0._wp )
-            !
-            !! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
-            !!! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
-            !
-            dT_wl(ji,jj) = zdTwl_n * ztcorr
+               ! Eq.(6):
+               zc0 = rdt * (rNu0 + 1._wp) / zHwl
+               ZL1 =  zc0 * zQabs / ( rNu0 * zRhoCp_w )
+               ZL2 = -zc0 * vkarmn * zusw * zfLa /  PHI(zeta)
+               !
+               zdTwl_n = zdTwl_b + ZL1 + ZL2*zdTwl_n ! explicit expression (but we are within a loop that solves it via the Gauss itterative method)
+               !
+            END DO
+            !zdTwl_n = zdT
+
+            !! Update:
+            dT_wl(ji,jj) = MAX ( zdTwl_n , 0._wp ) * ztcorr
 
          END DO
       END DO
