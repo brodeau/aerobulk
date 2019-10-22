@@ -34,16 +34,16 @@ MODULE mod_skin_new
 
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_wl!,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
-   !&                        Hz_wl       !: depth of warm-layer [m]
+      &                        dT_wl,  &   !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
+      &                        Hz_wl       !: depth of warm-layer [m]
    !
-   REAL(wp), PARAMETER :: rd0  = 3.        !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
-   REAL(wp), PARAMETER :: zRhoCp_w = rho0_w*rCp0_w
-   REAL(wp), PARAMETER :: rNu0 = 1.0       !:  be closer to COARE3p6 ???!LOLO
-   !REAL(wp), PARAMETER :: rNu0 = 0.5       !: Nu (exponent of temperature profile) Eq.11
-   !                                       !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
-   !                                       !: 0.3 to respect a warming of +3 K in calm
-   !                                       !: condition for the insolation peak of +1000W/m^2
+   REAL(wp), PARAMETER, PUBLIC :: rd0  = 3.    !: Depth scale [m] of warm layer, "d" in Eq.11 (Zeng & Beljaars 2005)
+   REAL(wp), PARAMETER         :: zRhoCp_w = rho0_w*rCp0_w
+   !
+   REAL(wp), PARAMETER         :: rNuwl0 = 0.5  !: Nu (exponent of temperature profile) Eq.11
+   !                                            !: (Zeng & Beljaars 2005) !: set to 0.5 instead of
+   !                                            !: 0.3 to respect a warming of +3 K in calm
+   !                                            !: condition for the insolation peak of +1000W/m^2
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -127,15 +127,16 @@ CONTAINS
       INTEGER :: ji, jj, jc
       !
       REAL(wp) :: &
-         & zHwl,    & !: thickness of the warm-layer [m]
-         & ztcorr,  &
-         & zalpha_w, & !: thermal expansion coefficient of sea-water
-         & ZSRD,    &
+         & zHwl,    &  !: thickness of the warm-layer [m]
+         & ztcorr,  &  !: correction of dT w.r.t measurement depth of bulk SST (first T-point)
+         & zalpha_w, & !: thermal expansion coefficient of sea-water [1/K]
          & zdTwl_b, zdTwl_n, & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
-         & zfr, zQb, zeta, ztmp, &
-         & zusa, zusw, zusw2, &
+         & zfr, zeta, ztmp, &
+         & zusw, zusw2, &
          & zLa, zfLa, &
-         & flg, zwf, zQabs, ZL1, ZL2, zc0
+         & flg, zwf, zQabs, &
+         & ZA, ZB, zL1, zL2, &
+         &  zcst0, zcst1, zcst2, zcst3
       !
       LOGICAL :: l_pustk_known
       !!---------------------------------------------------------------------
@@ -146,8 +147,8 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            !zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
-            zHwl = rd0 ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
+            zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
+            ! it is = rd0 (3m) in default Zeng & Beljaars case...
 
             !! Previous value of dT / warm-layer, adapted to depth:
             flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ji,jj) = zdTwl) | 0 when z_s$
@@ -166,8 +167,7 @@ CONTAINS
 
             zQabs = zfr*pQsw(ji,jj) + pQnsol(ji,jj)       ! tot heat absorbed in warm layer
 
-            zusa = MAX( pustar(ji,jj), 1.E-4_wp )
-            zusw  = zusa*sq_radrw    ! u* in the water
+            zusw  = MAX( pustar(ji,jj), 1.E-4_wp ) * sq_radrw    ! u* in the water
             zusw2 = zusw*zusw
 
             ! Langmuir:
@@ -178,38 +178,49 @@ CONTAINS
             END IF
             zfLa = MAX( zla**(-2._wp/3._wp) , 1._wp )   ! Eq.(6)
 
-
-            
             zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
 
-            !! T R U L L Y   I M P L I C I T
-            !! => have to itterate just because the zQb term uses dT...
+            zcst1 = vkarmn*grav*zalpha_w
+
+            ! 1/L when zQabs > 0 :
+            zL2 = zcst1*zQabs / (zRhoCp_w*zusw2*zusw)
+               
+            zcst2 = zcst1 / ( 5._wp*zHwl*zusw2 )  !OR: zcst2 = zcst1*rNuwl0 / ( 5._wp*zHwl*zusw2 ) ???
+
+            zcst0 = rdt * (rNuwl0 + 1._wp) / zHwl
+            
+            ZA = zcst0 * zQabs / ( rNuwl0 * zRhoCp_w )
+
+            zcst3 = -zcst0 * vkarmn * zusw * zfLa
+
+            !! Sorry about all these constants ( constant w.r.t zdTwl), it's for
+            !! the sake of optimizations... So all these operations are not done
+            !! over and over within the iteration loop...
+            
+            !! T R U L L Y   I M P L I C I T => needs itteration
+            !! => have to itterate just because the 1/(Monin-Obukhov length), zL1, uses zdTwl when zQabs < 0..
+            !!    (without this term otherwize the implicit analytical solution is straightforward...)
             zdTwl_n = zdTwl_b
             DO jc = 1, 10
-
-               ! 1/L when zdTwl > 0 .AND. zQabs < 0 :
-               zL1 =        SQRT( zdTwl_n*vkarmn*grav*zalpha_w / ( 5._wp*zHwl ) ) / zusw !!! Or??? => vkarmn * SQRT( zdTwl_n*grav*zalpha_w/( 5._wp*zHwl ) ) / zusw
-               !zL1 = vkarmn*SQRT( zdTwl_n       *grav*zalpha_w / ( 5._wp*zHwl ) ) / zusw   ! ???
                
-               ! 1/L otherwize :
-               zL2 = vkarmn*grav*zalpha_w*zQabs / (zRhoCp_w*zusw2*zusw)
-               !
+               zdTwl_n = 0.5_wp * ( zdTwl_n + zdTwl_b ) ! semi implicit, for faster convergence
+               
+               ! 1/L when zdTwl > 0 .AND. zQabs < 0 :
+               zL1 =         SQRT( zdTwl_n * zcst2 ) ! / zusw !!! Or??? => vkarmn * SQRT( zdTwl_n*grav*zalpha_w/( 5._wp*zHwl ) ) / zusw
+               !zL1 = vkarmn*SQRT( zdTwl_n       *grav*zalpha_w        / ( 5._wp*zHwl ) ) / zusw   ! => vkarmn outside, not inside zcst1 (just for this particular line) ???
+               
                ! Stability parameter (z/L):
-               zeta =  (1. - zwf) * zHwl*zL1   +   zwf * zHwl*zL2
+               zeta =  (1._wp - zwf) * zHwl*zL1   +   zwf * zHwl*zL2
 
-               ! Eq.(6):
-               zc0 = rdt * (rNu0 + 1._wp) / zHwl
-               ZL1 =  zc0 * zQabs / ( rNu0 * zRhoCp_w )
-               ZL2 = -zc0 * vkarmn * zusw * zfLa /  PHI(zeta)
-               !
-               zdTwl_n = zdTwl_b + ZL1 + ZL2*zdTwl_n ! explicit expression (but we are within a loop that solves it via the Gauss itterative method)
-               !
+               ZB = zcst3 / PHI(zeta)
+
+               zdTwl_n = zdTwl_b + ZA + ZB*zdTwl_n ! Eq.(6)
+
             END DO
-            !zdTwl_n = zdT
-
+            
             !! Update:
             dT_wl(ji,jj) = MAX ( zdTwl_n , 0._wp ) * ztcorr
-
+            
          END DO
       END DO
 

@@ -10,7 +10,7 @@ if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/STATION_ASF-I
 
 rm -f lolo_ecmwfn.nc ${fout}
 
-./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012.nc4 1>${fout} <<EOF
+./bin/test_aerobulk_buoy_series_skin.x -f ${DSTOR}/Station_PAPA_50N-145W_2012-2012_short.nc4 1>${fout} <<EOF
 5
 14
 14

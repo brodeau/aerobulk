@@ -92,11 +92,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    TYPE(t_unit_t0) :: tut_time_unit
    TYPE(date)      :: d_idate
-
-
-
-   !nb_itt = 1 !LOLO  ! 20 itterations in bulk algorithm...
-   nb_itt = 7 !LOLO  ! 7 itterations in bulk algorithm...
+   
+   nb_itt = 20 ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
 

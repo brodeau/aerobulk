@@ -67,11 +67,11 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** ecmwfn_init: WL => allocating dT_wl :', jpi,jpj
-         ALLOCATE ( dT_wl(jpi,jpj), STAT=ierr )
+         PRINT *, ' *** ecmwfn_init: WL => allocating dT_wl & Hz_wl :', jpi,jpj
+         ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
          !IF( ierr > 0 ) STOP ' ECMWFN_INIT => allocation of Tau_ac and Qnt_ac failed!'
          dT_wl(:,:)  = 0._wp
-         !Hz_wl(:,:)  = rd0
+         Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
          PRINT *, ' *** dT_wl allocated!'
       END IF
       !!
@@ -308,6 +308,7 @@ CONTAINS
       func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
       !! ITERATION BLOCK
+      PRINT *, '' !'LB0:'
       DO j_itt = 1, nb_itt
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
@@ -397,8 +398,12 @@ CONTAINS
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-      END DO !DO j_itt = 1, nb_itt
 
+         IF ( dT_wl(1,1) > 0._wp ) PRINT *, 'LB0: itt, dt_wl =', j_itt, dT_wl(:,:)
+         
+      END DO !DO j_itt = 1, nb_itt
+      IF ( dT_wl(1,1) > 0._wp ) PRINT *, 'LB0'
+      
       Cd = vkarmn*vkarmn/(func_m*func_m)
       Ch = vkarmn*vkarmn/(func_m*func_h)
       ztmp2 = log(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
