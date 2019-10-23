@@ -23,7 +23,7 @@ MODULE mod_phymbl
    !!   One_on_L      : 1. / ( Monin-Obukhov length )
    !!   Ri_bulk       : bulk Richardson number aka BRN
    !!   q_sat         : saturation humidity as a function of SLP and temperature
-   !!   q_air_rh      : specific humidity as a function of RH, t_air and SLP
+   !!   q_air_rh      : specific humidity as a function of RH (fraction, not %), t_air and SLP
 
    USE mod_const
 

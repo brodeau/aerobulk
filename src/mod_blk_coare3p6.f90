@@ -57,32 +57,28 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, Hz_wl, and dT_wl :', jpi,jpj
          ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
-         Hz_wl(:,:)  = Hwl_max
          dT_wl(:,:)  = 0._wp
-         PRINT *, ' *** Tau_ac, Qnt_ac, Hz_wl, and dT_wl allocated!'
+         Hz_wl(:,:)  = Hwl_max
       END IF
       !!
       IF ( l_use_cs ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: CS => allocating dT_cs :', jpi,jpj
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of dT_cs and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of dT_cs failed!'
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-         PRINT *, ' *** dT_cs allocated!'
       END IF
    END SUBROUTINE coare3p6_init
 
 
 
-   SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
-      &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, pdT_wl, pHz_wl,                          & ! optionals for warm-layer only
+   SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                              &
+      &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
+      &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p6  ***
@@ -128,7 +124,7 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]     
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
       !!    * pHz_wl  : thickness of warm-layer                               [m]
       !!
@@ -225,7 +221,7 @@ CONTAINS
       END IF
 
       IF ( l_use_wl ) THEN
-         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong))) THEN
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong)) ) THEN
             PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'; STOP
          END IF
       END IF
@@ -396,7 +392,6 @@ CONTAINS
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_coare3p6
-
 
 
    FUNCTION alfa_charn_3p6( pwnd )

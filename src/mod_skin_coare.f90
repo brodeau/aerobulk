@@ -43,11 +43,8 @@ MODULE mod_skin_coare
    !
    REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
    !
-   !REAL(wp), PARAMETER :: Qabs_thr = 50._wp  !: threshold for heat flux absorbed in WL !DO NOT GET IT !!!!
-
    REAL(wp), PARAMETER :: zfr0   = 0.5_wp    !: initial value of solar flux absorption
    !
-
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -87,12 +84,12 @@ CONTAINS
             zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) ) ! first guess, we do not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes$
             !                                       ! also, we ONLY consider when the viscous layer is loosing heat to the atmosphere, we only deal with cool-skin! => hence the "MIN( -0$
 
-            zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pQlat(ji,jj), pustar(ji,jj) )
+            zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pQlat(ji,jj), pustar(ji,jj) )
 
             DO jc = 1, 4 ! because implicit in terms of zdelta...
                zfr    = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.16 (Fairall al. 1996b) /  !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
                zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) + zfr*pQsw(ji,jj) ) ! Total cooling at the interface
-               zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pQlat(ji,jj), pustar(ji,jj) )
+               zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pQlat(ji,jj), pustar(ji,jj) )
             END DO
 
             dT_cs(ji,jj) = MIN( zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
@@ -118,19 +115,19 @@ CONTAINS
       !!     *isd*        current UTC time, counted in second since 00h of the current day
       !!     *iwait*      if /= 0 then wait before updating accumulated fluxes, we are within a converging itteration loop...
       !!---------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST at depth gdept_1d(1) [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: plon     ! longitude [deg.E]
-      INTEGER ,                     INTENT(in)    :: isd      ! current UTC time, counted in second since 00h of the current day
-      INTEGER ,                     INTENT(in  )  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude [deg.E]
+      INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
+      INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
       !!
       INTEGER :: ji,jj
       !
       REAL(wp) :: zdTwl, zHwl, zQabs, zfr
       REAL(wp) :: zqac, ztac
-      REAL(wp) :: zalpha_w, zcd1, zcd2, flg
+      REAL(wp) :: zalpha, zcd1, zcd2, flg
       !!---------------------------------------------------------------------
 
       REAL(wp) :: rlag_gw_h, &  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
@@ -170,13 +167,11 @@ CONTAINS
             PRINT *, '#LBD:  Hz_wl at former ts:', zHwl
 
             !*****  variables for warm layer  ***
-            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+            zalpha = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
-            zcd1 = SQRT(2._wp*rich*rCp0_w/(zalpha_w*grav*rho0_w))        !mess-o-constants 1
-            zcd2 = SQRT(2._wp*zalpha_w*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
+            zcd1 = SQRT(2._wp*rich*rCp0_w/(zalpha*grav*rho0_w))        !mess-o-constants 1
+            zcd2 = SQRT(2._wp*zalpha*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
 
-
-            !IF ( rhr_sol > 5._wp ) THEN  ! ( 5am)
 
             IF ( (rhr_sol > 4._wp).AND.(rhr_sol <= 6.5_wp) ) THEN
                ! Dawn reset to 0!
@@ -279,32 +274,38 @@ CONTAINS
          END DO
       END DO
 
-
-      !STOP 'lolo1'
    END SUBROUTINE WL_COARE
 
 
 
 
-   FUNCTION delta_skin_layer( pSST, pQabs, pQlat, pustar_a )
+   FUNCTION delta_skin_layer( palpha, pQabs, pQlat, pustar_a )
+      !!---------------------------------------------------------------------
+      !! Computes the thickness (m) of the viscous skin layer.
+      !! Based on Fairall et al., 1996
+      !!
+      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
+      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
+      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
+      !! doi:10.1029/95JC03190.
+      !!
+      !! L. Brodeau, october 2019
       !!---------------------------------------------------------------------
       REAL(wp)                :: delta_skin_layer
-      REAL(wp), INTENT(in)    :: pSST     ! bulk SST [K] => to know the thermal expansion [K]
+      REAL(wp), INTENT(in)    :: palpha   ! thermal expansion coefficient of sea-water (SST accurate enough!)
       REAL(wp), INTENT(in)    :: pQabs    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
       REAL(wp), INTENT(in)    :: pQlat    ! latent heat flux [W/m^2]
       REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
       !!---------------------------------------------------------------------
-      REAL(wp) :: zusw, zusw2, zlamb, zalpha_w, zQb !, ztf, zQ
+      REAL(wp) :: zusw, zusw2, zlamb, zQb
       !!---------------------------------------------------------------------
 
-      zQb = pQabs + 0.026*MIN(pQlat,0._wp)*rCp0_w/rLevap/zalpha_w   ! LOLO: Double check sign + division by zalpha_w !!! units are okay!
-
-      zalpha_w = alpha_sw( pSST ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+      zQb = pQabs + 0.026*MIN(pQlat,0._wp)*rCp0_w/rLevap/palpha   ! LOLO: Double check sign + division by palpha !!! units are okay!
 
       zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
       zusw2 = zusw*zusw
 
-      zlamb = 6._wp*( 1._wp + (zalpha_w*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+      zlamb = 6._wp*( 1._wp + (palpha*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
 
       delta_skin_layer = zlamb*rnu0_w/zusw
 

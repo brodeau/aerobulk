@@ -81,14 +81,14 @@ CONTAINS
             !                                       ! also, we ONLY consider when the viscous layer is loosing heat to the atmosphere, we only deal with cool-skin! => hence the "MIN( -0$
             !zQabs  = pQnsol(ji,jj)
 
-            zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
+            zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pustar(ji,jj) )
 
             DO jc = 1, 4 ! because implicit in terms of zdelta...
                zfr    = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.(5) Zeng & Beljaars, 2005
                !              =>  (WARNING: 0.065 rather than 0.137 in Fairal et al. 1996)
                zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) + zfr*pQsw(ji,jj) ) ! Total cooling at the interface
                !zQabs = pQnsol(ji,jj) + zfr*pQsw(ji,jj)
-               zdelta = delta_skin_layer( pSST(ji,jj), zQabs, pustar(ji,jj) )
+               zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pustar(ji,jj) )
             END DO
 
             dT_cs(ji,jj) = MIN( zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
@@ -129,7 +129,7 @@ CONTAINS
       REAL(wp) :: &
          & zHwl,    &  !: thickness of the warm-layer [m]
          & ztcorr,  &  !: correction of dT w.r.t measurement depth of bulk SST (first T-point)
-         & zalpha_w, & !: thermal expansion coefficient of sea-water [1/K]
+         & zalpha, & !: thermal expansion coefficient of sea-water [1/K]
          & zdTwl_b, zdTwl_n, & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
          & zfr, zeta, ztmp, &
          & zusw, zusw2, &
@@ -159,7 +159,7 @@ CONTAINS
             !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
             !! => so here since pdT is difference between surface and gdept_1d(1), need to increase fof zdTwl !
 
-            zalpha_w = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
+            zalpha = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
 
             ! *** zfr = Fraction of solar radiation absorbed in warm layer (-)
@@ -180,7 +180,7 @@ CONTAINS
 
             zwf = 0.5_wp + SIGN(0.5_wp, zQabs)  ! zQabs > 0. => 1.  / zQabs < 0. => 0.
 
-            zcst1 = vkarmn*grav*zalpha_w
+            zcst1 = vkarmn*grav*zalpha
 
             ! 1/L when zQabs > 0 :
             zL2 = zcst1*zQabs / (zRhoCp_w*zusw2*zusw)
@@ -206,20 +206,20 @@ CONTAINS
                zdTwl_n = 0.5_wp * ( zdTwl_n + zdTwl_b ) ! semi implicit, for faster convergence
                
                ! 1/L when zdTwl > 0 .AND. zQabs < 0 :
-               zL1 =         SQRT( zdTwl_n * zcst2 ) ! / zusw !!! Or??? => vkarmn * SQRT( zdTwl_n*grav*zalpha_w/( 5._wp*zHwl ) ) / zusw
-               !zL1 = vkarmn*SQRT( zdTwl_n       *grav*zalpha_w        / ( 5._wp*zHwl ) ) / zusw   ! => vkarmn outside, not inside zcst1 (just for this particular line) ???
+               zL1 =         SQRT( zdTwl_n * zcst2 ) ! / zusw !!! Or??? => vkarmn * SQRT( zdTwl_n*grav*zalpha/( 5._wp*zHwl ) ) / zusw
+               !zL1 = vkarmn*SQRT( zdTwl_n       *grav*zalpha        / ( 5._wp*zHwl ) ) / zusw   ! => vkarmn outside, not inside zcst1 (just for this particular line) ???
                
                ! Stability parameter (z/L):
                zeta =  (1._wp - zwf) * zHwl*zL1   +   zwf * zHwl*zL2
 
                ZB = zcst3 / PHI(zeta)
 
-               zdTwl_n = zdTwl_b + ZA + ZB*zdTwl_n ! Eq.(6)
+               zdTwl_n = MAX ( zdTwl_b + ZA + ZB*zdTwl_n , 0._wp )  ! Eq.(6)
 
             END DO
             
             !! Update:
-            dT_wl(ji,jj) = MAX ( zdTwl_n , 0._wp ) * ztcorr
+            dT_wl(ji,jj) = zdTwl_n * ztcorr
             
          END DO
       END DO
@@ -228,7 +228,7 @@ CONTAINS
 
 
 
-   FUNCTION delta_skin_layer( pSST, pQabs, pustar_a )
+   FUNCTION delta_skin_layer( palpha, pQabs, pustar_a )
       !!---------------------------------------------------------------------
       !! Computes the thickness (m) of the viscous skin layer.
       !! Based on Fairall et al., 1996
@@ -241,11 +241,11 @@ CONTAINS
       !! L. Brodeau, october 2019
       !!---------------------------------------------------------------------
       REAL(wp)                :: delta_skin_layer
-      REAL(wp), INTENT(in)    :: pSST     ! bulk SST [K] => to know the thermal expansion [K]
+      REAL(wp), INTENT(in)    :: palpha   ! thermal expansion coefficient of sea-water (SST accurate enough!)
       REAL(wp), INTENT(in)    :: pQabs    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
       REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
       !!---------------------------------------------------------------------
-      REAL(wp) :: zusw, zusw2, zlamb, zalpha_w, zQb !, ztf, zQ
+      REAL(wp) :: zusw, zusw2, zlamb, zQb
       !!---------------------------------------------------------------------
 
       zQb = pQabs
@@ -254,13 +254,11 @@ CONTAINS
 
       !ztf = 0.5_wp + SIGN(0.5_wp, zQ)  ! Qabs < 0 => cooling of the layer => ztf = 0 (normal case)
       !                                   ! Qabs > 0 => warming of the layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
-      zalpha_w = alpha_sw( pSST ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
-
       zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
       zusw2 = zusw*zusw
 
-      zlamb = 6._wp*( 1._wp + (zalpha_w*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
-      !zlamb = 6._wp*( 1._wp + MAX(zalpha_w*zcon0/(zusw2*zusw2)*zQ, 0._wp)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+      zlamb = 6._wp*( 1._wp + (palpha*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
+      !zlamb = 6._wp*( 1._wp + MAX(palpha*zcon0/(zusw2*zusw2)*zQ, 0._wp)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
 
       delta_skin_layer = zlamb*rnu0_w/zusw
 

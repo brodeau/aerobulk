@@ -68,30 +68,26 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** ecmwf_init: WL => allocating dT_wl & Hz_wl :', jpi,jpj
          ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_wl & Hz_wl failed!'
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
-         PRINT *, ' *** dT_wl allocated!'
       END IF
       !!
       IF ( l_use_cs ) THEN
          ierr = 0
-         PRINT *, ' *** ecmwf_init: CS => allocating dT_cs :', jpi,jpj
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_cs and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_cs failed!'
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-         PRINT *, ' *** dT_cs allocated!'
       END IF
    END SUBROUTINE ecmwf_init
 
 
 
-   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                        &
-      &                      Qsw, rad_lw, slp, pdT_cs,                             & ! optionals for cool-skin (and warm-layer)
-      &                      pdT_wl, pHz_wl,                                       & ! optionals for warm-layer only
+   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                           &
+      &                      Qsw, rad_lw, slp, pdT_cs,                                & ! optionals for cool-skin (and warm-layer)
+      &                      pdT_wl, pHz_wl,                                          & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
@@ -135,7 +131,7 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]     
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
       !!    * pHz_wl  : thickness of warm-layer                               [m]
       !!
@@ -230,8 +226,8 @@ CONTAINS
       END IF
 
       IF ( l_use_wl ) THEN
-         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
-            PRINT *, ' * PROBLEM ('//trim(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'; STOP
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
+            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'; STOP
          END IF
       END IF
 
@@ -406,10 +402,6 @@ CONTAINS
       Ch = vkarmn*vkarmn/(func_m*func_h)
       ztmp2 = log(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = vkarmn*vkarmn/(func_m*ztmp2)
-
-      !Cdn = vkarmn*vkarmn / (log(zu/z0 )*log(zu/z0 ))
-      !Chn = vkarmn*vkarmn / (log(zu/z0t)*log(zu/z0t))
-      !Cen = vkarmn*vkarmn / (log(zu/z0q)*log(zu/z0q))
 
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
