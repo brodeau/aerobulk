@@ -24,7 +24,7 @@ MODULE mod_phymbl
    !!   Ri_bulk       : bulk Richardson number aka BRN
    !!   q_sat         : saturation humidity as a function of SLP and temperature
    !!   q_air_rh      : specific humidity as a function of RH, t_air and SLP
-   
+
    USE mod_const
 
    IMPLICIT NONE
@@ -50,9 +50,13 @@ MODULE mod_phymbl
       MODULE PROCEDURE cp_air_vctr, cp_air_sclr
    END INTERFACE cp_air
 
-      INTERFACE alpha_sw
+   INTERFACE alpha_sw
       MODULE PROCEDURE alpha_sw_vctr, alpha_sw_sclr
    END INTERFACE alpha_sw
+
+   INTERFACE turb_fluxes
+      MODULE PROCEDURE turb_fluxes_vctr, turb_fluxes_sclr
+   END INTERFACE turb_fluxes
 
 
 
@@ -76,6 +80,7 @@ MODULE mod_phymbl
    PUBLIC q_sat_simple
    PUBLIC update_qnsol_tau
    PUBLIC alpha_sw
+   PUBLIC turb_fluxes
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -138,7 +143,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       rho_air_sclr = MAX( pslp / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_sclr
-   
+
 
 
    FUNCTION visc_air(ptak)
@@ -681,8 +686,8 @@ CONTAINS
    END FUNCTION dry_static_energy
 
 
-   
-   SUBROUTINE UPDATE_QNSOL_TAU( pTs, pqs, pTa, pqa, pust, ptst, pqst, pUb, pslp, prlw, &
+
+   SUBROUTINE UPDATE_QNSOL_TAU( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, pslp, prlw, &
       &                         pQns, pTau,  &
       &                         Qlat)
       !!----------------------------------------------------------------------------------
@@ -690,14 +695,16 @@ CONTAINS
       !!          and the module of the wind stress => pTau = Tau
       !! ** Author: L. Brodeau, Sept. 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
+      REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! air temperature at z=zu [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=zu [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pust ! u*
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: ptst ! t*
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqst ! q*
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=zu [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: prlw ! downwelling longwave radiative flux [W/m^2]
       !
@@ -709,7 +716,7 @@ CONTAINS
       REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zUrho, zTs2, zz0, &
          &        zQlat, zQsen, zQlw
       INTEGER  ::   ji, jj     ! dummy loop indices
-      !!----------------------------------------------------------------------------------     
+      !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -720,23 +727,132 @@ CONTAINS
             zCh = zz0*ptst(ji,jj)/zdt
             zCe = zz0*pqst(ji,jj)/zdq
 
-            zUrho = pUb(ji,jj)*MAX(rho_air(pTa(ji,jj), pqa(ji,jj), pslp(ji,jj)), 1._wp)     ! rho*U10
+            !zUrho = pUb(ji,jj)*MAX(rho_air(pTa(ji,jj), pqa(ji,jj), pslp(ji,jj)), 1._wp)     ! rho*U10
             zTs2  = pTs(ji,jj)*pTs(ji,jj)
 
+            CALL TURB_FLUXES( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
+               &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
+               &              pTau(ji,jj), zQsen, zQlat )
+
+
             ! Wind stress module:
-            pTau(ji,jj) = zCd*zUrho*pUb(ji,jj) ! lolo?
+            !pTau(ji,jj) = zCd*zUrho*pUb(ji,jj) ! lolo?
 
             ! Non-Solar heat flux to the ocean:
-            zQlat = MIN ( zUrho*zCe*L_vap( pTs(ji,jj)) * zdq , 0._wp )  ! we do not want a Qlat > 0 !
-            zQsen = zUrho*zCh*cp_air(pqa(ji,jj)) * zdt
+            !zQlat = MIN ( zUrho*zCe*L_vap( pTs(ji,jj)) * zdq , 0._wp )  ! we do not want a Qlat > 0 !
+            !zQsen = zUrho*zCh*cp_air(pqa(ji,jj)) * zdt
             zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
 
             pQns(ji,jj) = zQlat + zQsen + zQlw
-            
-            IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat            
+
+            IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
          END DO
       END DO
    END SUBROUTINE UPDATE_QNSOL_TAU
+
+
+
+
+
+   SUBROUTINE TURB_FLUXES_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
+      &                                 pTau, pQsen, pQlat,  pEvap )
+      !!----------------------------------------------------------------------------------
+      REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCd
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCh
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCe
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQlat !  [W/m^2]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap !  [kg/m^2/s]
+      !!
+      REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
+      INTEGER  :: ji, jj, jq     ! dummy loop indices
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
+            ztaa = pTa(ji,jj) ! first guess...
+            DO jq = 1, 4
+               zgamma = gamma_moist( 0.5*(ztaa+pTs(ji,jj)) , pqa(ji,jj) )
+               ztaa = pTa(ji,jj) - zgamma*pzu   ! Absolute temp. is slightly colder...
+            END DO
+            zrho = rho_air(ztaa, pqa(ji,jj), pslp(ji,jj))
+            zrho = rho_air(ztaa, pqa(ji,jj), pslp(ji,jj)-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
+
+            zUrho = pUb(ji,jj)*MAX(zrho, 1._wp)     ! rho*U10
+
+            pTau(ji,jj) = zUrho * pCd(ji,jj) * pwnd(ji,jj) ! Wind stress module
+
+            zevap        = MIN( zUrho * pCe(ji,jj) * (pqa(ji,jj) - pqs(ji,jj)) , 0._wp )   ! we do not want condensation & Qlat > 0 !
+            pQsen(ji,jj) =      zUrho * pCh(ji,jj) * (pTa(ji,jj) - pTs(ji,jj)) * cp_air(pqa(ji,jj))
+            pQlat(ji,jj) =  L_vap(pTs(ji,jj)) * zevap
+
+            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = - zevap
+
+         END DO
+      END DO
+   END SUBROUTINE TURB_FLUXES_VCTR
+
+
+   SUBROUTINE TURB_FLUXES_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
+      &                                 pTau, pQsen, pQlat,  pEvap )
+      !!----------------------------------------------------------------------------------
+      REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
+      REAL(wp), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
+      REAL(wp), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
+      REAL(wp), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
+      REAL(wp), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
+      REAL(wp), INTENT(in)  :: pCd
+      REAL(wp), INTENT(in)  :: pCh
+      REAL(wp), INTENT(in)  :: pCe
+      REAL(wp), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
+      REAL(wp), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      !!
+      REAL(wp), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
+      REAL(wp), INTENT(out) :: pQsen !  [W/m^2]
+      REAL(wp), INTENT(out) :: pQlat !  [W/m^2]
+      !!
+      REAL(wp), INTENT(out), OPTIONAL :: pEvap !  [kg/m^2/s]
+      !!
+      REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
+      INTEGER  :: jq
+      !!----------------------------------------------------------------------------------
+
+      !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
+      ztaa = pTa ! first guess...
+      DO jq = 1, 4
+         zgamma = gamma_moist( 0.5*(ztaa+pTs) , pqa )
+         ztaa = pTa - zgamma*pzu   ! Absolute temp. is slightly colder...
+      END DO
+      zrho = rho_air(ztaa, pqa, pslp)
+      zrho = rho_air(ztaa, pqa, pslp-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
+
+      zUrho = pUb*MAX(zrho, 1._wp)     ! rho*U10
+
+      pTau = zUrho * pCd * pwnd ! Wind stress module
+
+      zevap        = MIN( zUrho * pCe * (pqa - pqs) , 0._wp )   ! we do not want condensation & Qlat > 0 !
+      pQsen =      zUrho * pCh * (pTa - pTs) * cp_air(pqa)
+      pQlat =  L_vap(pTs) * zevap
+
+      IF ( PRESENT(pEvap) ) pEvap = - zevap
+
+   END SUBROUTINE TURB_FLUXES_SCLR
+
+
+
 
 
    FUNCTION alpha_sw_vctr( psst )
@@ -776,71 +892,71 @@ END MODULE mod_phymbl
 
 
 !FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
-   !   !!----------------------------------------------------------------------------------
-   !   !! Bulk Richardson number (Eq. 3.25 IFS doc)
-   !   !!
-   !   !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-   !   !!----------------------------------------------------------------------------------
-   !   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_ecmwf   !
-   !   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha  ! pot. air temp. at height "pz"    [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa   ! air spec. hum. at pz m  [kg/kg]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
-   !   !!----------------------------------------------------------------------------------
-   !   !
-   !   Ri_bulk_ecmwf =   grav*pz/(pub*pub)   &
-   !      &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )
-   !   !
-   !END FUNCTION Ri_bulk_ecmwf
+!   !!----------------------------------------------------------------------------------
+!   !! Bulk Richardson number (Eq. 3.25 IFS doc)
+!   !!
+!   !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+!   !!----------------------------------------------------------------------------------
+!   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_ecmwf   !
+!   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha  ! pot. air temp. at height "pz"    [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa   ! air spec. hum. at pz m  [kg/kg]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
+!   !!----------------------------------------------------------------------------------
+!   !
+!   Ri_bulk_ecmwf =   grav*pz/(pub*pub)   &
+!      &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )
+!   !
+!END FUNCTION Ri_bulk_ecmwf
 
-   !FUNCTION Ri_bulk_ecmwf_b( pz, psst, ptha, pssq, pqa, pub )
-   !   !!----------------------------------------------------------------------------------
-   !   !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
-   !   !!
-   !   !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
-   !   !!----------------------------------------------------------------------------------
-   !   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf_b
-   !   REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
-   !   !
-   !   INTEGER  ::   ji, jj         ! dummy loop indices
-   !   REAL(wp) :: zta, zsz, zs0, zqa         ! local scalar
-   !   !!-------------------------------------------------------------------
-   !   !
-   !   DO jj = 1, jpj
-   !      DO ji = 1, jpi
-   !         zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))  ! ~ mean q in layer...
-   !         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! Absolute temperature of air within the layer
-   !         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
-   !         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
-   !         !
-   !         zs0 =           (rCp_dry + rCp_vap*pssq(ji,jj))*psst(ji,jj)  ! dry static energy at air-sea interface (z=0)
-   !         zsz = grav*pz + (rCp_dry + rCp_vap* pqa(ji,jj))*zta          ! dry static energy at z=pz
-   !         !
-   !         Ri_bulk_ecmwf_b(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
-   !            &  * ( 2._wp*(zsz - zs0)/(zsz + zs0 - grav*pz) + rctv0*(pqa(ji,jj) - pssq(ji,jj)) )
-   !         !
-   !      END DO
-   !   END DO
-   !   !
-   !END FUNCTION Ri_bulk_ecmwf_b
+!FUNCTION Ri_bulk_ecmwf_b( pz, psst, ptha, pssq, pqa, pub )
+!   !!----------------------------------------------------------------------------------
+!   !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
+!   !!
+!   !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+!   !!----------------------------------------------------------------------------------
+!   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf_b
+!   REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
+!   !
+!   INTEGER  ::   ji, jj         ! dummy loop indices
+!   REAL(wp) :: zta, zsz, zs0, zqa         ! local scalar
+!   !!-------------------------------------------------------------------
+!   !
+!   DO jj = 1, jpj
+!      DO ji = 1, jpi
+!         zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))  ! ~ mean q in layer...
+!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! Absolute temperature of air within the layer
+!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
+!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
+!         !
+!         zs0 =           (rCp_dry + rCp_vap*pssq(ji,jj))*psst(ji,jj)  ! dry static energy at air-sea interface (z=0)
+!         zsz = grav*pz + (rCp_dry + rCp_vap* pqa(ji,jj))*zta          ! dry static energy at z=pz
+!         !
+!         Ri_bulk_ecmwf_b(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
+!            &  * ( 2._wp*(zsz - zs0)/(zsz + zs0 - grav*pz) + rctv0*(pqa(ji,jj) - pssq(ji,jj)) )
+!         !
+!      END DO
+!   END DO
+!   !
+!END FUNCTION Ri_bulk_ecmwf_b
 
-   !FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
-   !   !!----------------------------------------------------------------------------------
-   !   !! Bulk Richardson number as found in the original coare 3.0 algorithm...
-   !   !!----------------------------------------------------------------------------------
-   !   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_coare   !
-   !   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha   ! air temperature at pz m     [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
-   !   !!----------------------------------------------------------------------------------
-   !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
-   !END FUNCTION Ri_bulk_coare
+!FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
+!   !!----------------------------------------------------------------------------------
+!   !! Bulk Richardson number as found in the original coare 3.0 algorithm...
+!   !!----------------------------------------------------------------------------------
+!   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_coare   !
+!   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha   ! air temperature at pz m     [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
+!   !!----------------------------------------------------------------------------------
+!   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
+!END FUNCTION Ri_bulk_coare

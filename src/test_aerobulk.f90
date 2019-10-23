@@ -17,7 +17,7 @@ PROGRAM TEST_AEROBULK
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
       &      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
 
-   REAL(4), DIMENSION(nb_algos) ::  &
+   REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
 
@@ -37,7 +37,7 @@ PROGRAM TEST_AEROBULK
    INTEGER :: jarg, ialgo, jq
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zts, zqs, zL, zUN10
+   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
 
    REAL(wp), DIMENSION(lx,ly) :: sst, Ts, qsat_zt, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
@@ -265,7 +265,7 @@ PROGRAM TEST_AEROBULK
       calgob = TRIM(vca(ialgo))
 
       zz0 = 0.
-      zus = 0. ; zts = 0. ; zqs = 0. ; zL = 0. ; zUN10 = 0.
+      zus = 0. ; zL = 0. ; zUN10 = 0.
 
 
       !! Mind that TURB_COARE and TURB_ECMWF will modify SST and SSQ if their
@@ -355,53 +355,62 @@ PROGRAM TEST_AEROBULK
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
       tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
-      vBRN(ialgo) = REAL(tmp(1,1),4)
+      vBRN(ialgo) = tmp(1,1)
 
 
-      vTheta_u(ialgo) = REAL(   theta_zu(1,1) -rt0 , 4)   ! Potential temperature at zu
+      vTheta_u(ialgo) = theta_zu(1,1) -rt0   ! Potential temperature at zu
 
-      !! Real temperature at zu
+      !! Absolute temperature at zu
       t_zu = theta_zu ! first guess...
       DO jq = 1, 4
-         rgamma = gamma_moist(t_zu, q_zu)
-         t_zu = theta_zu - rgamma*zu   ! Real temp.
+         rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
+         t_zu = theta_zu - rgamma*zu   ! Absolute temp.
       END DO
 
-      vCd(ialgo) = REAL(1000.*Cd(1,1) ,4)
-      vCh(ialgo) = REAL(1000.*Ch(1,1) ,4)
-      vCe(ialgo) = REAL(1000.*Ce(1,1) ,4)
+      vCd(ialgo) = 1000.*Cd(1,1) 
+      vCh(ialgo) = 1000.*Ch(1,1) 
+      vCe(ialgo) = 1000.*Ce(1,1) 
 
-      vT_u(ialgo) = REAL( t_zu(1,1) -rt0 , 4)    ! Real temp.
-      vQu(ialgo) = REAL(  q_zu(1,1) , 4)
+      vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
+      vQu(ialgo)  =   q_zu(1,1) 
 
-      !! Air density at zu (10m)
-      rho_zu = rho_air(t_zu, q_zu, SLP)
-      tmp = SLP - rho_zu*grav*zu
-      rho_zu = rho_air(t_zu, q_zu, tmp)
-      vRho_u(ialgo) = REAL(rho_zu(1,1) ,4)
 
       !! Gustiness contribution:
-      vUg(ialgo) = REAL(Ublk(1,1)-W10(1,1) , 4)
+      vUg(ialgo) = Ublk(1,1) - W10(1,1)
 
       !! z0 et u*:
-      vz0(ialgo) = REAL(zz0(1,1) ,4)
-      vus(ialgo) = REAL(zus(1,1) ,4)
+      vz0(ialgo) = zz0(1,1) 
+      vus(ialgo) = zus(1,1) 
 
-      zts = Ch*(theta_zu - Ts)*Ublk/zus
-      zqs = Ce*(q_zu     - qs)*Ublk/zus
+      !zts = Ch*(theta_zu - Ts)*Ublk/zus
+      !zqs = Ce*(q_zu     - qs)*Ublk/zus
 
       vL(ialgo) = zL(1,1)
 
       vUN10(ialgo) = zUN10(1,1)
 
-      !! Turbulent fluxes:
-      vTau(ialgo)  = ( rho_zu(1,1) * Cd(1,1) *           W10(1,1)            * Ublk(1,1) )*1000. ! mN/m^2
-      tmp = cp_air(q_zu)
-      vQH(ialgo)   = rho_zu(1,1)*tmp(1,1)*Ch(1,1) * ( theta_zu(1,1) - Ts(1,1)  ) * Ublk(1,1)
-      vEvap(ialgo) = rho_zu(1,1)*Ce(1,1)          * ( qs(1,1)      - q_zu(1,1) ) * Ublk(1,1)  ! mm/s
-      tmp = L_vap(Ts)
-      vQL(ialgo)   = -1.* ( tmp(1,1)*vEvap(ialgo) )
+      !! Air density at zu (10m)
+      rho_zu = rho_air(t_zu, q_zu, SLP)
+      tmp = SLP - rho_zu*grav*zu
+      rho_zu = rho_air(t_zu, q_zu, tmp)
+      vRho_u(ialgo) = rho_zu(1,1) 
 
+
+      
+      !! Turbulent fluxes:
+      
+      CALL TURB_FLUXES( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
+         &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
+
+      ! Old way:
+      !vTau(ialgo)  = rho_zu(1,1) * Cd(1,1) *           W10(1,1)            * Ublk(1,1)        ! N/m^2
+      !tmp = cp_air(q_zu)
+      !vQH(ialgo)   = rho_zu(1,1)*tmp(1,1)*Ch(1,1) * ( theta_zu(1,1) - Ts(1,1)  ) * Ublk(1,1)
+      !vEvap(ialgo) = rho_zu(1,1)*Ce(1,1)          * ( qs(1,1)      - q_zu(1,1) ) * Ublk(1,1)  ! mm/s
+      !tmp = L_vap(Ts)
+      !vQL(ialgo)   = -1.* ( tmp(1,1)*vEvap(ialgo) )
+
+      vTau(ialgo) = vTau(ialgo)*1000.            ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
 
       vTs(ialgo) = Ts(1,1)
@@ -423,15 +432,15 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '    theta_',TRIM(czu),' =   ', vTheta_u       , '[deg.C]'
-   WRITE(6,*) '    t_',TRIM(czu),'     =   ', vT_u      , '[deg.C]'
-   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu ,4)  , '[g/kg]'
+   WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
+   WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
+   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu, 4)       , '[g/kg]'
+   WRITE(6,*) '' 
+   WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)             , '[g/kg]'
+   WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
+   WRITE(6,*) '    Delta q   =   ', REAL(1000.*(vQu - qs(1,1)), 4)     , '[g/kg]'
    WRITE(6,*) ''
-   WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)  , '[g/kg]'
-   WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)      , '[deg.C]'
-   WRITE(6,*) '    Delta q   =   ', REAL(1000.*(vQu - qs(1,1)), 4)  , '[g/kg]'
-   WRITE(6,*) ''
-   WRITE(6,*) '    Ug (gust) =   ', vUg , '[m/s]'
+   WRITE(6,*) '    Ug (gust) =   ', REAL(vUg, 4)                       , '[m/s]'
    WRITE(6,*) ''
 
 
@@ -456,15 +465,15 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '      C_D     =   ', vCd        , '[10^-3]'
-   WRITE(6,*) '      C_E     =   ', vCe        , '[10^-3]'
-   WRITE(6,*) '      C_H     =   ', vCh        , '[10^-3]'
+   WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , '[10^-3]'
+   WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , '[10^-3]'
+   WRITE(6,*) '      C_H     =   ', REAL(vCh  ,4) , '[10^-3]'
    WRITE(6,*) ''
-   WRITE(6,*) '      z_0     =   ', vz0        , '[m]'
-   WRITE(6,*) '      u*      =   ', vus        , '[m/s]'
-   WRITE(6,*) '      L       =   ', vL         , '[m]'
-   WRITE(6,*) '      Ri_bulk =   ', vBRN       , '[-]'
-   WRITE(6,*) '      UN10    =   ', vUN10      , '[m/s]'
+   WRITE(6,*) '      z_0     =   ', REAL(vz0  ,4) , '[m]'
+   WRITE(6,*) '      u*      =   ', REAL(vus  ,4) , '[m/s]'
+   WRITE(6,*) '      L       =   ', REAL(vL   ,4) , '[m]'
+   WRITE(6,*) '      Ri_bulk =   ', REAL(vBRN ,4) , '[-]'
+   WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , '[m/s]'
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
    IF ( l_use_cswl ) THEN
@@ -472,10 +481,10 @@ PROGRAM TEST_AEROBULK
       WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), '[g/kg]'
       WRITE(6,*) ''
    END IF
-   WRITE(6,*) ' Wind stress  =   ', vTau       , '[mN/m^2]'
-   WRITE(6,*) ' Evaporation  =   ', vEvap      , '[mm/day]'
-   WRITE(6,*) '    QL        =   ', vQL        , '[W/m^2]'
-   WRITE(6,*) '    QH        =   ', vQH        , '[W/m^2]'
+   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , '[mN/m^2]'
+   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , '[mm/day]'
+   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , '[W/m^2]'
+   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , '[W/m^2]'
    WRITE(6,*) ''
    WRITE(6,*) ''
    CLOSE(6)
