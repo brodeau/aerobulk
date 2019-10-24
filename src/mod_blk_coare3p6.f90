@@ -230,7 +230,7 @@ CONTAINS
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
-         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
 
 
@@ -251,9 +251,10 @@ CONTAINS
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = alfa_charn_3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
-      z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
@@ -271,7 +272,7 @@ CONTAINS
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
-      u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u))
+      u_star = MAX ( U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
@@ -294,7 +295,7 @@ CONTAINS
 
          !!Inverse of Monin-Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Monin-Obukhov length]
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...) !#LOLO
+         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...)
 
          ztmp1 = u_star*u_star   ! u*^2
 
@@ -318,16 +319,19 @@ CONTAINS
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
          z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+
          ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
          z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
+         z0t   = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)
-         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LOLO: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
+         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
-         u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u))
+         u_star = MAX( U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :

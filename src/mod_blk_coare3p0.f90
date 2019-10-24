@@ -37,7 +37,7 @@ MODULE mod_blk_coare3p0
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
-   REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
+   REAL(wp), PARAMETER :: Beta0 =  1.25_wp    ! gustiness parameter
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -57,32 +57,28 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p6_init: WL => allocating Tau_ac, Qnt_ac, Hz_wl, and dT_wl :', jpi,jpj
          ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P6_INIT => allocation of Tau_ac and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!'
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
-         Hz_wl(:,:)  = Hwl_max
          dT_wl(:,:)  = 0._wp
-         PRINT *, ' *** Tau_ac, Qnt_ac, Hz_wl, and dT_wl allocated!'
+         Hz_wl(:,:)  = Hwl_max
       END IF
       !!
       IF ( l_use_cs ) THEN
          ierr = 0
-         PRINT *, ' *** coare3p0_init: CS => allocating dT_cs :', jpi,jpj
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of dT_cs and Qnt_ac failed!'
+         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of dT_cs failed!'
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-         PRINT *, ' *** dT_cs allocated!'
       END IF
    END SUBROUTINE coare3p0_init
 
 
 
-   SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,  &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                               &
-      &                      Qsw, rad_lw, slp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                      isecday_utc, plong, pdT_wl,                                  & ! optionals for warm-layer only
+   SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                              &
+      &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
+      &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p0  ***
@@ -123,10 +119,14 @@ CONTAINS
       !!    *  Qsw    : net solar flux (after albedo) at the surface (>0)     [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  slp    : sea-level pressure                                    [Pa]
-      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * isecday_utc:
       !!    *  plong  : longitude array                                       [deg.E]
+      !!
+      !! OPTIONAL OUTPUT:
+      !! ----------------
+      !!    * pdT_cs  : SST increment "dT" for cool-skin correction           [K]
       !!    * pdT_wl  : SST increment "dT" for warm-layer correction          [K]
+      !!    * pHz_wl  : thickness of warm-layer                               [m]
       !!
       !! OUTPUT :
       !! --------
@@ -171,6 +171,7 @@ CONTAINS
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pHz_wl   !             [m]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
@@ -201,7 +202,7 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      IF ( kt == nit000 ) CALL COARE3P0_INIT(l_use_cs, l_use_wl) ! allocation of accumulation arrays
+      IF ( kt == nit000 ) CALL COARE3P0_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -220,7 +221,7 @@ CONTAINS
       END IF
 
       IF ( l_use_wl ) THEN
-         IF(.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong))) THEN
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong)) ) THEN
             PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'; STOP
          END IF
       END IF
@@ -229,7 +230,7 @@ CONTAINS
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
-         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
 
 
@@ -250,9 +251,10 @@ CONTAINS
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = alfa_charn_3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
-      z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
@@ -270,7 +272,7 @@ CONTAINS
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
-      u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u))
+      u_star = MAX ( U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
@@ -293,7 +295,7 @@ CONTAINS
 
          !!Inverse of Monin-Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Monin-Obukhov length]
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...) !#LOLO
+         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...)
 
          ztmp1 = u_star*u_star   ! u*^2
 
@@ -316,17 +318,20 @@ CONTAINS
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6)
+         z0    = alfa_charn_3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+
          ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp    ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
          z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
+         z0t   = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          !! Turbulent scales at zu :
          ztmp0   = psi_h_coare(zeta_u)
-         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LOLO: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
+         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
-         u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u))
+         u_star = MAX( U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
@@ -363,7 +368,6 @@ CONTAINS
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
          END IF
 
-
          IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -387,11 +391,11 @@ CONTAINS
 
       IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
+      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_coare3p0
-
 
 
    FUNCTION alfa_charn_3p0( pwnd )

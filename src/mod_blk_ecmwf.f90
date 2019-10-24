@@ -38,7 +38,7 @@ MODULE mod_blk_ecmwf
 
    PUBLIC :: ECMWF_INIT, TURB_ECMWF
 
-   !                   !! ECMWF own values for given constants, taken form IFS documentation...
+   !! ECMWF own values for given constants, taken form IFS documentation...
    REAL(wp), PARAMETER ::   charn0 = 0.018    ! Charnock constant (pretty high value here !!!
    !                                          !    =>  Usually 0.011 for moderate winds)
    REAL(wp), PARAMETER ::   zi0     = 1000.   ! scale height of the atmospheric boundary layer...1
@@ -47,7 +47,6 @@ MODULE mod_blk_ecmwf
    REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
    REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
 
-   LOGICAL, PARAMETER :: ldebug = .TRUE.
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -226,7 +225,7 @@ CONTAINS
       END IF
 
       IF ( l_use_wl ) THEN
-         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) THEN
+         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
             PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'; STOP
          END IF
       END IF
@@ -235,7 +234,7 @@ CONTAINS
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
-         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s !LOLO WL too!!!
+         q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
 
 
@@ -258,9 +257,10 @@ CONTAINS
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn0*u_star*u_star/grav + 0.11_wp*znu_a/u_star
-      z0     = MIN(ABS(z0), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN(ABS(z0t), 0.001_wp)  ! (prevent FPE from stupid values from masked region later on...) !#LOLO
+      z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
@@ -278,7 +278,7 @@ CONTAINS
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
 
-      u_star = U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_ecmwf(func_h))
+      u_star = MAX ( U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_ecmwf(func_h)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
