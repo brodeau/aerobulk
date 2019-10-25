@@ -3,19 +3,16 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_phymbl.x
+All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x
 
-# TO BE FIXED with updated CSWL param:
-#  bin/test_aerobulk_buoy_series.x bin/cx_vs_wind_test.x  bin/test_skin_corr.x  bin/test_coef_skin.x 
-
+sk: bin/test_aerobulk_buoy_series_skin.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 
-sk: bin/test_aerobulk_buoy_series_skin.x
-
 # bin/test_coef_n10.x
 # bin/test_coef_no98.x
+
 #-L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
 LIB = -L./lib -laerobulk 
@@ -73,25 +70,13 @@ bin/test_aerobulk.x: src/test_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/test_aerobulk.f90 -o bin/test_aerobulk.x $(LIB)
 
-bin/test_aerobulk_buoy_series.x: src/test_aerobulk_buoy_series.f90 lib/libaerobulk.a
-	@mkdir -p bin
-	$(FC) $(FF) src/test_aerobulk_buoy_series.f90 -o bin/test_aerobulk_buoy_series.x $(LIB)
-
 bin/example_call_aerobulk.x: src/example_call_aerobulk.f90 lib/libaerobulk.a #
 	@mkdir -p bin
 	$(FC) $(FF) src/example_call_aerobulk.f90 -o bin/example_call_aerobulk.x $(LIB)
 
-bin/test_skin_corr.x: src/test_skin_corr.f90 lib/libaerobulk.a
-	@mkdir -p bin
-	$(FC) $(FF) src/test_skin_corr.f90 -o bin/test_skin_corr.x $(LIB)
-
 bin/test_coef_n10.x: src/test_coef_n10.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/test_coef_n10.f90 -o bin/test_coef_n10.x $(LIB)
-
-bin/test_coef_skin.x: src/test_coef_skin.f90 lib/libaerobulk.a
-	@mkdir -p bin
-	$(FC) $(FF) src/test_coef_skin.f90 -o bin/test_coef_skin.x $(LIB)
 
 bin/test_coef_no98.x: src/test_coef_no98.f90 lib/libaerobulk.a
 	@mkdir -p bin

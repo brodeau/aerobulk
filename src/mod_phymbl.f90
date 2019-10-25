@@ -726,36 +726,24 @@ CONTAINS
             zCd = zz0*zz0
             zCh = zz0*ptst(ji,jj)/zdt
             zCe = zz0*pqst(ji,jj)/zdq
-
-            !zUrho = pUb(ji,jj)*MAX(rho_air(pTa(ji,jj), pqa(ji,jj), pslp(ji,jj)), 1._wp)     ! rho*U10
-            zTs2  = pTs(ji,jj)*pTs(ji,jj)
-
+            
             CALL TURB_FLUXES( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
                &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
                &              pTau(ji,jj), zQsen, zQlat )
-
-
-            ! Wind stress module:
-            !pTau(ji,jj) = zCd*zUrho*pUb(ji,jj) ! lolo?
-
-            ! Non-Solar heat flux to the ocean:
-            !zQlat = MIN ( zUrho*zCe*L_vap( pTs(ji,jj)) * zdq , 0._wp )  ! we do not want a Qlat > 0 !
-            !zQsen = zUrho*zCh*cp_air(pqa(ji,jj)) * zdt
+            
+            zTs2  = pTs(ji,jj)*pTs(ji,jj)            
             zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
-
+            
             pQns(ji,jj) = zQlat + zQsen + zQlw
-
+            
             IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
          END DO
       END DO
    END SUBROUTINE UPDATE_QNSOL_TAU
 
 
-
-
-
    SUBROUTINE TURB_FLUXES_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap )
+      &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
@@ -773,7 +761,8 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQlat !  [W/m^2]
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap !  [kg/m^2/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       !!
       REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
       INTEGER  :: ji, jj, jq     ! dummy loop indices
@@ -794,11 +783,12 @@ CONTAINS
 
             pTau(ji,jj) = zUrho * pCd(ji,jj) * pwnd(ji,jj) ! Wind stress module
 
-            zevap        = MIN( zUrho * pCe(ji,jj) * (pqa(ji,jj) - pqs(ji,jj)) , 0._wp )   ! we do not want condensation & Qlat > 0 !
-            pQsen(ji,jj) =      zUrho * pCh(ji,jj) * (pTa(ji,jj) - pTs(ji,jj)) * cp_air(pqa(ji,jj))
-            pQlat(ji,jj) =  L_vap(pTs(ji,jj)) * zevap
+            zevap        = zUrho * pCe(ji,jj) * (pqa(ji,jj) - pqs(ji,jj))
+            pQsen(ji,jj) = zUrho * pCh(ji,jj) * (pTa(ji,jj) - pTs(ji,jj)) * cp_air(pqa(ji,jj))
+            pQlat(ji,jj) = L_vap(pTs(ji,jj)) * zevap
 
             IF ( PRESENT(pEvap) ) pEvap(ji,jj) = - zevap
+            IF ( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
 
          END DO
       END DO
@@ -806,7 +796,7 @@ CONTAINS
 
 
    SUBROUTINE TURB_FLUXES_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap )
+      &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
@@ -824,10 +814,11 @@ CONTAINS
       REAL(wp), INTENT(out) :: pQsen !  [W/m^2]
       REAL(wp), INTENT(out) :: pQlat !  [W/m^2]
       !!
-      REAL(wp), INTENT(out), OPTIONAL :: pEvap !  [kg/m^2/s]
+      REAL(wp), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
+      REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       !!
       REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
-      INTEGER  :: jq
+      INTEGER  :: jq     ! dummy loop indices
       !!----------------------------------------------------------------------------------
 
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
@@ -843,14 +834,14 @@ CONTAINS
 
       pTau = zUrho * pCd * pwnd ! Wind stress module
 
-      zevap        = MIN( zUrho * pCe * (pqa - pqs) , 0._wp )   ! we do not want condensation & Qlat > 0 !
-      pQsen =      zUrho * pCh * (pTa - pTs) * cp_air(pqa)
-      pQlat =  L_vap(pTs) * zevap
+      zevap = zUrho * pCe * (pqa - pqs)
+      pQsen = zUrho * pCh * (pTa - pTs) * cp_air(pqa)
+      pQlat = L_vap(pTs) * zevap
 
       IF ( PRESENT(pEvap) ) pEvap = - zevap
+      IF ( PRESENT(prhoa) ) prhoa = zrho
 
    END SUBROUTINE TURB_FLUXES_SCLR
-
 
 
 

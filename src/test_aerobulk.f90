@@ -388,21 +388,13 @@ PROGRAM TEST_AEROBULK
 
 
       !! Turbulent fluxes:
-
+      
       CALL TURB_FLUXES( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
          &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
-
-      ! Old way:
-      !vTau(ialgo)  = rho_zu(1,1) * Cd(1,1) *           W10(1,1)            * Ublk(1,1)        ! N/m^2
-      !tmp = cp_air(q_zu)
-      !vQH(ialgo)   = rho_zu(1,1)*tmp(1,1)*Ch(1,1) * ( theta_zu(1,1) - Ts(1,1)  ) * Ublk(1,1)
-      !vEvap(ialgo) = rho_zu(1,1)*Ce(1,1)          * ( qs(1,1)      - q_zu(1,1) ) * Ublk(1,1)  ! mm/s
-      !tmp = L_vap(Ts)
-      !vQL(ialgo)   = -1.* ( tmp(1,1)*vEvap(ialgo) )
-
-      vTau(ialgo) = vTau(ialgo)*1000.            ! mN/m^2
+      
+      vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
-
+      
       IF ( l_use_coolsk ) THEN
          vSST(ialgo) = sst(1,1)
          vTs(ialgo)  = Ts(1,1)

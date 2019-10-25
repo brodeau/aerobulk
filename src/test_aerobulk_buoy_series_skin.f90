@@ -384,19 +384,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       !! Bulk Richardson Number for layer "sea-level -- zu":
       RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
-      !! Air density at zu (10m)
-      rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), SLP(:,:,jt))
-      tmp(:,:) = SLP(:,:,jt) - rho_zu(:,:,jt)*grav*zu
-      rho_zu(:,:,jt) = rho_air(t_zu(:,:,jt), q_zu(:,:,jt), tmp(:,:))
-
       !! Turbulent heat fluxes:
-      tmp(:,:) = cp_air(q_zu(:,:,jt))
-      QH  (:,:,jt) =  rho_zu(:,:,jt)*tmp*Ch(:,:,jt) * ( theta_zu(:,:,jt) - Ts(:,:,jt) ) * Ublk(:,:,jt)
-      EVAP(:,:,jt) = MAX( -rho_zu(:,:,jt)    *Ce(:,:,jt) * (     q_zu(:,:,jt) - qs(:,:,jt) ) * Ublk(:,:,jt) , 0._wp )  ! mm/s
-      QL  (:,:,jt) =  -1.* ( L_vap(Ts(:,:,jt))*EVAP(:,:,jt) )
-
-      TAU(:,:,jt)  = rho_zu(:,:,jt) * Cd(:,:,jt) * Ublk(:,:,jt)*Ublk(:,:,jt)
-
+      CALL TURB_FLUXES( zu, Ts(:,:,jt), qs(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), &
+         &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
+         &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
+         &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
+      
       !! Longwave radiative heat fluxes:
       tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
       Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))

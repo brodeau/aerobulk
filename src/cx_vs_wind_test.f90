@@ -207,11 +207,11 @@ PROGRAM cx_vs_wind_test
 
 
             IF ( TRIM(calgo) == 'coare3p0' ) &
-               CALL TURB_COARE3P0( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               CALL TURB_COARE3P0( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
                &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
             
             IF ( TRIM(calgo) == 'coare3p6' ) &
-               CALL TURB_COARE3P6( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               CALL TURB_COARE3P6( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
                &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
 
             IF ( TRIM(calgo) == 'ncar' ) &
@@ -219,7 +219,7 @@ PROGRAM cx_vs_wind_test
                &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
             
             IF ( TRIM(calgo) == 'ecmwf' ) &
-               CALL TURB_ECMWF( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               CALL TURB_ECMWF( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
                &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
             
             
@@ -356,11 +356,11 @@ PROGRAM cx_vs_wind_test
       !!
 
       IF ( trim(calgo) == 'coare3p0' ) &
-         CALL TURB_COARE3P0(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+         CALL TURB_COARE3P0(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
          &               Cd, Ch, Ce, t10, q10, U_bulk)
 
       IF ( TRIM(calgo) == 'coare3p6' ) &
-         CALL TURB_COARE3P6(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+         CALL TURB_COARE3P6(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
          &               Cd, Ch, Ce, t10, q10, U_bulk)
 
       IF ( trim(calgo) == 'ncar' ) &
@@ -368,7 +368,7 @@ PROGRAM cx_vs_wind_test
          &             Cd, Ch, Ce, t10, q10, U_bulk)
 
       IF ( trim(calgo) == 'ecmwf' ) &
-         CALL TURB_ECMWF(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+         CALL TURB_ECMWF(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
          &             Cd, Ch, Ce, t10, q10, U_bulk)
 
 

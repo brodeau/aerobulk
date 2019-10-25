@@ -72,32 +72,33 @@ CONTAINS
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: rad_sw, rad_lw
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out),OPTIONAL :: T_s
       !!
-      INTEGER(1), DIMENSION(:,:), ALLOCATABLE  :: pmask
+      INTEGER(1), DIMENSION(:,:), ALLOCATABLE  :: zmask
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
-         &     pWzu,            & !: Scalar wind speed at zu m
-         &   pSSQ,              & !: Specific humidiyt at the air-sea interface
-         &   pCd, pCh, pCe,     & !: bulk transfer coefficients
-         &  pTzt,               & !: potential temperature at zt meters
-         &  pTzu, pQzu,         & !: potential temperature and specific humidity at zu meters
-         &  pTs, pqs,           & !:
-         &   pUblk,             & !: Bulk scalar wind speed (pWzu corrected for low wind and unstable conditions)
-         &   pRHO                 !: density of air
+         &     zWzu,            & !: Scalar wind speed at zu m
+         &   zSSQ,              & !: Specific humidiyt at the air-sea interface
+         &   zCd, zCh, zCe,     & !: bulk transfer coefficients
+         &  zTzt,               & !: potential temperature at zt meters
+         &  pTzu, zQzu,         & !: potential temperature and specific humidity at zu meters
+         &  zTs, zqs,           & !:
+         &  zTaum,             & !: wind stress module
+         &   zUblk                !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
+
       LOGICAL :: l_use_skin
       !!------------------------------------------------------------------------------
 
 
       l_use_skin = .FALSE.
 
-      ALLOCATE ( pmask(jpi,jpj), pWzu(jpi,jpj), pSSQ(jpi,jpj), &
-         &     pCd(jpi,jpj), pCh(jpi,jpj), pCe(jpi,jpj),       &
-         &     pTzt(jpi,jpj), pTzu(jpi,jpj), pQzu(jpi,jpj), &
-         &     pUblk(jpi,jpj), pRHO(jpi,jpj), pTs(jpi,jpj), pqs(jpi,jpj)  )
+      ALLOCATE ( zmask(jpi,jpj), zWzu(jpi,jpj), zSSQ(jpi,jpj), &
+         &     zCd(jpi,jpj), zCh(jpi,jpj), zCe(jpi,jpj),       &
+         &     zTzt(jpi,jpj), pTzu(jpi,jpj), zQzu(jpi,jpj), &
+         &     zUblk(jpi,jpj), zTs(jpi,jpj), zqs(jpi,jpj), zTaum(jpi,jpj)  )
 
       ! Masked region ?
       IF( PRESENT(mask) ) THEN
-         pmask(:,:) = mask(:,:)
+         zmask(:,:) = mask(:,:)
       ELSE
-         pmask(:,:) = 1
+         zmask(:,:) = 1
       END IF
 
 
@@ -107,31 +108,31 @@ CONTAINS
             l_use_skin = .TRUE.
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
-         CALL check_unit_consitency( 'rad_sw', rad_sw, pmask )
-         CALL check_unit_consitency( 'rad_lw', rad_lw, pmask )
+         CALL check_unit_consitency( 'rad_sw', rad_sw, zmask )
+         CALL check_unit_consitency( 'rad_lw', rad_lw, zmask )
       END IF
 
-      CALL check_unit_consitency( 'sst',   sst,  pmask )
-      CALL check_unit_consitency( 't_air', t_zt, pmask )
-      CALL check_unit_consitency( 'q_air', q_zt, pmask )
-      CALL check_unit_consitency( 'slp',   slp,  pmask )
-      CALL check_unit_consitency( 'u10', ABS(U_zu), pmask )
-      CALL check_unit_consitency( 'v10', ABS(V_zu), pmask )
+      CALL check_unit_consitency( 'sst',   sst,  zmask )
+      CALL check_unit_consitency( 't_air', t_zt, zmask )
+      CALL check_unit_consitency( 'q_air', q_zt, zmask )
+      CALL check_unit_consitency( 'slp',   slp,  zmask )
+      CALL check_unit_consitency( 'u10', ABS(U_zu), zmask )
+      CALL check_unit_consitency( 'v10', ABS(V_zu), zmask )
 
 
       !! Scalar wind:
-      pWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
+      zWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
       !! Computing specific humidity at saturation at sea surface temperature :
-      pSSQ (:,:) = rdct_qsat_salt*q_sat(sst, slp)
+      zSSQ (:,:) = rdct_qsat_salt*q_sat(sst, slp)
 
       !! Approximate potential temperarure at zt meters above sea surface:
-      pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
+      zTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
 
       !! Mind that TURB_COARE* and TURB_ECMWF will modify SST and SSQ if their
       !! respective Cool Skin Warm Layer parameterization is used
-      pTs = sst
-      pqs = pSSQ
+      zTs = sst
+      zqs = zSSQ
 
 
       SELECT CASE(TRIM(calgo))
@@ -140,40 +141,40 @@ CONTAINS
          PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
          STOP
          !IF( l_use_skin ) THEN
-         !   CALL TURB_COARE3P0 ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu, . &
-         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk,            &
+         !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, . &
+         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
          !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          !ELSE
-         !   CALL TURB_COARE3P0 ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu,  &
-         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
+         !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu,  &
+         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
          !END IF
          !!
       CASE('coare3p6')
          PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
          STOP
          !IF( l_use_skin ) THEN
-         !   CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .TRUE., .TRUE., &
-         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk,           &
+         !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
+         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,           &
          !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          !ELSE
-         !   CALL TURB_COARE3P6 ( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE., &
-         !      &              pCd, pCh, pCe, pTzu, pQzu, pUblk )
+         !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE., &
+         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
          !END IF
          !!
          !!
       CASE('ncar')
-         CALL TURB_NCAR( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
-            &            pCd, pCh, pCe, pTzu, pQzu, pUblk)
+         CALL TURB_NCAR( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, &
+            &            zCd, zCh, zCe, pTzu, zQzu, zUblk)
          !!
          !!
       CASE('ecmwf')
          IF( l_use_skin ) THEN
-            CALL TURB_ECMWF ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu, l_use_skin, l_use_skin, &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk,      &
+            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, l_use_skin, l_use_skin, &
+               &              zCd, zCh, zCe, pTzu, zQzu, zUblk,      &
                &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
          ELSE
-            CALL TURB_ECMWF ( 1, zt, zu, pTs, pTzt, pqs, q_zt, pWzu, .FALSE., .FALSE.,  &
-               &              pCd, pCh, pCe, pTzu, pQzu, pUblk)
+            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &              zCd, zCh, zCe, pTzu, zQzu, zUblk)
          END IF
          !!
          !!
@@ -183,35 +184,25 @@ CONTAINS
       END SELECT
 
       !! Skin temperature:
-      !! IF( l_use_skin ), pTs has been updated from SST to skin temperature !
-      IF( l_use_skin ) T_s = pTs
+      !! IF( l_use_skin ) => zTs and zqs have been updated from SST to skin temperature !
 
-      !! Need the air density at zu m, so using t and q corrected at zu m:
-      pRHO = rho_air(pTzu, pQzu, slp)
-      QH   = slp - pRHO*grav*zu      ! QH used as temporary array!
-      pRHO = rho_air(pTzu, pQzu, QH)
+      CALL TURB_FLUXES( zu, zTs, zqs, pTzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
+         &                                 zTaum, QH, QL )
 
-      !! *** Wind stress ***
-      Tau_x = pCd*pRHO * U_zu * pUblk
-      Tau_y = pCd*pRHO * V_zu * pUblk
-
-      !! *** Latent and Sensible heat fluxes ***
-      QL = MIN( pCe*pRHO*L_vap(pTs)   * (pQzu - pqs) * pUblk , 0._wp ) ! we do not want Qlat > 0 !
-      QH = pCh*pRHO*cp_air(pQzu) * (pTzu - pTs) * pUblk
+      Tau_x = zTaum / zWzu * U_zu
+      Tau_y = zTaum / zWzu * V_zu
 
       !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
-      !PRINT *, 'pCe =', pCe
+      !PRINT *, 'zCe =', zCe
       !PRINT *, 'Qlat =', QL
-      !PRINT *, 'Ublk =', pUblk
-      !PRINT *, 'pCe/Ublk =', pCe/pUblk
+      !PRINT *, 'Ublk =', zUblk
+      !PRINT *, 'zCe/Ublk =', zCe/zUblk
       !PRINT *, 't_zu =', pTzu
-      !PRINT *, 'q_zu =', pQzu
-      !PRINT *, 'Rho =', pRHO
-      !PRINT *, 'ssq =', pSSQ
-      !PRINT *, 'L_vap =', L_vap(pTs)
+      !PRINT *, 'q_zu =', zQzu
+      !PRINT *, 'ssq =', zSSQ
       !PRINT *, ''
 
-      DEALLOCATE ( pmask, pWzu, pSSQ, pCd, pCh, pCe, pTzt, pTzu, pQzu, pUblk, pRHO, pTs, pqs )
+      DEALLOCATE ( zmask, zWzu, zSSQ, zCd, zCh, zCe, zTzt, pTzu, zQzu, zUblk, zTs, zqs, zTaum )
 
    END SUBROUTINE aerobulk_compute
 
