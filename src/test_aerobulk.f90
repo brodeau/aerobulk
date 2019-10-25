@@ -19,7 +19,7 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw
 
    REAL(wp), PARAMETER ::   &
       & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
@@ -407,6 +407,7 @@ PROGRAM TEST_AEROBULK
          vSST(ialgo) = sst(1,1)
          vTs(ialgo)  = Ts(1,1)
          vqs(ialgo)  = qs(1,1)
+         vQlw(ialgo) = emiss_w*(rad_lw(1,1) - stefan*Ts(1,1)**4) ! Net longwave flux as in "UPDATE_QNSOL_TAU of mod_phymbl.f90"
       END IF
 
    END DO
@@ -475,6 +476,8 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    IF ( l_use_coolsk ) THEN
       WRITE(6,*) '              Cool-skin related:'
+      WRITE(6,*) '  Q longwave  =   ', REAL( vQlw  ,4), '[W/m^2]'
+      WRITE(6,*) '  Q non-solar =   ', REAL( vQL + vQH + vQlw ,4), '[W/m^2]'
       WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), '[deg.C]'
       WRITE(6,*) '  Ts - SST    =   ', REAL( vTs-vSST ,4), '[deg.C]'
       WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), '[g/kg]'
