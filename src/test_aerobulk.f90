@@ -112,12 +112,12 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give "zu", height of wind speed measurement in meters (generally 10m):'
+   WRITE(6,*) 'Give "zu", height of wind speed measurement in meters (generally 10):'
    READ(*,*) zu
    WRITE(6,*) ''
 
 
-   WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10m):'
+   WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10):'
    READ(*,*) zt
    WRITE(6,*) ''
 
