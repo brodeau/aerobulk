@@ -733,9 +733,9 @@ CONTAINS
             
             zTs2  = pTs(ji,jj)*pTs(ji,jj)            
             zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
-            
+
             pQns(ji,jj) = zQlat + zQsen + zQlw
-            
+
             IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
          END DO
       END DO
@@ -818,7 +818,7 @@ CONTAINS
       REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       !!
       REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
-      INTEGER  :: jq     ! dummy loop indices
+      INTEGER  :: jq
       !!----------------------------------------------------------------------------------
 
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")

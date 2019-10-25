@@ -258,7 +258,7 @@ CONTAINS
       delta_skin_layer = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
          &               +   ztf     * MIN(6._wp*ztmp , 0.007_wp)  ! when Qd > 0
    END FUNCTION delta_skin_layer
-   
+
 
    FUNCTION PHI( pzeta)
       !!---------------------------------------------------------------------
