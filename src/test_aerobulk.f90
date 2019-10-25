@@ -19,7 +19,7 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vqs
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs
 
    REAL(wp), PARAMETER ::   &
       & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
@@ -52,9 +52,9 @@ PROGRAM TEST_AEROBULK
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
-      &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
-   !                                       !: (Cool Skin Warm Layer parameterization)
+      &     l_use_coolsk    = .FALSE.      !: compute and use the cool-skin temperature
    !                                       !:  => only in COARE and ECMWF
+   !                                       !: warm-layer cannot be used in this simple test are there is not time integration possible !!!
 
    jpi = lx ; jpj = ly
 
@@ -62,6 +62,11 @@ PROGRAM TEST_AEROBULK
 
    OPEN(6, FORM='formatted', RECL=512)
 
+
+
+   CALL usage_test(1)
+
+   
    jarg = 0
 
    DO WHILE ( jarg < command_argument_count() )
@@ -72,7 +77,7 @@ PROGRAM TEST_AEROBULK
       SELECT CASE (TRIM(car))
 
       CASE('-h')
-         call usage_test()
+         call usage_test(0)
 
       CASE('-p')
          l_ask_for_slp = .TRUE.
@@ -84,11 +89,11 @@ PROGRAM TEST_AEROBULK
          l_use_dp = .TRUE.
 
       CASE('-S')
-         l_use_cswl = .TRUE.
+         l_use_coolsk = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', TRIM(car) ; WRITE(6,*) ''
-         CALL usage_test()
+         CALL usage_test(0)
 
       END SELECT
 
@@ -240,13 +245,13 @@ PROGRAM TEST_AEROBULK
 
 
 
-   IF ( l_use_cswl ) THEN
+   IF ( l_use_coolsk ) THEN
 
       WRITE(6,*) ''
       WRITE(6,*) '----------------------------------------------------------'
-      WRITE(6,*) '          Will consider the skin temperature!'
+      WRITE(6,*) '       Will consider the cool-skin temperature!'
       WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
-      WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
+      WRITE(6,*) ' => needs the downwelling radiative fluxes at the surface'
       WRITE(6,*) '----------------------------------------------------------'
       WRITE(6,*) ''
       WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
@@ -279,45 +284,35 @@ PROGRAM TEST_AEROBULK
 
       CASE(1)
 
-         IF ( l_use_cswl ) THEN
-            PRINT *, 'Oops skin param not really finished yet for COARE3P0 in this test!'; STOP
-            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
-               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
-               &                isecday_utc=43200, plong=SLP*0._wp,                             &
+         IF ( l_use_coolsk ) THEN
+            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
-
          ELSE
-            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+            CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-            
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
-
-
          END IF
 
 
       CASE(2)
-         
-         IF ( l_use_cswl ) THEN
-            PRINT *, 'Oops skin param not really finished yet for COARE3P6 in this test!'; STOP
-            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
-               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
-               &                isecday_utc=43200, plong=SLP*0._wp,                             &
+
+         IF ( l_use_coolsk ) THEN
+            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+
             !! => Ts and qs are updated wrt to skin temperature !
-
          ELSE
-            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
-               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+            CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
+               &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
-
          END IF
 
       CASE(3)
@@ -327,22 +322,17 @@ PROGRAM TEST_AEROBULK
 
 
       CASE(4)
-
-         IF ( l_use_cswl ) THEN
-            PRINT *, 'Oops skin param not really finished yet for ECMWF in this test!'; STOP
-            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+         IF ( l_use_coolsk ) THEN
+            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
                &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
-            
          ELSE
-
-            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_cswl, l_use_cswl, &
+            CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
-
          END IF
 
 
@@ -367,20 +357,20 @@ PROGRAM TEST_AEROBULK
          t_zu = theta_zu - rgamma*zu   ! Absolute temp.
       END DO
 
-      vCd(ialgo) = 1000.*Cd(1,1) 
-      vCh(ialgo) = 1000.*Ch(1,1) 
-      vCe(ialgo) = 1000.*Ce(1,1) 
+      vCd(ialgo) = 1000.*Cd(1,1)
+      vCh(ialgo) = 1000.*Ch(1,1)
+      vCe(ialgo) = 1000.*Ce(1,1)
 
       vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
-      vQu(ialgo)  =   q_zu(1,1) 
+      vQu(ialgo)  =   q_zu(1,1)
 
 
       !! Gustiness contribution:
       vUg(ialgo) = Ublk(1,1) - W10(1,1)
 
       !! z0 et u*:
-      vz0(ialgo) = zz0(1,1) 
-      vus(ialgo) = zus(1,1) 
+      vz0(ialgo) = zz0(1,1)
+      vus(ialgo) = zus(1,1)
 
       !zts = Ch*(theta_zu - Ts)*Ublk/zus
       !zqs = Ce*(q_zu     - qs)*Ublk/zus
@@ -393,12 +383,12 @@ PROGRAM TEST_AEROBULK
       rho_zu = rho_air(t_zu, q_zu, SLP)
       tmp = SLP - rho_zu*grav*zu
       rho_zu = rho_air(t_zu, q_zu, tmp)
-      vRho_u(ialgo) = rho_zu(1,1) 
+      vRho_u(ialgo) = rho_zu(1,1)
 
 
-      
+
       !! Turbulent fluxes:
-      
+
       CALL TURB_FLUXES( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
          &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
 
@@ -413,9 +403,11 @@ PROGRAM TEST_AEROBULK
       vTau(ialgo) = vTau(ialgo)*1000.            ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
 
-      vTs(ialgo) = Ts(1,1)
-      vqs(ialgo) = qs(1,1)
-
+      IF ( l_use_coolsk ) THEN
+         vSST(ialgo) = sst(1,1)
+         vTs(ialgo)  = Ts(1,1)
+         vqs(ialgo)  = qs(1,1)
+      END IF
 
    END DO
 
@@ -435,7 +427,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
    WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu, 4)       , '[g/kg]'
-   WRITE(6,*) '' 
+   WRITE(6,*) ''
    WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)             , '[g/kg]'
    WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
    WRITE(6,*) '    Delta q   =   ', REAL(1000.*(vQu - qs(1,1)), 4)     , '[g/kg]'
@@ -476,16 +468,19 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , '[m/s]'
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
-   IF ( l_use_cswl ) THEN
-      WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), '[deg.C]'
-      WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), '[g/kg]'
-      WRITE(6,*) ''
-   END IF
    WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , '[mN/m^2]'
    WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , '[mm/day]'
    WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , '[W/m^2]'
    WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , '[W/m^2]'
    WRITE(6,*) ''
+   IF ( l_use_coolsk ) THEN
+      WRITE(6,*) '              Cool-skin related:'
+      WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), '[deg.C]'
+      WRITE(6,*) '  Ts - SST    =   ', REAL( vTs-vSST ,4), '[deg.C]'
+      WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), '[g/kg]'
+      WRITE(6,*) ''
+   END IF
+
    WRITE(6,*) ''
    CLOSE(6)
 
@@ -493,22 +488,35 @@ END PROGRAM TEST_AEROBULK
 
 
 
-SUBROUTINE usage_test()
+SUBROUTINE usage_test( icontinue )
+   INTEGER, INTENT(in) :: icontinue
    !!
    PRINT *,''
+   IF (icontinue>=1) THEN
+      PRINT *,''
+      PRINT *,'                 ======   A e r o B u l k   ====='
+      PRINT *,''
+      PRINT *,'                      (L. Brodeau, 2015-2019)'
+      PRINT *,''
+      PRINT *,'                   Simple interactive test-case'
+   END IF
+   PRINT *,'##########################################################################'
    PRINT *,'   List of command line options:'
    PRINT *,''
-   PRINT *,' -p   => ask for sea-level pressure, otherwize assume 1010 hPa'
+   PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
    PRINT *,''
-   PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+   PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
    PRINT *,''
-   PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
-   PRINT *,'         and use the skin temperature instead of the bulk SST'
-   PRINT *,'         only in COARE and ECMWF'
+   PRINT *,'   -S   => Use the Cool-Skin parameterization to compute and use the'
+   PRINT *,'           cool-skin temperature instead of the bulk SST'
+   PRINT *,'           only usable for COARE and ECMWF families of algorithms'
+   PRINT *,'           (warm-layer param. cannot be used in this simple test as'
+   PRINT *,'           no time-integration is involved here...)'
    PRINT *,''
-   PRINT *,' -h   => Show this message'
+   PRINT *,'   -h   => Show this message'
+   PRINT *,'##########################################################################'
    PRINT *,''
-   STOP
+   IF (icontinue==0) STOP
    !!
 END SUBROUTINE usage_test
 !!
