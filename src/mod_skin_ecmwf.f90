@@ -77,21 +77,19 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) ) ! first guess, we do not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes$
-            !                                       ! also, we ONLY consider when the viscous layer is loosing heat to the atmosphere, we only deal with cool-skin! => hence the "MIN( -0$
-            !zQabs  = pQnsol(ji,jj)
+            zQabs = pQnsol(ji,jj) ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
+            !                     !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
 
             zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pustar(ji,jj) )
 
             DO jc = 1, 4 ! because implicit in terms of zdelta...
-               zfr    = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.(5) Zeng & Beljaars, 2005
+               zfr = MAX( 0.065_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.(5) Zeng & Beljaars, 2005
                !              =>  (WARNING: 0.065 rather than 0.137 in Fairal et al. 1996)
-               zQabs  = MIN( -0.1_wp , pQnsol(ji,jj) + zfr*pQsw(ji,jj) ) ! Total cooling at the interface
-               !zQabs = pQnsol(ji,jj) + zfr*pQsw(ji,jj)
+               zQabs = pQnsol(ji,jj) + zfr*pQsw(ji,jj)
                zdelta = delta_skin_layer( alpha_sw(pSST(ji,jj)), zQabs, pustar(ji,jj) )
             END DO
 
-            dT_cs(ji,jj) = MIN( zQabs*zdelta/rk0_w , 0._wp )   ! temperature increment
+            dT_cs(ji,jj) = zQabs*zdelta/rk0_w   ! temperature increment, yes dT_cs can actually > 0, if Qabs > 0 (rare but possible!)
 
          END DO
       END DO
@@ -131,7 +129,7 @@ CONTAINS
          & ztcorr,  &  !: correction of dT w.r.t measurement depth of bulk SST (first T-point)
          & zalpha, & !: thermal expansion coefficient of sea-water [1/K]
          & zdTwl_b, zdTwl_n, & ! temp. diff. between "almost surface (right below viscous layer) and bottom of WL
-         & zfr, zeta, ztmp, &
+         & zfr, zeta, &
          & zusw, zusw2, &
          & zLa, zfLa, &
          & flg, zwf, zQabs, &
@@ -228,7 +226,7 @@ CONTAINS
 
 
 
-   FUNCTION delta_skin_layer( palpha, pQabs, pustar_a )
+   FUNCTION delta_skin_layer( palpha, pQd, pustar_a )
       !!---------------------------------------------------------------------
       !! Computes the thickness (m) of the viscous skin layer.
       !! Based on Fairall et al., 1996
@@ -242,31 +240,25 @@ CONTAINS
       !!---------------------------------------------------------------------
       REAL(wp)                :: delta_skin_layer
       REAL(wp), INTENT(in)    :: palpha   ! thermal expansion coefficient of sea-water (SST accurate enough!)
-      REAL(wp), INTENT(in)    :: pQabs    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
+      REAL(wp), INTENT(in)    :: pQd    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
       REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
       !!---------------------------------------------------------------------
-      REAL(wp) :: zusw, zusw2, zlamb, zQb
+      REAL(wp) :: zusw, zusw2, zlamb, ztf, ztmp
       !!---------------------------------------------------------------------
-
-      zQb = pQabs
-
-      !zQ = MIN( -0.1_wp , pQabs )
-
-      !ztf = 0.5_wp + SIGN(0.5_wp, zQ)  ! Qabs < 0 => cooling of the layer => ztf = 0 (normal case)
-      !                                   ! Qabs > 0 => warming of the layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
+      ztf = 0.5_wp + SIGN(0.5_wp, pQd)  ! Qabs < 0 => cooling of the viscous layer => ztf = 0 (regular case)
+      !                                 ! Qabs > 0 => warming of the viscous layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
+      !
       zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
       zusw2 = zusw*zusw
-
-      zlamb = 6._wp*( 1._wp + (palpha*zcon0/(zusw2*zusw2)*zQb)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
-      !zlamb = 6._wp*( 1._wp + MAX(palpha*zcon0/(zusw2*zusw2)*zQ, 0._wp)**0.75 )**(-1./3.) ! see eq.(14) in Fairall et al., 1996
-
-      delta_skin_layer = zlamb*rnu0_w/zusw
-
-      !delta_skin_layer =  (1._wp - ztf) * zlamb*rnu0_w/zusw    &         ! see eq.(12) in Fairall et al., 1996
-      !   &               +     ztf  * MIN(6._wp*rnu0_w/zusw , 0.007_wp)
+      !
+      zlamb = 6._wp*( 1._wp + MAX(palpha*zcon0/(zusw2*zusw2)*pQd, 0._wp)**0.75 )**(-1./3.) ! see Eq.(14) in Fairall et al., 1996
+      !  => zlamb is not used when Qd > 0, and since zcon0 < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
+      !
+      ztmp = rnu0_w/zusw
+      delta_skin_layer = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
+         &               +   ztf     * MIN(6._wp*ztmp , 0.007_wp)  ! when Qd > 0
    END FUNCTION delta_skin_layer
-
-
+   
 
    FUNCTION PHI( pzeta)
       !!---------------------------------------------------------------------

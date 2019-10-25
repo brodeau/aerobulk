@@ -713,7 +713,7 @@ CONTAINS
       !
       REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(out) :: Qlat
       !
-      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zUrho, zTs2, zz0, &
+      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zTs2, zz0, &
          &        zQlat, zQsen, zQlw
       INTEGER  ::   ji, jj     ! dummy loop indices
       !!----------------------------------------------------------------------------------

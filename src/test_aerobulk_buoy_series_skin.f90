@@ -13,7 +13,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    USE mod_blk_coare3p0
    USE mod_blk_coare3p6
-   USE mod_skin_coare, ONLY: Hz_wl, Qnt_ac, Tau_ac
+   USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
    !
    USE mod_blk_ecmwf
    !USE mod_skin_ecmwf, ONLY: Hz_wl !: problem: Hz_wl already exists from mod_skin_coare ...
