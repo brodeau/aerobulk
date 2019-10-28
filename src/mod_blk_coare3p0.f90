@@ -57,18 +57,17 @@ CONTAINS
       !!---------------------------------------------------------------------
       IF ( l_use_wl ) THEN
          ierr = 0
-         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), Hz_wl(jpi,jpj), dT_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!'
+         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = Hwl_max
       END IF
-      !!
       IF ( l_use_cs ) THEN
          ierr = 0
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' COARE3P0_INIT => allocation of dT_cs failed!'
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
    END SUBROUTINE coare3p0_init
@@ -214,18 +213,14 @@ CONTAINS
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
       !! Initializations for cool skin and warm layer:
-      IF ( l_use_cs ) THEN
-         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'; STOP
-         END IF
-      END IF
-
-      IF ( l_use_wl ) THEN
-         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp) .AND. PRESENT(isecday_utc) .AND. PRESENT(plong)) ) THEN
-            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw, slp, isecday_utc & plong to use warm-layer param!'; STOP
-         END IF
-      END IF
-
+      IF ( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+         &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use cool-skin param!' )
+      
+      IF ( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)     &
+         &  .AND. PRESENT(isecday_utc) .AND. PRESENT(plong)) ) ) &
+         &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw, slp, isecday_utc', &
+         &   ' & plong to use warm-layer param!'  )
+      
       IF ( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST

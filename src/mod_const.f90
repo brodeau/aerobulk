@@ -18,51 +18,51 @@ MODULE mod_const
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
    INTEGER,                  SAVE :: nb_itt=5  !: number of itteration in the bulk algorithm
-   
+
    LOGICAL, SAVE :: l_first_call=.true. , l_last_call=.false.
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
 
 
-   
+
    REAL(wp), PARAMETER, PUBLIC :: &
       &   rpi  = 3.141592653589793, &
       &   rt0  = 273.15,    &      !: freezing point of fresh water [K]
       &   rtt0 = 273.16,    &      !: riple point of temperature    [K]
       &  grav  = 9.8,       &      !: acceleration of gravity    [m.s^-2]
       &  Patm  = 101000.,   &
-      !!
+                                !!
       & rho0_a = 1.2  ,     &  !: Approx. of density of air                     [kg/m^3]
       & rCp0_a  = 1015.0 ,  &  !: Specic heat of moist air                      [J/K/kg]
       & rCp_dry = 1005.0 ,  &  !: Specic heat of dry air, constant pressure      [J/K/kg]
       & rCp_vap = 1860.0 ,  &  !: Specic heat of water vapor, constant pressure  [J/K/kg]
-      !!
+                                !!
       &  R_dry = 287.05,    &  !: Specific gas constant for dry air              [J/K/kg]
       &  R_vap = 461.495,   &  !: Specific gas constant for water vapor          [J/K/kg]
-      !!
+                                !!
       & rCp0_w  = 4190. ,    &  !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
       & rho0_w = 1025.  ,    &  !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
       &  rnu0_w = 1.e-6,      &  !: kinetic viscosity of water                      [m^2/s]
       &  rk0_w  = 0.6,        &  !: thermal conductivity of water (at 20C)          [W/m/K]
-      !!
+                                !!
       &  reps0 = R_dry/R_vap,  &   !: ratio of gas constant for dry air and water vapor => ~ 0.622
-      !!
+                                !!
       &  rctv0 = R_vap/R_dry - 1. , &   !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
-      !!
+                                !!
       &  rnu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
-      !!
+                                !!
       &  rLevap = 2.46E6,     &   !: Latent heat of vaporization for sea-water in J/kg
       &  vkarmn = 0.4,        &   !: Von Karman's constant
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,       &
       &  emiss_w = 0.97,      &   !: emissivity of sea water
       &  stefan = 5.67E-8,    &   !: Stefan Boltzman constant
-      !!
-      &  oce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available      
-      !!                         !: NEMO: 0.066 / ECMWF: 0.055
+                                !!
+      &  oce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available
+                                !!                         !: NEMO: 0.066 / ECMWF: 0.055
       &  Tswf  = 273.,  &        !: BAD!!! because sea-ice not used yet!!!
-      !&  Tswf  = 271.4          !: freezing point of sea-water (K)
+                                !&  Tswf  = 271.4          !: freezing point of sea-water (K)
       &  to_rad = Pi/180., &
       &  R_earth = 6.37E6,        & ! Earth radius (m)
       &  rtilt_earth = 23.5, &
@@ -73,13 +73,16 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
 
-   
+
    INTEGER, DIMENSION(12), PARAMETER, PUBLIC :: &
       &   tdmn = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /), &
       &   tdml = (/ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
 
 
+   CHARACTER(len=200), PARAMETER :: cform_err = '(" *** E R R O R :  ")'
 
+
+   
    !! IFS:
 
    !REAL(wp), PARAMETER :: &
@@ -92,7 +95,7 @@ MODULE mod_const
    !&    RV = 1000.*R/RMV, &
    !&    rCp_dry = 3.5*RD, &
    !&    rLevap=2.5008E+6, &
-    !&    rctv0 = RV/RD-1.0
+   !&    rctv0 = RV/RD-1.0
 
 
 
@@ -100,7 +103,7 @@ MODULE mod_const
 
 
 
-   
+
 
    !! Max and min values for variable (for netcdf files)
 
@@ -118,6 +121,57 @@ MODULE mod_const
    !     &                cx_min   =    0., cx_max   = 0.01,  &
    !     &                rho_min  =   0.8, rho_max  =  1.5       ! density of air
    !CCSM/ccsm2/models/ice/dice5/flux_ai.F90
+
+
+
+CONTAINS
+
+
+   SUBROUTINE ctl_stop( cd1, cd2, cd3, cd4, cd5, cd6, cd7, cd8, cd9, cd10 )
+      !!----------------------------------------------------------------------
+      !!                  ***  ROUTINE  ctl_stop  ***
+      !!
+      !! ** Purpose :   print in ocean.outpput file a error message and
+      !!                increment the error number (nstop) by one.
+      !!----------------------------------------------------------------------
+      CHARACTER(len=*), INTENT(in), OPTIONAL ::  cd1, cd2, cd3, cd4, cd5
+      CHARACTER(len=*), INTENT(in), OPTIONAL ::  cd6, cd7, cd8, cd9, cd10
+      INTEGER, PARAMETER :: numout=6
+      !!----------------------------------------------------------------------
+      !
+      !nstop = nstop + 1
+
+      ! force to open ocean.output file
+      !IF( numout == 6 ) CALL ctl_opn( numout, 'ocean.output', 'APPEND', 'FORMATTED', 'SEQUENTIAL', -1, 6, .FALSE. )
+
+      WRITE(numout,cform_err)
+      IF( PRESENT(cd1 ) )   WRITE(numout,*) TRIM(cd1)
+      IF( PRESENT(cd2 ) )   WRITE(numout,*) TRIM(cd2)
+      IF( PRESENT(cd3 ) )   WRITE(numout,*) TRIM(cd3)
+      IF( PRESENT(cd4 ) )   WRITE(numout,*) TRIM(cd4)
+      IF( PRESENT(cd5 ) )   WRITE(numout,*) TRIM(cd5)
+      IF( PRESENT(cd6 ) )   WRITE(numout,*) TRIM(cd6)
+      IF( PRESENT(cd7 ) )   WRITE(numout,*) TRIM(cd7)
+      IF( PRESENT(cd8 ) )   WRITE(numout,*) TRIM(cd8)
+      IF( PRESENT(cd9 ) )   WRITE(numout,*) TRIM(cd9)
+      IF( PRESENT(cd10) )   WRITE(numout,*) TRIM(cd10)
+
+      WRITE(numout,*) ''
+      !CALL FLUSH(numout    )
+      !IF( numstp     /= -1 )   CALL FLUSH(numstp    )
+      !IF( numrun     /= -1 )   CALL FLUSH(numrun    )
+      !IF( numevo_ice /= -1 )   CALL FLUSH(numevo_ice)
+      !
+      !IF( cd1 == 'STOP' ) THEN
+      !   WRITE(numout,*)  'huge E-R-R-O-R : immediate stop'
+      !   CALL mppstop(ld_force_abort = .true.)
+      !ENDIF
+      STOP
+      !
+   END SUBROUTINE ctl_stop
+
+
+
 
 
 

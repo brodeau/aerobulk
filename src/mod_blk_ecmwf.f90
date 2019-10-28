@@ -68,15 +68,14 @@ CONTAINS
       IF ( l_use_wl ) THEN
          ierr = 0
          ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_wl & Hz_wl failed!'
+         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_wl & Hz_wl failed!' )
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
       END IF
-      !!
       IF ( l_use_cs ) THEN
          ierr = 0
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         !IF( ierr > 0 ) STOP ' ECMWF_INIT => allocation of dT_cs failed!'
+         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       END IF
    END SUBROUTINE ecmwf_init
@@ -218,17 +217,11 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initializations for cool skin and warm layer:
-      IF ( l_use_cs ) THEN
-         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use cool-skin param!'; STOP
-         END IF
-      END IF
+      IF ( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+         &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use cool-skin param!' )
 
-      IF ( l_use_wl ) THEN
-         IF( .NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)) ) THEN
-            PRINT *, ' * PROBLEM ('//TRIM(crtnm)//'): you need to provide Qsw, rad_lw & slp to use warm-layer param!'; STOP
-         END IF
-      END IF
+      IF ( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+         &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use warm-layer param!' )
 
       IF ( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
