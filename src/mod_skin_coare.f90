@@ -29,8 +29,6 @@ MODULE mod_skin_coare
    !! Cool-skin related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
       &                        dT_cs         !: dT due to cool-skin effect => temperature difference between air-sea interface (z=0) and right below viscous layer (z=delta)
-   REAL(wp), PARAMETER :: zcon0 = -16._wp * grav * rho0_w * rCp0_w * rnu0_w*rnu0_w*rnu0_w / ( rk0_w*rk0_w ) ! "-" because ocean convention: Qabs > 0 => gain of heat for ocean!
-   !!                             => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)
 
    !! Warm-layer related parameters:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
@@ -300,8 +298,8 @@ CONTAINS
       zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
       zusw2 = zusw*zusw
       !
-      zlamb = 6._wp*( 1._wp + MAX(palpha*zcon0/(zusw2*zusw2)*zQd, 0._wp)**0.75 )**(-1./3.) ! see Eq.(14) in Fairall et al., 1996
-      !  => zlamb is not used when Qd > 0, and since zcon0 < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
+      zlamb = 6._wp*( 1._wp + MAX(palpha*rcst_cs/(zusw2*zusw2)*zQd, 0._wp)**0.75 )**(-1./3.) ! see Eq.(14) in Fairall et al., 1996
+      !  => zlamb is not used when Qd > 0, and since rcst_cs < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
       !
       ztmp = rnu0_w/zusw
       delta_skin_layer = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996

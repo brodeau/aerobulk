@@ -180,7 +180,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             ::   L_vap_vctr   ! latent heat of vaporization   [J/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
       !!----------------------------------------------------------------------------------
-      !
+      !      
       L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
       !
    END FUNCTION L_vap_vctr
@@ -254,12 +254,14 @@ CONTAINS
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zta = MAX( ptak(ji,jj),  180._wp) ! prevents screw-up over masked regions where field == 0.
-            zqa = MAX( pqa(ji,jj),  1.E-6_wp) !    "                   "                     "
-            !
-            zwa = zqa / (1. - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
-            ziRT = 1._wp/(R_dry*zta)    ! 1/RT
-            gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
+            gamma_moist_vctr(ji,jj) = gamma_moist_sclr( ptak(ji,jj), pqa(ji,jj) )
+            
+            !zta = MAX( ptak(ji,jj),  180._wp) ! prevents screw-up over masked regions where field == 0.
+            !zqa = MAX( pqa(ji,jj),  1.E-6_wp) !    "                   "                     "
+            !!
+            !zwa = zqa / (1. - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
+            !ziRT = 1._wp/(R_dry*zta)    ! 1/RT
+            !gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
          END DO
       END DO
       !
@@ -380,18 +382,26 @@ CONTAINS
 
       REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_vctr !: vapour pressure at saturation  [Pa]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature (K)
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      !!----------------------------------------------------------------------------------
+      !
 
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
+      !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
+      !
+      !ALLOCATE ( ztmp(jpi,jpj) )
 
-      ALLOCATE ( ztmp(jpi,jpj) )
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            e_sat_vctr(ji,jj) = e_sat_sclr(ptak(ji,jj))
+         END DO
+      END DO
+      !ztmp(:,:) = rtt0/ptak(:,:)
+      !
+      !e_sat_vctr = 100.*( 10.**(10.79574*(1. - ztmp) - 5.028*LOG10(ptak/rtt0)         &
+      !   &       + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(ptak/rtt0 - 1.)) )   &
+      !   &       + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
 
-      ztmp(:,:) = rtt0/ptak(:,:)
-
-      e_sat_vctr = 100.*( 10.**(10.79574*(1. - ztmp) - 5.028*LOG10(ptak/rtt0)         &
-         &       + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(ptak/rtt0 - 1.)) )   &
-         &       + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
-
-      DEALLOCATE ( ztmp )
+      !DEALLOCATE ( ztmp )
 
    END FUNCTION e_sat_vctr
 
