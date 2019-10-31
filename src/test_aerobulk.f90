@@ -389,7 +389,7 @@ PROGRAM TEST_AEROBULK
 
       !! Turbulent fluxes:
       
-      CALL TURB_FLUXES( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
+      CALL BULK_FORMULA( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
          &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
       
       vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2

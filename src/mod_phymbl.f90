@@ -54,9 +54,9 @@ MODULE mod_phymbl
       MODULE PROCEDURE alpha_sw_vctr, alpha_sw_sclr
    END INTERFACE alpha_sw
 
-   INTERFACE turb_fluxes
-      MODULE PROCEDURE turb_fluxes_vctr, turb_fluxes_sclr
-   END INTERFACE turb_fluxes
+   INTERFACE bulk_formula
+      MODULE PROCEDURE bulk_formula_vctr, bulk_formula_sclr
+   END INTERFACE bulk_formula
 
 
 
@@ -80,7 +80,7 @@ MODULE mod_phymbl
    PUBLIC q_sat_simple
    PUBLIC update_qnsol_tau
    PUBLIC alpha_sw
-   PUBLIC turb_fluxes
+   PUBLIC bulk_formula
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -737,7 +737,7 @@ CONTAINS
             zCh = zz0*ptst(ji,jj)/zdt
             zCe = zz0*pqst(ji,jj)/zdq
             
-            CALL TURB_FLUXES( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
+            CALL BULK_FORMULA( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
                &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
                &              pTau(ji,jj), zQsen, zQlat )
             
@@ -752,7 +752,7 @@ CONTAINS
    END SUBROUTINE UPDATE_QNSOL_TAU
 
 
-   SUBROUTINE TURB_FLUXES_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
+   SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
       &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
@@ -797,15 +797,15 @@ CONTAINS
             pQsen(ji,jj) = zUrho * pCh(ji,jj) * (pTa(ji,jj) - pTs(ji,jj)) * cp_air(pqa(ji,jj))
             pQlat(ji,jj) = L_vap(pTs(ji,jj)) * zevap
 
-            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = - zevap
+            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = - zevap ! usually Evap is provided as a positive field (even though it is a loss for the ocean)
             IF ( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
 
          END DO
       END DO
-   END SUBROUTINE TURB_FLUXES_VCTR
+   END SUBROUTINE BULK_FORMULA_VCTR
 
 
-   SUBROUTINE TURB_FLUXES_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
+   SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
       &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
@@ -851,7 +851,7 @@ CONTAINS
       IF ( PRESENT(pEvap) ) pEvap = - zevap
       IF ( PRESENT(prhoa) ) prhoa = zrho
 
-   END SUBROUTINE TURB_FLUXES_SCLR
+   END SUBROUTINE BULK_FORMULA_SCLR
 
 
 

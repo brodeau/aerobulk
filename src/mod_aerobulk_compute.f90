@@ -186,7 +186,7 @@ CONTAINS
       !! Skin temperature:
       !! IF( l_use_skin ) => zTs and zqs have been updated from SST to skin temperature !
 
-      CALL TURB_FLUXES( zu, zTs, zqs, pTzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
+      CALL BULK_FORMULA( zu, zTs, zqs, pTzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
          &                                 zTaum, QH, QL )
 
       Tau_x = zTaum / zWzu * U_zu

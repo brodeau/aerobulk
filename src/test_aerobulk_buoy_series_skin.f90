@@ -385,7 +385,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
 
       !! Turbulent heat fluxes:
-      CALL TURB_FLUXES( zu, Ts(:,:,jt), qs(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), &
+      CALL BULK_FORMULA( zu, Ts(:,:,jt), qs(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), &
          &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
          &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
          &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
