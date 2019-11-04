@@ -180,7 +180,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             ::   L_vap_vctr   ! latent heat of vaporization   [J/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
       !!----------------------------------------------------------------------------------
-      !      
+      !
       L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
       !
    END FUNCTION L_vap_vctr
@@ -726,12 +726,12 @@ CONTAINS
             zCd = zz0*zz0
             zCh = zz0*ptst(ji,jj)/zdt
             zCe = zz0*pqst(ji,jj)/zdq
-            
+
             CALL BULK_FORMULA( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
                &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
                &              pTau(ji,jj), zQsen, zQlat )
-            
-            zTs2  = pTs(ji,jj)*pTs(ji,jj)            
+
+            zTs2  = pTs(ji,jj)*pTs(ji,jj)
             zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
 
             pQns(ji,jj) = zQlat + zQsen + zQlw
