@@ -1,4 +1,4 @@
-! AeroBulk / 2016 / L. Brodeau
+! AeroBulk / 2019 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
 !
@@ -25,8 +25,8 @@ MODULE mod_blk_ncar
    !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
-   USE mod_const   !: physical and othe constants
-   USE mod_phymbl  !: thermodynamics
+   USE mod_const       !: physical and othe constants
+   USE mod_phymbl      !: thermodynamics
 
    IMPLICIT NONE
    PRIVATE
@@ -39,7 +39,7 @@ CONTAINS
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
       &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
       &                   xz0, xu_star, xL, xUN10 )
-      !!----------------------------------------------------------------------------------
+      !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
@@ -51,12 +51,12 @@ CONTAINS
       !! INPUT :
       !! -------
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
-      !!    *  zu   : height for wind speed (generally 10m)                   [m]
-      !!    *  U_zu : scalar wind speed at 10m                                [m/s]
-      !!    *  sst  : SST                                                     [K]
+      !!    *  zu   : height for wind speed (usually 10m)                     [m]
+      !!    *  sst  : bulk SST                                                [K]
       !!    *  t_zt : potential air temperature at zt                         [K]
       !!    *  ssq  : specific humidity at saturation at SST                  [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
+      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!
       !!
       !! OUTPUT :
@@ -66,14 +66,14 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind speed at 10m                                [m/s]
+      !!    *  U_blk  : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
       !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star     : return u* the friction velocity                    [m/s]
       !!    * xL          : return the Monin-Obukhov length                    [m]
-      !!    * xUN10       : return the Monin-Obukhov length                    [m/s]
+      !!    * xUN10       : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
@@ -82,14 +82,14 @@ CONTAINS
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature                [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity                   [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind at 10m                          [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
@@ -107,8 +107,9 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   stab          ! stability test integer
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ncar@mod_blk_ncar.f90'
       !!----------------------------------------------------------------------------------
-   
+
       ALLOCATE( Cx_n10(jpi,jpj), sqrt_Cd_n10(jpi,jpj), &
          &    zeta_u(jpi,jpj), stab(jpi,jpj), zpsi_h_u(jpi,jpj),  &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
@@ -118,9 +119,8 @@ CONTAINS
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
-
       l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01 )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
@@ -140,8 +140,8 @@ CONTAINS
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt   ;   q_zu = q_zt
 
-      !!  * Now starting iteration loop
-      DO j_itt=1, nb_itt
+      !! ITERATION BLOCK
+      DO j_itt = 1, nb_itt
          !
          ztmp1 = t_zu - sst   ! Updating air/sea differences
          ztmp2 = q_zu - ssq
@@ -196,14 +196,13 @@ CONTAINS
          ztmp1 = 1._wp + Cx_n10*ztmp0
          Ce  = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
 
-      END DO
+      END DO !DO j_itt = 1, nb_itt
 
       IF( lreturn_z0 )    xz0     = zu*EXP( -(vkarmn/sqrt_Cd_n10) )
       IF( lreturn_ustar ) xu_star = stab*U_blk
       IF( lreturn_L )     xL      = zu/zeta_u
       IF( lreturn_UN10 )  xUN10   = U_blk/(1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - psi_m(zeta_u)))
 
-      
       DEALLOCATE( Cx_n10, sqrt_Cd_n10, &
          &    zeta_u, stab, zpsi_h_u, ztmp0, &
          &    ztmp1, ztmp2 )
@@ -253,19 +252,18 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
-      !!     
-      !! pzet0 : stability paramenter, z/L where z is altitude measurement                                          
+      !!
+      !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pzeta
-      REAL(wp), DIMENSION(jpi,jpj)             ::   psi_m
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_m
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
-      INTEGER  ::   ji, jj         ! dummy loop indices
+      INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zx2, zx, zstab   ! local scalars
       !!----------------------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
@@ -279,7 +277,6 @@ CONTAINS
             !
          END DO
       END DO
-      !
    END FUNCTION psi_m
 
 
@@ -288,15 +285,15 @@ CONTAINS
       !! Universal profile stability function for temperature and humidity
       !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
       !!
-      !! pzet0 : stability paramenter, z/L where z is altitude measurement                                          
+      !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
       !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_h
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(jpi,jpj)             :: psi_h
       !
-      INTEGER  ::   ji, jj    ! dummy loop indices
+      INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) :: zx2, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       !
@@ -311,7 +308,6 @@ CONTAINS
             !
          END DO
       END DO
-      !
    END FUNCTION psi_h
 
    !!======================================================================

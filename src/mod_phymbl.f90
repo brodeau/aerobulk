@@ -249,22 +249,12 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             ::   gamma_moist_vctr   ! moist adiabatic lapse-rate
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) :: zta, zqa, zwa, ziRT        ! local scalar
       !!----------------------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             gamma_moist_vctr(ji,jj) = gamma_moist_sclr( ptak(ji,jj), pqa(ji,jj) )
-            
-            !zta = MAX( ptak(ji,jj),  180._wp) ! prevents screw-up over masked regions where field == 0.
-            !zqa = MAX( pqa(ji,jj),  1.E-6_wp) !    "                   "                     "
-            !!
-            !zwa = zqa / (1. - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
-            !ziRT = 1._wp/(R_dry*zta)    ! 1/RT
-            !gamma_moist_vctr(ji,jj) = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
          END DO
       END DO
-      !
    END FUNCTION gamma_moist_vctr
 
    FUNCTION gamma_moist_sclr( ptak, pqa )

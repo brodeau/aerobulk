@@ -430,7 +430,6 @@ CONTAINS
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zzeta, zx, ztmp, psi_unst, psi_stab, stab
       !!----------------------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -457,7 +456,6 @@ CONTAINS
             !
          END DO
       END DO
-      !
    END FUNCTION psi_m_ecmwf
 
 
@@ -502,7 +500,6 @@ CONTAINS
             !
          END DO
       END DO
-      !
    END FUNCTION psi_h_ecmwf
 
 

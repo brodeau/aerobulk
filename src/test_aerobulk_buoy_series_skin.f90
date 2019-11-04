@@ -10,7 +10,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
 
-
+   USE mod_blk_ncar
    USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
@@ -26,7 +26,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   INTEGER, PARAMETER :: nb_algos = 3
+   INTEGER, PARAMETER :: nb_algos = 4
 
    !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
@@ -207,10 +207,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
 
 
-   ians=0
-   DO WHILE ( (ians<1).OR.(ians>nb_algos) )
-      WRITE(6,*) 'Which algo to use? "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
+   ians=-1
+   DO WHILE ( (ians<0).OR.(ians>nb_algos) )
+      WRITE(6,*) 'Which algo to use? "ncar" => 0 , "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
       READ(*,*) ians
+      IF ( ians == 0 ) calgo = 'ncar     '
       IF ( ians == 1 ) calgo = 'coare3p0 '
       IF ( ians == 2 ) calgo = 'ecmwf    '
       IF ( ians == 3 ) calgo = 'coare3p6 '
@@ -250,8 +251,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !! Some initializations:
 
-   ialgo = 1
-
+   ialgo = 0
    zz0 = 0.
    zus = 0.
    zL  = 0.
@@ -347,28 +347,46 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
 
-      IF ( TRIM(calgo) == 'coare3p6' ) THEN
+      
+      SELECT CASE ( TRIM(calgo) )
+
+      CASE ( 'ncar' )
+         CALL TURB_NCAR    (     zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         
+      CASE ( 'coare3p0' )
          CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),       & ! for cool-skin !
             &             isecday_utc=isecday_utc, plong=xlon(:,:), pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt), &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
+         
          zQac(:,:,jt) = Qnt_ac(:,:) ! known from module "mod_skin_coare"
          zTac(:,:,jt) = Tau_ac(:,:) !                "
 
-      ELSEIF( TRIM(calgo) == 'ecmwf'    ) THEN
+      CASE ( 'coare3p6' )
+         CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),       & ! for cool-skin !
+            &             isecday_utc=isecday_utc, plong=xlon(:,:), pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt), &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         
+         zQac(:,:,jt) = Qnt_ac(:,:) ! known from module "mod_skin_coare"
+         zTac(:,:,jt) = Tau_ac(:,:) !                "
+
+      CASE ( 'ecmwf'    )
          CALL TURB_ECMWF(   jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),     & ! for cool-skin !
             &             pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt),        &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-      ELSE
+      CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP
-      END IF
-
+      END SELECT
+      
       dT(:,:,jt) = Ts(:,:,jt) - SST(:,:,jt)
 
       !! => Ts and qs ARE updated, but only for cool-skin !!!!
