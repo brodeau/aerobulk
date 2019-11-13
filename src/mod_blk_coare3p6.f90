@@ -331,7 +331,6 @@ CONTAINS
             q_zu = q_zt - q_star/vkarmn*ztmp1
          END IF
 
-
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
 
@@ -343,7 +342,6 @@ CONTAINS
             T_s(:,:) = zsst(:,:) + dT_cs(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-
          END IF
 
          IF( l_use_wl ) THEN
