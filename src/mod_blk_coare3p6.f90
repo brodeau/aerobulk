@@ -188,14 +188,11 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
-      !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
-
-
+      !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
       !!----------------------------------------------------------------------------------
-
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
          &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
@@ -227,7 +224,6 @@ CONTAINS
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       END IF
-
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
@@ -447,7 +443,6 @@ CONTAINS
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -471,10 +466,8 @@ CONTAINS
             psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
                &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
                &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )   !     "
-            !
          END DO
       END DO
-      !
    END FUNCTION psi_m_coare
 
 
@@ -494,13 +487,12 @@ CONTAINS
       !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
-      !!
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_coare
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !
+      !!----------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -523,10 +515,8 @@ CONTAINS
             psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
                &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
                &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
-            !
          END DO
       END DO
-      !
    END FUNCTION psi_h_coare
 
    !!======================================================================

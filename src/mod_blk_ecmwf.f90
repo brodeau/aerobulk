@@ -453,7 +453,6 @@ CONTAINS
             !
             psi_m_ecmwf(ji,jj) = (1._wp - stab) * psi_unst & ! (zzeta < 0) Unstable
                &                +      stab  * psi_stab      ! (zzeta > 0) Stable
-            !
          END DO
       END DO
    END FUNCTION psi_m_ecmwf
@@ -476,7 +475,6 @@ CONTAINS
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) ::  zzeta, zx, psi_unst, psi_stab, stab
       !!----------------------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -497,7 +495,6 @@ CONTAINS
             !
             psi_h_ecmwf(ji,jj) = (1._wp - stab) * psi_unst &   ! (zzeta < 0) Unstable
                &                +    stab    * psi_stab        ! (zzeta > 0) Stable
-            !
          END DO
       END DO
    END FUNCTION psi_h_ecmwf
