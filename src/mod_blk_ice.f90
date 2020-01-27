@@ -68,7 +68,7 @@ CONTAINS
    !END SUBROUTINE ice_init
 
 
-   
+
    SUBROUTINE turb_ice( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu,   &
       &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,        &
       &                     xz0, xu_star, xL, xUN10 )
@@ -76,7 +76,7 @@ CONTAINS
       !!                      ***  ROUTINE  turb_ice  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
-      !!                fluxes according 
+      !!                fluxes according
       !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
       !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
       !!
@@ -138,7 +138,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
-         &  znu_a,           & !: Nu_air, Viscosity of air
+         &  znu_a,           & !: Nu_air = kinematic viscosity of air
          &  z0, z0t
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
@@ -153,7 +153,7 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      IF ( kt == nit000 ) CALL ICE_INIT(l_use_cs, l_use_wl)
+      !IF ( kt == nit000 ) CALL ICE_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -180,7 +180,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      z0     = alfa_charn_3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      !z0     = rough_leng(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
@@ -195,8 +195,8 @@ CONTAINS
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       ztmp0 = ztmp0*ztmp2
-      zeta_u = (1._wp-ztmp1) * (ztmp0/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0
-         &  +     ztmp1   * (ztmp0*(1._wp + 27._wp/9._wp*ztmp2/ztmp0))               !  BRN > 0
+      !zeta_u = (1._wp-ztmp1) * (ztmp0/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0
+      !   &  +     ztmp1   * (ztmp0*(1._wp + 27._wp/9._wp*ztmp2/ztmp0))               !  BRN > 0
       !#LB: should make sure that the "ztmp0" of "27./9.*ztmp2/ztmp0" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
 
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
@@ -230,7 +230,7 @@ CONTAINS
          ztmp1 = u_star*u_star   ! u*^2
 
          !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
-         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
+         !ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
          !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
          U_blk = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
          ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
@@ -248,7 +248,7 @@ CONTAINS
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         !z0    = rough_leng(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
          z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp
@@ -270,14 +270,14 @@ CONTAINS
             q_zu = q_zt - q_star/vkarmn*ztmp1
          END IF
 
-         
+
          IF( .NOT. l_zt_equal_zu ) THEN
             dt_zu = t_zu - Ti_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - qi_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
-         
+
       END DO !DO j_itt = 1, nb_itt
-      
+
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/U_blk
       Cd   = ztmp0*ztmp0
@@ -292,43 +292,51 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
-      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
-
-      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
-
    END SUBROUTINE turb_ice
 
 
-   !FUNCTION alfa_charn_3p6( pwnd )
-   !   !!-------------------------------------------------------------------
-   !   !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
-   !   !!  "wind speed dependent formulation"
-   !   !!  (Eq. 13 in Edson et al., 2013)
-   !   !!
-   !   !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
-   !   !!-------------------------------------------------------------------
-   !   REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p6
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! neutral wind speed at 10m
-   !   !
-   !   REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
-   !   !!-------------------------------------------------------------------
-   !   alfa_charn_3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
-   !   !!
-   !END FUNCTION alfa_charn_3p6
+   FUNCTION rough_leng_m( pus , pta )
+      !!----------------------------------------------------------------------------------
+      !! Computes the roughness length of sea-ice according to Andreas et al. 2005, (eq. 19)
+      !!
+      !! Author: L. Brodeau, January 2020 / AeroBulk  (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: rough_leng_m      ! roughness length of sea-ice [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus ! u* = friction velocity    [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta ! air temperature (only used to estimate kinematic viscosity of air) [K]
+      !!
+      INTEGER  :: ji, jj    ! dummy loop indices
+      REAL(wp) :: znu, zus, zz
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            
+            znu = visc_air( t_zu(ji,jj) ) ! Air viscosity (m^2/s) from temperature in (K)
+            zus = pus(ji,jj)
+
+            zz = (zus - 0.18_wp) / 0.1_wp
+            
+            rough_leng_m(ji,jj) = 0.135*znu/zus + 0.035*us*us/grav*( 5.*EXP(-zz*zz) + 1._wp )
+            
+         END DO
+      END DO
+      !!
+   END FUNCTION rough_leng_m
 
 
    FUNCTION psi_m_ice( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
-      !!             
+      !!
+      !!
+      !!     Andreas et al 2005 == Jordan et al. 1999
+      !!
+      !!     Psi:
+      !!     Unstable => Paulson 1970
+      !!     Stable   => Holtslag & De Bruin 1988
+      !!
       !!             pzeta : stability paramenter, z/L where z is altitude
       !!                     measurement and L is M-O length
-      !!       Stability function for wind speed and scalars matching Kansas and free
-      !!       convection forms with weighting f convective form, follows Fairall et
-      !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !!       form from Beljaars and Holtslag (1991)
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
@@ -336,91 +344,74 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      REAL(wp) :: zphi_m, zpsi_u
+      REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
             zta = pzeta(ji,jj)
             !
-            
             ! Unstable stratification:
+            zx = ABS(1._wp - 16._wp*zta)**.25              !  (16 here, not 15!)
 
-            zphi_m = ABS(1._wp - 16._wp*zta)**.25    !     (16 here, not 15!)
+            zpsi_u =      LOG( (1._wp + zx*zx)/2. ) &  ! Eq.(30) Jordan et al. 1999
+               &     + 2.*LOG( (1._wp + zx       )/2. ) &
+               &    - 2.*ATAN( zx ) + 0.5*rpi
 
-            zpsi_u =      LOG( (1._wp + zphi_m*zphi_m)/2. ) &
-               &     + 2.*LOG( (1._wp + zphi_m       )/2. ) &
-               &    - 2.*ATAN( zphi_m ) + 0.5*rpi
-            
-            lolo_stop
+            ! Stable stratification:
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
 
-            !
-            zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
-               & - 2.*ATAN(zphi_m) + 0.5*rpi
-            !
-            zphi_c = ABS(1. - 10.15*zta)**.3333                   !!Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp, 0.35_wp*zta)
+            !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)
+            psi_m_ice(ji,jj) = (1._wp - zstab) * zpsi_u   & ! Unstable (zta < 0)
+               &                   + zstab     * zpsi_s     ! Stable (zta > 0)
             !
-            psi_m_ice(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
-               &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
-               &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )   !     "
          END DO
       END DO
    END FUNCTION psi_m_ice
 
 
    FUNCTION psi_h_ice( pzeta )
-      !!---------------------------------------------------------------------
-      !! Universal profile stability function for temperature and humidity
-      !! 
+      !!----------------------------------------------------------------------------------
+      !! ** Purpose: compute the universal profile stability function for
+      !!             temperature and humidity
       !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
       !!
-      !! Stability function for wind speed and scalars matching Kansas and free
-      !! convection forms with weighting f convective form, follows Fairall et
-      !! al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !! form from Beljaars and Holtslag (1991)
+      !!     Andreas et al 2005 == Jordan et al. 1999
       !!
-      !! Author: L. Brodeau, June 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------
+      !!     Psi:
+      !!     Unstable => Paulson 1970
+      !!     Stable   => Holtslag & De Bruin 1988
+      !!
+      !!             pzeta : stability paramenter, z/L where z is altitude
+      !!                     measurement and L is M-O length
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------
+      INTEGER  ::   ji, jj    ! dummy loop indices
+      REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
+      !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
             zta = pzeta(ji,jj)
             !
-            zphi_h = (ABS(1. - 15.*zta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
-            !
-            zpsi_k = 2.*LOG((1. + zphi_h)/2.)
-            !
-            zphi_c = (ABS(1. - 34.15*zta))**.3333   !! Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp,0.35_wp*zta)
+            ! Unstable stratification:
+            zx = ABS(1._wp - 16._wp*zta)**.25              !  (16 here, not 15!)
+
+            zpsi_u =   2.*LOG( (1._wp + zx*zx)/2. )  ! Eq.(31) Jordan et al. 1999
+
+            ! Stable stratification (identical to Psi_m!):
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
+
+            !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)
+            psi_h_ice(ji,jj) = (1._wp - zstab) * zpsi_u   & ! Unstable (zta < 0)
+               &                   + zstab     * zpsi_s     ! Stable (zta > 0)
             !
-            psi_h_ice(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-               &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
-               &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
          END DO
       END DO
    END FUNCTION psi_h_ice
