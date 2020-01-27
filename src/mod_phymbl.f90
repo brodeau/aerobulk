@@ -30,6 +30,10 @@ MODULE mod_phymbl
    IMPLICIT NONE
    PRIVATE
 
+   INTERFACE visc_air
+      MODULE PROCEDURE visc_air_vctr, visc_air_sclr
+   END INTERFACE visc_air
+
    INTERFACE gamma_moist
       MODULE PROCEDURE gamma_moist_vctr, gamma_moist_sclr
    END INTERFACE gamma_moist
@@ -146,29 +150,37 @@ CONTAINS
 
 
 
-   FUNCTION visc_air(ptak)
+
+   FUNCTION visc_air_sclr(ptak)
       !!----------------------------------------------------------------------------------
-      !! Air kinetic viscosity (m^2/s) given from temperature in degrees...
+      !! Air kinetic viscosity (m^2/s) given from air temperature in Kelvin
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   visc_air   !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak       ! air temperature in (K)
+      REAL(wp)             :: visc_air_sclr   ! kinetic viscosity (m^2/s)
+      REAL(wp), INTENT(in) :: ptak       ! air temperature in (K)
       !
-      INTEGER  ::   ji, jj      ! dummy loop indices
       REAL(wp) ::   ztc, ztc2   ! local scalar
       !!----------------------------------------------------------------------------------
       !
+      ztc  = ptak - rt0   ! air temp, in deg. C
+      ztc2 = ztc*ztc
+      visc_air_sclr = 1.326e-5*(1. + 6.542E-3*ztc + 8.301e-6*ztc2 - 4.84e-9*ztc2*ztc)
+      !
+   END FUNCTION visc_air_sclr
+   
+   FUNCTION visc_air_vctr(ptak)
+      REAL(wp), DIMENSION(jpi,jpj)             ::   visc_air_vctr   ! kinetic viscosity (m^2/s)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak       ! air temperature in (K)
+      INTEGER  ::   ji, jj      ! dummy loop indices
       DO jj = 1, jpj
          DO ji = 1, jpi
-            ztc  = ptak(ji,jj) - rt0   ! air temp, in deg. C
-            ztc2 = ztc*ztc
-            visc_air(ji,jj) = 1.326e-5*(1. + 6.542E-3*ztc + 8.301e-6*ztc2 - 4.84e-9*ztc2*ztc)
+            visc_air_vctr(ji,jj) = visc_air_sclr( ptak(ji,jj) )
          END DO
       END DO
-      !
-   END FUNCTION visc_air
+   END FUNCTION visc_air_vctr
 
+   
    FUNCTION L_vap_vctr( psst )
       !!---------------------------------------------------------------------------------
       !!                           ***  FUNCTION L_vap_vctr  ***
