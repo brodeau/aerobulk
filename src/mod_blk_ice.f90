@@ -336,14 +336,25 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zta, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zphi_m, zpsi_u
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
             zta = pzeta(ji,jj)
             !
-            zphi_m = ABS(1. - 15.*zta)**.25    !!Kansas unstable
+            
+            ! Unstable stratification:
+
+            zphi_m = ABS(1._wp - 16._wp*zta)**.25    !     (16 here, not 15!)
+
+            zpsi_u =      LOG( (1._wp + zphi_m*zphi_m)/2. ) &
+               &     + 2.*LOG( (1._wp + zphi_m       )/2. ) &
+               &    - 2.*ATAN( zphi_m ) + 0.5*rpi
+            
+            lolo_stop
+
             !
             zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
                & - 2.*ATAN(zphi_m) + 0.5*rpi
