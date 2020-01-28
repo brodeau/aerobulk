@@ -99,7 +99,7 @@ PROGRAM TEST_ICE
    cfout1 = 'z0_z0t_z0q__ustar_test.dat'
    
    OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)
-   WRITE(11,*) '**  u*      z0        z0t         z0q'
+   WRITE(11,*) '#    u*         z0           z0t          z0q'
    DO ju = 1, nustar
       WRITE(11,*) REAL(vus(1,ju),4), REAL(vz0(1,ju),4), REAL(vz0tq(1,ju,1),4), REAL(vz0tq(1,ju,2),4)
    END DO
