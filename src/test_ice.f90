@@ -20,8 +20,8 @@ PROGRAM TEST_ICE
    REAL(wp), DIMENSION(1,nustar)   :: vtair, vnua
    
    REAL(wp), PARAMETER :: &
-      &   us_min =  0. , &
-      &   us_max =  0.5
+      &   us_min =  0.001 , &
+      &   us_max =  0.701
 
    INTEGER :: ju
 
