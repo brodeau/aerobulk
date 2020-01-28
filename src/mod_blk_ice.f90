@@ -30,6 +30,7 @@ MODULE mod_blk_ice
 
    !PUBLIC :: ICE_INIT, TURB_ICE
    PUBLIC :: TURB_ICE
+   PUBLIC :: rough_leng_m, rough_leng_tq
 
    !!
    !REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -295,34 +296,98 @@ CONTAINS
    END SUBROUTINE turb_ice
 
 
-   FUNCTION rough_leng_m( pus , pta )
+
+   FUNCTION rough_leng_m( pus , pnua )
       !!----------------------------------------------------------------------------------
       !! Computes the roughness length of sea-ice according to Andreas et al. 2005, (eq. 19)
       !!
       !! Author: L. Brodeau, January 2020 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: rough_leng_m      ! roughness length of sea-ice [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus ! u* = friction velocity    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta ! air temperature (only used to estimate kinematic viscosity of air) [K]
+      REAL(wp), DIMENSION(jpi,jpj) :: rough_leng_m      ! roughness length over sea-ice [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
       !!
       INTEGER  :: ji, jj    ! dummy loop indices
-      REAL(wp) :: znu, zus, zz
+      REAL(wp) :: zus, zz
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             
-            znu = visc_air( t_zu(ji,jj) ) ! Air viscosity (m^2/s) from temperature in (K)
-            zus = pus(ji,jj)
+            zus = MAX( pus(ji,jj) , 1.E-9_wp )
 
             zz = (zus - 0.18_wp) / 0.1_wp
             
-            rough_leng_m(ji,jj) = 0.135*znu/zus + 0.035*us*us/grav*( 5.*EXP(-zz*zz) + 1._wp )
+            rough_leng_m(ji,jj) = 0.135*pnua(ji,jj)/zus + 0.035*zus*zus/grav*( 5.*EXP(-zz*zz) + 1._wp )
             
          END DO
       END DO
       !!
    END FUNCTION rough_leng_m
+   
+   FUNCTION rough_leng_tq( pz0, pus , pnua )
+      !!----------------------------------------------------------------------------------
+      !! Computes the roughness length of sea-ice according to Andreas et al. 2005, (eq. 22)
+      !!    => which still relies on Andreas 1987 !
+      !!
+      !! Author: L. Brodeau, January 2020 / AeroBulk  (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj,2)           :: rough_leng_tq     ! temp.,hum. roughness lengthes over sea-ice [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0   ! roughness length            [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
+      !!
+      INTEGER  :: ji, jj    ! dummy loop indices
+      REAL(wp) :: zz0, zus, zz, zre, zsmoot, ztrans, zrough
+      REAL(wp) :: zb0, zb1, zb2, zlog, zlog2, zlog_z0s_on_z0
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
 
+            zz0 = pz0(ji,jj)
+            zus = MAX( pus(ji,jj) , 1.E-9_wp )
+            zre = MAX( zus*zz0/pnua(ji,jj) , 0._wp ) ! Roughness Reynolds number
+
+            !! *** TABLE 1 of Andreas et al. 2005 ***
+            !! Smooth flow condition (R* <= 0.135):
+            zsmoot = 0.5_wp + SIGN( 0.5_wp, (0.135_wp   - zre) ) ! zre <= 0.135: zsmoot==1 ; otherwize: zsmoot==0
+            !! Transition (0.135 < R* < 2.5):
+            ztrans = 0.5_wp + SIGN( 0.5_wp, (2.49999_wp - zre) ) - zsmoot
+            !! Rough ( R* > 2.5):
+            zrough = 0.5_wp + SIGN( 0.5_wp, (zre - 2.5_wp) )
+            
+            IF( (zsmoot+ztrans+zrough > 1.001_wp).OR.(zsmoot+ztrans+zrough < 0.999_wp) ) &
+               CALL ctl_stop( ' rough_leng_tq@mod_blk_ice.f90 => something wrong with zsmoot, ztrans, zrough!' )
+
+            zlog  = LOG(zre)
+            zlog2 = zlog*zlog
+            
+            !! z0t:
+            zb0 = zsmoot*1.25_wp + ztrans*0.149_wp + zrough*0.317_wp
+            zb1 =                - ztrans*0.550_wp - zrough*0.565_wp
+            zb2 =                                  - zrough*0.183_wp
+            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2            
+            rough_leng_tq(ji,jj,1) = zz0 * EXP( zlog_z0s_on_z0 )
+
+            !! z0q:
+            zb0 = zsmoot*1.61_wp + ztrans*0.351_wp + zrough*0.396_wp
+            zb1 =                - ztrans*0.628_wp - zrough*0.512_wp
+            zb2 =                                  - zrough*0.180_wp
+            zlog = LOG(zre)
+            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2            
+            rough_leng_tq(ji,jj,2) = zz0 * EXP( zlog_z0s_on_z0 )
+
+         END DO
+      END DO
+      !!
+   END FUNCTION rough_leng_tq
+
+
+
+
+
+
+
+   
 
    FUNCTION psi_m_ice( pzeta )
       !!----------------------------------------------------------------------------------

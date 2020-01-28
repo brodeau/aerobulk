@@ -3,7 +3,7 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x
+All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x
 
 sk: bin/test_aerobulk_buoy_series_skin.x
 
@@ -90,6 +90,11 @@ bin/test_phymbl.x: src/test_phymbl.f90 lib/libaerobulk.a
 bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat
 	$(FC) $(FF) src/cx_vs_wind_test.f90 -o bin/cx_vs_wind_test.x $(LIB)
+
+bin/test_ice.x: src/test_ice.f90 lib/libaerobulk.a
+	@mkdir -p bin
+	$(FC) $(FF) src/test_ice.f90 -o bin/test_ice.x $(LIB)
+
 
 
 
