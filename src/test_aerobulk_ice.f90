@@ -4,8 +4,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    USE mod_const
    USE mod_phymbl
-   USE mod_blk_ice
-
+   USE mod_blk_ice_an05
+   
    IMPLICIT NONE
 
    INTEGER, PARAMETER :: nb_algos = 1

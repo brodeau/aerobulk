@@ -7,7 +7,7 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_blk_ice
+MODULE mod_blk_ice_an05
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
    !!
@@ -111,7 +111,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice@mod_blk_ice.f90'
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice@mod_blk_ice_an05.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
          &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
@@ -273,7 +273,7 @@ CONTAINS
             zrough = 0.5_wp + SIGN( 0.5_wp, (zre - 2.5_wp) )
             
             IF( (zsmoot+ztrans+zrough > 1.001_wp).OR.(zsmoot+ztrans+zrough < 0.999_wp) ) &
-               CALL ctl_stop( ' rough_leng_tq@mod_blk_ice.f90 => something wrong with zsmoot, ztrans, zrough!' )
+               CALL ctl_stop( ' rough_leng_tq@mod_blk_ice_an05.f90 => something wrong with zsmoot, ztrans, zrough!' )
 
             zlog  = LOG(zre)
             zlog2 = zlog*zlog
@@ -399,4 +399,4 @@ CONTAINS
    END FUNCTION psi_h_ice
 
    !!======================================================================
-END MODULE mod_blk_ice
+END MODULE mod_blk_ice_an05
