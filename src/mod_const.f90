@@ -74,6 +74,14 @@ MODULE mod_const
 
    REAL(wp), PARAMETER, PUBLIC :: rcst_cs = -16._wp*9.80665_wp*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) !: for cool-skin parameteri$
    !                              => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)                   
+
+
+   !! Sea-ice stuff:
+   REAL(wp), PARAMETER, PUBLIC :: rCd_ice = 1.4e-3_wp   !: transfer coefficient over ice
+
+
+
+
    
 
 

@@ -16,7 +16,7 @@ MODULE mod_blk_ice_an05
    !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
-   !!       Routine turb_ice maintained and developed in AeroBulk
+   !!       Routine turb_ice_an05 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, January 2020
@@ -28,17 +28,17 @@ MODULE mod_blk_ice_an05
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_ICE
+   PUBLIC :: TURB_ICE_AN05
    PUBLIC :: rough_leng_m, rough_leng_tq
 
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu,   &
+   SUBROUTINE turb_ice_an05( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu,   &
       &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,        &
       &                     xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_ice  ***
+      !!                      ***  ROUTINE  turb_ice_an05  ***
       !!
       !! ** Purpose :   Computestransfert coefficients of turbulent surface
       !!                fluxes according
@@ -111,7 +111,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice@mod_blk_ice_an05.f90'
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_an05@mod_blk_ice_an05.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
          &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
@@ -210,7 +210,7 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0tq, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-   END SUBROUTINE turb_ice
+   END SUBROUTINE turb_ice_an05
 
 
 

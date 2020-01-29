@@ -28,6 +28,8 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \
 	  src/mod_blk_ice_an05.f90 \
+	  src/mod_blk_ice_lu12.f90 \
+	  src/mod_blk_ice_lu15.f90 \
           src/mod_aerobulk_compute.f90 \
           src/mod_aerobulk.f90
 

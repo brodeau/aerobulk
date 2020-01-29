@@ -71,8 +71,8 @@ CONTAINS
       !!                 Lupkes et al. GRL 2013 (application to GCM)
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pic   ! ice concentration [fraction]  => at_i_b
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pcd
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pic   ! ice concentration [fraction]  => at_i_b
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pcd
       !!----------------------------------------------------------------------
       REAL(wp)            ::   zcoef
       !!----------------------------------------------------------------------
