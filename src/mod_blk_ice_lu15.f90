@@ -89,8 +89,8 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
       !
-      REAL(wp) ::   zqsat_o, zqsat_i
-      REAL(wp) ::   zrib_o, zrib_i
+      REAL(wp) ::   zfi, zfo, zqsat_o, zqsat_i
+      REAL(wp) ::   zrib_o, zrib_i, ztmp
       REAL(wp) ::   zCdn_skin_ice, zCdn_form_ice, zCdn_ice
       REAL(wp) ::   zChn_skin_ice, zChn_form_ice
       REAL(wp) ::   z0w, z0i, zfmi, zfmw, zfhi, zfhw
@@ -110,6 +110,9 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
+            zfi = pic(ji,jj)    ! fraction of sea-ice
+            zfo = 1._wp - zfi    ! fraction of open ocean
+            
             zwndspd_o = MAX( 0.5, Uo_zu(ji,jj) )
             zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
             
@@ -122,46 +125,47 @@ CONTAINS
             zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), zqsat_i, q_zu(ji,jj), zwndspd_i )
             
             ! Momentum and Heat Neutral Transfer Coefficients
-            zCdn_form_ice = zCdn_form_tmp * pic(ji,jj) * ( 1._wp - pic(ji,jj) )**zbeta  ! Eq. 40
-            zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )               ! Eq. 53
+            zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40
+            zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )   ! Eq. 53
 
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
             z0w = zu * EXP( -1._wp * vkarmn / SQRT( Cdn_o(ji,jj) ) ) ! over water
-            z0i = z0_skin_ice                                             ! over ice
+            z0i = z0_skin_ice                                        ! over ice
+
             IF( zrib_o <= 0._wp ) THEN
-               zfmw = 1._wp - zam * zrib_o / ( 1._wp + 3._wp * zc2 * Cdn_o(ji,jj) * SQRT( -zrib_o * ( zu / z0w + 1._wp ) ) )  ! Eq. 10
-               zfhw = ( 1._wp + ( zbetah * ( virt_temp( Ts_o(ji,jj) , zqsat_o ) - virt_temp( t_zu(ji,jj) , q_zu(ji,jj) ) )**r1_3 &
-                  &     / ( Chn_o(ji,jj) * MAX(0.01, Uo_zu(ji,jj)) )   &     ! Eq. 26
-                  &             )**zgamma )**z1_gamma
+               ztmp = virt_temp( Ts_o(ji,jj), zqsat_o ) - virt_temp( t_zu(ji,jj), q_zu(ji,jj) ) ! difference of potential virtual temperature
+               zfmw = 1._wp - zam*zrib_o / ( 1._wp + 3._wp*zc2*Cdn_o(ji,jj)*SQRT( -zrib_o*( zu / z0w + 1._wp ) ) )  ! Eq. 10
+               zfhw = ( 1._wp + ( zbetah*ztmp**r1_3 / ( Chn_o(ji,jj) * zwndspd_o ) )**zgamma )**z1_gamma      ! Eq. 26
             ELSE
-               zfmw = 1._wp / ( 1._wp + zam * zrib_o / SQRT( 1._wp + zrib_o ) )   ! Eq. 12
-               zfhw = 1._wp / ( 1._wp + zah * zrib_o / SQRT( 1._wp + zrib_o ) )   ! Eq. 28
+               ztmp = zrib_o / SQRT( 1._wp + zrib_o )
+               zfmw = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 12
+               zfhw = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 28
             ENDIF
 
             IF( zrib_i <= 0._wp ) THEN
-               zfmi = 1._wp - zam * zrib_i / (1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp)))   ! Eq.  9
-               zfhi = 1._wp - zah * zrib_i / (1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp)))   ! Eq. 25
+               ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
+               zfmi = 1._wp - zam * ztmp   ! Eq.  9
+               zfhi = 1._wp - zah * ztmp   ! Eq. 25
             ELSE
-               zfmi = 1._wp / ( 1._wp + zam * zrib_i / SQRT( 1._wp + zrib_i ) )   ! Eq. 11
-               zfhi = 1._wp / ( 1._wp + zah * zrib_i / SQRT( 1._wp + zrib_i ) )   ! Eq. 27
+               ztmp = zrib_i / SQRT( 1._wp + zrib_i )
+               zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
+               zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
             ENDIF
 
-            ! Momentum Transfer Coefficients (Eq. 38)
-            pcd(ji,jj) = zCdn_skin_ice *   zfmi +  &
-               &        zCdn_form_ice * ( zfmi * pic(ji,jj) + zfmw * ( 1._wp - pic(ji,jj) ) ) / MAX( 1.e-06, pic(ji,jj) )
-
-            ! Heat Transfer Coefficients (Eq. 49)
-            pch(ji,jj) = zChn_skin_ice *   zfhi +  &
-               &        zChn_form_ice * ( zfhi * pic(ji,jj) + zfhw * ( 1._wp - pic(ji,jj) ) ) / MAX( 1.e-06, pic(ji,jj) )
-            !
+            
+            
+            ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
+            ztmp       = 1._wp / MAX( 1.e-06, zfi )
+            pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi + zfmw*zfo ) * ztmp
+            pch(ji,jj) = zChn_skin_ice * zfhi + zChn_form_ice * ( zfhi*zfi + zfhw*zfo ) * ztmp
+            
          END DO
       END DO
       !
       !CALL lbc_lnk_multi( 'sbcblk', pcd, 'T',  1., pch, 'T', 1. )
       !
    END SUBROUTINE Cdn10_Lupkes2015
-
-
+   
    !!======================================================================
 
 END MODULE mod_blk_ice_lu15
