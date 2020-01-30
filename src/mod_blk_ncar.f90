@@ -30,9 +30,9 @@ MODULE mod_blk_ncar
 
    IMPLICIT NONE
    PRIVATE
-
-   PUBLIC :: TURB_NCAR
-
+   
+   PUBLIC :: TURB_NCAR, CD_N10_NCAR, CH_N10_NCAR, CE_N10_NCAR
+   
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -100,18 +100,18 @@ CONTAINS
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   Cx_n10        ! 10m neutral latent/sensible coefficient
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrt_Cd_n10   ! root square of Cd_n10
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCdn10   ! square root of Cd_n10
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zpsi_h_u
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   stab          ! stability test integer
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ncar@mod_blk_ncar.f90'
       !!----------------------------------------------------------------------------------
 
-      ALLOCATE( Cx_n10(jpi,jpj), sqrt_Cd_n10(jpi,jpj), &
-         &    zeta_u(jpi,jpj), stab(jpi,jpj), zpsi_h_u(jpi,jpj),  &
+      ALLOCATE( Cx_n10(jpi,jpj), sqrtCdn10(jpi,jpj), &
+         &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj), zpsi_h_u(jpi,jpj),  &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -124,21 +124,22 @@ CONTAINS
 
       U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
-      !! First guess of stability:
-      ztmp0 = virt_temp(t_zt, q_zt) - virt_temp(sst, ssq) ! air-sea difference of virtual pot. temp. at zt
-      stab  = 0.5_wp + sign(0.5_wp,ztmp0)                           ! stab = 1 if dTv > 0  => STABLE, 0 if unstable
-
-      ztmp0 = cd_neutral_10m( U_blk )
-      sqrt_Cd_n10 = SQRT( ztmp0 )
+      ztmp0 = cd_n10_ncar( U_blk )
+      sqrtCdn10 = SQRT( ztmp0 )
 
       !! Initializing transf. coeff. with their first guess neutral equivalents :
       Cd = ztmp0
-      Ce = 1.e-3_wp*( 34.6_wp * sqrt_Cd_n10 )
-      Ch = 1.e-3_wp*sqrt_Cd_n10*(18._wp*stab + 32.7_wp*(1._wp - stab))
-      stab = sqrt_Cd_n10   ! Temporaty array !!! stab == SQRT(Cd)
+
+      Ce = CE_N10_NCAR( sqrtCdn10 )
+
+      ztmp0 = 0.5_wp + SIGN(0.5_wp, virt_temp(t_zt, q_zt) - virt_temp(sst, ssq)) ! we guess stability based on delta of virt. pot. temp.
+      Ch = CH_N10_NCAR( sqrtCdn10 , ztmp0 )  
+      
+      sqrtCd = sqrtCdn10
 
       !! Initializing values at z_u with z_t values:
-      t_zu = t_zt   ;   q_zu = q_zt
+      t_zu = t_zt
+      q_zu = q_zt
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
@@ -147,26 +148,25 @@ CONTAINS
          ztmp2 = q_zu - ssq
 
          ! Updating turbulent scales :   (L&Y 2004 eq. (7))
-         ztmp0 = stab*U_blk       ! u*       (stab == SQRT(Cd))
-         ztmp1 = Ch/stab*ztmp1    ! theta*   (stab == SQRT(Cd))
-         ztmp2 = Ce/stab*ztmp2    ! q*       (stab == SQRT(Cd))
-
+         ztmp0 = sqrtCd*U_blk       ! u*
+         ztmp1 = Ch/sqrtCd*ztmp1    ! theta*
+         ztmp2 = Ce/sqrtCd*ztmp2    ! q*
+ 
          ! Estimate the inverse of Obukov length (1/L) at height zu:
          ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
          
          !! Stability parameters :
          zeta_u   = zu*ztmp0
-         zeta_u = sign( min(abs(zeta_u),10._wp), zeta_u )
+         zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
          zpsi_h_u = psi_h( zeta_u )
 
          !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
-            !! Array 'stab' is free for the moment so using it to store 'zeta_t'
-            stab = zt*ztmp0
-            stab = SIGN( MIN(ABS(stab),10._wp), stab )  ! Temporaty array stab == zeta_t !!!
-            stab = LOG(zt/zu) + zpsi_h_u - psi_h(stab)                   ! stab just used as temp array again!
-            t_zu = t_zt - ztmp1/vkarmn*stab    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
-            q_zu = q_zt - ztmp2/vkarmn*stab    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
+            ztmp0 = zt*ztmp0 ! zeta_t !
+            ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
+            ztmp0 = LOG(zt/zu) + zpsi_h_u - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
+            t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
+            q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
             q_zu = max(0._wp, q_zu)
          END IF
 
@@ -175,42 +175,39 @@ CONTAINS
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m(zeta_u)
-         ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrt_Cd_n10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
-         ztmp0 = cd_neutral_10m(ztmp0)                                               ! Cd_n10
-         sqrt_Cd_n10 = sqrt(ztmp0)
-
-         stab    = 0.5_wp + sign(0.5_wp,zeta_u)                        ! update stability
-         Cx_n10  = 1.e-3_wp*sqrt_Cd_n10*(18._wp*stab + 32.7_wp*(1._wp - stab))  ! L&Y 2004 eq. (6c-6d)    (Cx_n10 == Ch_n10)
+         ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
+         ztmp0 = CD_N10_NCAR(ztmp0)                                               ! Cd_n10
+         sqrtCdn10 = sqrt(ztmp0)
 
          !! Update of transfer coefficients:
-         ztmp1 = 1._wp + sqrt_Cd_n10/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
-         Cd      = ztmp0 / ( ztmp1*ztmp1 )
-         stab = SQRT( Cd ) ! Temporary array !!! (stab == SQRT(Cd))
+         ztmp1  = 1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
+         Cd     = ztmp0 / ( ztmp1*ztmp1 )
+         sqrtCd = SQRT( Cd )
 
-         ztmp0 = (LOG(zu/10._wp) - zpsi_h_u) / vkarmn / sqrt_Cd_n10
-         ztmp2 = stab / sqrt_Cd_n10   ! (stab == SQRT(Cd))
-         ztmp1 = 1._wp + Cx_n10*ztmp0    ! (Cx_n10 == Ch_n10)
-         Ch  = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
-
-         Cx_n10  = 1.e-3_wp * (34.6_wp * sqrt_Cd_n10)  ! L&Y 2004 eq. (6b)    ! Cx_n10 == Ce_n10
-         ztmp1 = 1._wp + Cx_n10*ztmp0
-         Ce  = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
+         ztmp0  = (LOG(zu/10._wp) - zpsi_h_u) / vkarmn / sqrtCdn10
+         ztmp2  = sqrtCd / sqrtCdn10
+         
+         Cx_n10 = CH_N10_NCAR( sqrtCdn10 , 0.5_wp + sign(0.5_wp,zeta_u) )  ! 
+         ztmp1  = 1._wp + Cx_n10*ztmp0
+         Ch     = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
+         
+         Cx_n10 = CE_N10_NCAR( sqrtCdn10 )
+         ztmp1  = 1._wp + Cx_n10*ztmp0
+         Ce     = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
 
       END DO !DO j_itt = 1, nb_itt
 
-      IF( lreturn_z0 )    xz0     = zu*EXP( -(vkarmn/sqrt_Cd_n10) )
-      IF( lreturn_ustar ) xu_star = stab*U_blk
+      IF( lreturn_z0 )    xz0     = zu*EXP( -(vkarmn/sqrtCdn10) )
+      IF( lreturn_ustar ) xu_star = SQRT( Cd )*U_blk
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   = U_blk/(1. + sqrt_Cd_n10/vkarmn*(LOG(zu/10.) - psi_m(zeta_u)))
+      IF( lreturn_UN10 )  xUN10   = U_blk/(1. + sqrtCdn10/vkarmn*(LOG(zu/10.) - psi_m(zeta_u)))
 
-      DEALLOCATE( Cx_n10, sqrt_Cd_n10, &
-         &    zeta_u, stab, zpsi_h_u, ztmp0, &
-         &    ztmp1, ztmp2 )
-
+      DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, zpsi_h_u, ztmp0, ztmp1, ztmp2 )
+      
    END SUBROUTINE turb_ncar
 
 
-   FUNCTION cd_neutral_10m( pw10 )
+   FUNCTION CD_N10_NCAR( pw10 )
       !!----------------------------------------------------------------------------------      
       !! Estimate of the neutral drag coefficient at 10m as a function
       !! of neutral wind  speed at 10m
@@ -220,7 +217,7 @@ CONTAINS
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
-      REAL(wp), DIMENSION(jpi,jpj)             :: cd_neutral_10m
+      REAL(wp), DIMENSION(jpi,jpj)             :: cd_n10_ncar
       !
       INTEGER  ::     ji, jj     ! dummy loop indices
       REAL(wp) :: zgt33, zw, zw6 ! local scalars
@@ -236,17 +233,55 @@ CONTAINS
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
             zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
             !
-            cd_neutral_10m(ji,jj) = 1.e-3_wp * ( &
+            cd_n10_ncar(ji,jj) = 1.e-3_wp * ( &
                &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
-            cd_neutral_10m(ji,jj) = MAX(cd_neutral_10m(ji,jj), 1.E-6_wp)
+            cd_n10_ncar(ji,jj) = MAX(cd_n10_ncar(ji,jj), 1.E-6_wp)
             !
          END DO
       END DO
       !
-   END FUNCTION cd_neutral_10m
+   END FUNCTION CD_N10_NCAR
 
+
+
+   FUNCTION CH_N10_NCAR( psqrtcdn10 , pstab )
+      !!----------------------------------------------------------------------------------      
+      !! Estimate of the neutral heat transfer coefficient at 10m      !!
+      !! Origin: Large & Yeager 2004 eq. (6c-6d)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: ch_n10_ncar
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pstab      ! stable ABL => 1 / unstable ABL => 0
+      !!----------------------------------------------------------------------------------
+      IF ( ANY(pstab < -0.00001) .OR. ANY(pstab >  1.00001) ) THEN
+         PRINT *, ' CH_N10_NCAR@mod_blk_ncar.f90: pstab ='
+         PRINT *, pstab
+         STOP'BOO! CH_N10_NCAR !!!'
+      END IF
+      !
+      ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  
+      !
+   END FUNCTION CH_N10_NCAR
+
+   FUNCTION CE_N10_NCAR( psqrtcdn10 )
+      !!----------------------------------------------------------------------------------      
+      !! Estimate of the neutral heat transfer coefficient at 10m      !!
+      !! Origin: Large & Yeager 2004 eq. (6b)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_ncar
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
+      !!----------------------------------------------------------------------------------
+      ce_n10_ncar = 1.e-3_wp * ( 34.6_wp * psqrtcdn10 )
+      !
+   END FUNCTION CE_N10_NCAR
+   
+   
+
+
+
+   
 
    FUNCTION psi_m( pzeta )
       !!----------------------------------------------------------------------------------
