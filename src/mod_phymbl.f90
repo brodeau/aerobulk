@@ -20,7 +20,7 @@ MODULE mod_phymbl
    !!   L_vap         : latent heat of vaporization of water as a function of temperature
    !!   cp_air        : specific heat of (moist) air (depends spec. hum. q_air)
    !!   gamma_moist   : adiabatic lapse-rate of moist air
-   !!   One_on_L      : 1. / ( Monin-Obukhov length )
+   !!   One_on_L      : 1. / ( Obukhov length )
    !!   Ri_bulk       : bulk Richardson number aka BRN
    !!   q_sat         : saturation humidity as a function of SLP and temperature
    !!   q_air_rh      : specific humidity as a function of RH (fraction, not %), t_air and SLP
@@ -29,6 +29,10 @@ MODULE mod_phymbl
 
    IMPLICIT NONE
    PRIVATE
+
+   INTERFACE virt_temp
+      MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
+   END INTERFACE virt_temp
 
    INTERFACE visc_air
       MODULE PROCEDURE visc_air_vctr, visc_air_sclr
@@ -41,6 +45,14 @@ MODULE mod_phymbl
    INTERFACE e_sat
       MODULE PROCEDURE e_sat_vctr, e_sat_sclr
    END INTERFACE e_sat
+
+   INTERFACE Ri_bulk
+      MODULE PROCEDURE Ri_bulk_vctr, Ri_bulk_sclr
+   END INTERFACE Ri_bulk
+
+   INTERFACE q_sat
+      MODULE PROCEDURE q_sat_vctr, q_sat_sclr
+   END INTERFACE q_sat
 
    INTERFACE L_vap
       MODULE PROCEDURE L_vap_vctr, L_vap_sclr
@@ -91,30 +103,40 @@ MODULE mod_phymbl
 
 CONTAINS
 
-   FUNCTION virt_temp( pta, pqa )
+   !===============================================================================================
+   FUNCTION virt_temp_sclr( pta, pqa )
       !!------------------------------------------------------------------------
       !!
-      !! Compute the (absolute/potential) virtual temperature, knowing the
+      !! Compute the (absolute/potential) VIRTUAL temperature, based on the
       !! (absolute/potential) temperature and specific humidity
       !!
-      !! If input temperature is absolute then output vitual temperature is absolute
-      !! If input temperature is potential then output vitual temperature is potential
+      !! If input temperature is absolute then output virtual temperature is absolute
+      !! If input temperature is potential then output virtual temperature is potential
       !!
       !! Author: L. Brodeau, June 2019 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: virt_temp         !: 1./(Monin Obukhov length) [m^-1]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta,  &  !: absolute or potetntial air temperature [K]
-         &                                        pqa      !: specific humidity of air   [kg/kg]
+      REAL(wp)             :: virt_temp_sclr !: virtual temperature [K]
+      REAL(wp), INTENT(in) :: pta       !: absolute or potential air temperature [K]
+      REAL(wp), INTENT(in) :: pqa       !: specific humidity of air   [kg/kg]
       !!-------------------------------------------------------------------
       !
-      virt_temp(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
+      virt_temp_sclr = pta * (1._wp + rctv0*pqa)
       !!
-      !! This is exactly the same sing that:
-      !! virt_temp = pta * ( pwa + reps0) / (reps0*(1.+pwa))
+      !! This is exactly the same thing as:
+      !! virt_temp_sclr = pta * ( pwa + reps0) / (reps0*(1.+pwa))
       !! with wpa (mixing ration) defined as : pwa = pqa/(1.-pqa)
       !
-   END FUNCTION virt_temp
+   END FUNCTION virt_temp_sclr
+   !!
+   FUNCTION virt_temp_vctr( pta, pqa )
+      REAL(wp), DIMENSION(jpi,jpj)             :: virt_temp_vctr !: virtual temperature [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta !: absolute or potential air temperature [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa !: specific humidity of air   [kg/kg]
+      virt_temp_vctr(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
+   END FUNCTION virt_temp_vctr
+   !===============================================================================================
+
 
    FUNCTION rho_air_vctr( ptak, pqa, pslp )
       !!-------------------------------------------------------------------------------
@@ -168,7 +190,7 @@ CONTAINS
       visc_air_sclr = 1.326e-5*(1. + 6.542E-3*ztc + 8.301e-6*ztc2 - 4.84e-9*ztc2*ztc)
       !
    END FUNCTION visc_air_sclr
-   
+
    FUNCTION visc_air_vctr(ptak)
       REAL(wp), DIMENSION(jpi,jpj)             ::   visc_air_vctr   ! kinetic viscosity (m^2/s)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak       ! air temperature in (K)
@@ -180,7 +202,7 @@ CONTAINS
       END DO
    END FUNCTION visc_air_vctr
 
-   
+
    FUNCTION L_vap_vctr( psst )
       !!---------------------------------------------------------------------------------
       !!                           ***  FUNCTION L_vap_vctr  ***
@@ -291,19 +313,21 @@ CONTAINS
       !!
    END FUNCTION gamma_moist_sclr
 
+
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
       !!------------------------------------------------------------------------
       !!
-      !! Evaluates the 1./(Monin Obukhov length) from air temperature and
-      !!  specific humidity, and frictional scales u*, t* and q*
+      !! Evaluates the 1./(Obukhov length) from air temperature,
+      !! air specific humidity, and frictional scales u*, t* and q*
       !!
-      !! Author: L. Brodeau, June 2016 / AeroBulk
+      !! Author: L. Brodeau, June 2019 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L         !: 1./(Monin Obukhov length) [m^-1]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha,  &  !: average potetntial air temperature [K]
-         &                                        pqa,   &  !: average specific humidity of air   [kg/kg]
-         &                                      pus, pts, pqs   !: frictional velocity, temperature and humidity
+      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L     !: 1./(Obukhov length) [m^-1]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha         !: reference potential temperature of air [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa          !: reference specific humidity of air   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus          !: u*: friction velocity [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pts, pqs     !: \theta* and q* friction aka turb. scales for temp. and spec. hum.
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) ::     zqa          ! local scalar
@@ -329,85 +353,56 @@ CONTAINS
       !
    END FUNCTION One_on_L
 
-   FUNCTION Ri_bulk( pz, psst, ptha, pssq, pqa, pub )
+
+   !===============================================================================================
+   FUNCTION Ri_bulk_sclr( pz, psst, ptha, pssq, pqa, pub )
       !!----------------------------------------------------------------------------------
       !! Bulk Richardson number according to "wide-spread equation"...
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk
+      REAL(wp)             :: Ri_bulk_sclr
+      REAL(wp), INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
+      REAL(wp), INTENT(in) :: psst  ! SST                                   [K]
+      REAL(wp), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
+      REAL(wp), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
+      REAL(wp), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
+      REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
+      REAL(wp) ::   zqa, zta, zgamma, zdth_v, ztv, zsstv  ! local scalars
+      !!-------------------------------------------------------------------
+      zqa = 0.5_wp*(pqa+pssq)                                        ! ~ mean q within the layer...
+      zta = 0.5_wp*( psst + ptha - gamma_moist(ptha,zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+      zta = 0.5_wp*( psst + ptha - gamma_moist(zta,        zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+      zgamma =  gamma_moist(zta, zqa)                                              ! Adiabatic lapse-rate for moist air within the layer
+      !
+      zsstv = psst*(1._wp + rctv0*pssq) ! absolute==potential virtual SST (absolute==potential because z=0!)
+      !
+      zdth_v = ptha*(1._wp + rctv0*pqa) - zsstv ! air-sea delta of "virtual potential temperature"
+      !
+      ztv = 0.5_wp*( zsstv + (ptha - zgamma*pz)*(1._wp + rctv0*pqa) )  ! ~ mean absolute virtual temp. within the layer
+      !
+      Ri_bulk_sclr = grav*zdth_v*pz / ( ztv*pub*pub )                            ! the usual definition of Ri_bulk_sclr
+      !
+   END FUNCTION Ri_bulk_sclr
+   !!
+   FUNCTION Ri_bulk_vctr( pz, psst, ptha, pssq, pqa, pub )
+      REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_vctr
       REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
-      !
-      INTEGER  ::   ji, jj                                ! dummy loop indices
-      REAL(wp) ::   zqa, zta, zgamma, zdth_v, ztv, zsstv  ! local scalars
-      !!-------------------------------------------------------------------
-      !
+      INTEGER  ::   ji, jj
       DO jj = 1, jpj
          DO ji = 1, jpi
-            !
-            zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))                                        ! ~ mean q within the layer...
-            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-            zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-            zgamma =  gamma_moist(zta, zqa)                                              ! Adiabatic lapse-rate for moist air within the layer
-            !
-            zsstv = psst(ji,jj)*(1._wp + rctv0*pssq(ji,jj)) ! absolute==potential virtual SST (absolute==potential because z=0!)
-            !
-            zdth_v = ptha(ji,jj)*(1._wp + rctv0*pqa(ji,jj)) - zsstv ! air-sea delta of "virtual potential temperature"
-            !
-            ztv = 0.5_wp*( zsstv + (ptha(ji,jj) - zgamma*pz)*(1._wp + rctv0*pqa(ji,jj)) )  ! ~ mean absolute virtual temp. within the layer
-            !
-            Ri_bulk(ji,jj) = grav*zdth_v*pz / ( ztv*pub(ji,jj)*pub(ji,jj) )                            ! the usual definition of Ri_bulk
-            !
+            Ri_bulk_vctr(ji,jj) = Ri_bulk_sclr( pz, psst(ji,jj), ptha(ji,jj), pssq(ji,jj), pqa(ji,jj), pub(ji,jj) )
          END DO
       END DO
-   END FUNCTION Ri_bulk
+   END FUNCTION Ri_bulk_vctr
+   !===============================================================================================
 
-
-   FUNCTION e_sat_vctr(ptak)
-      !!**************************************************
-      !! ptak:     air temperature [K]
-      !! e_sat:  water vapor at saturation [Pa]
-      !!
-      !! Recommended by WMO
-      !!
-      !! Goff, J. A., 1957: Saturation pressure of water on the new kelvin
-      !! temperature scale. Transactions of the American society of heating
-      !! and ventilating engineers, 347–354.
-      !!
-      !! rt0 should be 273.16 (triple point of water) and not 273.15 like here
-      !!**************************************************
-
-      REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_vctr !: vapour pressure at saturation  [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature (K)
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      !!----------------------------------------------------------------------------------
-      !
-
-      !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-      !
-      !ALLOCATE ( ztmp(jpi,jpj) )
-
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            e_sat_vctr(ji,jj) = e_sat_sclr(ptak(ji,jj))
-         END DO
-      END DO
-      !ztmp(:,:) = rtt0/ptak(:,:)
-      !
-      !e_sat_vctr = 100.*( 10.**(10.79574*(1. - ztmp) - 5.028*LOG10(ptak/rtt0)         &
-      !   &       + 1.50475*10.**(-4)*(1. - 10.**(-8.2969*(ptak/rtt0 - 1.)) )   &
-      !   &       + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
-
-      !DEALLOCATE ( ztmp )
-
-   END FUNCTION e_sat_vctr
-
-
+   !===============================================================================================
    FUNCTION e_sat_sclr( ptak )
       !!----------------------------------------------------------------------------------
       !!                   ***  FUNCTION e_sat_sclr  ***
@@ -419,12 +414,10 @@ CONTAINS
       !!
       !!    Note: what rt0 should be here, is 273.16 (triple point of water) and not 273.15 like here
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in) ::   ptak    ! air temperature                  [K]
       REAL(wp)             ::   e_sat_sclr   ! water vapor at saturation   [kg/kg]
-      !
+      REAL(wp), INTENT(in) ::   ptak    ! air temperature                  [K]
       REAL(wp) ::   zta, ztmp   ! local scalar
       !!----------------------------------------------------------------------------------
-      !
       zta = MAX( ptak , 180._wp )   ! air temp., prevents fpe0 errors dute to unrealistically low values over masked regions...
       ztmp = rt0 / zta
       !
@@ -434,10 +427,22 @@ CONTAINS
          &    + 0.42873*10.**(-3)*(10.**(4.76955*(1. - ztmp)) - 1.) + 0.78614) )
       !
    END FUNCTION e_sat_sclr
+   !!
+   FUNCTION e_sat_vctr(ptak)
+      REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_vctr !: vapour pressure at saturation  [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature (K)
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            e_sat_vctr(ji,jj) = e_sat_sclr(ptak(ji,jj))
+         END DO
+      END DO
+   END FUNCTION e_sat_vctr
+   !===============================================================================================
+
 
 
    FUNCTION e_sat_buck(rT, slp)
-
       !!**************************************************
       !!  rT:     air temperature          [K]
       !! slp:     atmospheric pressure     [Pa]
@@ -608,40 +613,37 @@ CONTAINS
    END FUNCTION rho_air_adv
 
 
-   FUNCTION q_sat(temp, slp,  cform)
-
-      !! Specific humidity at saturation
-
-      REAL(wp), DIMENSION(jpi,jpj) :: q_sat
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::  &
-         &                  temp,  &   !: sea surface temperature         [K]
-         &                  slp       !: sea level atmospheric pressure  [Pa]
-
-      CHARACTER(len=*), OPTIONAL, INTENT(in) :: cform
-
-
-      !! Local :
-      LOGICAL :: lbuck  !: we use Buck formula to compute e_sat instead of Goff 1957
-      REAL(wp), DIMENSION(jpi,jpj) ::  &
-         &    e_s
-
-      lbuck = .FALSE.
-      IF ( PRESENT(cform) ) THEN
-         IF ( (TRIM(cform) == 'buck').OR.(TRIM(cform) == 'Buck').OR.(TRIM(cform) == 'BUCK') ) THEN
-            lbuck = .TRUE.
-         END IF
-      END IF
-
-      !! Vapour pressure at saturation :
-      IF ( lbuck ) THEN
-         e_s = e_sat_buck(temp, slp)
-      ELSE
-         e_s = e_sat(temp)  ! using Goff !
-      END IF
-
-      q_sat = reps0*e_s/(slp - (1. - reps0)*e_s)
-
-   END FUNCTION q_sat
+   !===============================================================================================
+   FUNCTION q_sat_sclr( pta, ppa )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION q_sat_sclr  ***
+      !!
+      !! ** Purpose : Conputes specific humidity of air at saturation
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: q_sat_sclr
+      REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      REAL(wp) :: ze_s
+      !!----------------------------------------------------------------------------------
+      ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
+      q_sat_sclr = reps0*ze_s/(ppa - (1._wp - reps0)*ze_s)
+   END FUNCTION q_sat_sclr
+   !!
+   FUNCTION q_sat_vctr( pta, ppa )
+      REAL(wp), DIMENSION(jpi,jpj) :: q_sat_vctr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            q_sat_vctr(ji,jj) = q_sat_sclr( pta(ji,jj) , ppa(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION q_sat_vctr
+   !===============================================================================================
 
 
 

@@ -69,7 +69,7 @@ CONTAINS
       !! ----------------
       !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Monin-Obukhov length                    [m]
+      !!    * xL          : return the Obukhov length                          [m]
       !!    * xUN10       : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, January 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
@@ -163,8 +163,8 @@ CONTAINS
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
-         !!Inverse of Monin-Obukov length (1/L) :
-         ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Monin-Obukhov length]
+         !!Inverse of Obukov length (1/L) :
+         ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
          ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...)
 
          !! Stability parameters "zeta" :

@@ -194,7 +194,7 @@ CONTAINS
             !! over and over within the iteration loop...
             
             !! T R U L L Y   I M P L I C I T => needs itteration
-            !! => have to itterate just because the 1/(Monin-Obukhov length), zL1, uses zdTwl when zQabs < 0..
+            !! => have to itterate just because the 1/(Obukhov length), zL1, uses zdTwl when zQabs < 0..
             !!    (without this term otherwize the implicit analytical solution is straightforward...)
             zdTwl_n = zdTwl_b
             DO jc = 1, 10

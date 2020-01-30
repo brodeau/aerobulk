@@ -72,7 +72,7 @@ CONTAINS
       !! ----------------
       !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Monin-Obukhov length                    [m]
+      !!    * xL          : return the Obukhov length                          [m]
       !!    * xUN10       : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
@@ -151,7 +151,7 @@ CONTAINS
          ztmp1 = Ch/stab*ztmp1    ! theta*   (stab == SQRT(Cd))
          ztmp2 = Ce/stab*ztmp2    ! q*       (stab == SQRT(Cd))
 
-         ! Estimate the inverse of Monin-Obukov length (1/L) at height zu:
+         ! Estimate the inverse of Obukov length (1/L) at height zu:
          ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
          
          !! Stability parameters :

@@ -146,7 +146,7 @@ CONTAINS
       !! ----------------
       !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Monin-Obukhov length                    [m]
+      !!    * xL          : return the Obukhov length                          [m]
       !!    * xUN10       : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
@@ -187,7 +187,7 @@ CONTAINS
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu,    &
          &  znu_a,           & !: Nu_air, Viscosity of air
-         &  Linv,            & !: 1/L (inverse of Monin Obukhov length...
+         &  Linv,            & !: 1/L (inverse of Obukhov length...
          &  z0, z0t, z0q
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst  ! to back up the initial bulk SST
@@ -292,7 +292,7 @@ CONTAINS
       !! => that was same first guess as in COARE...
 
 
-      !! First guess of inverse of Monin-Obukov length (1/L) :
+      !! First guess of inverse of Obukov length (1/L) :
       Linv = One_on_L( t_zu, q_zu, u_star, t_star, q_star )
 
       !! Functions such as  u* = U_blk*vkarmn/func_m
@@ -306,7 +306,7 @@ CONTAINS
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
          ztmp0 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
 
-         !! New estimate of the inverse of the Monin-Obukhon length (Linv == zeta/zu) :
+         !! New estimate of the inverse of the Obukhon length (Linv == zeta/zu) :
          Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
          !! Note: it is slightly different that the L we would get with the usual
          Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...) !#LOLO

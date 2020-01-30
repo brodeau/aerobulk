@@ -18,4 +18,5 @@ obj
 lib
 *.pyc
 *.png
+*.dat
 

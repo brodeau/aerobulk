@@ -14,7 +14,7 @@ PROGRAM TEST_PHYMBL
    CHARACTER(len=6) :: cslp
    CHARACTER(len=2) :: cdT
 
-   REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat5, &
+   REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, &
       &                        vsst_k, vrho, vt10, vq10, vrh
 
    REAL(wp), PARAMETER :: &
@@ -86,7 +86,7 @@ PROGRAM TEST_PHYMBL
    vqsat4(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
    
    ! Buck Formula !
-   vqsat5(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl, cform='buck')
+   !vqsat5(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl, cform='buck')
    
 
 
@@ -98,7 +98,7 @@ PROGRAM TEST_PHYMBL
       & Method 3 (simple+rho_0m)   Method 4 (simple+rho_10m)  Bulk fomula'
    DO jt = 1, ntemp
       WRITE(11,*) REAL(vsst(1,jt),4), REAL(vqsat1(1,jt),4), REAL(vqsat2(1,jt),4), REAL(vqsat3(1,jt),4), &
-         &        REAL(vqsat4(1,jt),4), REAL(vqsat5(1,jt),4)
+         &        REAL(vqsat4(1,jt),4)
    END DO
    CLOSE(11)
 
