@@ -40,7 +40,7 @@ You will be guided and interactively prompted for different sea-surface and ABL 
     
  List of command line options for ```test_aerobulk.x```:
  
-    -p   => ask for sea-level pressure, otherwize assume 1010 hPa
+    -p   => Ask for sea-level pressure, otherwize assume 1010 hPa
  
     -r   => Ask for relative humidity rather than specific humidity
  
