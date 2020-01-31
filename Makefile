@@ -19,7 +19,6 @@ LIB = -L./lib -laerobulk
 
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_phymbl.f90 \
-	  src/mod_blk_neutral_10m.f90 \
           src/mod_cs_coare3p0.f90 \
           src/mod_skin_coare.f90 \
           src/mod_skin_ecmwf.f90 \
@@ -30,6 +29,7 @@ LIB_SRC = src/mod_const.f90 \
 	  src/mod_blk_ice_an05.f90 \
 	  src/mod_blk_ice_lu12.f90 \
 	  src/mod_blk_ice_lu15.f90 \
+	  src/mod_blk_neutral_10m.f90 \
           src/mod_aerobulk_compute.f90 \
           src/mod_aerobulk.f90
 

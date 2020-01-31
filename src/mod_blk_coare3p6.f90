@@ -33,7 +33,7 @@ MODULE mod_blk_coare3p6
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: COARE3P6_INIT, TURB_COARE3P6
+   PUBLIC :: COARE3P6_INIT, TURB_COARE3P6, charn_coare3p6
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -241,7 +241,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      z0     = alfa_charn_3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = charn_coare3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
@@ -309,7 +309,7 @@ CONTAINS
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         z0    = charn_coare3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
          z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
@@ -387,7 +387,7 @@ CONTAINS
    END SUBROUTINE turb_coare3p6
 
 
-   FUNCTION alfa_charn_3p6( pwnd )
+   FUNCTION charn_coare3p6( pwnd )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
       !!  "wind speed dependent formulation"
@@ -395,16 +395,16 @@ CONTAINS
       !!
       !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p6
+      REAL(wp), DIMENSION(jpi,jpj) :: charn_coare3p6
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! neutral wind speed at 10m
       !
       REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
       !!-------------------------------------------------------------------
-      alfa_charn_3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
+      charn_coare3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
       !!
-   END FUNCTION alfa_charn_3p6
+   END FUNCTION charn_coare3p6
 
-   FUNCTION alfa_charn_3p6_wave( pus, pwsh, pwps )
+   FUNCTION charn_coare3p6_wave( pus, pwsh, pwps )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of wave information and u*
       !!
@@ -412,14 +412,14 @@ CONTAINS
       !!
       !! Author: L. Brodeau, October 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p6_wave
+      REAL(wp), DIMENSION(jpi,jpj) :: charn_coare3p6_wave
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! friction velocity             [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwsh  ! significant wave height       [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwps  ! phase speed of dominant waves [m/s]
       !!-------------------------------------------------------------------
-      alfa_charn_3p6_wave = ( pwsh*0.2_wp*(pus/pwps)**2.2_wp ) * grav/(pus*pus)
+      charn_coare3p6_wave = ( pwsh*0.2_wp*(pus/pwps)**2.2_wp ) * grav/(pus*pus)
       !!
-   END FUNCTION alfa_charn_3p6_wave
+   END FUNCTION charn_coare3p6_wave
 
 
    FUNCTION psi_m_coare( pzeta )

@@ -8,10 +8,10 @@ PROGRAM TEST_COEF_N10
    USE mod_blk_neutral_10m
 
    IMPLICIT NONE
-
+   
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare30' , 'coare35', 'ncar', 'ecmwf' /)
+   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', 'ncar', 'ecmwf' /)
 
    REAL(4), DIMENSION(nb_algos) :: vCdn10, vCen10, vChn10
 
@@ -53,9 +53,9 @@ PROGRAM TEST_COEF_N10
    REAL, DIMENSION(n_w,1) :: &
       &   t_w10, t_cdn10, t_cen10, t_chn10
 
+   OPEN(6, FORM='formatted', RECL=512)
 
    jpi = lx ; jpj = ly
-
 
    nb_itt = 50  ! 50 itterations in bulk algorithm...
 
@@ -72,7 +72,7 @@ PROGRAM TEST_COEF_N10
          call usage_test()
 
       CASE('-p')
-         !PRINT *, 'Will ask for SLP'
+         !WRITE(6,*) 'Will ask for SLP'
          l_ask_for_slp = .TRUE.
 
       CASE('-r')
@@ -80,14 +80,14 @@ PROGRAM TEST_COEF_N10
          l_use_rh = .TRUE.
 
       CASE DEFAULT
-         PRINT *, 'Unknown option: ', trim(car) ; PRINT *, ''
+         WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
          CALL usage_test()
 
       END SELECT
 
    END DO
 
-   PRINT *, ''
+   WRITE(6,*) ''
 
 
    SLP = Patm
@@ -98,7 +98,7 @@ PROGRAM TEST_COEF_N10
    !! Table of wind speeds from 0 to wind_max  m/s :
    dw0 = wind_max/(n_w - 1)
    !FORALL (jw = 1:n_ew)  t_w10(jw) = (jw-1)*dw
-   !PRINT *, 'dw0 =', dw0 ; STOP
+   !WRITE(6,*) 'dw0 =', dw0 ; STOP
    !!
    t_w10(1,1) = 0.0
    DO jw = 2, n_w
@@ -123,9 +123,9 @@ PROGRAM TEST_COEF_N10
 
 
 
-   PRINT *, 'Give neutral wind speed at 10m (m/s):'
+   WRITE(6,*) 'Give neutral wind speed at 10m (m/s):'
    READ(*,*) U_N10
-   PRINT *, ''
+   WRITE(6,*) ''
 
 
    DO ialgo = 1, nb_algos
@@ -145,18 +145,19 @@ PROGRAM TEST_COEF_N10
    END DO
 
 
-   PRINT *, ''; PRINT *, ''
+   WRITE(6,*) ''; WRITE(6,*) ''
 
-   PRINT *, ''
-   PRINT *, '   *** Bulk Transfer Coefficients:'
-   PRINT *, '========================================================================='
-   PRINT *, '  Algorithm:           ',TRIM(vca(1)) ,'    |    ',TRIM(vca(2)),'       |    ',TRIM(vca(3)),'       |    ',TRIM(vca(4))
-   PRINT *, '========================================================================='
-   PRINT *, '      C_D_N10   =   ', vCdn10        , '[10^-3]'
-   PRINT *, '      C_E_N10   =   ', vCen10        , '[10^-3]'
-   PRINT *, '      C_H_N10   =   ', vChn10        , '[10^-3]'
-   PRINT *, ''
-   PRINT *, ''
+   WRITE(6,*) ''
+   WRITE(6,*) '   *** Bulk Transfer Coefficients:'
+   WRITE(6,*) '======================================================================================'
+   WRITE(6,*) ' Algorithm:     ',TRIM(vca(1)) ,'    |    ',TRIM(vca(2)),'       |    ',TRIM(vca(3)),'       |    ',TRIM(vca(4))
+   WRITE(6,*) '====================================================================================='
+   !          '  C_D_N10   =      1.032523      0.9227015       1.063966       1.109307     [10^-3]
+   WRITE(6,*) '  C_D_N10   =   ', vCdn10        , '[10^-3]'
+   WRITE(6,*) '  C_E_N10   =   ', vCen10        , '[10^-3]'
+   WRITE(6,*) '  C_H_N10   =   ', vChn10        , '[10^-3]'
+   WRITE(6,*) ''
+   WRITE(6,*) ''
 
 
 
@@ -185,8 +186,8 @@ PROGRAM TEST_COEF_N10
       CLOSE(11)
 
 
-      PRINT *, ''
-      PRINT *, '  *** Just created file ', trim(cf_out)
+      WRITE(6,*) ''
+      WRITE(6,*) '  *** Just created file ', trim(cf_out)
 
 
 
@@ -194,7 +195,8 @@ PROGRAM TEST_COEF_N10
 
 
 
-
+   WRITE(6,*) ''
+   CLOSE(6)
 
 END PROGRAM TEST_COEF_N10
 

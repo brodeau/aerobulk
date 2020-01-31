@@ -102,7 +102,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   Cx_n10        ! 10m neutral latent/sensible coefficient
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCdn10   ! square root of Cd_n10
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zpsi_h_u
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
       !
@@ -111,7 +110,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
 
       ALLOCATE( Cx_n10(jpi,jpj), sqrtCdn10(jpi,jpj), &
-         &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj), zpsi_h_u(jpi,jpj),  &
+         &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj),      &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -154,20 +153,21 @@ CONTAINS
  
          ! Estimate the inverse of Obukov length (1/L) at height zu:
          ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
+         !ztmp0 = One_on_L( 0.5*(t_zu + sst), 0.5*(q_zu + ssq), ztmp0, ztmp1, ztmp2 ) ! using an approximation of mean
+         !                                                                ! theta & q in surface layer rather than values at zu...
          
          !! Stability parameters :
          zeta_u   = zu*ztmp0
          zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
-         zpsi_h_u = psi_h( zeta_u )
 
          !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
             ztmp0 = zt*ztmp0 ! zeta_t !
             ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
-            ztmp0 = LOG(zt/zu) + zpsi_h_u - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
+            ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
             q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
-            q_zu = max(0._wp, q_zu)
+            q_zu = MAX(0._wp, q_zu)
          END IF
 
          ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 eq. 9a)...
@@ -184,10 +184,11 @@ CONTAINS
          Cd     = ztmp0 / ( ztmp1*ztmp1 )
          sqrtCd = SQRT( Cd )
 
-         ztmp0  = (LOG(zu/10._wp) - zpsi_h_u) / vkarmn / sqrtCdn10
+         ztmp0  = ( LOG(zu/10._wp) - psi_h(zeta_u) ) / vkarmn / sqrtCdn10
          ztmp2  = sqrtCd / sqrtCdn10
-         
-         Cx_n10 = CH_N10_NCAR( sqrtCdn10 , 0.5_wp + sign(0.5_wp,zeta_u) )  ! 
+
+         ztmp1  = 0.5_wp + sign(0.5_wp,zeta_u)       ! stability flag
+         Cx_n10 = CH_N10_NCAR( sqrtCdn10 , ztmp1 )
          ztmp1  = 1._wp + Cx_n10*ztmp0
          Ch     = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
          
@@ -202,7 +203,7 @@ CONTAINS
       IF( lreturn_L )     xL      = zu/zeta_u
       IF( lreturn_UN10 )  xUN10   = U_blk/(1. + sqrtCdn10/vkarmn*(LOG(zu/10.) - psi_m(zeta_u)))
 
-      DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, zpsi_h_u, ztmp0, ztmp1, ztmp2 )
+      DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
       
    END SUBROUTINE turb_ncar
 

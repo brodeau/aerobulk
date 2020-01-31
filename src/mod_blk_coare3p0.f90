@@ -33,7 +33,7 @@ MODULE mod_blk_coare3p0
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0
+   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0, charn_coare3p0
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -241,7 +241,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      z0     = alfa_charn_3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = charn_coare3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
@@ -309,7 +309,7 @@ CONTAINS
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = alfa_charn_3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
+         z0    = charn_coare3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
          z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp    ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
@@ -387,7 +387,7 @@ CONTAINS
    END SUBROUTINE turb_coare3p0
 
 
-   FUNCTION alfa_charn_3p0( pwnd )
+   FUNCTION charn_coare3p0( pwnd )
       !!-------------------------------------------------------------------
       !! Compute the Charnock parameter as a function of the wind speed
       !!
@@ -399,7 +399,7 @@ CONTAINS
       !!
       !! Author: L. Brodeau, June 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: alfa_charn_3p0
+      REAL(wp), DIMENSION(jpi,jpj) :: charn_coare3p0
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! wind speed
       !
       INTEGER  ::   ji, jj         ! dummy loop indices
@@ -415,14 +415,14 @@ CONTAINS
             zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10))  ! If zw<10. --> 0, else --> 1
             zgt18 = 0.5 + SIGN(0.5_wp,(zw - 18.)) ! If zw<18. --> 0, else --> 1
             !
-            alfa_charn_3p0(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
+            charn_coare3p0(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
                &     + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
                &      *(zw - 10.)/(18. - 10.)) + zgt18*( 0.018 ) )    ! Hare et al. (1999)
             !
          END DO
       END DO
       !
-   END FUNCTION alfa_charn_3p0
+   END FUNCTION charn_coare3p0
 
 
    FUNCTION psi_m_coare( pzeta )

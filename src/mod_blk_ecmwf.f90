@@ -39,7 +39,7 @@ MODULE mod_blk_ecmwf
    PUBLIC :: ECMWF_INIT, TURB_ECMWF
 
    !! ECMWF own values for given constants, taken form IFS documentation...
-   REAL(wp), PARAMETER ::   charn0 = 0.018    ! Charnock constant (pretty high value here !!!
+   REAL(wp), PARAMETER, PUBLIC :: charn0_ecmwf = 0.018_wp    ! Charnock constant (pretty high value here !!!
    !                                          !    =>  Usually 0.011 for moderate winds)
    REAL(wp), PARAMETER ::   zi0     = 1000.   ! scale height of the atmospheric boundary layer...1
    REAL(wp), PARAMETER ::   Beta0    = 1.     ! gustiness parameter ( = 1.25 in COAREv3)
@@ -249,7 +249,7 @@ CONTAINS
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
       u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
-      z0     = charn0*u_star*u_star/grav + 0.11_wp*znu_a/u_star
+      z0     = charn0_ecmwf*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
@@ -318,9 +318,9 @@ CONTAINS
          u_star = U_blk*vkarmn/func_m
          ztmp2  = u_star*u_star
          ztmp1  = znu_a/u_star
-         z0     = MIN( ABS( alpha_M*ztmp1 + charn0*ztmp2/grav ) , 0.001_wp)
-         z0t    = MIN( ABS( alpha_H*ztmp1                     ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = MIN( ABS( alpha_Q*ztmp1                     ) , 0.001_wp)
+         z0     = MIN( ABS( alpha_M*ztmp1 + charn0_ecmwf*ztmp2/grav ) , 0.001_wp)
+         z0t    = MIN( ABS( alpha_H*ztmp1                           ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+         z0q    = MIN( ABS( alpha_Q*ztmp1                           ) , 0.001_wp)
 
          !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
          ztmp2 = Beta0*Beta0*ztmp2*(MAX(-zi0*Linv/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
