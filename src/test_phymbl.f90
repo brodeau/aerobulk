@@ -14,7 +14,7 @@ PROGRAM TEST_PHYMBL
    CHARACTER(len=6) :: cslp
    CHARACTER(len=2) :: cdT
 
-   REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, &
+   REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat_ice, &
       &                        vsst_k, vrho, vt10, vq10, vrh
 
    REAL(wp), PARAMETER :: &
@@ -59,18 +59,21 @@ PROGRAM TEST_PHYMBL
    
 
    !! Advanced formula:
-   vqsat1(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl)
+   vqsat1(:,:) = rdct_qsat_salt*q_sat( vsst_k, vmsl )
 
-   !! Simple with constant density
-   vrho  (:,:) = 1.2
-   vqsat2(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
+   !! Over ice
+   vqsat_ice(:,:) =             q_sat( vsst_k, vmsl, l_ice=.TRUE. )
+   
+   !! Crude with constant density
+   vrho  (:,:) = 1.2_wp
+   vqsat2(:,:) = rdct_qsat_salt*q_sat_crude(vsst_k, vrho)
 
-   !! Simple with better density (density at SST! 0m, not 10m !)
+   !! Crude with better density (density at SST! 0m, not 10m !)
    vrho  (:,:) = rho_air(vsst_k, vqsat1, vmsl) ! we use the good q_sat to get a good rho at z=0
-   vqsat3(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
+   vqsat3(:,:) = rdct_qsat_salt*q_sat_crude(vsst_k, vrho)
 
    !! Same but using density of air at 10m => T=SST-2 and not saturated => 80% hum!
-   vrh(:,:) = 0.8                          ! Relative humidity at 10m
+   vrh(:,:) = 0.8_wp                    ! Relative humidity at 10m
    vt10(:,:) = vsst_k + dT              ! Air temperature at 10m
 
    !! Don't need to do what follows cause we specified that SLP is at 10m !
@@ -83,10 +86,8 @@ PROGRAM TEST_PHYMBL
    vq10(:,:) = q_air_rh(vrh, vt10, vmsl)   ! Specific humidity at 10m
    vrho(:,:) = rho_air(vt10, vq10, vmsl)    ! air density at 10m
    
-   vqsat4(:,:) = rdct_qsat_salt*q_sat_simple(vsst_k, vrho)
+   vqsat4(:,:) = rdct_qsat_salt*q_sat_crude(vsst_k, vrho)
    
-   ! Buck Formula !
-   !vqsat5(:,:) = rdct_qsat_salt*q_sat(vsst_k, vmsl, cform='buck')
    
 
 
@@ -94,11 +95,10 @@ PROGRAM TEST_PHYMBL
    cfout1 = 'qsat_test_'//cslp//'Pa_dt_'//cdT//'.dat'
    
    OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)
-   WRITE(11,*) '**  SST   Method 1 (advanced)  Method 2 (simple+1.2)&
-      & Method 3 (simple+rho_0m)   Method 4 (simple+rho_10m)  Bulk fomula'
+   WRITE(11,*) '#    SST   Goff   Goff ice   (crude+1.2) Method 3 (crude+rho_0m)   Method 4 (crude+rho_10m)'
    DO jt = 1, ntemp
-      WRITE(11,*) REAL(vsst(1,jt),4), REAL(vqsat1(1,jt),4), REAL(vqsat2(1,jt),4), REAL(vqsat3(1,jt),4), &
-         &        REAL(vqsat4(1,jt),4)
+      WRITE(11,*) REAL(vsst(1,jt),4),   REAL(vqsat1(1,jt),4), REAL(vqsat_ice(1,jt),4), &
+         &        REAL(vqsat2(1,jt),4), REAL(vqsat3(1,jt),4), REAL(vqsat4(1,jt),4)
    END DO
    CLOSE(11)
 

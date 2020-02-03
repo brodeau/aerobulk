@@ -97,7 +97,7 @@ MODULE mod_phymbl
    PUBLIC dry_static_energy
    PUBLIC q_air_rh
    PUBLIC q_air_dp
-   PUBLIC q_sat_simple
+   PUBLIC q_sat_crude
    PUBLIC update_qnsol_tau
    PUBLIC alpha_sw
    PUBLIC bulk_formula
@@ -607,7 +607,7 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION q_sat_sclr( pta, ppa )
+   FUNCTION q_sat_sclr( pta, ppa,  l_ice )
       !!---------------------------------------------------------------------------------
       !!                           ***  FUNCTION q_sat_sclr  ***
       !!
@@ -618,21 +618,33 @@ CONTAINS
       REAL(wp) :: q_sat_sclr
       REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
       REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
       REAL(wp) :: ze_s
+      LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
-      ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
+      IF ( lice ) THEN
+         ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
+      ELSE
+         ze_s = e_sat_ice( pta )
+      END IF
       q_sat_sclr = reps0*ze_s/(ppa - (1._wp - reps0)*ze_s)
    END FUNCTION q_sat_sclr
    !!
-   FUNCTION q_sat_vctr( pta, ppa )
+   FUNCTION q_sat_vctr( pta, ppa,  l_ice )
       REAL(wp), DIMENSION(jpi,jpj) :: q_sat_vctr
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta  !: absolute temperature of air [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
+      LOGICAL  :: lice
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
       DO jj = 1, jpj
          DO ji = 1, jpi
-            q_sat_vctr(ji,jj) = q_sat_sclr( pta(ji,jj) , ppa(ji,jj) )
+            q_sat_vctr(ji,jj) = q_sat_sclr( pta(ji,jj) , ppa(ji,jj), l_ice=lice )
          END DO
       END DO
    END FUNCTION q_sat_vctr
@@ -672,16 +684,16 @@ CONTAINS
 
    
 
-   FUNCTION q_sat_simple(temp, zrho)
+   FUNCTION q_sat_crude(temp, zrho)
 
-      REAL(wp), DIMENSION(jpi,jpj)             :: q_sat_simple
+      REAL(wp), DIMENSION(jpi,jpj)             :: q_sat_crude
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: &
          &       temp,   &  !: sea surface temperature  [K]
          &       zrho       !: air density         [kg/m^3]
 
-      q_sat_simple = 640380./zrho * exp(-5107.4/temp)
+      q_sat_crude = 640380._wp/zrho * exp(-5107.4_wp/temp)
 
-   END FUNCTION q_sat_simple
+   END FUNCTION q_sat_crude
 
 
 

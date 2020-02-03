@@ -257,9 +257,9 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pstab      ! stable ABL => 1 / unstable ABL => 0
       !!----------------------------------------------------------------------------------
       IF ( ANY(pstab < -0.00001) .OR. ANY(pstab >  1.00001) ) THEN
-         PRINT *, ' CH_N10_NCAR@mod_blk_ncar.f90: pstab ='
+         PRINT *, 'ERROR: CH_N10_NCAR@mod_blk_ncar.f90: pstab ='
          PRINT *, pstab
-         STOP'BOO! CH_N10_NCAR !!!'
+         STOP
       END IF
       !
       ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  
