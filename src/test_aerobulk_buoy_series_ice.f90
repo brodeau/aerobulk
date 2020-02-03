@@ -10,7 +10,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
 
-   USE mod_blk_ncar
+   USE mod_blk_ice_an05
    !USE mod_blk_coare3p0
    !USE mod_blk_coare3p6
    !USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
@@ -65,7 +65,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zu
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, siq, rgamma, Cp_ma, tmp
 
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB, TAU
@@ -149,17 +149,17 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END IF
 
    jpi = nx ; jpj = ny
-   
+
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
-   
-   
+
+
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
    ALLOCATE ( SIT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt) )
    ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
-   ALLOCATE ( xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
+   ALLOCATE ( xlon(nx,ny), siq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE ( Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &       RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
@@ -186,7 +186,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    PRINT *, ' *** Digested time unit is: ', tut_time_unit
 
    CALL GETVAR_1D(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
-   
+
    CALL GETVAR_1D(cf_data, 'msl',    SLP  )
 
    CALL GETVAR_1D(cf_data, 'u10', W10  )
@@ -199,16 +199,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    DO jt = 1, Nt
       q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
    END DO
-  
+
    CALL GETVAR_1D(cf_data, 'radsw',  rad_sw  )
-   
+
    CALL GETVAR_1D(cf_data, 'radlw',  rad_lw  )
 
 
    WRITE(6,*) ''
    WRITE(6,*) ''
    !! All input time series read!
-   
+
 
    ians=-1
    DO WHILE ( (ians<0).OR.(ians>nb_algos) )
@@ -280,7 +280,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       IF (ldebug) THEN
          WRITE(6,*) '##########################################################'
          WRITE(6,*) ''
-         WRITE(6,*) '           ---- BEFORE BULK ALGO + CSWL ----'
+         WRITE(6,*) '           ---- BEFORE BULK ALGO ----'
          WRITE(6,*) ''
       END IF
 
@@ -296,8 +296,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       info = DISP_DEBUG(ldebug, 'SIT', SIT(:,:,jt)-rt0, '[degC]')
 
-      ssq = q_sat( SIT(:,:,jt), SLP(:,:,jt), l_ice=.TRUE. )
-      info = DISP_DEBUG(ldebug, 'SSQ = ', 1000.*ssq, '[g/kg] (over ice!!!)')
+      siq = q_sat( SIT(:,:,jt), SLP(:,:,jt), l_ice=.TRUE. )
+      info = DISP_DEBUG(ldebug, 'SIQ = ', 1000.*siq, '[g/kg] (over ice!!!)')
 
       info = DISP_DEBUG(ldebug, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
 
@@ -307,10 +307,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(ldebug, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
       info = DISP_DEBUG(ldebug, 'Pot. temp. diff. air/ice at '//TRIM(czt),    theta_zt(:,:,jt) - SIT(:,:,jt), '[deg.C]')
-      info = DISP_DEBUG(ldebug, 'Virt. pot. temp. diff. air/ice at '//TRIM(czt),    tmp - virt_temp(SIT(:,:,jt), ssq), '[deg.C]')
+      info = DISP_DEBUG(ldebug, 'Virt. pot. temp. diff. air/ice at '//TRIM(czt),    tmp - virt_temp(SIT(:,:,jt), siq), '[deg.C]')
 
       !! We know enough to estimate the bulk Richardson number:
-      info = DISP_DEBUG(ldebug, 'Initial Bulk Richardson number', Ri_bulk( zt, SIT(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) ), '[--]')
+      info = DISP_DEBUG(ldebug, 'Initial Bulk Richardson number', Ri_bulk( zt, SIT(:,:,jt), theta_zt(:,:,jt), siq, q_zt(:,:,jt), W10(:,:,jt) ), '[--]')
 
       !STOP
 
@@ -339,10 +339,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
 
-      
+
       SELECT CASE ( TRIM(calgo) )
 
-      CASE ( 'ncar' )
+      CASE ( 'an05' )
+         !CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+         !   &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+         !   &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+         PRINT *, 'NOT CALLING turb_ice_an05 !!!! '
+
          !CALL TURB_NCAR    (     zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
          !   &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
          !   &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
@@ -350,7 +356,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP
       END SELECT
-      
+
 
 
       !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
@@ -361,19 +367,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       END DO
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
-      !RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
+      RiB(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), siq(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
 
       !! Turbulent heat fluxes:
-      !CALL BULK_FORMULA( zu, Ts(:,:,jt), qs(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), &
-      !&              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
-      !   &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
-      !   &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
-      
-      !! Longwave radiative heat fluxes:
-      !tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-      !Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
+      CALL BULK_FORMULA( zu, SIT(:,:,jt), siq(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
+         &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
+         &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
+         &              prhoa=rho_zu(:,:,jt) )
+!         &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
 
-      !QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
+      !! Longwave radiative heat fluxes:
+      tmp(:,:) = SIT(:,:,jt)*SIT(:,:,jt)
+      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
+
+      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
 
 
 
@@ -381,7 +388,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       IF (ldebug) THEN
          WRITE(6,*) ''
-         WRITE(6,*) '           ---- AFTER BULK ALGO + CSWL ----'
+         WRITE(6,*) '           ---- AFTER BULK ALGO ----'
          WRITE(6,*) ''
       END IF
       info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
@@ -397,34 +404,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END DO !DO jt = 1, Nt
 
 
-   IF     ( TRIM(calgo) == 'coare3p6' ) THEN
+   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+      &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
+      &           ct_unit=TRIM(cunit_t), &
+      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
+      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
+      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+      &           vdt07=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
+      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress' )
 
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
-         &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
-         &           ct_unit=TRIM(cunit_t), &
-         &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
-         &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
-         &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-         &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-         &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-         &           vdt07=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
-         &           vdt08=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress' )
 
-   ELSE
-      
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
-         &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
-         &           ct_unit=TRIM(cunit_t), &
-         &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
-         &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
-         &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-         &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-         &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-         &           vdt07=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
-         &           vdt08=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress' )
-      
-   END IF
-   
+
    WRITE(6,*) ''; WRITE(6,*) ''
 
 

@@ -11,12 +11,12 @@ LNK_FORT_LIB = -lgfortran
 # Fortran compilation flags :
 #DEBUG_FF = -g -w -fbounds-check
 
-FF = -O2 -fdefault-real-8 -ffree-line-length-200 $(DEBUG_FF) -J./mod -I./mod
+FF = -O3 -fdefault-real-8 -ffree-line-length-200 $(DEBUG_FF) -J./mod -I./mod
 # These are needed for the C/C++ interface
 FF += -std=f2008 -lstdc++
 
 # g++ compilarion flags
-CXXFLAGS += -std=c++11 -lgfortran -O2
+CXXFLAGS += -std=c++11 -lgfortran -O3
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
