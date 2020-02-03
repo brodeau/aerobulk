@@ -46,6 +46,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE e_sat_vctr, e_sat_sclr
    END INTERFACE e_sat
 
+   INTERFACE e_sat_ice
+      MODULE PROCEDURE e_sat_ice_vctr, e_sat_ice_sclr
+   END INTERFACE e_sat_ice
+
    INTERFACE Ri_bulk
       MODULE PROCEDURE Ri_bulk_vctr, Ri_bulk_sclr
    END INTERFACE Ri_bulk
@@ -86,7 +90,7 @@ MODULE mod_phymbl
    PUBLIC Ri_bulk
    PUBLIC q_sat
    PUBLIC e_sat
-   PUBLIC e_sat_buck
+   PUBLIC e_sat_ice
    PUBLIC e_air
    PUBLIC rh_air
    PUBLIC rho_air_adv
@@ -442,49 +446,38 @@ CONTAINS
 
 
 
-   FUNCTION e_sat_buck(rT, slp)
-      !!**************************************************
-      !!  rT:     air temperature          [K]
-      !! slp:     atmospheric pressure     [Pa]
-      !! e_sat:  water vapor at saturation [Pa]
-      !!
-      !! Based on Buck' formula for saturation vapor pressure
-      !! from Buck (1981), J. App. Meteor., 1527-1532.
-      !!
-      !! This version follows the saturation specific humidity computation in
-      !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
-      !! latent heat flux compared to the calculation with Teten's
-      !!
-      !!**************************************************
-
-      REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
-         &                                        slp          !: atmospheric pressure          [Pa]
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-
-      ALLOCATE ( ztmp(jpi,jpj) )
-
-      !! Achtung: originaly given with temperature in deg.C and pressure in
-      !!          millibars! 1 mb = 100 Pa !!!
-
-      ztmp(:,:) = rT(:,:) - rt0
-
-      !! Buck 1981:
-      !! Buck, A. L., New equations for computing vapor pressure and enhancement
-      !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
-      !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
-
-
-      !! Official COARE 3.0 code:
-      e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
-
-      !! Kara et al. 2000:
-      !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
-
-      DEALLOCATE ( ztmp )
-
-   END FUNCTION e_sat_buck
+   !FUNCTION e_sat_buck(rT, slp)
+   !   !!**************************************************
+   !   !!  rT:     air temperature          [K]
+   !   !! slp:     atmospheric pressure     [Pa]
+   !   !! e_sat:  water vapor at saturation [Pa]
+   !   !!
+   !   !! Based on Buck' formula for saturation vapor pressure
+   !   !! from Buck (1981), J. App. Meteor., 1527-1532.
+   !   !!
+   !   !! This version follows the saturation specific humidity computation in
+   !   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
+   !   !! latent heat flux compared to the calculation with Teten's
+   !   !!
+   !   !!**************************************************
+   !   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
+   !      &                                        slp          !: atmospheric pressure          [Pa]
+   !   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
+   !   ALLOCATE ( ztmp(jpi,jpj) )
+   !   !! Achtung: originaly given with temperature in deg.C and pressure in
+   !   !!          millibars! 1 mb = 100 Pa !!!
+   !   ztmp(:,:) = rT(:,:) - rt0
+   !   !! Buck 1981:
+   !   !! Buck, A. L., New equations for computing vapor pressure and enhancement
+   !   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
+   !   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
+   !   !! Official COARE 3.0 code:
+   !   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
+   !   !! Kara et al. 2000:
+   !   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
+   !   DEALLOCATE ( ztmp )
+   !END FUNCTION e_sat_buck
 
 
 
@@ -646,27 +639,38 @@ CONTAINS
    !===============================================================================================
 
 
+   FUNCTION e_sat_ice_sclr(ptak)
+      !!---------------------------------------------------------------------------------
+      !! Same as "e_sat" but over ice rather than water!
+      !!---------------------------------------------------------------------------------
+      REAL(wp)             :: e_sat_ice_sclr !: vapour pressure at saturation in presence of ice [Pa]
+      REAL(wp), INTENT(in) :: ptak
+      !!
+      REAL(wp) :: zle, ztmp
+      !!---------------------------------------------------------------------------------
+      ztmp = 273.16_wp/ptak
+      !!
+      zle  = -9.09718_wp*(ztmp - 1._wp)  - 3.56654_wp*LOG10(ztmp)      &
+         &   + 0.876793_wp*(1._wp - ptak/273.16_wp) + LOG10(6.1071_wp)
+      !!
+      e_sat_ice_sclr = 100._wp * 10._wp**zle
+   END FUNCTION e_sat_ice_sclr
+   !!
+   FUNCTION e_sat_ice_vctr(ptak)
+      !! Same as "e_sat" but over ice rather than water!
+      REAL(wp), DIMENSION(jpi,jpj) :: e_sat_ice_vctr !: vapour pressure at saturation in presence of ice [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            e_sat_ice_vctr(ji,jj) = e_sat_ice_sclr( ptak(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION e_sat_ice_vctr
 
 
-   FUNCTION e_sat_ice(rt)
-
-      REAL(wp), DIMENSION(jpi,jpj) :: e_sat_ice !: vapour pressure at saturation in presence of ice [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rt
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-
-      ALLOCATE ( ztmp(jpi,jpj) )
-
-      ztmp(:,:) = 273.16/rt(:,:)
-
-      e_sat_ice = 100.*(10**( -9.09718*(ztmp - 1.) - 3.56654*LOG10(ztmp) &
-         &                + 0.876793*(1. - rt/273.16) + LOG10(6.1071) ) )
-
-      DEALLOCATE ( ztmp )
-
-   END FUNCTION e_sat_ice
-
-
+   
 
    FUNCTION q_sat_simple(temp, zrho)
 
