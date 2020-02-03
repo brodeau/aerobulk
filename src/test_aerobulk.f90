@@ -60,7 +60,7 @@ PROGRAM TEST_AEROBULK
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   !OPEN(6, FORM='formatted', RECL=512)
 
 
 
@@ -477,7 +477,7 @@ PROGRAM TEST_AEROBULK
    END IF
 
    WRITE(6,*) ''
-   CLOSE(6)
+   !CLOSE(6)
 
 END PROGRAM TEST_AEROBULK
 

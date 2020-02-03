@@ -146,7 +146,7 @@ CONTAINS
          ztmp1 = t_zu - sst   ! Updating air/sea differences
          ztmp2 = q_zu - ssq
 
-         ! Updating turbulent scales :   (L&Y 2004 eq. (7))
+         ! Updating turbulent scales :   (L&Y 2004 Eq. (7))
          ztmp0 = sqrtCd*U_blk       ! u*
          ztmp1 = Ch/sqrtCd*ztmp1    ! theta*
          ztmp2 = Ce/sqrtCd*ztmp2    ! q*
@@ -160,17 +160,17 @@ CONTAINS
          zeta_u   = zu*ztmp0
          zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
 
-         !! Shifting temperature and humidity at zu (L&Y 2004 eq. (9b-9c))
+         !! Shifting temperature and humidity at zu (L&Y 2004 Eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
             ztmp0 = zt*ztmp0 ! zeta_t !
             ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
             ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
-            t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 eq.(9b)
-            q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 eq.(9c)
+            t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
+            q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
             q_zu = MAX(0._wp, q_zu)
          END IF
 
-         ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 eq. 9a)...
+         ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 Eq. 9a)...
          !   In very rare low-wind conditions, the old way of estimating the
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
@@ -180,7 +180,7 @@ CONTAINS
          sqrtCdn10 = sqrt(ztmp0)
 
          !! Update of transfer coefficients:
-         ztmp1  = 1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 eq. (10a) (ztmp2 == psi_m(zeta_u))
+         ztmp1  = 1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 Eq. (10a) (ztmp2 == psi_m(zeta_u))
          Cd     = ztmp0 / ( ztmp1*ztmp1 )
          sqrtCd = SQRT( Cd )
 
@@ -190,11 +190,11 @@ CONTAINS
          ztmp1  = 0.5_wp + sign(0.5_wp,zeta_u)       ! stability flag
          Cx_n10 = CH_N10_NCAR( sqrtCdn10 , ztmp1 )
          ztmp1  = 1._wp + Cx_n10*ztmp0
-         Ch     = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 eq. (10b)
+         Ch     = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 Eq. (10b)
          
          Cx_n10 = CE_N10_NCAR( sqrtCdn10 )
          ztmp1  = 1._wp + Cx_n10*ztmp0
-         Ce     = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 eq. (10c)
+         Ce     = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 Eq. (10c)
 
       END DO !DO j_itt = 1, nb_itt
 
@@ -213,7 +213,7 @@ CONTAINS
       !! Estimate of the neutral drag coefficient at 10m as a function
       !! of neutral wind  speed at 10m
       !!
-      !! Origin: Large & Yeager 2008 eq.(11a) and eq.(11b)
+      !! Origin: Large & Yeager 2008, Eq. (11)
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ CONTAINS
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
             zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
             !
-            cd_n10_ncar(ji,jj) = 1.e-3_wp * ( &
+            cd_n10_ncar(ji,jj) = 1.e-3_wp * ( &                                                     
                &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
@@ -250,7 +250,8 @@ CONTAINS
    FUNCTION CH_N10_NCAR( psqrtcdn10 , pstab )
       !!----------------------------------------------------------------------------------      
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
-      !! Origin: Large & Yeager 2004 eq. (6c-6d)
+      !! Origin: Large & Yeager 2008, Eq. (9) and (12)
+
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: ch_n10_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
@@ -262,14 +263,14 @@ CONTAINS
          STOP
       END IF
       !
-      ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  
+      ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )   ! Eq. (9) & (12) Large & Yeager, 2008
       !
    END FUNCTION CH_N10_NCAR
 
    FUNCTION CE_N10_NCAR( psqrtcdn10 )
       !!----------------------------------------------------------------------------------      
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
-      !! Origin: Large & Yeager 2004 eq. (6b)
+      !! Origin: Large & Yeager 2008, Eq. (9) and (13)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
@@ -287,7 +288,7 @@ CONTAINS
    FUNCTION psi_m( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
-      !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
+      !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
       !!
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length
@@ -319,7 +320,7 @@ CONTAINS
    FUNCTION psi_h( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
-      !!    !! Psis, L&Y 2004 eq. (8c), (8d), (8e)
+      !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
       !!
       !! pzeta : stability paramenter, z/L where z is altitude measurement
       !!         and L is M-O length

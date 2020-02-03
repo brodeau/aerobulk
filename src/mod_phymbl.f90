@@ -625,9 +625,9 @@ CONTAINS
       lice = .FALSE.
       IF ( PRESENT(l_ice) ) lice = l_ice
       IF ( lice ) THEN
-         ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
-      ELSE
          ze_s = e_sat_ice( pta )
+      ELSE
+         ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
       END IF
       q_sat_sclr = reps0*ze_s/(ppa - (1._wp - reps0)*ze_s)
    END FUNCTION q_sat_sclr

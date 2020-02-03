@@ -60,7 +60,7 @@ PROGRAM TEST_PHYMBL
 
    !! Advanced formula:
    vqsat1(:,:) = rdct_qsat_salt*q_sat( vsst_k, vmsl )
-
+   
    !! Over ice
    vqsat_ice(:,:) =             q_sat( vsst_k, vmsl, l_ice=.TRUE. )
    
