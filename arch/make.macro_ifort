@@ -1,5 +1,5 @@
-# Makefile for AeroBulk
-# ==================
+# Makefile for AeroBulk with the Intel Fortran Compiler
+# ===================================================
 
 # Fortran compiler :
 FC  = ifort

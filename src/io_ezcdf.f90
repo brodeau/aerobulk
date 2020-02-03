@@ -1865,7 +1865,7 @@ CONTAINS
       END IF
 
       IF ( vflag /= 0. ) THEN
-         CALL sherr( NF90_PUT_ATT(id_f, id_v1,trim(cmv0),INT8(vflag)), crtn,cf_out,'metrics (masking)')
+         CALL sherr( NF90_PUT_ATT(id_f, id_v1,TRIM(cmv0),INT(vflag,8)), crtn,cf_out,'metrics (masking)')
          CALL sherr( NF90_PUT_ATT(id_f, id_v2,trim(cmv0),vflag),       crtn,cf_out,'alphabeta (masking)')
       END IF
 
