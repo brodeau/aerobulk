@@ -121,6 +121,8 @@ MODULE io_ezcdf
       &  tcdml = (/ 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 /)
 
 
+   REAL(8), SAVE :: rjs_t_old
+   
 CONTAINS
 
 
@@ -2373,33 +2375,57 @@ CONTAINS
 
 
 
-   FUNCTION time_to_date( cal_unit_ref0, rt )
+   FUNCTION time_to_date( cal_unit_ref0, rt,  date_prev )
       !!
       !! Converts a time like "hours since 19XX" to "19XX-MM-DD-hh-mm-ss"
       !!
       TYPE(date)                  :: time_to_date
       TYPE(t_unit_t0), INTENT(in) :: cal_unit_ref0 ! date of the origin of the calendar ex: "'d',1950,1,1,0,0,0" for "days since 1950-01-01
       REAL(8)        , INTENT(in) :: rt ! time as specified as cal_unit_ref0
+      TYPE(date),      INTENT(in), OPTIONAL :: date_prev 
       !!
+      TYPE(date) :: date_start   ! date to start the itteration from...      
       REAL(8)    :: zt, zinc
       INTEGER    :: jy, jmn, jd, jm, jh, jd_old, js
-      LOGICAL    :: lcontinue
-      REAL(8)    :: rjs, rjs_t, rjs_t_old, rjs_t_oo
+      LOGICAL    :: l_control_start, lcontinue
+      REAL(8)    :: rjs, rjs_t !, rjs_t_old
       CHARACTER(len=80), PARAMETER :: crtn = 'time_to_date'
       !!
+      !! Takes values from cal_unit_ref0 !
+      date_start%year   = cal_unit_ref0%year
+      date_start%month  = cal_unit_ref0%month
+      date_start%day    = cal_unit_ref0%day
+      date_start%hour   = cal_unit_ref0%hour
+      date_start%minute = cal_unit_ref0%minute
+      date_start%second = cal_unit_ref0%second
+
+
+      l_control_start = .FALSE.
+      IF ( PRESENT(date_prev) ) THEN
+         !! Only if reasonable value:
+         IF ( date_prev%year >= cal_unit_ref0%year ) THEN
+            l_control_start = .TRUE.
+            date_start = date_prev
+         END IF
+      END IF
+      
       zinc = 60. ! increment in seconds!
       !!
-      jy  = cal_unit_ref0%year
-      jmn = cal_unit_ref0%month
-      jd  = cal_unit_ref0%day
-      jh  = cal_unit_ref0%hour
-      jm  = cal_unit_ref0%minute
-      js  = cal_unit_ref0%second
+      jy  = date_start%year
+      jmn = date_start%month
+      jd  = date_start%day
+      jh  = date_start%hour
+      jm  = date_start%minute
+      js  = date_start%second
       !!
       rjs = REAL(js, 8)
-      rjs_t = 0.
-      rjs_t_old = 0.
-      rjs_t_oo = 0.
+
+      IF ( l_control_start ) THEN
+         rjs_t = rjs_t_old
+      ELSE
+         rjs_t = 0.
+         rjs_t_old = 0.
+      END IF
       !!
       
       IF ( rt > 0. ) THEN  !(if ==0, then date = to cal_unit_ref0 !)
@@ -2456,9 +2482,9 @@ CONTAINS
             !   WRITE(*,'(" ***  now : ",i4,"-",i2.2,"-",i2.2," ",i2.2,":",i2.2,":",i2.2," s cum =",i," d cum =",i)') jy, jmn, jd, jh, jm, js,  rjs_t
             !END IF
             IF ( (zt <= rjs_t).AND.(zt > rjs_t_old) ) lcontinue = .FALSE.
-            IF ( jy == 2020 ) THEN
+            IF ( jy == 2021 ) THEN
                PRINT *, 'rjs_t =', rjs_t
-               STOP 'ERROR: time_to_date => beyond 2019!'
+               STOP 'ERROR: time_to_date => beyond 2020!'
             END IF
             rjs_t_old = rjs_t
          END DO
@@ -2474,7 +2500,9 @@ CONTAINS
       !
       !WRITE(*,'(" *** time_to_date => Date : ",i4,"-",i2.2,"-",i2.2," ",i2.2,":",i2.2,":",i2.2)') jy, jmn, jd, jh, jm, NINT(rjs)
       !STOP'LOLO io_ezcdf.f90'
-
+      !WRITE(6,*) 'LOLO io_ezcdf.f90: rjs, rjs_t =', rjs, rjs_t
+      !STOP
+      
    END FUNCTION time_to_date
 
 
@@ -2493,7 +2521,7 @@ CONTAINS
       REAL(8)    :: zt, zinc
       INTEGER    :: jy, jmn, jd, jm, jh, jd_old, ipass, nb_pass, js
       LOGICAL    :: lcontinue
-      REAL(8)    :: rjs_t, rjs_t_old, rjs_t_oo, rjs0_epoch, rjs
+      REAL(8)    :: rjs_t, rjs0_epoch, rjs !, rjs_t_old
       CHARACTER(len=80), PARAMETER :: crtn = 'to_epoch_time_scalar'
       !!
       nb_pass = 1
@@ -2526,7 +2554,7 @@ CONTAINS
       jh= cal_unit_ref0%hour
       !!
       rjs = REAL(js, 8)
-      rjs_t = 0. ; rjs_t_old = 0. ; rjs_t_oo = 0.
+      rjs_t = 0. ; rjs_t_old = 0.
       !!
       DO ipass=1, nb_pass
 
@@ -2623,7 +2651,7 @@ CONTAINS
       INTEGER    :: ntr, jt, jd_old
       INTEGER    :: jy, jmn, jd, jh, jm, js, jx
       LOGICAL    :: lcontinue, l_be_accurate
-      REAL(8)    :: rjs_t, rjs_t_old, rjs0_epoch, zinc, rjs
+      REAL(8)    :: rjs_t, rjs0_epoch, zinc, rjs !, rjs_t_old
       CHARACTER(len=80), PARAMETER :: crtn = 'to_epoch_time_vect'
       !!
       l_be_accurate = .FALSE.

@@ -260,12 +260,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    isecday_utc = 0
 
+   d_idate%year   = 0
+   d_idate%month  = 0
+   d_idate%day    = 0
+   d_idate%hour   = 0
+   d_idate%minute = 0
+   d_idate%second = 0
+
 
 
    !! Time loop:
    DO jt = 1, Nt
 
-      d_idate = time_to_date( tut_time_unit, vtime(jt) )
+      d_idate = time_to_date( tut_time_unit, vtime(jt),  date_prev=d_idate )
 
       ihh     = d_idate%hour
       imm     = d_idate%minute
@@ -334,20 +341,17 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       !l_wl_c36_never_called = .TRUE.
 
-
-
-
       Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
 
 
       SELECT CASE ( TRIM(calgo) )
 
       CASE ( 'an05' )
-         !CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
-         !   &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-         !   &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+            &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-         PRINT *, 'NOT CALLING turb_ice_an05 !!!! '
+         !PRINT *, 'NOT CALLING turb_ice_an05 !!!! '
 
          !CALL TURB_NCAR    (     zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
          !   &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
@@ -366,8 +370,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
       END DO
 
+
+
       !! Bulk Richardson Number for layer "sea-level -- zu":
       RiB(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), siq(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
+
+
 
       !! Turbulent heat fluxes:
       CALL BULK_FORMULA( zu, SIT(:,:,jt), siq(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
@@ -376,14 +384,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          &              prhoa=rho_zu(:,:,jt) )
 !         &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
 
+
+      
       !! Longwave radiative heat fluxes:
       tmp(:,:) = SIT(:,:,jt)*SIT(:,:,jt)
       Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
 
       QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
-
-
-
 
 
       IF (ldebug) THEN
@@ -412,8 +419,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
       &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
       &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-      &           vdt07=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
-      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress' )
+      &           vdt07=REAL(  W10(1,1,:),4), cv_dt07='Wind',  cun07='m/s',   cln07='Module of Wind Speed',   &
+      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',   cun08='N/m^2', cln08='Module of Wind Stress' )
 
 
 
