@@ -21,9 +21,6 @@ PROGRAM TEST_AEROBULK
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw
 
-   REAL(wp), PARAMETER ::   &
-      & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
-
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
       &   n_u    = 30,   &

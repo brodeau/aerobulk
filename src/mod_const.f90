@@ -52,7 +52,8 @@ MODULE mod_const
                                 !!
       &  rnu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
                                 !!
-      &  rLevap = 2.46E6,     &   !: Latent heat of vaporization for sea-water in J/kg
+      &  rLevap = 2.46e+6_wp, &   !: Latent heat of vaporization for sea-water in   [J/kg]
+      &  rLsub  = 2.834e+6_wp,&   !: Latent heat of sublimation for ice at 0 deg.C  [J/kg]
       &  vkarmn = 0.4,        &   !: Von Karman's constant
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,       &
@@ -73,16 +74,16 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
    REAL(wp), PARAMETER, PUBLIC :: rcst_cs = -16._wp*9.80665_wp*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) !: for cool-skin parameteri$
-   !                              => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)                   
+   !                              => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)
 
 
    !! Sea-ice stuff:
    REAL(wp), PARAMETER, PUBLIC :: rCd_ice = 1.4e-3_wp   !: transfer coefficient over ice
 
+   REAL(wp), PARAMETER, PUBLIC :: to_mm_p_day = 24._wp*3600._wp  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
 
 
 
-   
 
 
    INTEGER, DIMENSION(12), PARAMETER, PUBLIC :: &
@@ -93,7 +94,7 @@ MODULE mod_const
    CHARACTER(len=200), PARAMETER :: cform_err = '(" *** E R R O R :  ")'
 
 
-   
+
    !! IFS:
 
    !REAL(wp), PARAMETER :: &

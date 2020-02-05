@@ -32,9 +32,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
 
-   REAL(wp), PARAMETER ::   &
-      & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
-
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
       &   n_u    = 30,   &

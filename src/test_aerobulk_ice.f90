@@ -4,21 +4,19 @@ PROGRAM TEST_AEROBULK_ICE
 
    USE mod_const
    USE mod_phymbl
+   USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    
    IMPLICIT NONE
 
-   INTEGER, PARAMETER :: nb_algos = 1
+   INTEGER, PARAMETER :: nb_algos = 2
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ 'Andreas' /)
+      &      vca = (/ ' NEMdef ' , ' Andreas' /)
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSIT, vqs, vQlw
-
-   REAL(wp), PARAMETER ::   &
-      & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -53,7 +51,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   !OPEN(6, FORM='formatted', RECL=512)
 
 
 
@@ -146,7 +144,7 @@ PROGRAM TEST_AEROBULK_ICE
 
 
    !! Asking for humidity:
-   qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+   qsat_zt = q_sat( t_zt, SLP )  ! no need for l_ice, we are above...   ! spec. hum. at saturation [kg/kg]
 
    IF ( l_use_rh ) THEN
       WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
@@ -192,11 +190,11 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
    WRITE(6,*) ''
 
-   siq = rdct_qsat_salt*q_sat(sit, SLP)
+   siq = q_sat(sit, SLP, l_ice=.TRUE.)
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'
-   WRITE(6,*) ' *** SIQ = 0.98*q_sat(sit) =',            REAL(1000.*siq ,4), '[g/kg]'
+   WRITE(6,*) ' *** SIQ = q_sat_ice(sit, SLP) =',        REAL(1000.*siq ,4), '[g/kg]'
    WRITE(6,*) ''
 
 
@@ -252,8 +250,12 @@ PROGRAM TEST_AEROBULK_ICE
 
       SELECT CASE(ialgo)
 
-      CASE(1)
+      CASE(1)         
+         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,   &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
          
+      CASE(2)         
          CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,   &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
@@ -312,7 +314,7 @@ PROGRAM TEST_AEROBULK_ICE
       !! Turbulent fluxes:
 
       CALL BULK_FORMULA( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
-         &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
+         &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo), l_ice=.TRUE. )
 
       vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
@@ -331,7 +333,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:         '!,TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
+   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    '!,TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
@@ -364,7 +366,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   '!,TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
+   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    '!,TRIM(vca(3)),'     |    ',TRIM(vca(4))
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , '[10^-3]'
    WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , '[10^-3]'
@@ -384,7 +386,7 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
 
    WRITE(6,*) ''
-   CLOSE(6)
+   !CLOSE(6)
 
 END PROGRAM TEST_AEROBULK_ICE
 

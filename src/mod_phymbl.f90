@@ -306,14 +306,16 @@ CONTAINS
       REAL(wp)             :: gamma_moist_sclr
       REAL(wp), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
       !
-      REAL(wp) :: zta, zqa, zwa, ziRT        ! local scalar
+      REAL(wp) :: zta, zqa, zwa, ziRT, zLvap        ! local scalars
       !!----------------------------------------------------------------------------------
       zta = MAX( ptak,  180._wp) ! prevents screw-up over masked regions where field == 0.
       zqa = MAX( pqa,  1.E-6_wp) !    "                   "                     "
       !!
       zwa = zqa / (1._wp - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
       ziRT = 1._wp / (R_dry*zta)    ! 1/RT
-      gamma_moist_sclr = grav * ( 1._wp + rLevap*zwa*ziRT ) / ( rCp_dry + rLevap*rLevap*zwa*reps0*ziRT/zta )
+      zLvap = L_vap_sclr( ptak )
+      !!
+      gamma_moist_sclr = grav * ( 1._wp + zLvap*zwa*ziRT ) / ( rCp_dry + zLvap*zLvap*zwa*reps0*ziRT/zta )
       !!
    END FUNCTION gamma_moist_sclr
 
@@ -682,7 +684,7 @@ CONTAINS
    END FUNCTION e_sat_ice_vctr
 
 
-   
+
 
    FUNCTION q_sat_crude(temp, zrho)
 
@@ -772,61 +774,15 @@ CONTAINS
    END SUBROUTINE UPDATE_QNSOL_TAU
 
 
-   SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
-      !!----------------------------------------------------------------------------------
-      REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCd
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCh
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCe
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
-      !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQlat !  [W/m^2]
-      !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
-      !!
-      REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
-      INTEGER  :: ji, jj, jq     ! dummy loop indices
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
 
-            !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
-            ztaa = pTa(ji,jj) ! first guess...
-            DO jq = 1, 4
-               zgamma = gamma_moist( 0.5*(ztaa+pTs(ji,jj)) , pqa(ji,jj) )
-               ztaa = pTa(ji,jj) - zgamma*pzu   ! Absolute temp. is slightly colder...
-            END DO
-            zrho = rho_air(ztaa, pqa(ji,jj), pslp(ji,jj))
-            zrho = rho_air(ztaa, pqa(ji,jj), pslp(ji,jj)-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
 
-            zUrho = pUb(ji,jj)*MAX(zrho, 1._wp)     ! rho*U10
 
-            pTau(ji,jj) = zUrho * pCd(ji,jj) * pwnd(ji,jj) ! Wind stress module
 
-            zevap        = zUrho * pCe(ji,jj) * (pqa(ji,jj) - pqs(ji,jj))
-            pQsen(ji,jj) = zUrho * pCh(ji,jj) * (pTa(ji,jj) - pTs(ji,jj)) * cp_air(pqa(ji,jj))
-            pQlat(ji,jj) = L_vap(pTs(ji,jj)) * zevap
 
-            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = - zevap ! usually Evap is provided as a positive field (even though it is a loss for the ocean)
-            IF ( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
-
-         END DO
-      END DO
-   END SUBROUTINE BULK_FORMULA_VCTR
 
 
    SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap, prhoa )
+      &                                 pTau, pQsen, pQlat,  pEvap, prhoa,  l_ice )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
@@ -846,11 +802,15 @@ CONTAINS
       !!
       REAL(wp), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
       REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
+      LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!
       REAL(wp) :: ztaa, zgamma, zrho, zUrho, zevap
       INTEGER  :: jq
+      LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
-
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
+      !!
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
       ztaa = pTa ! first guess...
       DO jq = 1, 4
@@ -866,13 +826,62 @@ CONTAINS
 
       zevap = zUrho * pCe * (pqa - pqs)
       pQsen = zUrho * pCh * (pTa - pTs) * cp_air(pqa)
-      pQlat = L_vap(pTs) * zevap
 
-      IF ( PRESENT(pEvap) ) pEvap = - zevap
+      IF ( lice) THEN
+         pQlat =      rLsub * zevap
+         IF ( PRESENT(pEvap) ) pEvap = MAX( -zevap , 0._wp )
+      ELSE
+         pQlat = L_vap(pTs) * zevap
+         IF ( PRESENT(pEvap) ) pEvap = -zevap
+      END IF
+
       IF ( PRESENT(prhoa) ) prhoa = zrho
 
    END SUBROUTINE BULK_FORMULA_SCLR
-
+   !!
+   SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
+      &                                 pTau, pQsen, pQlat,  pEvap, prhoa,  l_ice )
+      !!----------------------------------------------------------------------------------
+      REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCd
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCh
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCe
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQlat !  [W/m^2]
+      !!
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
+      LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
+      !!
+      REAL(wp) :: zevap, zrho
+      LOGICAL  :: lice
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
+      !!
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            !!
+            CALL BULK_FORMULA_SCLR( pzu,  pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj),  &
+               &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj), pwnd(ji,jj), pUb(ji,jj), &
+               &                   pslp(ji,jj), pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),  &
+               & pEvap=zevap, prhoa=zrho, l_ice=lice )
+            !!
+            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
+            IF ( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
+         END DO
+      END DO
+   END SUBROUTINE BULK_FORMULA_VCTR
 
 
 

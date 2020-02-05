@@ -10,13 +10,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
 
+   USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
-   !USE mod_blk_coare3p0
-   !USE mod_blk_coare3p6
-   !USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
-   !
-   !USE mod_blk_ecmwf
-   !USE mod_skin_ecmwf, ONLY: Hz_wl !: problem: Hz_wl already exists from mod_skin_coare ...
 
 
    IMPLICIT NONE
@@ -26,14 +21,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   INTEGER, PARAMETER :: nb_algos = 1
-
-   !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
+   INTEGER, PARAMETER :: nb_algos = 2
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
-
-   !REAL(wp), PARAMETER ::   &
-   !   & to_mm_p_day = 24.*3600.  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -68,7 +58,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, siq, rgamma, Cp_ma, tmp
 
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB, TAU
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB, TAU, SBLM
 
    REAL(wp) :: zt, zu, rlon
 
@@ -161,7 +151,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
    ALLOCATE ( xlon(nx,ny), siq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE ( Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
-      &       RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
+      &       RiB(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
 
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
@@ -212,9 +202,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    ians=-1
    DO WHILE ( (ians<0).OR.(ians>nb_algos) )
-      WRITE(6,*) 'Which algo to use? "Andreas 2005" => 0 :'
+      WRITE(6,*) 'Which algo to use? "Andreas 2005" => 1 | "NEMO default" => 0 :'
       READ(*,*) ians
-      IF ( ians == 0 ) calgo = 'an05'
+      IF ( ians == 0 ) calgo = 'nemo'
+      IF ( ians == 1 ) calgo = 'an05'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -346,16 +337,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       SELECT CASE ( TRIM(calgo) )
 
+      CASE ( 'nemo' )
+         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+            &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         
       CASE ( 'an05' )
          CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-         !PRINT *, 'NOT CALLING turb_ice_an05 !!!! '
-
-         !CALL TURB_NCAR    (     zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
-         !   &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-         !   &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
       CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP
@@ -381,8 +372,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       CALL BULK_FORMULA( zu, SIT(:,:,jt), siq(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
          &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
          &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
-         &              prhoa=rho_zu(:,:,jt) )
-!         &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
+         &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
+
 
 
       
@@ -411,6 +402,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END DO !DO jt = 1, Nt
 
 
+
+
+
+   
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
@@ -420,8 +415,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
       &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
       &           vdt07=REAL(  W10(1,1,:),4), cv_dt07='Wind',  cun07='m/s',   cln07='Module of Wind Speed',   &
-      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',   cun08='N/m^2', cln08='Module of Wind Stress' )
-
+      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',   cun08='N/m^2', cln08='Module of Wind Stress',  &
+      &           vdt09=REAL(to_mm_p_day*SBLM(1,1,:),4), cv_dt09='SBLM',  cun09='mm/day', cln09='Sublimation of ice'      )
+   
 
 
    WRITE(6,*) ''; WRITE(6,*) ''
