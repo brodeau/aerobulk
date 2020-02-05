@@ -129,16 +129,11 @@ CONTAINS
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
 
-      !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, 0.2_wp )
            
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
 
-      !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-      dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
       
@@ -196,15 +191,26 @@ CONTAINS
          
       END DO !DO j_itt = 1, nb_itt
 
-
-      !LOLO: rCd_ice = 1.4e-3_wp
       
-      ! compute transfer coefficients at zu :
-      ztmp0 = u_star/U_blk
-      Cd   = ztmp0*ztmp0
-      Ch   = ztmp0*t_star/dt_zu
-      Ce   = ztmp0*q_star/dq_zu
+      !! Scalar wind speed cannot be below 0.2 m/s
+      U_blk = MAX( U_zu, 0.2_wp )
 
+      !! Pot. temp. difference (and we don't want it to be 0!)
+      dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+      dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      
+      Cd = rCd_ice
+      Ch = rCd_ice
+      Ce = rCd_ice
+      
+      u_star = SQRT(rCd_ice) * U_blk
+      t_star = rCd_ice * U_blk * dt_zu / u_star
+      q_star = rCd_ice * U_blk * dq_zu / u_star
+
+      !z0 = ???
+
+      
+      
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
