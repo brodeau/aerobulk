@@ -3,9 +3,9 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x bin/test_aerobulk_ice.x 
+All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x 
 
-sk: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_buoy_series_ice.x
+test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_buoy_series_ice.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
@@ -134,7 +134,8 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
-	rm -rf mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc
+	rm -rf obj mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat
+
 
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp
 

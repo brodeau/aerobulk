@@ -16,7 +16,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSIT, vqs, vQlw
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSIT, vqs
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &

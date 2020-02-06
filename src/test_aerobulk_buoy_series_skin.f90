@@ -238,13 +238,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(czu,'(i2,"m")') INT(zu)
 
 
-   !IF (ldebug) THEN
-   !   WRITE(6,*) '*       idate     ,   wind    ,       SST    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
-   !   DO jt = 1, Nt
-   !      WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SST(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
-   !   END DO
-   !END IF
-
 
    !! Some initializations:
 
@@ -255,6 +248,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    zUN10 = 0.
 
    isecday_utc = 0
+
+   d_idate%year   = 0
+   d_idate%month  = 0
+   d_idate%day    = 0
+   d_idate%hour   = 0
+   d_idate%minute = 0
+   d_idate%second = 0
 
    dT(:,:,:)    = 0.  ! skin = SST for first time step
    dTcs(:,:,:) = 0.
@@ -268,7 +268,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !! Time loop:
    DO jt = 1, Nt
 
-      d_idate = time_to_date( tut_time_unit, vtime(jt) )
+      d_idate = time_to_date( tut_time_unit, vtime(jt),  date_prev=d_idate )
 
       ihh     = d_idate%hour
       imm     = d_idate%minute
@@ -342,7 +342,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       qs(:,:,jt) = ssq(:,:)
 
 
-      Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
+      Qsw(:,:,jt) = (1._wp - roce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
 
       
       SELECT CASE ( TRIM(calgo) )
@@ -406,13 +406,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          &              pEvap=EVAP(:,:,jt), prhoa=rho_zu(:,:,jt) )
       
       !! Longwave radiative heat fluxes:
-      tmp(:,:) = Ts(:,:,jt)*Ts(:,:,jt)
-      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
+      Qlw(:,:,jt) = qlw_net( rad_lw(:,:,jt), Ts(:,:,jt) )
 
-      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
-
-
-
+      !! Non-solar heat flux:
+      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt)
 
 
       IF (ldebug) THEN

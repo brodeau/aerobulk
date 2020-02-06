@@ -78,6 +78,9 @@ MODULE mod_phymbl
       MODULE PROCEDURE bulk_formula_vctr, bulk_formula_sclr
    END INTERFACE bulk_formula
 
+   INTERFACE qlw_net
+      MODULE PROCEDURE qlw_net_vctr, qlw_net_sclr
+   END INTERFACE qlw_net
 
 
    PUBLIC virt_temp
@@ -101,6 +104,7 @@ MODULE mod_phymbl
    PUBLIC update_qnsol_tau
    PUBLIC alpha_sw
    PUBLIC bulk_formula
+   PUBLIC qlw_net
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -745,8 +749,7 @@ CONTAINS
       !
       REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(out) :: Qlat
       !
-      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zTs2, zz0, &
-         &        zQlat, zQsen, zQlw
+      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zz0, zQlat, zQsen, zQlw
       INTEGER  ::   ji, jj     ! dummy loop indices
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
@@ -763,8 +766,7 @@ CONTAINS
                &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
                &              pTau(ji,jj), zQsen, zQlat )
 
-            zTs2  = pTs(ji,jj)*pTs(ji,jj)
-            zQlw  = emiss_w*(prlw(ji,jj) - stefan*zTs2*zTs2) ! Net longwave flux
+            zQlw = qlw_net_sclr( prlw(ji,jj), pTs(ji,jj) ) ! Net longwave flux
 
             pQns(ji,jj) = zQlat + zQsen + zQlw
 
@@ -914,6 +916,52 @@ CONTAINS
    END FUNCTION alpha_sw_sclr
 
 
+   !===============================================================================================
+   FUNCTION qlw_net_sclr( pdwlw, pts,  l_ice )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION qlw_net_sclr  ***
+      !!
+      !! ** Purpose : Estimate of the net longwave flux at the surface
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: qlw_net_sclr
+      REAL(wp), INTENT(in) :: pdwlw !: downwelling longwave (aka infrared, aka thermal) radiation [W/m^2]
+      REAL(wp), INTENT(in) :: pts   !: surface temperature [K]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
+      REAL(wp) :: zemiss, zt2
+      LOGICAL  :: lice
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
+      IF ( lice ) THEN
+         zemiss = emiss_i
+      ELSE
+         zemiss = emiss_w
+      END IF
+      zt2 = pts*pts
+      qlw_net_sclr = zemiss*( pdwlw - stefan*zt2*zt2)  ! zemiss used both as the IR albedo and IR emissivity...
+   END FUNCTION qlw_net_sclr
+   !!
+   FUNCTION qlw_net_vctr( pdwlw, pts,  l_ice )
+      REAL(wp), DIMENSION(jpi,jpj) :: qlw_net_vctr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pdwlw !: downwelling longwave (aka infrared, aka thermal) radiation [W/m^2]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pts   !: surface temperature [K]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
+      LOGICAL  :: lice
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF ( PRESENT(l_ice) ) lice = l_ice
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            qlw_net_vctr(ji,jj) = qlw_net_sclr( pdwlw(ji,jj) , pts(ji,jj), l_ice=lice )
+         END DO
+      END DO
+   END FUNCTION qlw_net_vctr
+   !===============================================================================================
+
+
+   
+
 
 END MODULE mod_phymbl
 
@@ -990,3 +1038,5 @@ END MODULE mod_phymbl
 !   !!----------------------------------------------------------------------------------
 !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
 !END FUNCTION Ri_bulk_coare
+
+

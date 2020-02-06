@@ -143,7 +143,7 @@ CONTAINS
          !IF( l_use_skin ) THEN
          !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, . &
          !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
-         !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         !      &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          !ELSE
          !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu,  &
          !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
@@ -155,7 +155,7 @@ CONTAINS
          !IF( l_use_skin ) THEN
          !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
          !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,           &
-         !      &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
+         !      &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
          !ELSE
          !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE., &
          !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
@@ -171,7 +171,7 @@ CONTAINS
          IF( l_use_skin ) THEN
             CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, l_use_skin, l_use_skin, &
                &              zCd, zCh, zCe, pTzu, zQzu, zUblk,      &
-               &              Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
+               &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
          ELSE
             CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
                &              zCd, zCh, zCe, pTzu, zQzu, zUblk)

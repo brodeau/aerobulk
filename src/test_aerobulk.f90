@@ -284,7 +284,7 @@ PROGRAM TEST_AEROBULK
          IF ( l_use_coolsk ) THEN
             CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
@@ -301,7 +301,7 @@ PROGRAM TEST_AEROBULK
          IF ( l_use_coolsk ) THEN
             CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
@@ -322,7 +322,7 @@ PROGRAM TEST_AEROBULK
          IF ( l_use_coolsk ) THEN
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
-               &             Qsw=(1._wp - oce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
+               &             Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
@@ -396,7 +396,7 @@ PROGRAM TEST_AEROBULK
          vSST(ialgo) = sst(1,1)
          vTs(ialgo)  = Ts(1,1)
          vqs(ialgo)  = qs(1,1)
-         vQlw(ialgo) = emiss_w*(rad_lw(1,1) - stefan*Ts(1,1)**4) ! Net longwave flux as in "UPDATE_QNSOL_TAU of mod_phymbl.f90"
+         vQlw(ialgo) = qlw_net( rad_lw(1,1), Ts(1,1) ) ! Net longwave flux
       END IF
 
    END DO

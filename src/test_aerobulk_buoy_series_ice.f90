@@ -142,8 +142,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
-
-
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
    ALLOCATE ( SIT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
@@ -191,7 +189,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END DO
 
    CALL GETVAR_1D(cf_data, 'radsw',  rad_sw  )
-
    CALL GETVAR_1D(cf_data, 'radlw',  rad_lw  )
 
 
@@ -209,7 +206,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
-
 
 
 
@@ -232,13 +228,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    END IF
    WRITE(czu,'(i2,"m")') INT(zu)
 
-
-   !IF (ldebug) THEN
-   !   WRITE(6,*) '*       idate     ,   wind    ,       SIT    ,     t_zt     ,      q_zt      ,    rad_sw     , rad_lw  :'
-   !   DO jt = 1, Nt
-   !      WRITE(6,*) vtime(jt), REAL(W10(:,:,jt),4), REAL(SIT(:,:,jt),4), REAL(t_zt(:,:,jt),4), REAL(q_zt(:,:,jt),4), REAL(rad_sw(:,:,jt),4), REAL(rad_lw(:,:,jt),4)
-   !   END DO
-   !END IF
 
 
    !! Some initializations:
@@ -330,9 +319,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       !END IF
 
 
-      !l_wl_c36_never_called = .TRUE.
 
-      Qsw(:,:,jt) = (1._wp - oce_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into the ocean
+      Qsw(:,:,jt) = (1._wp - rice_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into sea-ice...
 
 
       SELECT CASE ( TRIM(calgo) )
@@ -361,27 +349,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
       END DO
 
-
-
       !! Bulk Richardson Number for layer "sea-level -- zu":
       RiB(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), siq(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
-
-
 
       !! Turbulent heat fluxes:
       CALL BULK_FORMULA( zu, SIT(:,:,jt), siq(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
          &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
          &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
          &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
-
-
-
       
       !! Longwave radiative heat fluxes:
-      tmp(:,:) = SIT(:,:,jt)*SIT(:,:,jt)
-      Qlw(:,:,jt) = emiss_w*(rad_lw(:,:,jt) - stefan*tmp(:,:)*tmp(:,:))
+      Qlw(:,:,jt) = qlw_net( rad_lw(:,:,jt), SIT(:,:,jt), l_ice=.TRUE. )
 
-      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt) ! Non-solar component of net heat flux !
+      !! Non-solar heat flux:
+      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt)
 
 
       IF (ldebug) THEN

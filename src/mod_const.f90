@@ -58,10 +58,12 @@ MODULE mod_const
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,       &
       &  emiss_w = 0.97,      &   !: emissivity of sea water
+      &  emiss_i = 0.996,     &   !:       "   for ice and snow => but Rees 1993 says it can be way lower in winter on fresh snow... 0.72 ...
       &  stefan = 5.67E-8,    &   !: Stefan Boltzman constant
                                 !!
-      &  oce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available
-                                !!                         !: NEMO: 0.066 / ECMWF: 0.055
+      &  roce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available
+      !!                         !: NEMO: 0.066 / ECMWF: 0.055
+      &  rice_alb0  = 0.8  ,  &   !: BAD!!! must use that of the sea-ice model when possible !!!
       &  Tswf  = 273.,  &        !: BAD!!! because sea-ice not used yet!!!
                                 !&  Tswf  = 271.4          !: freezing point of sea-water (K)
       &  to_rad = Pi/180., &

@@ -63,11 +63,10 @@ CONTAINS
             zz1 = prhoa(ji,jj)*pU10(ji,jj)
             zQlat = MIN( rLevap*zCe*zz1*(pqzu(ji,jj) - pq_s(ji,jj)) , 0._wp )
             zQsen =     rCp0_a*zCh*zz1*(pTzu(ji,jj) - pT_s(ji,jj))
-
+            
             ! Net longwave flux:
-            zz1  = pT_s(ji,jj)*pT_s(ji,jj)
-            zQlw = emiss_w*(pRlw(ji,jj) - stefan*zz1*zz1)
-
+            zQlw = qlw_net( pRlw(ji,jj), pT_s(ji,jj) )
+            
             !! Fraction of the shortwave flux absorbed by the cool-skin sublayer:
             !zQsw_f = 0.065 + 11.*zdelta - 6.6e-5/zdelta*(1. - EXP(-zdelta/8.e-4)) ! Eq.16 (Fairall al. 1996b)
             zfr = 0.137 + 11.*zdelta - 6.6e-5/zdelta*(1. - EXP(-zdelta/8.e-4)) ! Eq.16 (Fairall al. 1996b)
