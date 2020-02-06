@@ -49,8 +49,8 @@ L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ]
 L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ] ; # name of variable on figure
 L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$' ] ; # name of variable in latex mode
 L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$'  ]
-L_VMAX  = [      3.     ,     20.       ,    0.3      ,     10.     ]
-L_VMIN  = [     -3.     ,    -20.       ,    0.       ,   -100.     ]
+L_VMAX  = [      3.     ,     20.       ,    0.3      ,     20.     ]
+L_VMIN  = [     -3.     ,    -20.       ,    0.       ,    -80.     ]
 L_ANOM  = [   True      ,    True       ,   True      ,    True     ]
 
 
@@ -94,7 +94,7 @@ Nt = len(vt)
 
 vtime = nmp.zeros(Nt)
 
-#vt = vt + 1036800. + 30.*60. # BUG!??? don't get why false in epoch to date conversion, and yet ncview gets it right!
+vt = vt + 1036800. + 30.*60. # BUG!??? don't get why false in epoch to date conversion, and yet ncview gets it right!
 for jt in range(Nt): vtime[jt] = mdates.epoch2num(vt[jt])
 
 ii=Nt/300
