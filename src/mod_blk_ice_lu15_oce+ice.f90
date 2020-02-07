@@ -157,11 +157,10 @@ CONTAINS
 
 
 
-   SUBROUTINE Cdn10_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, pslp, pcd, pch )
+   SUBROUTINE Cdn10_Lupkes2015( zu, Ts_o, t_zu, q_zu, Uo_zu, Ui_zu, Cdn_o, Chn_o, &
+      &                         pic, Ts_i, pslp, pcd, pch )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  Cdn10_Lupkes2015  ***
-      !!
-      !!                         CASE 100 % sea-ice covered !!!
       !!
       !! ** Purpose :    Alternative turbulent transfer coefficients formulation
       !!                 between sea-ice and atmosphere with distinct momentum
@@ -184,20 +183,25 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
       REAL(wp), INTENT(in   )                   :: zu     ! reference height (height for Uo_zu)   [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_o   ! sea surface temperature  [Kelvin]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Uo_zu  ! relative wind module at zu over ocean  [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Cdn_o  ! neutral drag coefficient over ocean
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Chn_o  ! neutral heat coefficient over ocean
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pic    ! ice concentration [fraction]  => at_i_b
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_i ! sea-ice surface temperature [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp   ! sea-level pressure [Pa]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
       !
-      REAL(wp) ::   zfi, zfo, zqsat_i
-      REAL(wp) ::   zrib_i, ztmp
+      REAL(wp) ::   zfi, zfo, zqsat_o, zqsat_i
+      REAL(wp) ::   zrib_o, zrib_i, ztmp
       REAL(wp) ::   zCdn_skin_ice, zCdn_form_ice, zCdn_ice
       REAL(wp) ::   zChn_skin_ice, zChn_form_ice
-      REAL(wp) ::   z0i, zfmi, zfhi
-      REAL(wp) ::   zCdn_form_tmp, zwndspd_i
+      REAL(wp) ::   z0w, z0i, zfmi, zfmw, zfhi, zfhw
+      REAL(wp) ::   zCdn_form_tmp, zwndspd_o, zwndspd_i
       INTEGER  ::   ji, jj         ! dummy loop indices
       !!----------------------------------------------------------------------
 
@@ -212,24 +216,38 @@ CONTAINS
 
       DO jj = 1, jpj
          DO ji = 1, jpi
-            
-            zfi  = 1._wp  ! fraction of sea-ice
+
+            zfi = pic(ji,jj)    ! fraction of sea-ice
+            zfo = 1._wp - zfi    ! fraction of open ocean
+
+            zwndspd_o = MAX( 0.5, Uo_zu(ji,jj) )
             zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
-            
-            zfo  = 0._wp  ! fraction of open ocean
-            
+
             ! Specific humidities at saturation at air-sea and air-ice interface [kg/kg]:
-            zqsat_i = q_sat( Ts_i(ji,jj), pslp(ji,jj) ) !LOLO!!! No!!! Must use a special 1 over ice!
+            zqsat_o = rdct_qsat_salt*q_sat( Ts_o(ji,jj), pslp(ji,jj) )
+            zqsat_i =                q_sat( Ts_i(ji,jj), pslp(ji,jj) ) !LOLO!!! No!!! Must use a special 1 over ice!
 
             ! Bulk Richardson Number:
+            zrib_o = Ri_bulk( zu, Ts_o(ji,jj), t_zu(ji,jj), zqsat_o, q_zu(ji,jj), zwndspd_o ) !LOLO: is t_zu potential T? It should!!!!
             zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), zqsat_i, q_zu(ji,jj), zwndspd_i )
 
             ! Momentum and Heat Neutral Transfer Coefficients
-            zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40 !LOLO: WHAT?????
+            zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40
             zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )   ! Eq. 53
 
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
+            z0w = zu * EXP( -1._wp * vkarmn / SQRT( Cdn_o(ji,jj) ) ) ! over water
             z0i = z0_skin_ice                                        ! over ice
+
+            IF( zrib_o <= 0._wp ) THEN
+               ztmp = virt_temp( Ts_o(ji,jj), zqsat_o ) - virt_temp( t_zu(ji,jj), q_zu(ji,jj) ) ! difference of potential virtual temperature
+               zfmw = 1._wp - zam*zrib_o / ( 1._wp + 3._wp*zc2*Cdn_o(ji,jj)*SQRT( -zrib_o*( zu / z0w + 1._wp ) ) )  ! Eq. 10
+               zfhw = ( 1._wp + ( zbetah*ztmp**r1_3 / ( Chn_o(ji,jj) * zwndspd_o ) )**zgamma )**z1_gamma      ! Eq. 26
+            ELSE
+               ztmp = zrib_o / SQRT( 1._wp + zrib_o )
+               zfmw = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 12
+               zfhw = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 28
+            ENDIF
 
             IF( zrib_i <= 0._wp ) THEN
                ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
@@ -240,14 +258,18 @@ CONTAINS
                zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
                zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
             ENDIF
-            
+
+
+
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
-            pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi ) * ztmp
-            pch(ji,jj) = zChn_skin_ice * zfhi + zChn_form_ice * ( zfhi*zfi ) * ztmp
-            
+            pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi + zfmw*zfo ) * ztmp
+            pch(ji,jj) = zChn_skin_ice * zfhi + zChn_form_ice * ( zfhi*zfi + zfhw*zfo ) * ztmp
+
          END DO
       END DO
+      !
+      !CALL lbc_lnk_multi( 'sbcblk', pcd, 'T',  1., pch, 'T', 1. )
       !
    END SUBROUTINE Cdn10_Lupkes2015
 
