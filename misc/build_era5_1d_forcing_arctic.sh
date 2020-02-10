@@ -3,26 +3,13 @@
 YEAR=2018
 DIR_IN="/home/datawork-lops-drakkarcom/DATA-REFERENCE/ERA5-FORCING/ROOT-FILES"
 
+fo="ERA5_station_arctic_1h_${YEAR}.nc"
+
 ip=1224
 jp=18
 
-
-file_tsk_ist=""
-
-# ERA5_d2m_y2018.nc
-# ERA5_msdwlwrf_y2018.nc
-# ERA5_msdwswrf_y2018.nc
-# ERA5_msl_y2018.nc
-# ERA5_msr_y2018.nc
-# ERA5_mtpr_y2018.nc
-# ERA5_sf_y2018.nc
-# ERA5_ssrd_y2018.nc
-# ERA5_strd_y2018.nc
-# ERA5_t2m_y2018.nc
-# ERA5_tp_y2018.nc
-# ERA5_u10_y2018.nc
-# ERA5_v10_y2018.nc
-
+file_ist=""
+file_tsk=""
 
 
 for cv in "msl" "d2m" "t2m" "u10" "v10" "ssrd" "strd"; do
@@ -43,3 +30,15 @@ for cv in "msl" "d2m" "t2m" "u10" "v10" "ssrd" "strd"; do
     fi
     echo
 done
+
+
+
+
+rm -f ${fo}
+
+rsync -avP msl_era5.tmp ${fo}
+
+for cv in "d2m" "t2m" "u10" "v10" "ssrd" "strd"; do
+    ncks -A --no-abc -h -v ${cv} ${cv}_era5.tmp -o ${fo}
+done
+
