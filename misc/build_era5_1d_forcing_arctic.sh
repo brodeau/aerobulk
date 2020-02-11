@@ -49,8 +49,10 @@ fi
 if [ `hostname` != "ige-meom-cal1" ]; then
 
     for cv in "msl" "d2m" "t2m" "u10" "v10" "ssrd" "strd"; do
-        echo
-        if [ ! -f ./${cv}_era5.tmp ]; then
+        #
+        ftmp="./${cv}_era5.nc4"
+        #
+        if [ ! -f ${ftmp} ]; then
             #
             f_in=${DIR_IN}/${YEAR}/ERA5_${cv}_y${YEAR}.nc
             CMD="ncks -F -O --no-abc -h -d longitude,${ip},`expr ${ip} + 2` -d latitude,${jp},`expr ${jp} + 2` ${f_in} -o ${cv}0.tmp"
@@ -63,7 +65,18 @@ if [ `hostname` != "ige-meom-cal1" ]; then
             ncpdq -O -a time,record ${cv}_era5.tmp ${cv}_era5.tmp # Switch "record" and "time"
             ncwa -O -a record ${cv}_era5.tmp ${cv}_era5.tmp       # Remove (degenerate) "record"
             #
-            CMD="ncks -4 -L 5 --cnk_dmn longitude,3 --cnk_dmn latitude,1 --cnk_dmn time,1 ${cv}_era5.tmp -o ${cv}_era5.nc4"
+            #
+            if [ "${cv}" = "ssrd" ] || [ "${cv}" = "strd" ]; then
+                mv -f ${cv}_era5.tmp aaa.tmp
+                ncap2 -h -O -s "${cv}0=${cv}/3600." aaa.tmp -o bbb.tmp
+                ncks -h -v "${cv}0" bbb.tmp -o ${cv}_era5.tmp
+                ncrename -v ${cv}0,${cv} ${cv}_era5.tmp
+                ncatted -h -O -a units,${cv},o,c,"W m**-2" ${cv}_era5.tmp
+                rm -f aaa.tmp bbb.tmp
+            fi
+            #
+            #
+            CMD="ncks -4 -L 5 --cnk_dmn longitude,3 --cnk_dmn latitude,1 --cnk_dmn time,1 ${cv}_era5.tmp -o ${ftmp}"
             echo; echo "${CMD}"; ${CMD}; echo
             rm -f ${cv}.tmp ${cv}0.tmp ${cv}_era5.tmp
             #
