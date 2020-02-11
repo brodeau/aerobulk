@@ -113,11 +113,10 @@ CONTAINS
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_an05@mod_blk_ice_an05.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
-         &        znu_a(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj),  &
-         &           z0(jpi,jpj),    z0tq(jpi,jpj,2)              ,  &
-         &        ztmp0(jpi,jpj)   )
+      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj),  q_star(jpi,jpj),  &
+         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),   dq_zu(jpi,jpj),  &
+         &        znu_a(jpi,jpj),  ztmp1(jpi,jpj),   ztmp2(jpi,jpj),  &
+         &           z0(jpi,jpj),   z0tq(jpi,jpj,2), ztmp0(jpi,jpj)   )
       
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.

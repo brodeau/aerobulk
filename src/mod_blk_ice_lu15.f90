@@ -142,7 +142,7 @@ CONTAINS
       q_star = Cd * U_blk * dq_zu / u_star
 
 
-      IF( lreturn_z0 )    xz0     = EXP( LOG(10._wp) - vkarmn/SQRT(Cd) )
+      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
       !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)

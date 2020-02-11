@@ -105,6 +105,7 @@ MODULE mod_phymbl
    PUBLIC alpha_sw
    PUBLIC bulk_formula
    PUBLIC qlw_net
+   PUBLIC z0_from_Cd
 
    REAL(wp), PARAMETER  :: &
       &      repsilon = 1.e-6
@@ -959,6 +960,26 @@ CONTAINS
    END FUNCTION qlw_net_vctr
    !===============================================================================================
 
+
+   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )
+      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
+      REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral) drag coefficient []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi  !: (non neutral case) stability correction (Psi(zu/L)) []
+      LOGICAL  :: lice
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF ( PRESENT(ppsi) ) THEN
+         !! Normal case:
+         z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd) + ppsi ) )
+      ELSE
+         !! Neutral case:
+         z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd) )
+      END IF
+   END FUNCTION z0_from_Cd
+
+   
 
    
 

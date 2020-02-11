@@ -136,7 +136,8 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 clean:
 	rm -rf obj mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat
 
-
+menage:
+	rm -f *.svg *.png *.eps *.gp *.out *.nc *.dat
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp
 
 

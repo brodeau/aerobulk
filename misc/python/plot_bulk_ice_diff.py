@@ -36,6 +36,7 @@ L_ALGOS = [ 'nemo'     ,  'an05'   ,  'lu15'   ]
 l_color = [  'k'       , '#ffed00' , '#008ab8' ] ; # colors to differentiate algos on the plot
 l_width = [     1      ,    1      ,    1      ] ; # line-width to differentiate algos on the plot
 l_style = [    '-'     ,   '-'     ,   '--'    ] ; # line-style
+l_lgnm  = [ 'NEMO def.', 'Andreas (2005)', 'Lupkes (2015)' ]
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
 #L_VARO  = [   'Qlat'    ,    'Qsen'     ,     'Qnet'   ,   'Qlw'     ,  'Tau'      ,    'dT_skin'         ] ; # name of variable on figure
@@ -130,7 +131,7 @@ for jv in range(nb_var):
     plt.xticks(rotation='60')
 
     for ja in range(nb_algos):
-        plt.plot(vtime, xF[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
+        plt.plot(vtime, xF[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=l_lgnm[ja], zorder=10+ja)
 
     ax1.set_ylim(L_VMIN[jv], L_VMAX[jv]) ; ax1.set_xlim(vtime[0],vtime[Nt-1])
     plt.ylabel(L_VARL[jv]+' ['+L_VUNT[jv]+']')
