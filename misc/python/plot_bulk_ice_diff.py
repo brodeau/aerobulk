@@ -34,7 +34,7 @@ rDPI=200.
 
 L_ALGOS = [ 'nemo'     ,  'an05'   ,  'lu15'   ]
 l_color = [  'k'       , '#ffed00' , '#008ab8' ] ; # colors to differentiate algos on the plot
-l_width = [     1      ,    2      ,    3      ] ; # line-width to differentiate algos on the plot
+l_width = [     1      ,    1      ,    1      ] ; # line-width to differentiate algos on the plot
 l_style = [    '-'     ,   '-'     ,   '--'    ] ; # line-style
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
@@ -49,8 +49,8 @@ L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ]
 L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ] ; # name of variable on figure
 L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$' ] ; # name of variable in latex mode
 L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$'  ]
-L_VMAX  = [      3.     ,     20.       ,    0.3      ,     20.     ]
-L_VMIN  = [     -3.     ,    -20.       ,    0.       ,    -80.     ]
+L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.     ]
+L_VMIN  = [     -50.     ,    -50.       ,    0.      ,  -100.     ]
 L_ANOM  = [   True      ,    True       ,   True      ,    True     ]
 
 
