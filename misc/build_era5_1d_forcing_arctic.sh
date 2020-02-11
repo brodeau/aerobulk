@@ -98,6 +98,9 @@ if [ `hostname` = "ige-meom-cal1" ]; then
         ncks -A --no-abc -h -v ${cv} ${cv}_era5.nc4 -o ${fo}
     done
 
+    ncrename -h -v ssrd,radsw ${fo}
+    ncrename -h -v strd,radlw ${fo}
+    
     ncatted -h -O -a About,global,o,c,"Extraction of ERA5 at ${coord} (i=${ip}, j=${jp})" ${fo}
 
 fi
