@@ -330,7 +330,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
+
       CASE ( 'an05' )
          CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
@@ -346,7 +346,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          STOP
       END SELECT
 
-      
+
       !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
       t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
       DO jq = 1, 4
@@ -362,7 +362,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
          &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
          &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
-      
+
       !! Longwave radiative heat fluxes:
       Qlw(:,:,jt) = qlw_net( rad_lw(:,:,jt), SIT(:,:,jt), l_ice=.TRUE. )
 
@@ -391,19 +391,22 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
 
-   
+
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), &
-      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
-      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',  cun03='W/m^2', cln03='Sensible Heat Flux',     &
-      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',   cun04='W/m^2', cln04='Net Longwave Heat Flux', &
-      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',   cun05='W/m^2', cln05='Non-solar Heat Flux',    &
-      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',   cun06='W/m^2', cln06='Net Solar Heat Flux',    &
-      &           vdt07=REAL(  W10(1,1,:),4), cv_dt07='Wind',  cun07='m/s',   cln07='Module of Wind Speed',   &
-      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',   cun08='N/m^2', cln08='Module of Wind Stress',  &
-      &           vdt09=REAL(to_mm_p_day*SBLM(1,1,:),4), cv_dt09='SBLM',  cun09='mm/day', cln09='Sublimation of ice'      )
-   
+      &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',   cun02='W/m^2', cln02='Latent Heat Flux',       &
+      &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',   cun03='W/m^2', cln03='Sensible Heat Flux',     &
+      &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',    cun04='W/m^2', cln04='Net Longwave Heat Flux', &
+      &           vdt05=REAL(  QNS(1,1,:),4), cv_dt05='QNS',    cun05='W/m^2', cln05='Non-solar Heat Flux',    &
+      &           vdt06=REAL(  Qsw(1,1,:),4), cv_dt06='Qsw',    cun06='W/m^2', cln06='Net Solar Heat Flux',    &
+      &           vdt07=REAL(  W10(1,1,:),4), cv_dt07='Wind',   cun07='m/s',   cln07='Module of Wind Speed',   &
+      &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',    cun08='N/m^2', cln08='Module of Wind Stress',  &
+      &           vdt09=REAL(to_mm_p_day*SBLM(1,1,:),4), cv_dt09='SBLM',       cun09='mm/day', cln09='Sublimation of ice', &
+      &           vdt10=REAL( 1000.*Cd(1,1,:),4), cv_dt10='Cd', cun10='',      cln10='Drag coefficient',       &
+      &           vdt11=REAL( 1000.*Ch(1,1,:),4), cv_dt11='Ch', cun11='',      cln11='Sens. Heat coeff.',       &
+      &           vdt12=REAL(  zz0(1,1,:),4), cv_dt12='z0',     cun12='m',     cln12='Roughness length' )
+
 
 
    WRITE(6,*) ''; WRITE(6,*) ''

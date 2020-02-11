@@ -45,13 +45,13 @@ l_style = [    '-'     ,   '-'     ,   '--'    ] ; # line-style
 #L_VMIN  = [   -250.     ,    -25.       ,   -400.      ,   -150.     ,    0.       ,       0.7            ]
 #L_ANOM  = [   True      ,    True       ,    True      ,    True     ,   True      ,      False           ]
 
-L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ]
-L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'     ] ; # name of variable on figure
-L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$' ] ; # name of variable in latex mode
-L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$'  ]
-L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.     ]
-L_VMIN  = [     -50.     ,    -50.       ,    0.      ,  -100.     ]
-L_ANOM  = [   True      ,    True       ,   True      ,    True     ]
+L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ]
+L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ] ; # name of variable on figure
+L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$'] ; # name of variable in latex mode
+L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''    ]
+L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.01   ,    3.5    ]
+L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.    ]
+L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True   ]
 
 
 nb_algos = len(L_ALGOS) ; print(nb_algos)

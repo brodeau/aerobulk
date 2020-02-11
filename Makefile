@@ -5,7 +5,7 @@ include make.macro
 
 All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x 
 
-test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_buoy_series_ice.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x
+test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_ice_series.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
@@ -114,9 +114,9 @@ bin/test_aerobulk_buoy_series_skin.x: src/test_aerobulk_buoy_series_skin.f90 lib
 	@mkdir -p bin
 	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_buoy_series_skin.f90 -o bin/test_aerobulk_buoy_series_skin.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
 
-bin/test_aerobulk_buoy_series_ice.x: src/test_aerobulk_buoy_series_ice.f90 lib/libaerobulk.a mod/io_ezcdf.mod
+bin/test_aerobulk_ice_series.x: src/test_aerobulk_ice_series.f90 lib/libaerobulk.a mod/io_ezcdf.mod
 	@mkdir -p bin
-	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_buoy_series_ice.f90 -o bin/test_aerobulk_buoy_series_ice.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
+	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_ice_series.f90 -o bin/test_aerobulk_ice_series.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
 
 
 mod/io_ezcdf.mod: src/io_ezcdf.f90
