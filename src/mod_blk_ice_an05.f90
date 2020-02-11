@@ -233,7 +233,7 @@ CONTAINS
 
             zz = (zus - 0.18_wp) / 0.1_wp
             
-            rough_leng_m(ji,jj) = 0.135*pnua(ji,jj)/zus + 0.035*zus*zus/grav*( 5.*EXP(-zz*zz) + 1._wp )
+            rough_leng_m(ji,jj) = 0.135*pnua(ji,jj)/zus + 0.035*zus*zus/grav*( 5.*EXP(-zz*zz) + 1._wp ) ! Eq.(19) Andreas et al., 2005
             
          END DO
       END DO

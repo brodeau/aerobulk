@@ -961,11 +961,15 @@ CONTAINS
    !===============================================================================================
 
 
-   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )
+   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )      
       REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral) drag coefficient []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral or non-neutral) drag coefficient []
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi  !: (non neutral case) stability correction (Psi(zu/L)) []
+      !!
+      !! If pCd is the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
+      !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
+      !!
       LOGICAL  :: lice
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
