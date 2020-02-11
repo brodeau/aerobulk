@@ -22,7 +22,7 @@ MODULE mod_blk_ice_an05
    !!            Author: Laurent Brodeau, January 2020
    !!
    !!====================================================================================
-   USE mod_const       !: physical and othe constants
+   USE mod_const       !: physical and other constants
    USE mod_phymbl      !: thermodynamics
 
    IMPLICIT NONE
@@ -34,8 +34,8 @@ MODULE mod_blk_ice_an05
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_an05( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu,   &
-      &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,        &
+   SUBROUTINE turb_ice_an05( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu, &
+      &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,             &
       &                     xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_an05  ***
@@ -319,7 +319,7 @@ CONTAINS
       !!             pzeta : stability paramenter, z/L where z is altitude
       !!                     measurement and L is M-O length
       !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
@@ -367,7 +367,7 @@ CONTAINS
       !!             pzeta : stability paramenter, z/L where z is altitude
       !!                     measurement and L is M-O length
       !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
