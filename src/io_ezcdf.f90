@@ -994,7 +994,7 @@ CONTAINS
 
    
    SUBROUTINE PT_SERIES(vtime, vdt01, cf_in, cv_t, cv_dt01, cun01, cln01, vflag, &
-      &                 ct_unit,             &
+      &                 ct_unit, ct_clnd,              &
       &                 vdt02, cv_dt02, cun02, cln02,  &
       &                 vdt03, cv_dt03, cun03, cln03,  &
       &                 vdt04, cv_dt04, cun04, cln04,  &
@@ -1030,7 +1030,7 @@ CONTAINS
       REAL(4), DIMENSION(:),      INTENT(in)  :: vdt01
       CHARACTER(len=*),           INTENT(in)  :: cf_in, cv_t, cv_dt01, cun01, cln01
       REAL(4),                    INTENT(in)  :: vflag
-      CHARACTER(len=*), OPTIONAL, INTENT(in)  :: ct_unit
+      CHARACTER(len=*), OPTIONAL, INTENT(in)  :: ct_unit, ct_clnd
       REAL(4), DIMENSION(:), OPTIONAL, INTENT(in)  :: vdt02, vdt03, vdt04, vdt05, vdt06, vdt07, vdt08, &
          &                                            vdt09, vdt10, vdt11, vdt12, vdt13, vdt14, vdt15, vdt16
       CHARACTER(len=*),      OPTIONAL, INTENT(in)  :: cv_dt02, cv_dt03, cv_dt04, cv_dt05, cv_dt06, cv_dt07, cv_dt08, &
@@ -1099,8 +1099,9 @@ CONTAINS
 
       !! Time
       CALL sherr( NF90_DEF_DIM(idf, TRIM(cv_t), NF90_UNLIMITED, idtd),                       crtn,cf_in,cv_t)
-      CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_t), NF90_DOUBLE, idtd, idt, deflate_level=9), crtn,cf_in,cv_t)
-      IF ( PRESENT(ct_unit) ) CALL sherr( NF90_PUT_ATT(idf, idt, 'units', TRIM(ct_unit)),    crtn,cf_in,cv_t)
+      CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_t), NF90_DOUBLE, idtd, idt, deflate_level=9),    crtn,cf_in,cv_t)
+      IF ( PRESENT(ct_unit) ) CALL sherr( NF90_PUT_ATT(idf, idt, 'units',    TRIM(ct_unit)), crtn,cf_in,cv_t)
+      IF ( PRESENT(ct_clnd) ) CALL sherr( NF90_PUT_ATT(idf, idt, 'calendar', TRIM(ct_clnd)), crtn,cf_in,cv_t)
       CALL sherr( NF90_PUT_ATT(idf, idt, 'valid_min', vextrema(3,1)),                        crtn,cf_in,cv_t)
       CALL sherr( NF90_PUT_ATT(idf, idt, 'valid_max', vextrema(3,2)),                        crtn,cf_in,cv_t)
 
@@ -1629,7 +1630,7 @@ CONTAINS
 
 
 
-   SUBROUTINE GET_VAR_INFO(cf_in, cv_in, cunit, clnm)
+   SUBROUTINE GET_VAR_INFO(cf_in, cv_in, cunit, clnm,  clndr)
       !!
       !! o This routine returns the unit and longname of variable if they exist!
       !!
@@ -1642,6 +1643,9 @@ CONTAINS
       !! --------
       !!         * cunit = unit of cv_in                              [character]
       !!         * clnm  = name of the missing value arg.            [character]
+      !! OPTIONAL OUTPUT :
+      !! -----------------
+      !!         * clndr = calendar of cv_in                              [character]
       !!
       !! Author : L. BRODEAU, 2008
       !!
@@ -1651,12 +1655,14 @@ CONTAINS
       CHARACTER(len=*), INTENT(in)  :: cf_in, cv_in
       CHARACTER(len=*) , INTENT(out) :: cunit
       CHARACTER(len=*), INTENT(out) :: clnm
+      CHARACTER(len=*), INTENT(out), OPTIONAL :: clndr
       !!
       INTEGER :: ierr
       CHARACTER(len=400) :: c00
-      !!
       CHARACTER(len=80), PARAMETER :: crtn = 'GET_VAR_INFO'
+      LOGICAL :: lclndr = .FALSE.
       !!
+      IF ( PRESENT(clndr) ) lclndr = .TRUE.
       !!
       !! Opening file :
       CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),  crtn,cf_in,cv_in)
@@ -1668,13 +1674,19 @@ CONTAINS
       c00=''
       ierr = NF90_GET_ATT(id_f, id_v, 'units', c00)
       IF (ierr /= 0) c00 = 'UNKNOWN'
-      cunit = trim(c00) ;
+      cunit = TRIM(c00) ;
       !!
       c00=''
       ierr = NF90_GET_ATT(id_f, id_v, 'long_name', c00)
       IF (ierr /= 0) c00 = 'UNKNOWN'
-      clnm = trim(c00)
+      clnm = TRIM(c00)
       !!
+      IF ( lclndr ) THEN
+         c00=''
+         ierr = NF90_GET_ATT(id_f, id_v, 'calendar', c00)
+         IF (ierr /= 0) c00 = 'UNKNOWN'
+         clndr = TRIM(c00) ;
+      END IF
       !!
       CALL sherr( NF90_CLOSE(id_f),  crtn,cf_in,cv_in)
       !!

@@ -8,8 +8,7 @@ from os import path as path
 #from string import replace
 import math
 import numpy as nmp
-#import scipy.signal as signal
-from netCDF4 import Dataset
+from netCDF4 import Dataset,num2date
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -27,15 +26,17 @@ size_fig=(13,7)
 fig_ext='png'
 
 clr_red = '#AD0000'
+clr_blu = '#3749A3'
+clr_gre = '#548F64'
 clr_sat = '#ffed00'
 clr_mod = '#008ab8'
 
 rDPI=200.
 
 L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lu15'     ,  'best'  ]
-l_color = [  'k'       ,   '#ffed00'    ,   '#008ab8'   ,  clr_red ] ; # colors to differentiate algos on the plot
-l_width = [     1      ,       1        ,       1       ,    1     ] ; # line-width to differentiate algos on the plot
-l_style = [    '-'     ,      '-'       ,     '--'      ,  '--'    ] ; # line-style
+l_color = [   '0.1'    ,   clr_gre      , clr_blu       ,  clr_red ] ; # colors to differentiate algos on the plot
+l_width = [     1      ,       1        ,     0.6       ,    0.5   ] ; # line-width to differentiate algos on the plot
+l_style = [    '-'     ,      '-'       ,     '-'       ,  '--'    ] ; # line-style
 l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes (2015)','Brodeau' ]
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
@@ -86,17 +87,13 @@ for ja in range(nb_algos): print(cf_in[ja])
 # Getting time array from the first file:
 id_in = Dataset(cf_in[0])
 vt = id_in.variables['time'][:]
-cunit_t = id_in.variables['time'].units ; print(' "time" is in "'+cunit_t+'"')
+cunit_t = id_in.variables['time'].units
+clndr_t = id_in.variables['time'].calendar
 id_in.close()
 Nt = len(vt)
+print(' "time" => units = '+cunit_t+', calendar = "'+clndr_t+'"')
 
-
-
-
-vtime = nmp.zeros(Nt)
-
-vt = vt + 1036800. + 30.*60. # BUG!??? don't get why false in epoch to date conversion, and yet ncview gets it right!
-for jt in range(Nt): vtime[jt] = mdates.epoch2num(vt[jt])
+vtime = num2date(vt, units=cunit_t) ; # something understandable!
 
 ii=Nt/300
 ib=max(ii-ii%10,1)

@@ -24,7 +24,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
+   CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -169,7 +169,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
    CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
-   CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
+   CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t,  clndr=clndr_t)
    PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
    tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
    PRINT *, ' *** Digested time unit is: ', tut_time_unit
@@ -401,7 +401,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
-      &           ct_unit=TRIM(cunit_t), &
+      &           ct_unit=TRIM(cunit_t), ct_clnd=TRIM(clndr_t), &
       &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',   cun02='W/m^2', cln02='Latent Heat Flux',       &
       &           vdt03=REAL(   QH(1,1,:),4), cv_dt03='Qsen',   cun03='W/m^2', cln03='Sensible Heat Flux',     &
       &           vdt04=REAL(  Qlw(1,1,:),4), cv_dt04='Qlw',    cun04='W/m^2', cln04='Net Longwave Heat Flux', &
@@ -411,13 +411,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',    cun08='N/m^2', cln08='Module of Wind Stress',  &
       &           vdt09=REAL(to_mm_p_day*SBLM(1,1,:),4), cv_dt09='SBLM',       cun09='mm/day', cln09='Sublimation of ice', &
       &           vdt10=REAL( 1000.*Cd(1,1,:),4), cv_dt10='Cd', cun10='',      cln10='Drag coefficient',       &
-      &           vdt11=REAL( 1000.*Ch(1,1,:),4), cv_dt11='Ch', cun11='',      cln11='Sens. Heat coeff.',       &
-      &           vdt12=REAL(  zz0(1,1,:),4), cv_dt12='z0',     cun12='m',     cln12='Roughness length' )
-
-
-
+      &           vdt11=REAL( 1000.*Ch(1,1,:),4), cv_dt11='Ch', cun11='',      cln11='Sens. Heat coeff.',      &
+      &           vdt12=REAL(  zz0(1,1,:),4), cv_dt12='z0',     cun12='m',     cln12='Roughness length',       &
+      &           vdt13=REAL(  RiB(1,1,:),4), cv_dt13='Rib',    cun13='m',     cln13='Bulk Richardson number', &
+      &           vdt14=REAL(SIT(1,1,:)-rt0,4), cv_dt14='SIT',  cun14='deg.C', cln14='Sea-ice temperature',    &
+      &           vdt15=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt15='t2m-SIT', cun15='deg.C', cln15='2m air-sea temperature difference' )
+   
    WRITE(6,*) ''; WRITE(6,*) ''
-
 
 
 CONTAINS

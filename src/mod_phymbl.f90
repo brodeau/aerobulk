@@ -370,6 +370,8 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Bulk Richardson number according to "wide-spread equation"...
       !!
+      !!    Reminder: the Richardson number is the ratio "buoyancy" / "shear"
+      !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp)             :: Ri_bulk_sclr
@@ -379,20 +381,20 @@ CONTAINS
       REAL(wp), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
       REAL(wp), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
       REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
-      REAL(wp) ::   zqa, zta, zgamma, zdth_v, ztv, zsstv  ! local scalars
+      REAL(wp) ::   zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
       zqa = 0.5_wp*(pqa+pssq)                                        ! ~ mean q within the layer...
       zta = 0.5_wp*( psst + ptha - gamma_moist(ptha,zqa)*pz ) ! ~ mean absolute temperature of air within the layer
       zta = 0.5_wp*( psst + ptha - gamma_moist(zta,        zqa)*pz ) ! ~ mean absolute temperature of air within the layer
       zgamma =  gamma_moist(zta, zqa)                                              ! Adiabatic lapse-rate for moist air within the layer
       !
-      zsstv = psst*(1._wp + rctv0*pssq) ! absolute==potential virtual SST (absolute==potential because z=0!)
+      zsstv = virt_temp_sclr( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
       !
-      zdth_v = ptha*(1._wp + rctv0*pqa) - zsstv ! air-sea delta of "virtual potential temperature"
+      zdthv = virt_temp_sclr( ptha, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
       !
       ztv = 0.5_wp*( zsstv + (ptha - zgamma*pz)*(1._wp + rctv0*pqa) )  ! ~ mean absolute virtual temp. within the layer
       !
-      Ri_bulk_sclr = grav*zdth_v*pz / ( ztv*pub*pub )                            ! the usual definition of Ri_bulk_sclr
+      Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )                            ! the usual definition of Ri_bulk_sclr
       !
    END FUNCTION Ri_bulk_sclr
    !!
