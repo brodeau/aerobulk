@@ -32,11 +32,11 @@ clr_mod = '#008ab8'
 
 rDPI=200.
 
-L_ALGOS = [ 'nemo'     ,  'an05'   ,  'lu15'   ]
-l_color = [  'k'       , '#ffed00' , '#008ab8' ] ; # colors to differentiate algos on the plot
-l_width = [     1      ,    1      ,    1      ] ; # line-width to differentiate algos on the plot
-l_style = [    '-'     ,   '-'     ,   '--'    ] ; # line-style
-l_lgnm  = [ 'NEMO def.', 'Andreas (2005)', 'Lupkes (2015)' ]
+L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lu15'     ,  'best'  ]
+l_color = [  'k'       ,   '#ffed00'    ,   '#008ab8'   ,  clr_red ] ; # colors to differentiate algos on the plot
+l_width = [     1      ,       1        ,       1       ,    1     ] ; # line-width to differentiate algos on the plot
+l_style = [    '-'     ,      '-'       ,     '--'      ,  '--'    ] ; # line-style
+l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes (2015)','Brodeau' ]
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
 #L_VARO  = [   'Qlat'    ,    'Qsen'     ,     'Qnet'   ,   'Qlw'     ,  'Tau'      ,    'dT_skin'         ] ; # name of variable on figure
