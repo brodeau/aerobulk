@@ -201,14 +201,13 @@ PROGRAM TEST_AEROBULK
       !! At this stage we know the relative humidity at zt BUT not the temperature
       !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
       !! virtual potential temperature must be 0 !
-      PRINT *, 'LOLO:'
       PRINT *, ' RH=', RH_zt
-      t_zt = sst ! first guess of absolute temp. at zt
-      dTv_prev = -1.
-      l_neutral = .FALSE.
-      icpt = 0
-      rt_inc = 0.25
+      t_zt = sst ! first guess of absolute temp. at zt => it is always going to lead to a dTheta_v < 0.
+      dTv_prev = -1.    ! see comment above      
+      !icpt = 0
+      rt_inc = 0.25 ! initial temperature increment!
       PRINT *, 'Virtual temperature SST/SSQ=', virt_temp(sst, ssq)
+      l_neutral = .FALSE.
       DO WHILE ( .NOT. l_neutral )
          icpt = icpt + 1
          PRINT *, ''; PRINT *, ' **** t_zt =', t_zt
@@ -219,7 +218,6 @@ PROGRAM TEST_AEROBULK
          tmp = tmp - virt_temp(sst, ssq)
          PRINT *, ' DIFF. OF VIRT TEMP AIR-SEA=', tmp
          IF ( ABS(tmp(1,1) ) < 1.E-9_wp ) THEN
-            PRINT *, 'DONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN!!!!!!!!!!!!'
             l_neutral = .TRUE.
          ELSE
 
@@ -229,7 +227,7 @@ PROGRAM TEST_AEROBULK
                   PRINT *, 'Boo1!'
                   t_zt = t_zt + rt_inc ! back to previous value
                   rt_inc = rt_inc/10.
-                  t_zt = t_zt - rt_inc
+                  t_zt = t_zt + rt_inc
                END IF
             ELSE
                IF(dTv_prev < 0.) THEN
