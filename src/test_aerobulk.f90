@@ -201,51 +201,17 @@ PROGRAM TEST_AEROBULK
       !! At this stage we know the relative humidity at zt BUT not the temperature
       !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
       !! virtual potential temperature must be 0 !
-      PRINT *, ' RH=', RH_zt
-      t_zt = sst ! first guess of absolute temp. at zt => it is always going to lead to a dTheta_v < 0.
-      dTv_prev = -1.    ! see comment above      
-      !icpt = 0
-      rt_inc = 0.25 ! initial temperature increment!
-      PRINT *, 'Virtual temperature SST/SSQ=', virt_temp(sst, ssq)
-      l_neutral = .FALSE.
-      DO WHILE ( .NOT. l_neutral )
-         icpt = icpt + 1
-         PRINT *, ''; PRINT *, ' **** t_zt =', t_zt
+
+      !! Find absolute temp. at zt that yields neutral stability (with a humidity of RH_zt)
+      t_zt = sst ! first guess
+      DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-         theta_zt = t_zt + gamma_moist(t_zt, q_zt)*zt
-         tmp = virt_temp(theta_zt, q_zt)
-         tmp = tmp - virt_temp(sst, ssq)
-         PRINT *, ' DIFF. OF VIRT TEMP AIR-SEA=', tmp
-         IF ( ABS(tmp(1,1) ) < 1.E-9_wp ) THEN
-            l_neutral = .TRUE.
-         ELSE
-
-            IF (tmp(1,1) < 0.) THEN
-               IF(dTv_prev < 0.) t_zt = t_zt + rt_inc
-               IF(dTv_prev > 0.) THEN
-                  PRINT *, 'Boo1!'
-                  t_zt = t_zt + rt_inc ! back to previous value
-                  rt_inc = rt_inc/10.
-                  t_zt = t_zt + rt_inc
-               END IF
-            ELSE
-               IF(dTv_prev < 0.) THEN
-                  PRINT *, 'Boo2!'
-                  t_zt = t_zt - rt_inc ! back to previous value
-                  rt_inc = rt_inc/10.
-                  t_zt = t_zt - rt_inc
-               END IF
-               IF(dTv_prev > 0.) t_zt = t_zt + rt_inc
-            END IF
-
-
-         END IF
-         !IF (icpt == 40) STOP 'LOLO!'
+         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt   ! Eq: theta_v_0 = theta_v_zt
       END DO
-      q_zt = q_air_rh(RH_zt, t_zt, SLP)
+      
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
-      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] !!! ', ' (sat:', REAL(1000.*qsat_zt,4),')'
+      WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
+      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
       
    END IF
 
@@ -291,8 +257,6 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sst , 4), ' [deg.C]'
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
-
-
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
    READ(*,*) W10
