@@ -31,7 +31,7 @@ PROGRAM TEST_AEROBULK
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jarg, ialgo, jq
+   INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
@@ -42,13 +42,15 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL(wp) :: zt, zu, nu_air
+   REAL(wp) :: zt, zu, nu_air, dTv_prev, rt_inc
 
    CHARACTER(len=3) :: czt, czu
+   LOGICAL :: l_neutral
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
+      &     l_force_neutral = .FALSE.,  &  !: force air temp and humi at zt to yield perfectly neutral surface atmospheric layer
       &     l_use_coolsk    = .FALSE.      !: compute and use the cool-skin temperature
    !                                       !:  => only in COARE and ECMWF
    !                                       !: warm-layer cannot be used in this simple test are there is not time integration possible !!!
@@ -57,13 +59,13 @@ PROGRAM TEST_AEROBULK
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
-   !OPEN(6, FORM='formatted', RECL=512)
+   OPEN(6, FORM='formatted', RECL=512)
 
 
 
    CALL usage_test(1)
 
-   
+
    jarg = 0
 
    DO WHILE ( jarg < command_argument_count() )
@@ -87,6 +89,9 @@ PROGRAM TEST_AEROBULK
 
       CASE('-S')
          l_use_coolsk = .TRUE.
+
+      CASE('-N')
+         l_force_neutral = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', TRIM(car) ; WRITE(6,*) ''
@@ -146,22 +151,29 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
-   READ(*,*) t_zt
-   t_zt = t_zt + rt0
+   IF ( .NOT. l_force_neutral ) THEN
+      WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
+      READ(*,*) t_zt
+      t_zt = t_zt + rt0
+      qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+   ELSE
+      WRITE(6,*) 'NOT ASKING FOR temperature at ',TRIM(czt),', because you use the "-N" flag => NEUTRAL!'
+   END IF
    WRITE(6,*) ''
 
 
    !! Asking for humidity:
-   qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
 
-   IF ( l_use_rh ) THEN
+
+   IF ( l_use_rh .OR. l_force_neutral ) THEN
       WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
       READ(*,*) RH_zt
       RH_zt = 1.E-2*RH_zt
-      q_zt = q_air_rh(RH_zt, t_zt, SLP)
-      WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      IF ( .NOT. l_force_neutral ) THEN
+         q_zt = q_air_rh(RH_zt, t_zt, SLP)
+         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+         !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      END IF
    ELSEIF ( l_use_dp ) THEN
       WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) d_zt
@@ -179,6 +191,66 @@ PROGRAM TEST_AEROBULK
       !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    END IF
    WRITE(6,*) ''
+
+
+   !! Spec. hum. at saturation at temperature == SST, in the presence of salt:
+   ssq = rdct_qsat_salt*q_sat(sst, SLP)
+
+   
+   IF ( l_force_neutral ) THEN
+      !! At this stage we know the relative humidity at zt BUT not the temperature
+      !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
+      !! virtual potential temperature must be 0 !
+      PRINT *, 'LOLO:'
+      PRINT *, ' RH=', RH_zt
+      t_zt = sst ! first guess of absolute temp. at zt
+      dTv_prev = -1.
+      l_neutral = .FALSE.
+      icpt = 0
+      rt_inc = 0.25
+      PRINT *, 'Virtual temperature SST/SSQ=', virt_temp(sst, ssq)
+      DO WHILE ( .NOT. l_neutral )
+         icpt = icpt + 1
+         PRINT *, ''; PRINT *, ' **** t_zt =', t_zt
+         q_zt = q_air_rh(RH_zt, t_zt, SLP)
+         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+         theta_zt = t_zt + gamma_moist(t_zt, q_zt)*zt
+         tmp = virt_temp(theta_zt, q_zt)
+         tmp = tmp - virt_temp(sst, ssq)
+         PRINT *, ' DIFF. OF VIRT TEMP AIR-SEA=', tmp
+         IF ( ABS(tmp(1,1) ) < 1.E-9_wp ) THEN
+            PRINT *, 'DONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN!!!!!!!!!!!!'
+            l_neutral = .TRUE.
+         ELSE
+
+            IF (tmp(1,1) < 0.) THEN
+               IF(dTv_prev < 0.) t_zt = t_zt + rt_inc
+               IF(dTv_prev > 0.) THEN
+                  PRINT *, 'Boo1!'
+                  t_zt = t_zt + rt_inc ! back to previous value
+                  rt_inc = rt_inc/10.
+                  t_zt = t_zt - rt_inc
+               END IF
+            ELSE
+               IF(dTv_prev < 0.) THEN
+                  PRINT *, 'Boo2!'
+                  t_zt = t_zt - rt_inc ! back to previous value
+                  rt_inc = rt_inc/10.
+                  t_zt = t_zt - rt_inc
+               END IF
+               IF(dTv_prev > 0.) t_zt = t_zt + rt_inc
+            END IF
+
+
+         END IF
+         !IF (icpt == 40) STOP 'LOLO!'
+      END DO
+      q_zt = q_air_rh(RH_zt, t_zt, SLP)
+      qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] !!! ', ' (sat:', REAL(1000.*qsat_zt,4),')'
+      
+   END IF
+
 
    IF ( q_zt(1,1) > qsat_zt(1,1) ) THEN
       WRITE(6,*) ' ERROR: you can not go belong saturation!!!' ; STOP
@@ -199,7 +271,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    WRITE(6,*) ''
 
-   ssq = rdct_qsat_salt*q_sat(sst, SLP)
+
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'
@@ -385,13 +457,13 @@ PROGRAM TEST_AEROBULK
 
 
       !! Turbulent fluxes:
-      
+
       CALL BULK_FORMULA( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
          &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
-      
+
       vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
-      
+
       IF ( l_use_coolsk ) THEN
          vSST(ialgo) = sst(1,1)
          vTs(ialgo)  = Ts(1,1)
@@ -474,7 +546,7 @@ PROGRAM TEST_AEROBULK
    END IF
 
    WRITE(6,*) ''
-   !CLOSE(6)
+   CLOSE(6)
 
 END PROGRAM TEST_AEROBULK
 
@@ -504,6 +576,12 @@ SUBROUTINE usage_test( icontinue )
    PRINT *,'           only usable for COARE and ECMWF families of algorithms'
    PRINT *,'           (warm-layer param. cannot be used in this simple test as'
    PRINT *,'           no time-integration is involved here...)'
+   PRINT *,''
+   PRINT *,''
+   PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
+   PRINT *,'           -> will not ask for air temp. at zt, instead will only'
+   PRINT *,'           ask for relative humidity at zt and will force the air'
+   PRINT *,'           temperature at zt that yields a neutral-stability!'
    PRINT *,''
    PRINT *,'   -h   => Show this message'
    PRINT *,'##########################################################################'
