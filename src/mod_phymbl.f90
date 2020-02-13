@@ -81,7 +81,15 @@ MODULE mod_phymbl
    INTERFACE qlw_net
       MODULE PROCEDURE qlw_net_vctr, qlw_net_sclr
    END INTERFACE qlw_net
-
+   
+   INTERFACE f_m_louis
+      MODULE PROCEDURE f_m_louis_vctr, f_m_louis_sclr
+   END INTERFACE f_m_louis
+   
+   INTERFACE f_h_louis
+      MODULE PROCEDURE f_h_louis_vctr, f_h_louis_sclr
+   END INTERFACE f_h_louis
+   
 
    PUBLIC virt_temp
    PUBLIC rho_air
@@ -106,10 +114,15 @@ MODULE mod_phymbl
    PUBLIC bulk_formula
    PUBLIC qlw_net
    PUBLIC z0_from_Cd
-
-   REAL(wp), PARAMETER  :: &
-      &      repsilon = 1.e-6
-
+   PUBLIC f_m_louis, f_h_louis
+   
+   REAL(wp), PARAMETER :: repsilon = 1.e-6
+   
+   REAL(wp), PARAMETER :: rc_louis  = 5._wp
+   REAL(wp), PARAMETER :: rc2_louis = rc_louis * rc_louis
+   REAL(wp), PARAMETER :: ram_louis = 2. * rc_louis
+   REAL(wp), PARAMETER :: rah_louis = 3. * rc_louis
+   
 CONTAINS
 
    !===============================================================================================
@@ -963,7 +976,7 @@ CONTAINS
    !===============================================================================================
 
 
-   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )      
+   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )
       REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral or non-neutral) drag coefficient []
@@ -985,9 +998,105 @@ CONTAINS
       END IF
    END FUNCTION z0_from_Cd
 
-   
 
-   
+
+
+
+   FUNCTION f_m_louis_sclr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pCdn, pz0 )
+      !!----------------------------------------------------------------------------------      
+      !!  Stability correction function for MOMENTUM
+      !!                 Louis (1979)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             :: f_m_louis_sclr ! term "f_m" in Eq.(6) when option "Louis" rather than "Psi(zeta) is chosen, Lupkes & Gryanik (2015),
+      REAL(wp),                     INTENT(in) :: pzu     ! reference height (height for pwnd)  [m]
+      REAL(wp), INTENT(in) :: pt_zu   ! potential air temperature            [Kelvin]
+      REAL(wp), INTENT(in) :: pq_zu   ! specific air humidity at zt          [kg/kg]
+      REAL(wp), INTENT(in) :: pwnd    ! wind speed                           [m/s]
+      REAL(wp), INTENT(in) :: pTs     ! sea or ice surface temperature       [K]
+      REAL(wp), INTENT(in) :: pqs     ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), INTENT(in) :: pCdn    ! neutral drag coefficient
+      REAL(wp), INTENT(in) :: pz0     ! roughness length                      [m]
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: zrib, ztu, zts, zstab
+      !!----------------------------------------------------------------------------------
+      zrib = Ri_bulk( pzu, pTs, pt_zu, pqs, pq_zu, pwnd ) ! Bulk Richardson Number:
+      !
+      zstab = 0.5 + SIGN(0.5_wp, zrib) ; ! Unstable (Ri<0) => zstab = 0 | Stable (Ri>0) => zstab = 1
+      !
+      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pCdn * SQRT( -zrib * ( pzu / pz0 + 1._wp) ) )
+      zts = zrib / SQRT( 1._wp + zrib )
+      !
+      f_m_louis_sclr = (1._wp - zstab) *         ( 1._wp - ram_louis * ztu )  &  ! Unstable Eq.(A6)
+         &               +      zstab  * 1._wp / ( 1._wp + ram_louis * zts )     ! Stable   Eq.(A7)
+      !
+   END FUNCTION f_m_louis_sclr
+   !!
+   FUNCTION f_m_louis_vctr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pCdn, pz0 )
+      REAL(wp), DIMENSION(jpi,jpj)             :: f_m_louis_vctr ! term "f_m" in Eq.(6) when option "Louis" rather than "Psi(zeta) is chosen, Lupkes & Gryanik (2015),
+      REAL(wp),                     INTENT(in) :: pzu     ! reference height (height for pwnd)  [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pt_zu   ! potential air temperature            [Kelvin]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pq_zu   ! specific air humidity at zt          [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd    ! wind speed                           [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTs     ! sea or ice surface temperature       [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqs     ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCdn    ! neutral drag coefficient
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0     ! roughness length                      [m]
+      INTEGER  :: ji, jj
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            f_m_louis_vctr(ji,jj) = f_m_louis_sclr( pzu, pt_zu(ji,jj), pq_zu(ji,jj), pwnd(ji,jj), pTs(ji,jj), pqs(ji,jj), pCdn(ji,jj), pz0(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION f_m_louis_vctr
+
+
+   FUNCTION f_h_louis_sclr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pChn, pz0 )
+      !!----------------------------------------------------------------------------------      
+      !!  Stability correction function for HEAT
+      !!                 Louis (1979)
+      !!----------------------------------------------------------------------------------
+      REAL(wp)             :: f_h_louis_sclr ! term "f_m" in Eq.(6) when option "Louis" rather than "Psi(zeta) is chosen, Lupkes & Gryanik (2015),
+      REAL(wp), INTENT(in) :: pzu     ! reference height (height for pwnd)  [m]
+      REAL(wp), INTENT(in) :: pt_zu   ! potential air temperature            [Kelvin]
+      REAL(wp), INTENT(in) :: pq_zu   ! specific air humidity at zt          [kg/kg]
+      REAL(wp), INTENT(in) :: pwnd    ! wind speed                           [m/s]
+      REAL(wp), INTENT(in) :: pTs     ! sea or ice surface temperature       [K]
+      REAL(wp), INTENT(in) :: pqs     ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), INTENT(in) :: pChn    ! neutral heat transfer coefficient
+      REAL(wp), INTENT(in) :: pz0     ! roughness length                      [m]
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: zrib, ztu, zts, zstab
+      !!----------------------------------------------------------------------------------
+      zrib = Ri_bulk( pzu, pTs, pt_zu, pqs, pq_zu, pwnd ) ! Bulk Richardson Number:
+      !
+      zstab = 0.5 + SIGN(0.5_wp, zrib) ; ! Unstable (Ri<0) => zstab = 0 | Stable (Ri>0) => zstab = 1
+      !
+      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pChn * SQRT( -zrib * ( pzu / pz0 + 1._wp) ) )
+      zts = zrib / SQRT( 1._wp + zrib )
+      !
+      f_h_louis_sclr = (1._wp - zstab) *         ( 1._wp - rah_louis * ztu )  &  ! Unstable Eq.(A6)
+         &              +       zstab  * 1._wp / ( 1._wp + rah_louis * zts )     ! Stable   Eq.(A7)  !LOLO: in paper it's "ram_louis" and not "rah_louis" typo or what????
+      !
+   END FUNCTION f_h_louis_sclr
+   !!
+   FUNCTION f_h_louis_vctr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pChn, pz0 )
+      REAL(wp), DIMENSION(jpi,jpj)             :: f_h_louis_vctr ! term "f_m" in Eq.(6) when option "Louis" rather than "Psi(zeta) is chosen, Lupkes & Gryanik (2015),
+      REAL(wp),                     INTENT(in) :: pzu     ! reference height (height for pwnd)  [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pt_zu   ! potential air temperature            [Kelvin]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pq_zu   ! specific air humidity at zt          [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd    ! wind speed                           [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTs     ! sea or ice surface temperature       [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqs     ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pChn    ! neutral heat transfer coefficient
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0     ! roughness length                      [m]
+      INTEGER  :: ji, jj
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            f_h_louis_vctr(ji,jj) = f_h_louis_sclr( pzu, pt_zu(ji,jj), pq_zu(ji,jj), pwnd(ji,jj), pTs(ji,jj), pqs(ji,jj), pChn(ji,jj), pz0(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION f_h_louis_vctr
+
 
 
 END MODULE mod_phymbl
@@ -1065,5 +1174,3 @@ END MODULE mod_phymbl
 !   !!----------------------------------------------------------------------------------
 !   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
 !END FUNCTION Ri_bulk_coare
-
-

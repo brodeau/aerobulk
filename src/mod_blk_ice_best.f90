@@ -278,16 +278,19 @@ CONTAINS
             ! Momentum and Heat Stability functions (possibility to use psi_m_ice_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            IF( zrib_i <= 0._wp ) THEN
-               ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
-               zfmi = 1._wp - zam * ztmp   ! Eq.  9
-               zfhi = 1._wp - zah * ztmp   ! Eq. 25
-            ELSE
-               ztmp = zrib_i / SQRT( 1._wp + zrib_i )
-               zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
-               zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
-            ENDIF
+            !IF( zrib_i <= 0._wp ) THEN
+            !   ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
+            !   zfmi = 1._wp - zam * ztmp   ! Eq.  9
+            !   zfhi = 1._wp - zah * ztmp   ! Eq. 25
+            !ELSE
+            !   ztmp = zrib_i / SQRT( 1._wp + zrib_i )
+            !   zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
+            !   zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
+            !ENDIF
 
+            zfmi = f_m_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+            zfhi = f_h_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+            
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
             pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi ) * ztmp
@@ -297,40 +300,6 @@ CONTAINS
       END DO
       !
    END SUBROUTINE Cdn10_Lupkes2015
-
-
-   FUNCTION f_m_louis( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pCdn, pz0 )
-      REAL(wp), DIMENSION(jpi,jpj)             :: f_m_louis ! term "f_m" in Eq.(6) when option "Louis" rather than "Psi(zeta) is chosen, Lupkes & Gryanik (2015),
-      REAL(wp),                     INTENT(in) :: pzu     ! reference height (height for pwnd)  [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pt_zu   ! potential air temperature            [Kelvin]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pq_zu   ! specific air humidity at zt          [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd    ! wind speed                           [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTs     ! sea or ice surface temperature       [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqs     ! humidity at saturation over ice at T=Ts_i [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCdn    ! neutral drag coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0     ! roughness length                      [m]
-      !!----------------------------------------------------------------------------------
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zrib, ztmp
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-
-            ! Bulk Richardson Number:
-            zrib = Ri_bulk( pzu, pTs(ji,jj), pt_zu(ji,jj), pqs(ji,jj), pq_zu(ji,jj), pwnd(ji,jj) )
-
-            IF( zrib <= 0._wp ) THEN
-               ztmp = zrib / ( 1._wp + 3._wp * zc2 * pCdn(ji,jj) * SQRT( -zrib * ( pzu / pz0(ji,jj) + 1._wp) ) )
-               f_m_louis(ji,jj) = 1._wp - zam * ztmp   ! Eq.(A6)
-            ELSE
-               ztmp = zrib / SQRT( 1._wp + zrib )
-               f_m_louis(ji,jj) = 1._wp / ( 1._wp + zam * ztmp )   ! Eq.(A7)
-            ENDIF
-
-         END DO
-      END DO
-   END FUNCTION f_m_louis
-
 
 
    FUNCTION psi_m_ice( pzeta )
