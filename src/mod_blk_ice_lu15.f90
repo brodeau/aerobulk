@@ -26,7 +26,7 @@ MODULE mod_blk_ice_lu15
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lu15, Cdn10_Lupkes2015
+   PUBLIC :: turb_ice_lu15, Cx_Lupkes2015
 
    ! ECHAM6 constants
    REAL(wp), PARAMETER ::   z0_skin_ice  = 0.69e-3_wp  ! Eq. 43 [m]
@@ -34,10 +34,6 @@ MODULE mod_blk_ice_lu15
    REAL(wp), PARAMETER ::   z0_ice       = 1.00e-3_wp  ! Eq. 15 [m]
    REAL(wp), PARAMETER ::   zce10        = 2.80e-3_wp  ! Eq. 41
    REAL(wp), PARAMETER ::   zbeta        = 1.1_wp      ! Eq. 41
-   REAL(wp), PARAMETER ::   zc           = 5._wp       ! Eq. 13
-   REAL(wp), PARAMETER ::   zc2          = zc * zc
-   REAL(wp), PARAMETER ::   zam          = 2. * zc     ! Eq. 14
-   REAL(wp), PARAMETER ::   zah          = 3. * zc     ! Eq. 30
    REAL(wp), PARAMETER ::   z1_alpha     = 1._wp / 0.2_wp  ! Eq. 51
    REAL(wp), PARAMETER ::   z1_alphaf    = z1_alpha    ! Eq. 56
    REAL(wp), PARAMETER ::   zbetah       = 1.e-3_wp    ! Eq. 26
@@ -96,14 +92,13 @@ CONTAINS
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   qi_s     ! specific humidity at ice/air interface  [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      !!
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
-      !!----------------------------------------------------------------------------------
+      !
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
@@ -124,8 +119,8 @@ CONTAINS
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
-      t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
+      l_zt_equal_zu = .FALSE.
+      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Scalar wind speed cannot be below 0.2 m/s
       U_blk = MAX( U_zu, 0.2_wp )
@@ -134,20 +129,46 @@ CONTAINS
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      CALL Cdn10_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
+      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
       Ce = Ch
 
       u_star = SQRT(Cd) * U_blk
       t_star = Cd * U_blk * dt_zu / u_star
       q_star = Cd * U_blk * dq_zu / u_star
+      
+      !! ITERATION BLOCK
+      DO j_itt = 1, nb_itt
+         !
+         dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+         dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+         
+         ! Updating turbulent scales :   (L&Y 2004 Eq. (7))
+         u_star = SQRT(Cd) * U_blk
+         t_star = Cd * U_blk * dt_zu / u_star
+         q_star = Cd * U_blk * dq_zu / u_star
 
+         !! Shifting temperature and humidity at zu (L&Y 2004 Eq. (9b-9c))
+         IF( .NOT. l_zt_equal_zu ) THEN
+
+
+            !! PROBLEM HERE IS THAT WE DO NOT USE STABILITY FUNCTIONS PSI !!!
+            !! => find out the way to adjust at zu based on Louis functions !!!
+            
+            !ztmp0 = zt*ztmp0 ! zeta_t !
+            !ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
+            !ztmp0 = LOG(zt/zu) + psi_h_ice(zeta_u) - psi_h_ice(ztmp0)                   ! ztmp0 just used as temp array again!
+            !t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
+            !q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
+            !q_zu = MAX(0._wp, q_zu)
+         END IF
+
+      END DO
 
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
-      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
-      IF( lreturn_UN10 )  xUN10   = U_blk
-
+      IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
+      
       DEALLOCATE ( u_star, t_star, q_star, dt_zu, dq_zu )
 
    END SUBROUTINE turb_ice_lu15
@@ -156,9 +177,9 @@ CONTAINS
 
 
 
-   SUBROUTINE Cdn10_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+   SUBROUTINE Cx_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cdn10_Lupkes2015  ***
+      !!                      ***  ROUTINE  Cx_Lupkes2015  ***
       !!
       !!                         CASE 100 % sea-ice covered !!!
       !!
@@ -211,12 +232,12 @@ CONTAINS
 
       DO jj = 1, jpj
          DO ji = 1, jpi
-            
+
             zfi  = 1._wp  ! fraction of sea-ice
             zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
-            
+
             zfo  = 0._wp  ! fraction of open ocean
-            
+
             ! Bulk Richardson Number:
             zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
 
@@ -227,25 +248,18 @@ CONTAINS
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            IF( zrib_i <= 0._wp ) THEN
-               ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
-               zfmi = 1._wp - zam * ztmp   ! Eq.  9
-               zfhi = 1._wp - zah * ztmp   ! Eq. 25
-            ELSE
-               ztmp = zrib_i / SQRT( 1._wp + zrib_i )
-               zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
-               zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
-            ENDIF
-            
+            zfmi = f_m_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+            zfhi = f_h_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
             pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi ) * ztmp
             pch(ji,jj) = zChn_skin_ice * zfhi + zChn_form_ice * ( zfhi*zfi ) * ztmp
-            
+
          END DO
       END DO
       !
-   END SUBROUTINE Cdn10_Lupkes2015
+   END SUBROUTINE Cx_Lupkes2015
 
    !!======================================================================
 
