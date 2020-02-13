@@ -986,7 +986,6 @@ CONTAINS
       !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
       !!
       LOGICAL  :: lice
-      INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF ( PRESENT(ppsi) ) THEN
@@ -1023,8 +1022,8 @@ CONTAINS
       !
       zstab = 0.5 + SIGN(0.5_wp, zrib) ; ! Unstable (Ri<0) => zstab = 0 | Stable (Ri>0) => zstab = 1
       !
-      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pCdn * SQRT( -zrib * ( pzu / pz0 + 1._wp) ) )
-      zts = zrib / SQRT( 1._wp + zrib )
+      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pCdn * SQRT( ABS( -zrib * ( pzu / pz0 + 1._wp) ) ) ) ! ABS is just here for when it's stable conditions and ztu is not used anyways
+      zts = zrib / SQRT( ABS( 1._wp + zrib ) ) ! ABS is just here for when it's UNstable conditions and zts is not used anyways
       !
       f_m_louis_sclr = (1._wp - zstab) *         ( 1._wp - ram_louis * ztu )  &  ! Unstable Eq.(A6)
          &               +      zstab  * 1._wp / ( 1._wp + ram_louis * zts )     ! Stable   Eq.(A7)
@@ -1071,8 +1070,8 @@ CONTAINS
       !
       zstab = 0.5 + SIGN(0.5_wp, zrib) ; ! Unstable (Ri<0) => zstab = 0 | Stable (Ri>0) => zstab = 1
       !
-      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pChn * SQRT( -zrib * ( pzu / pz0 + 1._wp) ) )
-      zts = zrib / SQRT( 1._wp + zrib )
+      ztu = zrib / ( 1._wp + 3._wp * rc2_louis * pChn * SQRT( ABS(-zrib * ( pzu / pz0 + 1._wp) ) ) )
+      zts = zrib / SQRT( ABS( 1._wp + zrib ) )
       !
       f_h_louis_sclr = (1._wp - zstab) *         ( 1._wp - rah_louis * ztu )  &  ! Unstable Eq.(A6)
          &              +       zstab  * 1._wp / ( 1._wp + rah_louis * zts )     ! Stable   Eq.(A7)  !LOLO: in paper it's "ram_louis" and not "rah_louis" typo or what????

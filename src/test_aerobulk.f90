@@ -42,10 +42,9 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL(wp) :: zt, zu, nu_air, dTv_prev, rt_inc
+   REAL(wp) :: zt, zu, nu_air
 
    CHARACTER(len=3) :: czt, czu
-   LOGICAL :: l_neutral
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity

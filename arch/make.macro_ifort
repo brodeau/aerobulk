@@ -14,6 +14,9 @@ CXX = icc
 
 FF = -xHOST -O2 -r8 -i4 $(DEBUG_FF) -module mod/
 
+#DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
+#FF = -xHOST -O0 -r8 -i4 $(DEBUG_FF) -module mod/
+
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
 

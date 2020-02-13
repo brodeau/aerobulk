@@ -108,7 +108,6 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
       !
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_an05@mod_blk_ice_an05.f90'
@@ -253,7 +252,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
       !!
       INTEGER  :: ji, jj    ! dummy loop indices
-      REAL(wp) :: zz0, zus, zz, zre, zsmoot, ztrans, zrough
+      REAL(wp) :: zz0, zus, zre, zsmoot, ztrans, zrough
       REAL(wp) :: zb0, zb1, zb2, zlog, zlog2, zlog_z0s_on_z0
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj

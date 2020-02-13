@@ -33,7 +33,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jj, jt, jarg, ialgo, jq, n0, info
+   INTEGER :: jt, jarg, ialgo, jq, n0, info
 
    INTEGER :: nx, ny, Nt, ians
 
@@ -61,7 +61,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB, TAU, SBLM
 
-   REAL(wp) :: zt, zu, rlon
+   REAL(wp) :: zt, zu
 
    CHARACTER(len=3) :: czt, czu
 
@@ -154,18 +154,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
-
-
-   !! Reading data time-series into netcdf file:
-   !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   !CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
-   !rlon = vlon(1)
-
-   !DO jj = 1, ny
-   !   xlon(:,jj) = vlon(:)
-   !END DO
-
-   !PRINT *, ' *** Longitude of station: ', rlon
 
 
    CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)

@@ -33,9 +33,6 @@ MODULE mod_blk_ice_best
    REAL(wp), PARAMETER ::   zce10        = 2.80e-3_wp  ! Eq. 41
    REAL(wp), PARAMETER ::   zbeta        = 1.1_wp      ! Eq. 41
    REAL(wp), PARAMETER ::   zc           = 5._wp       ! Eq. 13
-   REAL(wp), PARAMETER ::   zc2          = zc * zc
-   REAL(wp), PARAMETER ::   zam          = 2. * zc     ! Eq. 14
-   REAL(wp), PARAMETER ::   zah          = 3. * zc     ! Eq. 30
    REAL(wp), PARAMETER ::   z1_alpha     = 1._wp / 0.2_wp  ! Eq. 51
    REAL(wp), PARAMETER ::   z1_alphaf    = z1_alpha    ! Eq. 56
    REAL(wp), PARAMETER ::   zbetah       = 1.e-3_wp    ! Eq. 26
@@ -137,7 +134,7 @@ CONTAINS
       t_zu = t_zt
       q_zu = q_zt
 
-      CALL Cdn10_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
+      CALL Cd_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
       Ce = Ch
       sqrtCd = SQRT( Cd )
       !LOLO:STOP
@@ -180,7 +177,7 @@ CONTAINS
          ztmp2 = psi_m_ice(zeta_u)
          ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
 
-         CALL Cdn10_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
+         CALL Cd_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
          sqrtCdn10 = sqrt(Cd)
 
          !! Update of transfer coefficients:
@@ -207,9 +204,9 @@ CONTAINS
 
 
 
-   SUBROUTINE Cdn10_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+   SUBROUTINE Cd_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cdn10_Lupkes2015  ***
+      !!                      ***  ROUTINE  Cd_Lupkes2015  ***
       !!
       !!                         CASE 100 % sea-ice covered !!!
       !!
@@ -278,19 +275,9 @@ CONTAINS
             ! Momentum and Heat Stability functions (possibility to use psi_m_ice_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            !IF( zrib_i <= 0._wp ) THEN
-            !   ztmp = zrib_i / ( 1._wp + 3._wp * zc2 * zCdn_ice * SQRT( -zrib_i * ( zu / z0i + 1._wp) ) )
-            !   zfmi = 1._wp - zam * ztmp   ! Eq.  9
-            !   zfhi = 1._wp - zah * ztmp   ! Eq. 25
-            !ELSE
-            !   ztmp = zrib_i / SQRT( 1._wp + zrib_i )
-            !   zfmi = 1._wp / ( 1._wp + zam * ztmp )   ! Eq. 11
-            !   zfhi = 1._wp / ( 1._wp + zah * ztmp )   ! Eq. 27
-            !ENDIF
-
             zfmi = f_m_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
             zfhi = f_h_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
-            
+
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
             pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi ) * ztmp
@@ -299,7 +286,7 @@ CONTAINS
          END DO
       END DO
       !
-   END SUBROUTINE Cdn10_Lupkes2015
+   END SUBROUTINE Cd_Lupkes2015
 
 
    FUNCTION psi_m_ice( pzeta )

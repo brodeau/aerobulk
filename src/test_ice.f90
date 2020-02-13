@@ -8,12 +8,9 @@ PROGRAM TEST_ICE
 
    IMPLICIT NONE
 
-   REAL :: dus, tair, dT
+   REAL :: dus, tair
 
    INTEGER, PARAMETER :: nustar = 101
-
-   CHARACTER(len=6) :: ctair
-   CHARACTER(len=2) :: cdT
 
    REAL(wp), DIMENSION(1,nustar)   :: vus, vz0
    REAL(wp), DIMENSION(1,nustar,2) :: vz0tq
@@ -45,8 +42,6 @@ PROGRAM TEST_ICE
    READ(*,*) tair
    tair = tair + rt0
    vtair(:,:) = tair
-   !WRITE(ctair,'(i6.6)') INT(tair)
-
 
    !! Computing kinetic viscosity:
    vnua(:,:) = visc_air( vtair(:,:) )
@@ -64,18 +59,6 @@ PROGRAM TEST_ICE
 
    PRINT *, ' vz0t =', vz0tq(:,:,1)
    PRINT *, ' vz0q =', vz0tq(:,:,2)
-
-
-
-   
-   !PRINT *, ''
-   !PRINT *, 'Give air-sea diff of temperature at 10m (Tair - SST) (K):'
-   !READ(*,*) dT
-   !IF ( dT >= 0.) WRITE(cdT,'("p",i1)') INT(ABS(dT))
-   !IF ( dT <  0.) WRITE(cdT,'("m",i1)') INT(ABS(dT))
-
-
-
 
    !! Advanced formula:
    !vqsat1(:,:) = rdct_qsat_salt*q_sat(vus_k, vtair)
