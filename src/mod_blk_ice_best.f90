@@ -128,13 +128,14 @@ CONTAINS
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      U_blk = MAX( 0.25_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
+      !! Scalar wind speed cannot be below 0.2 m/s
+      U_blk = MAX( U_zu, 0.2_wp )
 
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt
       q_zu = q_zt
 
-      CALL Cd_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
+      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
       Ce = Ch
       sqrtCd = SQRT( Cd )
       !LOLO:STOP
@@ -177,7 +178,7 @@ CONTAINS
          ztmp2 = psi_m_ice(zeta_u)
          ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
 
-         CALL Cd_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
+         CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
          sqrtCdn10 = sqrt(Cd)
 
          !! Update of transfer coefficients:
@@ -204,9 +205,9 @@ CONTAINS
 
 
 
-   SUBROUTINE Cd_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+   SUBROUTINE Cx_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cd_Lupkes2015  ***
+      !!                      ***  ROUTINE  Cx_Lupkes2015  ***
       !!
       !!                         CASE 100 % sea-ice covered !!!
       !!
@@ -272,11 +273,11 @@ CONTAINS
             zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40 !LOLO: WHAT????? zfi * zfo is always 0 !!!
             zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )   ! Eq. 53
 
-            ! Momentum and Heat Stability functions (possibility to use psi_m_ice_ecmwf instead ?)
+            ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            zfmi = f_m_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
-            zfhi = f_h_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+            zfmi = f_m_louis( zu, zrib_i, zCdn_ice, z0i )
+            zfhi = f_h_louis( zu, zrib_i, zCdn_ice, z0i )  !LOLO: why "zCdn_ice" and not "zChn_ice" ???
 
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
@@ -286,7 +287,7 @@ CONTAINS
          END DO
       END DO
       !
-   END SUBROUTINE Cd_Lupkes2015
+   END SUBROUTINE Cx_Lupkes2015
 
 
    FUNCTION psi_m_ice( pzeta )

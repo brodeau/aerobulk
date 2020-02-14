@@ -104,6 +104,9 @@ CONTAINS
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
+      INTEGER :: j_itt
+      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, t_star, q_star, &
          &  dt_zu, dq_zu
@@ -125,6 +128,10 @@ CONTAINS
       !! Scalar wind speed cannot be below 0.2 m/s
       U_blk = MAX( U_zu, 0.2_wp )
 
+      !! Initializing values at z_u with z_t values:
+      t_zu = t_zt
+      q_zu = q_zt
+      
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -149,11 +156,13 @@ CONTAINS
 
          !! Shifting temperature and humidity at zu (L&Y 2004 Eq. (9b-9c))
          IF( .NOT. l_zt_equal_zu ) THEN
-
-
+            !!t_zu = t_zt - t_star/vkarmn * LOG(zt/zu) + f_h_louis( zu, Rib, Chn, z0 ) - f_h_louis( zt, Rib, Chn, z0 )
+            !!q_zu = q_zt - q_star/vkarmn * LOG(zt/zu) + f_h_louis( zu, Rib, Chn, z0 ) - f_h_louis( zt, Rib, Chn, z0 )
+            !!q_zu = MAX(0._wp, q_zu)
+            PRINT *, 'LOLO: fix me height adjustment into mod_blk_ice_lu15.f90 !!!'
+            !!
             !! PROBLEM HERE IS THAT WE DO NOT USE STABILITY FUNCTIONS PSI !!!
             !! => find out the way to adjust at zu based on Louis functions !!!
-            
             !ztmp0 = zt*ztmp0 ! zeta_t !
             !ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
             !ztmp0 = LOG(zt/zu) + psi_h_ice(zeta_u) - psi_h_ice(ztmp0)                   ! ztmp0 just used as temp array again!
@@ -167,7 +176,7 @@ CONTAINS
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
-      IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
+      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0) !LOLO: fix me needs z0  !!!
       
       DEALLOCATE ( u_star, t_star, q_star, dt_zu, dq_zu )
 
@@ -248,8 +257,8 @@ CONTAINS
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            zfmi = f_m_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
-            zfhi = f_h_louis( zu, t_zu(ji,jj), q_zu(ji,jj), zwndspd_i, Ts_i(ji,jj), qs_i(ji,jj), zCdn_ice, z0i )
+            zfmi = f_m_louis( zu, zrib_i, zCdn_ice, z0i )
+            zfhi = f_h_louis( zu, zrib_i, zCdn_ice, z0i )  !LOLO: why "zCdn_ice" and not "zChn_ice" ???
 
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
