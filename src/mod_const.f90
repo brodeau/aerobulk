@@ -55,6 +55,7 @@ MODULE mod_const
       &  rLevap = 2.46e+6_wp, &   !: Latent heat of vaporization for sea-water in   [J/kg]
       &  rLsub  = 2.834e+6_wp,&   !: Latent heat of sublimation for ice at 0 deg.C  [J/kg]
       &  vkarmn = 0.4,        &   !: Von Karman's constant
+      &  vkarmn2 = 0.4*0.4,   &   !: Von Karman's constant
       &  Pi    = 3.141592654, &
       &  twoPi = 2.*Pi,       &
       &  emiss_w = 0.97,      &   !: emissivity of sea water

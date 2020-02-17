@@ -396,10 +396,10 @@ CONTAINS
       REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
       REAL(wp) ::   zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
-      zqa = 0.5_wp*(pqa+pssq)                                        ! ~ mean q within the layer...
-      zta = 0.5_wp*( psst + ptha - gamma_moist(ptha,zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-      zta = 0.5_wp*( psst + ptha - gamma_moist(zta,        zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-      zgamma =  gamma_moist(zta, zqa)                                              ! Adiabatic lapse-rate for moist air within the layer
+      zqa = 0.5_wp*( pqa  + pssq )                             ! ~ mean q within the layer...
+      zta = 0.5_wp*( psst + ptha - gamma_moist(ptha, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+      zta = 0.5_wp*( psst + ptha - gamma_moist( zta, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+      zgamma =  gamma_moist(zta, zqa)                          ! Adiabatic lapse-rate for moist air within the layer
       !
       zsstv = virt_temp_sclr( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
       !

@@ -7,26 +7,26 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_blk_ice_lu15
+MODULE mod_blk_ice_lg15
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
-
-
-
-
-   !!       Routine turb_ice_lu15 maintained and developed in AeroBulk
+   !!       Following Lupkes & Gryanik, 2015
+   !!
+   !!              => case when 100 % sea-ice
+   !!
+   !!       Routine turb_ice_lg15 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, January 2020
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
-   USE mod_phymbl      !: thermodynamics
+   USE mod_phymbl      !: misc. physical functions 
 
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lu15, Cx_Lupkes2015
+   PUBLIC :: turb_ice_lg15 !, Cx_LG15, Cx_skin_LG15
 
    ! ECHAM6 constants
    REAL(wp), PARAMETER ::   z0_skin_ice  = 0.69e-3_wp  ! Eq. 43 [m]
@@ -34,8 +34,8 @@ MODULE mod_blk_ice_lu15
    REAL(wp), PARAMETER ::   z0_ice       = 1.00e-3_wp  ! Eq. 15 [m]
    REAL(wp), PARAMETER ::   zce10        = 2.80e-3_wp  ! Eq. 41
    REAL(wp), PARAMETER ::   zbeta        = 1.1_wp      ! Eq. 41
-   REAL(wp), PARAMETER ::   z1_alpha     = 1._wp / 0.2_wp  ! Eq. 51
-   REAL(wp), PARAMETER ::   z1_alphaf    = z1_alpha    ! Eq. 56
+   REAL(wp), PARAMETER ::   z1_alpha     = 0.2_wp      ! Eq. 12
+   REAL(wp), PARAMETER ::   z1_alphaf    = 1./z1_alpha    ! Eq. 56
    REAL(wp), PARAMETER ::   zbetah       = 1.e-3_wp    ! Eq. 26
    REAL(wp), PARAMETER ::   zgamma       = 1.25_wp     ! Eq. 26
    REAL(wp), PARAMETER ::   z1_gamma     = 1._wp / zgamma
@@ -44,11 +44,11 @@ MODULE mod_blk_ice_lu15
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_lu15( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu, &
+   SUBROUTINE turb_ice_lg15( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu, &
       &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,             &
       &                     xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_ice_lu15  ***
+      !!                      ***  ROUTINE  turb_ice_lg15  ***
       !!
       !! ** Purpose :   Computestransfert coefficients of turbulent surface
       !!                fluxes according
@@ -98,7 +98,7 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
-      !
+      !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
@@ -107,15 +107,13 @@ CONTAINS
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
-         &  u_star, t_star, q_star, &
-         &  dt_zu, dq_zu
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: dt_zu, dq_zu, Rib, xtmp1, xtmp2
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lu15@mod_blk_ice_lu15.f90'
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
+      REAL(wp) :: ztmp, zCdn_skin_ice, zChn_skin_ice
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-         &       dt_zu(jpi,jpj),  dq_zu(jpi,jpj) )
+      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj), Rib(jpi,jpj), xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -127,68 +125,70 @@ CONTAINS
 
       !! Scalar wind speed cannot be below 0.2 m/s
       U_blk = MAX( U_zu, 0.2_wp )
-
-      !! Initializing values at z_u with z_t values:
-      t_zu = t_zt
-      q_zu = q_zt
+           
+      !! First guess of temperature and humidity at height zu:
+      t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
       
-      !! Pot. temp. difference (and we don't want it to be 0!)
+      !! Air-Ice differences (and we don't want it to be 0!)
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
-      Ce = Ch
-
-      u_star = SQRT(Cd) * U_blk
-      t_star = Cd * U_blk * dt_zu / u_star
-      q_star = Cd * U_blk * dq_zu / u_star
+      !! Very bad first guess !!! IMPROVE!
+      Cd(:,:) = 0.001_wp
+      Ch(:,:) = 0.001_wp
+      Ce(:,:) = 0.001_wp
+      
+      ztmp = LOG( zu / z0_skin_ice )
+      zCdn_skin_ice = vkarmn2 / ( ztmp * ztmp )   ! (Eq.7)
+      zChn_skin_ice = vkarmn2 / ( ztmp * LOG( zu / (z1_alpha*z0_skin_ice) ) )   ! (Eq.11,12)
       
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
-         !
-         dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-         dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      DO j_itt = 1, nb_itt*2
+                  
+         ! Bulk Richardson Number:
+         Rib(:,:) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )
          
-         ! Updating turbulent scales :   (L&Y 2004 Eq. (7))
-         u_star = SQRT(Cd) * U_blk
-         t_star = Cd * U_blk * dt_zu / u_star
-         q_star = Cd * U_blk * dq_zu / u_star
+         ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
+         xtmp1(:,:) = zCdn_skin_ice
+         xtmp2(:,:) = z0_skin_ice
+         Cd(:,:)    = zCdn_skin_ice * f_m_louis( zu, Rib(:,:), xtmp1(:,:), xtmp2(:,:) )
+         Ch(:,:)    = zChn_skin_ice * f_h_louis( zu, Rib(:,:), xtmp1(:,:), xtmp2(:,:) ) !LOLO: why "zCdn_skin_ice" (xtmp1) and not "zChn_ice" ???
+         Ce(:,:)    = Ch(:,:)
 
-         !! Shifting temperature and humidity at zu (L&Y 2004 Eq. (9b-9c))
+         !! Adjusting temperature and humidity from zt to zu:
          IF( .NOT. l_zt_equal_zu ) THEN
-            !!t_zu = t_zt - t_star/vkarmn * LOG(zt/zu) + f_h_louis( zu, Rib, Chn, z0 ) - f_h_louis( zt, Rib, Chn, z0 )
-            !!q_zu = q_zt - q_star/vkarmn * LOG(zt/zu) + f_h_louis( zu, Rib, Chn, z0 ) - f_h_louis( zt, Rib, Chn, z0 )
-            !!q_zu = MAX(0._wp, q_zu)
-            PRINT *, 'LOLO: fix me height adjustment into mod_blk_ice_lu15.f90 !!!'
-            !!
-            !! PROBLEM HERE IS THAT WE DO NOT USE STABILITY FUNCTIONS PSI !!!
-            !! => find out the way to adjust at zu based on Louis functions !!!
-            !ztmp0 = zt*ztmp0 ! zeta_t !
-            !ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
-            !ztmp0 = LOG(zt/zu) + psi_h_ice(zeta_u) - psi_h_ice(ztmp0)                   ! ztmp0 just used as temp array again!
-            !t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
-            !q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
-            !q_zu = MAX(0._wp, q_zu)
+            xtmp1 = LOG(zt/zu) + f_h_louis( zu, Rib, xtmp1, xtmp2 ) - f_h_louis( zt, Rib, xtmp1, xtmp2 )
+            xtmp2 = 1._wp/SQRT(Cd)
+            t_zu = t_zt - (Ch * dt_zu * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
+            q_zu = q_zt - (Ce * dq_zu * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
+            q_zu = MAX(0._wp, q_zu)
+            PRINT *, 'LOLO: fix me height adjustment into mod_blk_ice_lg15.f90 !!! Cd=', Cd
+            dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+            dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
-
-      END DO
+         
+      END DO !DO j_itt = 1, nb_itt
 
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
-      IF( lreturn_ustar ) xu_star = u_star
-      IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
+      IF( lreturn_ustar ) xu_star = SQRT(Cd) * U_blk
+      IF( lreturn_L ) THEN
+         xtmp1 = SQRT(Cd)
+         xL      = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu/xtmp1, Ce*dq_zu/xtmp1)
+      END IF
       !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0) !LOLO: fix me needs z0  !!!
       
-      DEALLOCATE ( u_star, t_star, q_star, dt_zu, dq_zu )
+      DEALLOCATE ( dt_zu, dq_zu, Rib, xtmp1, xtmp2 )
 
-   END SUBROUTINE turb_ice_lu15
-
-
+   END SUBROUTINE turb_ice_lg15
 
 
 
-   SUBROUTINE Cx_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+
+
+   SUBROUTINE Cx_LG15( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cx_Lupkes2015  ***
+      !!                      ***  ROUTINE  Cx_LG15  ***
       !!
       !!                         CASE 100 % sea-ice covered !!!
       !!
@@ -197,15 +197,15 @@ CONTAINS
       !!                 and heat coefficients depending on sea-ice concentration
       !!                 and atmospheric stability (no meltponds effect for now).
       !!
-      !! ** Method :     The parameterization is adapted from Lupkes et al. (2015)
+      !! ** Method :     The parameterization is adapted from Lupkes & Gryanik (2015)
       !!                 and ECHAM6 atmospheric model. Compared to Lupkes2012 scheme,
       !!                 it considers specific skin and form drags (Andreas et al. 2010)
       !!                 to compute neutral transfer coefficients for both heat and
       !!                 momemtum fluxes. Atmospheric stability effect on transfer
       !!                 coefficient is also taken into account following Louis (1979).
       !!
-      !! ** References : Lupkes et al. JGR 2015 (theory)
-      !!                 Lupkes et al. ECHAM6 documentation 2015 (implementation)
+      !! ** References : Lupkes & Gryanik JGR 2015 (theory)
+      !!                 Lupkes & Gryanik ECHAM6 documentation 2015 (implementation)
       !!
       !! ** History :
       !!              - G. Samson (2018,2019) original code
@@ -262,14 +262,91 @@ CONTAINS
 
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
-            pcd(ji,jj) = zCdn_skin_ice * zfmi + zCdn_form_ice * ( zfmi*zfi ) * ztmp
-            pch(ji,jj) = zChn_skin_ice * zfhi + zChn_form_ice * ( zfhi*zfi ) * ztmp
+            pcd(ji,jj) = zCdn_skin_ice * zfmi  +  zCdn_form_ice * ( zfmi*zfi ) * ztmp
+            pch(ji,jj) = zChn_skin_ice * zfhi  +  zChn_form_ice * ( zfhi*zfi ) * ztmp
 
          END DO
       END DO
       !
-   END SUBROUTINE Cx_Lupkes2015
+   END SUBROUTINE Cx_LG15
 
+
+   
+   SUBROUTINE Cx_skin_LG15( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  Cx_skin_LG15  ***
+      !!
+      !!                         CASE 100 % sea-ice covered !!!
+      !!
+      !!                        Cd and Ch, WITHOUT FORM DRAG
+      !!
+      !! ** Purpose :    Alternative turbulent transfer coefficients formulation
+      !!                 between sea-ice and atmosphere with distinct momentum
+      !!                 and heat coefficients depending on sea-ice concentration
+      !!                 and atmospheric stability (no meltponds effect for now).
+      !!
+      !! ** Method :     The parameterization is adapted from Lupkes & Gryanik (2015)
+      !!                 and ECHAM6 atmospheric model. Compared to Lupkes2012 scheme,
+      !!                 it considers specific skin and form drags (Andreas et al. 2010)
+      !!                 to compute neutral transfer coefficients for both heat and
+      !!                 momemtum fluxes. Atmospheric stability effect on transfer
+      !!                 coefficient is also taken into account following Louis (1979).
+      !!
+      !! ** References : Lupkes & Gryanik JGR 2015 (theory)
+      !!                 Lupkes & Gryanik ECHAM6 documentation 2015 (implementation)
+      !!
+      !! ** History :
+      !!              - G. Samson (2018,2019) original code
+      !!              - L. Brodeau (2020) AeroBulk
+      !!
+      !!----------------------------------------------------------------------
+      REAL(wp), INTENT(in   )                   :: zu     ! reference height (height for Uo_zu)   [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_i   ! sea-ice surface temperature               [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
+      !
+      REAL(wp) ::   zrib_i
+      REAL(wp) ::   zCdn_skin_ice, zChn_skin_ice
+      REAL(wp) ::   ztmp
+      REAL(wp) ::   zwndspd_i
+      INTEGER  ::   ji, jj         ! dummy loop indices
+      !!----------------------------------------------------------------------
+      
+      ! Momentum Neutral Transfer Coefficients
+      !zCdn_skin_ice = vkarmn2 / ( LOG( zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
+      !zChn_skin_ice = vkarmn2 / ( LOG( zu / z0_ice      + 1._wp ) * LOG( zu * z1_alpha / z0_skin_ice + 1._wp ) )   ! Eq. 50 + Eq. 52
+      ztmp = LOG( zu / z0_skin_ice )
+      zCdn_skin_ice = vkarmn2 / ( ztmp * ztmp )   ! Eq. 7
+      zChn_skin_ice = vkarmn2 / ( ztmp * LOG( zu / (z1_alpha*z0_skin_ice) ) )   ! Eq. 11, 12
+      
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            
+            zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
+            
+            ! Bulk Richardson Number:
+            zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
+            
+            ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
+            pcd(ji,jj) = zCdn_skin_ice * f_m_louis( zu, zrib_i, zCdn_skin_ice, z0_skin_ice )
+            pch(ji,jj) = zChn_skin_ice * f_h_louis( zu, zrib_i, zCdn_skin_ice, z0_skin_ice ) !LOLO: why "zCdn_skin_ice" and not "zChn_ice" ???
+
+         END DO
+      END DO
+      !
+   END SUBROUTINE Cx_skin_LG15
+
+
+
+
+
+
+
+   
    !!======================================================================
 
-END MODULE mod_blk_ice_lu15
+END MODULE mod_blk_ice_lg15

@@ -12,7 +12,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
-   USE mod_blk_ice_lu15
+   USE mod_blk_ice_lg15
    USE mod_blk_ice_best
 
    IMPLICIT NONE
@@ -192,7 +192,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       READ(*,*) ians
       IF ( ians == 0 ) calgo = 'nemo'
       IF ( ians == 1 ) calgo = 'an05'
-      IF ( ians == 2 ) calgo = 'lu15'
+      IF ( ians == 2 ) calgo = 'lg15'
       IF ( ians == 3 ) calgo = 'best'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
@@ -326,8 +326,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-      CASE ( 'lu15' )
-         CALL turb_ice_lu15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+      CASE ( 'lg15' )
+         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 

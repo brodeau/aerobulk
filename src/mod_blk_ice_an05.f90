@@ -82,7 +82,6 @@ CONTAINS
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   qi_s     ! specific humidity at ice/air interface  [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      !!
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
@@ -133,8 +132,8 @@ CONTAINS
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
-
-      !! Pot. temp. difference (and we don't want it to be 0!)
+      
+      !! Air-Ice differences (and we don't want it to be 0!)
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
