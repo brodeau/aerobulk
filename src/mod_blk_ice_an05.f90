@@ -23,7 +23,7 @@ MODULE mod_blk_ice_an05
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
-   USE mod_phymbl      !: thermodynamics
+   USE mod_phymbl      !: misc. physical functions 
 
    IMPLICIT NONE
    PRIVATE

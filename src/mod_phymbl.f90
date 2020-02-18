@@ -989,10 +989,10 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF ( PRESENT(ppsi) ) THEN
-         !! Normal case:
+         !! Cd provided is the actual Cd, not the neutral-stability CdN :
          z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd) + ppsi ) )
       ELSE
-         !! Neutral case:
+         !! Cd provided is the neutral-stability Cd, aka CdN :
          z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd) )
       END IF
    END FUNCTION z0_from_Cd

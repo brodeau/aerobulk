@@ -13,7 +13,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
-   USE mod_blk_ice_best
+   !USE mod_blk_ice_best
 
    IMPLICIT NONE
 
@@ -22,7 +22,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    LOGICAL, PARAMETER :: ldebug=.TRUE.
    !LOGICAL, PARAMETER :: ldebug=.FALSE.
 
-   INTEGER, PARAMETER :: nb_algos = 4
+   INTEGER, PARAMETER :: nb_algos = 3
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
 
@@ -188,12 +188,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    ians=-1
    DO WHILE ( (ians<0).OR.(ians>nb_algos) )
-      WRITE(6,*) 'Which algo to use? "NEMO default" => 0 | "Andreas 2005" => 1 | "Lupkes 2015" => 2 :'
+      WRITE(6,*) 'Which algo to use? "NEMO default (v4)" => 1 | "Andreas (2005)" => 2 | "Lupkes & Gryanik (2015)" => 3 :'
       READ(*,*) ians
-      IF ( ians == 0 ) calgo = 'nemo'
-      IF ( ians == 1 ) calgo = 'an05'
-      IF ( ians == 2 ) calgo = 'lg15'
-      IF ( ians == 3 ) calgo = 'best'
+      IF ( ians == 1 ) calgo = 'nemo'
+      IF ( ians == 2 ) calgo = 'an05'
+      IF ( ians == 3 ) calgo = 'lg15'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -320,7 +319,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
+         
       CASE ( 'an05' )
          CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
@@ -328,11 +327,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       CASE ( 'lg15' )
          CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
-            &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
-      CASE ( 'best' )
-         CALL turb_ice_best( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 

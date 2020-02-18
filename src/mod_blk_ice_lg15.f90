@@ -40,7 +40,11 @@ MODULE mod_blk_ice_lg15
    REAL(wp), PARAMETER ::   zgamma       = 1.25_wp     ! Eq. 26
    REAL(wp), PARAMETER ::   z1_gamma     = 1._wp / zgamma
    REAL(wp), PARAMETER ::   r1_3         = 1._wp / 3._wp
+   
+   LOGICAL, PARAMETER :: l_use_form_drag = .FALSE.
+   LOGICAL, PARAMETER :: l_use_pond_info = .FALSE.
 
+   
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -135,16 +139,16 @@ CONTAINS
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       !! Very bad first guess !!! IMPROVE!
-      Cd(:,:) = 0.001_wp
-      Ch(:,:) = 0.001_wp
-      Ce(:,:) = 0.001_wp
+      Cd(:,:) = rCd_ice
+      Ch(:,:) = rCd_ice
+      Ce(:,:) = rCd_ice
       
       ztmp = LOG( zu / z0_skin_ice )
       zCdn_skin_ice = vkarmn2 / ( ztmp * ztmp )   ! (Eq.7)
       zChn_skin_ice = vkarmn2 / ( ztmp * LOG( zu / (z1_alpha*z0_skin_ice) ) )   ! (Eq.11,12)
       
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt*2
+      DO j_itt = 1, nb_itt
                   
          ! Bulk Richardson Number:
          Rib(:,:) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )
@@ -170,13 +174,29 @@ CONTAINS
          
       END DO !DO j_itt = 1, nb_itt
 
-      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
+      IF( lreturn_z0 ) THEN
+         xtmp1 = zCdn_skin_ice
+         xtmp2 = z0_skin_ice
+         xz0   = z0_from_Cd( zu, Cd,  ppsi=f_m_louis( zu, Rib, xtmp1, xtmp2 ) )
+      END IF
+      
       IF( lreturn_ustar ) xu_star = SQRT(Cd) * U_blk
       IF( lreturn_L ) THEN
          xtmp1 = SQRT(Cd)
-         xL      = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu/xtmp1, Ce*dq_zu/xtmp1)
+         xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu/xtmp1, Ce*dq_zu/xtmp1)
       END IF
-      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0) !LOLO: fix me needs z0  !!!
+      
+      IF( lreturn_UN10 ) THEN
+         !! dt_zu IS z0 array !!!
+         IF( lreturn_z0 ) THEN
+            dt_zu(:,:) = xz0(:,:)
+         ELSE
+            xtmp1 = zCdn_skin_ice
+            xtmp2 = z0_skin_ice
+            dt_zu(:,:)= z0_from_Cd( zu, Cd,  ppsi=f_m_louis( zu, Rib, xtmp1, xtmp2 ) )
+         END IF         
+         xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./dt_zu) !LOLO: fix me needs z0  !!!
+      END IF
       
       DEALLOCATE ( dt_zu, dq_zu, Rib, xtmp1, xtmp2 )
 
