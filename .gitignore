@@ -1,6 +1,7 @@
 *.err
 *.tmp
 *.out
+*.old
 *#
 *.mod
 *.o
