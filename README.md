@@ -4,7 +4,7 @@
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
-**AeroBulk** is a Fortran package/library which gathers state-of-the-art algorithms, turbulent closures, parameterizations, and thermodynamics (empirical) functions used to compute turbulent fluxes at the air-sea interface.  These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux. These fluxes are estimated by means of so-called **aerodynamic bulk formulae** from the sea surface temperature, and atmospheric surface parameters: wind speed, air temperature and specific humidity.
+**AeroBulk** is a Fortran package/library that gathers state-of-the-art algorithms, turbulent closures, parameterizations, and thermodynamics functions used to compute turbulent fluxes at the air-sea interface.  These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux. These fluxes are estimated by means of so-called **aerodynamic bulk formula from the sea surface temperature, and atmospheric surface parameters: wind speed, air temperature and specific humidity.
 
 ![Aerobulk Logo](https://brodeau.github.io/images/projects/bulk.svg)
 
@@ -16,7 +16,7 @@ with:
 $$  \theta_z \simeq T_z+\gamma z \\ q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
 -->
 
-In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formulaes:
+In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
 *   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
 *   COARE v3.6 (Fairall et al., 2018 + [Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
@@ -30,24 +30,29 @@ Beside bulk algorithms, AeroBulk also provides a variety of functions to accurat
 The focus in AeroBulk is readability, efficiency, and portability towards either modern GCMs (Fortran 90, set of modules and a library).
 
 
-# **> Giving AeroBulk a first go in interactive "toy mode"**
+# **> Giving AeroBulk a first try in interactive "toy mode"**
 
-Unsure ```bin/test_aerobulk.x``` has been compiled and launch it:
+Check that ```bin/test_aerobulk.x``` has been compiled and execute it:
 
      ./bin/test_aerobulk.x
-     
-You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```test_aerobulk.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a table.
+
+You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```test_aerobulk.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
     
  List of command line options for ```test_aerobulk.x```:
- 
+
     -p   => Ask for sea-level pressure, otherwize assume 1010 hPa
- 
+     
     -r   => Ask for relative humidity rather than specific humidity
- 
+     
     -S   => Use the Cool Skin Warm Layer parameterization to compute
             and use the skin temperature instead of the bulk SST
             only in COARE and ECMWF
- 
+     
+    -N   => Force neutral stability in surface atmospheric layer
+            -> will not ask for air temp. at zt, instead will only
+            ask for relative humidity at zt and will force the air
+            temperature at zt that yields a neutral-stability!
+     
     -h   => Show this message
 
 
@@ -59,12 +64,11 @@ Example of an output obtained with the following setup:
  * _t<sub>zt_ = 20&deg;C
  * _q<sub>zt_ = 12 g/kg
  * _U<sub>zu_ = 5 m/s
-  
+
 <!-- $$  SST = 22^{\circ}C \\ \theta_z = 20^{\circ}C $$ -->
 
 
-        *** Bulk Transfer Coefficients:
-     ==============================================================================================
+    ==============================================================================================
        Algorithm:         coare3p0   |   coare3p6    |    ncar     |    ecmwf
      ==============================================================================================
            C_D     =      1.194853       1.077194       1.203364       1.286136     [10^-3]
@@ -243,7 +247,7 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
                   USE mod_const
                   USE mod_phymbl
                   ...
-
+    
                   SSQ(:,:) = 0.98*q_sat(SST, SLP)
                   ...
               END PROGRAM TEST_PHYMBL
