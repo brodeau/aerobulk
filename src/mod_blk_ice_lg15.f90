@@ -29,19 +29,17 @@ MODULE mod_blk_ice_lg15
    PUBLIC :: turb_ice_lg15 !, Cx_LG15, Cx_skin_LG15
 
    ! ECHAM6 constants
-   REAL(wp), PARAMETER ::   z0_skin_ice  = 0.69e-3_wp  ! Eq. 43 [m]
-   REAL(wp), PARAMETER ::   z0_form_ice  = 0.57e-3_wp  ! Eq. 42 [m]
-   REAL(wp), PARAMETER ::   z0_ice       = 1.00e-3_wp  ! Eq. 15 [m]
-   REAL(wp), PARAMETER ::   zce10        = 2.80e-3_wp  ! Eq. 41
-   REAL(wp), PARAMETER ::   zbeta        = 1.1_wp      ! Eq. 41
-   REAL(wp), PARAMETER ::   z1_alpha     = 0.2_wp      ! Eq. 12
-   REAL(wp), PARAMETER ::   z1_alphaf    = 1./z1_alpha    ! Eq. 56
-   REAL(wp), PARAMETER ::   zbetah       = 1.e-3_wp    ! Eq. 26
-   REAL(wp), PARAMETER ::   zgamma       = 1.25_wp     ! Eq. 26
-   REAL(wp), PARAMETER ::   z1_gamma     = 1._wp / zgamma
-   REAL(wp), PARAMETER ::   r1_3         = 1._wp / 3._wp
+   REAL(wp), PARAMETER ::   rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
+   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
+   REAL(wp), PARAMETER ::   rz0_0       = 1.00e-3_wp  ! Eq. 15 [m]
+   REAL(wp), PARAMETER ::   rce10_i_0   = 3.46e-3_wp  ! Eq. 48 MIZ
+   REAL(wp), PARAMETER ::   rbeta_0     = 1.4_wp      ! Eq. 47 MIZ
+   REAL(wp), PARAMETER ::   ralpha_0     = 0.2_wp      ! Eq. 12
+   REAL(wp), PARAMETER ::   rbetah_0     = 1.e-3_wp    ! Eq. 26
+   REAL(wp), PARAMETER ::   rgamma_0     = 1.25_wp     ! Eq. 26
+   REAL(wp), PARAMETER ::   r1_gamma_0   = 1._wp / rgamma_0
    
-   LOGICAL, PARAMETER :: l_use_form_drag = .FALSE.
+   LOGICAL, PARAMETER :: l_use_form_drag = .TRUE.
    LOGICAL, PARAMETER :: l_use_pond_info = .FALSE.
 
    
@@ -111,14 +109,19 @@ CONTAINS
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: dt_zu, dq_zu, Rib, xtmp1, xtmp2
+      REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
+      REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: dt_zu, dq_zu
+      REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: zfrac_ice      
+      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f ! third dimensions (size=2): 1 => ice, 2 => water
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
-      REAL(wp) :: ztmp, zCdn_skin_ice, zChn_skin_ice
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj), Rib(jpi,jpj), xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
+      ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
+      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj), zfrac_ice(jpi,jpj) )
+      ALLOCATE ( zz0_s(jpi,jpj,2), zz0_f(jpi,jpj,2), RiB(jpi,jpj,2), zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
 
+      
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -138,47 +141,74 @@ CONTAINS
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      !! Very bad first guess !!! IMPROVE!
+      !! Very crude first guess:
       Cd(:,:) = rCd_ice
       Ch(:,:) = rCd_ice
       Ce(:,:) = rCd_ice
-      
-      ztmp = LOG( zu / z0_skin_ice )
-      zCdn_skin_ice = vkarmn2 / ( ztmp * ztmp )   ! (Eq.7)
-      zChn_skin_ice = vkarmn2 / ( ztmp * LOG( zu / (z1_alpha*z0_skin_ice) ) )   ! (Eq.11,12)
+
+      !! For skin drag :
+      zz0_s(:,:,1) = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
+      xtmp1(:,:) = LOG( zu / zz0_s(:,:,1) )
+      zCdN_s(:,:,1) = vkarmn2 / ( xtmp1(:,:) * xtmp1(:,:) )                          ! (Eq.7)   [ index 1 is for ice, 2 for water ]
+      zChN_s(:,:,1) = vkarmn2 / ( xtmp1(:,:) * LOG( zu / (ralpha_0*zz0_s(:,:,1)) ) )     ! (Eq.11,12)  [ "" ]
+
+      !! For form drag in MIZ:
+      zz0_f(:,:,:)  = 0._wp
+      zCdN_f(:,:,:) = 0._wp
+      zChN_f(:,:,:) = 0._wp
+      IF ( l_use_form_drag ) THEN
+         zz0_f(:,:,1) = rz0_f_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
+         zfrac_ice(:,:) = 0.9 !!! LOLO: fix, use model value !
+         xtmp1(:,:) = 1._wp / zz0_f(:,:,1)
+         xtmp2(:,:) = rce10_i_0 * ( LOG( 10._wp * xtmp1(:,:) ) / LOG( zu * xtmp1(:,:) ) )**2       ! part of (Eq.46)
+         zCdN_f(:,:,1) = xtmp2(:,:) * zfrac_ice(:,:) * (1._wp - zfrac_ice(:,:))**rbeta_0           ! (Eq.46)  [ index 1 is for ice, 2 for water ]
+         zChN_f(:,:,1) = zCdN_f(:,:,1) / ( 1._wp + LOG(1._wp/ralpha_0)/vkarmn * SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
+      END IF
       
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
                   
          ! Bulk Richardson Number:
-         Rib(:,:) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )
+         RiB(:,:,1) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )
          
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
-         xtmp1(:,:) = zCdn_skin_ice
-         xtmp2(:,:) = z0_skin_ice
-         Cd(:,:)    = zCdn_skin_ice * f_m_louis( zu, Rib(:,:), xtmp1(:,:), xtmp2(:,:) )
-         Ch(:,:)    = zChn_skin_ice * f_h_louis( zu, Rib(:,:), xtmp1(:,:), xtmp2(:,:) ) !LOLO: why "zCdn_skin_ice" (xtmp1) and not "zChn_ice" ???
-         Ce(:,:)    = Ch(:,:)
+         Cd(:,:) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
+         Ch(:,:) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         PRINT *, 'LOLO: Cd / skin only / ice =', REAL(Cd,4)
 
+
+         IF ( l_use_form_drag ) THEN
+            !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
+            !!   MIZ:
+            Cd(:,:) = Cd(:,:) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
+            Ch(:,:) = Ch(:,:) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" (xtmp1) and not "zChn" ???
+         END IF
+         
+         Ce(:,:) = Ch(:,:)
+         PRINT *, 'LOLO: Cd / total / ice =', REAL(Cd,4)
+         
          !! Adjusting temperature and humidity from zt to zu:
          IF( .NOT. l_zt_equal_zu ) THEN
-            xtmp1 = LOG(zt/zu) + f_h_louis( zu, Rib, xtmp1, xtmp2 ) - f_h_louis( zt, Rib, xtmp1, xtmp2 )
+            xtmp1(:,:) = zCdN_s(:,:,1) + zCdN_f(:,:,1)    ! total neutral drag coeff!
+            xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
+            xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
+               &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
             xtmp2 = 1._wp/SQRT(Cd)
             t_zu = t_zt - (Ch * dt_zu * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
             q_zu = q_zt - (Ce * dq_zu * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             q_zu = MAX(0._wp, q_zu)
-            PRINT *, 'LOLO: fix me height adjustment into mod_blk_ice_lg15.f90 !!! Cd=', Cd
+            PRINT *, 'LOLO: height adjustment (mod_blk_ice_lg15)! Cd=', REAL(Cd,4)
             dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
-         
+
+         PRINT *, ''!LOLO         
       END DO !DO j_itt = 1, nb_itt
 
-      IF( lreturn_z0 ) THEN
-         xtmp1 = zCdn_skin_ice
-         xtmp2 = z0_skin_ice
-         xz0   = z0_from_Cd( zu, Cd,  ppsi=f_m_louis( zu, Rib, xtmp1, xtmp2 ) )
-      END IF
+
+      PRINT *, 'LOLO: CDN10_skin_ice =', REAL( zCdN_s(:,:,1), 4)
+      
+      IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
       
       IF( lreturn_ustar ) xu_star = SQRT(Cd) * U_blk
       IF( lreturn_L ) THEN
@@ -186,19 +216,11 @@ CONTAINS
          xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu/xtmp1, Ce*dq_zu/xtmp1)
       END IF
       
-      IF( lreturn_UN10 ) THEN
-         !! dt_zu IS z0 array !!!
-         IF( lreturn_z0 ) THEN
-            dt_zu(:,:) = xz0(:,:)
-         ELSE
-            xtmp1 = zCdn_skin_ice
-            xtmp2 = z0_skin_ice
-            dt_zu(:,:)= z0_from_Cd( zu, Cd,  ppsi=f_m_louis( zu, Rib, xtmp1, xtmp2 ) )
-         END IF         
-         xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./dt_zu) !LOLO: fix me needs z0  !!!
-      END IF
+      IF( lreturn_UN10 ) xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./(z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )) )
       
-      DEALLOCATE ( dt_zu, dq_zu, Rib, xtmp1, xtmp2 )
+      DEALLOCATE ( xtmp1, xtmp2 )
+      DEALLOCATE ( dt_zu, dq_zu, zfrac_ice )      
+      DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
 
    END SUBROUTINE turb_ice_lg15
 
@@ -243,21 +265,21 @@ CONTAINS
       !
       REAL(wp) ::   zfi, zfo
       REAL(wp) ::   zrib_i, ztmp
-      REAL(wp) ::   zCdn_skin_ice, zCdn_form_ice, zCdn_ice
-      REAL(wp) ::   zChn_skin_ice, zChn_form_ice
+      REAL(wp) ::   zCdn_skin, zCdn_form, zCdn
+      REAL(wp) ::   zChn_skin, zChn_form
       REAL(wp) ::   z0i, zfmi, zfhi
       REAL(wp) ::   zCdn_form_tmp, zwndspd_i
       INTEGER  ::   ji, jj         ! dummy loop indices
       !!----------------------------------------------------------------------
 
       ! Momentum Neutral Transfer Coefficients (should be a constant)
-      zCdn_form_tmp = zce10 * ( LOG( 10._wp / z0_form_ice + 1._wp ) / LOG( zu / z0_form_ice + 1._wp ) )**2   ! Eq. 46
-      zCdn_skin_ice = ( vkarmn                                      / LOG( zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
-      zCdn_ice      = zCdn_skin_ice   ! Eq. 7
-      !zCdn_ice     = 1.89e-3         ! old ECHAM5 value (cf Eq. 32)
+      zCdn_form_tmp = rce10_i_0 * ( LOG( 10._wp / rz0_f_0 + 1._wp ) / LOG( zu / rz0_f_0 + 1._wp ) )**2   ! Eq. 46
+      zCdn_skin = ( vkarmn                                      / LOG( zu / rz0_s_0 + 1._wp ) )**2   ! Eq. 7
+      zCdn      = zCdn_skin   ! Eq. 7
+      !zCdn     = 1.89e-3         ! old ECHAM5 value (cf Eq. 32)
 
       ! Heat Neutral Transfer Coefficients
-      zChn_skin_ice = vkarmn**2 / ( LOG( zu / z0_ice + 1._wp ) * LOG( zu * z1_alpha / z0_skin_ice + 1._wp ) )   ! Eq. 50 + Eq. 52
+      zChn_skin = vkarmn**2 / ( LOG( zu / rz0_0 + 1._wp ) * LOG( zu * ralpha_0 / rz0_s_0 + 1._wp ) )   ! Eq. 50 + Eq. 52
 
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -271,19 +293,19 @@ CONTAINS
             zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
 
             ! Momentum and Heat Neutral Transfer Coefficients
-            zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40 !LOLO: WHAT????? zfi * zfo is always 0 !!!
-            zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )   ! Eq. 53
+            zCdn_form = zCdn_form_tmp * zfi * zfo**rbeta_0                          ! Eq. 40 !LOLO: WHAT????? zfi * zfo is always 0 !!!
+            zChn_form = zCdn_form / ( 1._wp + ( LOG( 1._wp/ralpha_0 ) / vkarmn ) * SQRT( zCdn_form ) )   ! Eq. 53
 
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
-            z0i = z0_skin_ice                                        ! over ice
+            z0i = rz0_s_0                                        ! over ice
 
-            zfmi = f_m_louis( zu, zrib_i, zCdn_ice, z0i )
-            zfhi = f_h_louis( zu, zrib_i, zCdn_ice, z0i )  !LOLO: why "zCdn_ice" and not "zChn_ice" ???
+            zfmi = f_m_louis( zu, zrib_i, zCdn, z0i )
+            zfhi = f_h_louis( zu, zrib_i, zCdn, z0i )  !LOLO: why "zCdn" and not "zChn" ???
 
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
-            pcd(ji,jj) = zCdn_skin_ice * zfmi  +  zCdn_form_ice * ( zfmi*zfi ) * ztmp
-            pch(ji,jj) = zChn_skin_ice * zfhi  +  zChn_form_ice * ( zfhi*zfi ) * ztmp
+            pcd(ji,jj) = zCdn_skin * zfmi  +  zCdn_form * ( zfmi*zfi ) * ztmp
+            pch(ji,jj) = zChn_skin * zfhi  +  zChn_form * ( zfhi*zfi ) * ztmp
 
          END DO
       END DO
@@ -330,18 +352,18 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
       !
       REAL(wp) ::   zrib_i
-      REAL(wp) ::   zCdn_skin_ice, zChn_skin_ice
+      REAL(wp) ::   zCdn_skin, zChn_skin
       REAL(wp) ::   ztmp
       REAL(wp) ::   zwndspd_i
       INTEGER  ::   ji, jj         ! dummy loop indices
       !!----------------------------------------------------------------------
       
       ! Momentum Neutral Transfer Coefficients
-      !zCdn_skin_ice = vkarmn2 / ( LOG( zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
-      !zChn_skin_ice = vkarmn2 / ( LOG( zu / z0_ice      + 1._wp ) * LOG( zu * z1_alpha / z0_skin_ice + 1._wp ) )   ! Eq. 50 + Eq. 52
-      ztmp = LOG( zu / z0_skin_ice )
-      zCdn_skin_ice = vkarmn2 / ( ztmp * ztmp )   ! Eq. 7
-      zChn_skin_ice = vkarmn2 / ( ztmp * LOG( zu / (z1_alpha*z0_skin_ice) ) )   ! Eq. 11, 12
+      !zCdn_skin = vkarmn2 / ( LOG( zu / rz0_s_0 + 1._wp ) )**2   ! Eq. 7
+      !zChn_skin = vkarmn2 / ( LOG( zu / z0      + 1._wp ) * LOG( zu * ralpha_0 / rz0_s_0 + 1._wp ) )   ! Eq. 50 + Eq. 52
+      ztmp = LOG( zu / rz0_s_0 )
+      zCdn_skin = vkarmn2 / ( ztmp * ztmp )   ! Eq. 7
+      zChn_skin = vkarmn2 / ( ztmp * LOG( zu / (ralpha_0*rz0_s_0) ) )   ! Eq. 11, 12
       
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -352,8 +374,8 @@ CONTAINS
             zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
             
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
-            pcd(ji,jj) = zCdn_skin_ice * f_m_louis( zu, zrib_i, zCdn_skin_ice, z0_skin_ice )
-            pch(ji,jj) = zChn_skin_ice * f_h_louis( zu, zrib_i, zCdn_skin_ice, z0_skin_ice ) !LOLO: why "zCdn_skin_ice" and not "zChn_ice" ???
+            pcd(ji,jj) = zCdn_skin * f_m_louis( zu, zrib_i, zCdn_skin, rz0_s_0 )
+            pch(ji,jj) = zChn_skin * f_h_louis( zu, zrib_i, zCdn_skin, rz0_s_0 ) !LOLO: why "zCdn_skin" and not "zChn" ???
 
          END DO
       END DO

@@ -19,7 +19,7 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw, vQu_sane
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -151,7 +151,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
 
    IF ( .NOT. l_force_neutral ) THEN
-      WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
+      WRITE(6,*) 'Give absolute temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) t_zt
       t_zt = t_zt + rt0
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -205,7 +205,7 @@ PROGRAM TEST_AEROBULK
       t_zt = sst ! first guess
       DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt   ! Eq: theta_v_0 = theta_v_zt
+         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
       
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -237,8 +237,8 @@ PROGRAM TEST_AEROBULK
 
 
    WRITE(6,*) ''
-   WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'
-   WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst) =',            REAL(1000.*ssq ,4), '[g/kg]'
+   WRITE(6,*) ' *** q_',TRIM(czt),'                      =', REAL(1000.*q_zt,4), '[g/kg]'
+   WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst, SLP) =',            REAL(1000.*ssq ,4), '[g/kg]'
    WRITE(6,*) ''
 
 
@@ -307,7 +307,8 @@ PROGRAM TEST_AEROBULK
       !! respective Cool Skin Warm Layer parameterization is used
       !!  => if optional input arrays "rad_sw, rad_lw, slp" are given a value !
 
-      Ts = sst ; qs = ssq
+      Ts = sst
+      qs = ssq
 
 
       SELECT CASE(ialgo)
@@ -346,8 +347,8 @@ PROGRAM TEST_AEROBULK
          END IF
 
       CASE(3)
-         CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, &
-            &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,      &
+         CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, SLP, rgamma, &
+            &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
             &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
 
@@ -371,8 +372,22 @@ PROGRAM TEST_AEROBULK
 
       END SELECT
 
+      !! Absolute temperature at zu ?      
+      !t_zu = theta_zu ! first guess...
+      !DO jq = 1, 4
+      !   rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
+      !   t_zu = theta_zu - rgamma*zu   ! Absolute temp.
+      !END DO
+      t_zu = theta_zu - rgamma*zu    ! !! using the old gamma based on t_zt and q_zt seems like the wisest choice...
+      vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
+      
+      !! So what is the saturation at t_zu then ???
+      vQu_sane(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
 
+      vQu(ialgo)  =  q_zu(1,1)
+      
 
+            
       !! Bulk Richardson Number for layer "sea-level -- zu":
       tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
       vBRN(ialgo) = tmp(1,1)
@@ -380,19 +395,10 @@ PROGRAM TEST_AEROBULK
 
       vTheta_u(ialgo) = theta_zu(1,1) -rt0   ! Potential temperature at zu
 
-      !! Absolute temperature at zu
-      t_zu = theta_zu ! first guess...
-      DO jq = 1, 4
-         rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
-         t_zu = theta_zu - rgamma*zu   ! Absolute temp.
-      END DO
-
       vCd(ialgo) = 1000.*Cd(1,1)
       vCh(ialgo) = 1000.*Ch(1,1)
       vCe(ialgo) = 1000.*Ce(1,1)
 
-      vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
-      vQu(ialgo)  =   q_zu(1,1)
 
 
       !! Gustiness contribution:
@@ -450,6 +456,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
    WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu, 4)       , '[g/kg]'
+   WRITE(6,*) '    q_',TRIM(czu),'_sane=   ', REAL(1000.*vQu_sane, 4)  , '[g/kg]'
    WRITE(6,*) ''
    WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)             , '[g/kg]'
    WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
@@ -458,6 +465,12 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '    Ug (gust) =   ', REAL(vUg, 4)                       , '[m/s]'
    WRITE(6,*) ''
 
+   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1000.*vQu_sane, 4), '[g/kg]'
+   PRINT *, 'LOLO: test_aerobulk.f90 => gamma_moist =', rgamma
+   PRINT *, 'LOLO: test_aerobulk.f90 => t_zu =', t_zu
+   PRINT *, ''
+ 
+   WRITE(6,*) ''
 
 
    tmp = visc_air(t_zu)
@@ -537,7 +550,6 @@ SUBROUTINE usage_test( icontinue )
    PRINT *,'           only usable for COARE and ECMWF families of algorithms'
    PRINT *,'           (warm-layer param. cannot be used in this simple test as'
    PRINT *,'           no time-integration is involved here...)'
-   PRINT *,''
    PRINT *,''
    PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
    PRINT *,'           -> will not ask for air temp. at zt, instead will only'

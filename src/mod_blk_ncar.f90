@@ -36,8 +36,8 @@ MODULE mod_blk_ncar
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,      &
+   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, SLP, gamma, &
+      &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,                  &
       &                   xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
@@ -56,6 +56,8 @@ CONTAINS
       !!    *  ssq  : specific humidity at saturation at SST                  [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
+      !!    *  SLP  : sea level pressure (needed if zt /= zu)                 [Pa]
+      !!    *  gamma: adiabatic lapse-rate of moist air (needed if zt /= zu)  [K/m]
       !!
       !! OUTPUT :
       !! --------
@@ -82,6 +84,8 @@ CONTAINS
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   SLP      ! sea level pressure                         [Pa]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   gamma    ! adiabatic lapse-rate of moist air         [K/m]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
@@ -164,8 +168,17 @@ CONTAINS
             ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
             ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
+            !!
             q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
             q_zu = MAX(0._wp, q_zu)
+            
+            !! Prevent q_zu to reach beyond saturation:
+            ztmp0 = t_zu - zu*gamma  ! ztmp0 = absolute temp. at zu (slightly colder that pot. temp. at zu)
+            q_zu = MIN( q_sat( ztmp0, SLP ), q_zu )
+            PRINT *, 'LOLO: mod_blk_ncar.f90 => SLP =', SLP
+            PRINT *, 'LOLO: mod_blk_ncar.f90 => gamma_moist =', gamma
+            PRINT *, 'LOLO: mod_blk_ncar.f90 => t_zu =', REAL(ztmp0-rt0, 4)
+            PRINT *, 'LOLO: mod_blk_ncar.f90 => q_zu_sane =', q_sat( ztmp0, SLP ) ;            PRINT *, ''
          END IF
 
          ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 Eq. 9a)...

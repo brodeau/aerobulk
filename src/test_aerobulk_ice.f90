@@ -29,7 +29,7 @@ PROGRAM TEST_AEROBULK_ICE
    CHARACTER(len=100) :: &
       &   calgob
 
-   INTEGER :: jarg, ialgo, jq
+   INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
@@ -46,7 +46,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
-      &     l_use_dp      = .FALSE.        !: ask for dew-point temperature rather than q for humidity
+      &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
+      &     l_force_neutral = .FALSE.      !: force air temp and humi at zt to yield perfectly neutral surface atmospheric layer
 
    jpi = lx ; jpj = ly
 
@@ -79,6 +80,9 @@ PROGRAM TEST_AEROBULK_ICE
 
       CASE('-d')
          l_use_dp = .TRUE.
+
+      CASE('-N')
+         l_force_neutral = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', TRIM(car) ; WRITE(6,*) ''
@@ -138,22 +142,29 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) 'For this sit the latent heat of vaporization is L_vap =', L_vap(sit), ' [J/kg]'
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
-   READ(*,*) t_zt
-   t_zt = t_zt + rt0
+   IF ( .NOT. l_force_neutral ) THEN
+      WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
+      READ(*,*) t_zt
+      t_zt = t_zt + rt0
+      qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+   ELSE
+      WRITE(6,*) 'NOT ASKING FOR temperature at ',TRIM(czt),', because you use the "-N" flag => NEUTRAL!'
+   END IF
    WRITE(6,*) ''
 
 
    !! Asking for humidity:
-   qsat_zt = q_sat( t_zt, SLP )  ! no need for l_ice, we are above...   ! spec. hum. at saturation [kg/kg]
 
-   IF ( l_use_rh ) THEN
+
+   IF ( l_use_rh .OR. l_force_neutral ) THEN
       WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
       READ(*,*) RH_zt
       RH_zt = 1.E-2*RH_zt
-      q_zt = q_air_rh(RH_zt, t_zt, SLP)
-      WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      IF ( .NOT. l_force_neutral ) THEN
+         q_zt = q_air_rh(RH_zt, t_zt, SLP)
+         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
+         !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      END IF
    ELSEIF ( l_use_dp ) THEN
       WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) d_zt
@@ -171,6 +182,30 @@ PROGRAM TEST_AEROBULK_ICE
       !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    END IF
    WRITE(6,*) ''
+
+
+   !! Spec. hum. at saturation at temperature == SIT, over sea-ice:
+   siq = q_sat( sit, SLP, l_ice=.TRUE. )
+
+   
+   IF ( l_force_neutral ) THEN
+      !! At this stage we know the relative humidity at zt BUT not the temperature
+      !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
+      !! virtual potential temperature must be 0 !
+
+      !! Find absolute temp. at zt that yields neutral stability (with a humidity of RH_zt)
+      t_zt = sit ! first guess
+      DO icpt=1, 10
+         q_zt = q_air_rh(RH_zt, t_zt, SLP)
+         t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
+      END DO
+      
+      qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
+      WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
+      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
+      
+   END IF
+
 
    IF ( q_zt(1,1) > qsat_zt(1,1) ) THEN
       WRITE(6,*) ' ERROR: you can not go belong saturation!!!' ; STOP
@@ -191,11 +226,11 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
    WRITE(6,*) ''
 
-   siq = q_sat(sit, SLP, l_ice=.TRUE.)
+
 
    WRITE(6,*) ''
-   WRITE(6,*) ' *** q_',TRIM(czt),'                  =', REAL(1000.*q_zt,4), '[g/kg]'
-   WRITE(6,*) ' *** SIQ = q_sat_ice(sit, SLP) =',        REAL(1000.*siq ,4), '[g/kg]'
+   WRITE(6,*) ' *** q_',TRIM(czt),'                     =', REAL(1000.*q_zt,4), '[g/kg]'
+   WRITE(6,*) ' *** SIQ = q_sat(sit, SLP, l_ice=.TRUE.) =', REAL(1000.*siq ,4), '[g/kg]'
    WRITE(6,*) ''
 
 
@@ -213,8 +248,6 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sit , 4), ' [deg.C]'
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sit, siq), 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
-
-
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
    READ(*,*) W10
@@ -270,7 +303,7 @@ PROGRAM TEST_AEROBULK_ICE
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
          
       END SELECT
-      
+
 
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
@@ -416,6 +449,11 @@ SUBROUTINE usage_test( icontinue )
    PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
    PRINT *,''
    PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
+   PRINT *,''
+   PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
+   PRINT *,'           -> will not ask for air temp. at zt, instead will only'
+   PRINT *,'           ask for relative humidity at zt and will force the air'
+   PRINT *,'           temperature at zt that yields a neutral-stability!'
    PRINT *,''
    PRINT *,'   -h   => Show this message'
    PRINT *,'##########################################################################'

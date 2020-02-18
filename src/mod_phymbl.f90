@@ -287,32 +287,8 @@ CONTAINS
    END FUNCTION cp_air_sclr
 
 
-
-
-
-   FUNCTION gamma_moist_vctr( ptak, pqa )
-      !!----------------------------------------------------------------------------------
-      !!                           ***  FUNCTION gamma_moist_vctr  ***
-      !!
-      !! ** Purpose : Compute the moist adiabatic lapse-rate.
-      !!     => http://glossary.ametsoc.org/wiki/Moist-adiabatic_lapse_rate
-      !!     => http://www.geog.ucsb.edu/~joel/g266_s10/lecture_notes/chapt03/oh10_3_01/oh10_3_01.html
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak          ! air temperature       [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa           ! specific humidity [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj)             ::   gamma_moist_vctr   ! moist adiabatic lapse-rate
-      !
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            gamma_moist_vctr(ji,jj) = gamma_moist_sclr( ptak(ji,jj), pqa(ji,jj) )
-         END DO
-      END DO
-   END FUNCTION gamma_moist_vctr
-
+   
+   !===============================================================================================
    FUNCTION gamma_moist_sclr( ptak, pqa )
       !!----------------------------------------------------------------------------------
       !! ** Purpose : Compute the moist adiabatic lapse-rate.
@@ -321,8 +297,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: gamma_moist_sclr
-      REAL(wp), INTENT(in) :: ptak, pqa ! air temperature (K) and specific humidity (kg/kg)
+      REAL(wp)             :: gamma_moist_sclr !                           [K/m]
+      REAL(wp), INTENT(in) ::   ptak           ! absolute air temperature  [K] !LOLO: double check it's absolute !!!
+      REAL(wp), INTENT(in) ::   pqa            ! specific humidity     [kg/kg]
       !
       REAL(wp) :: zta, zqa, zwa, ziRT, zLvap        ! local scalars
       !!----------------------------------------------------------------------------------
@@ -336,6 +313,19 @@ CONTAINS
       gamma_moist_sclr = grav * ( 1._wp + zLvap*zwa*ziRT ) / ( rCp_dry + zLvap*zLvap*zwa*reps0*ziRT/zta )
       !!
    END FUNCTION gamma_moist_sclr
+   !!
+   FUNCTION gamma_moist_vctr( ptak, pqa )
+      REAL(wp), DIMENSION(jpi,jpj)             ::   gamma_moist_vctr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa
+      INTEGER  :: ji, jj
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            gamma_moist_vctr(ji,jj) = gamma_moist_sclr( ptak(ji,jj), pqa(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION gamma_moist_vctr
+   !===============================================================================================
 
 
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
@@ -832,7 +822,7 @@ CONTAINS
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
       ztaa = pTa ! first guess...
       DO jq = 1, 4
-         zgamma = gamma_moist( 0.5*(ztaa+pTs) , pqa )
+         zgamma = gamma_moist( 0.5*(ztaa+pTs) , pqa )  !LOLO: why not "0.5*(pqs+pqa)" rather then "pqa" ???
          ztaa = pTa - zgamma*pzu   ! Absolute temp. is slightly colder...
       END DO
       zrho = rho_air(ztaa, pqa, pslp)
