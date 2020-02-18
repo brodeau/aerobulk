@@ -28,19 +28,15 @@ MODULE mod_blk_ice_lg15
 
    PUBLIC :: turb_ice_lg15 !, Cx_LG15, Cx_skin_LG15
 
-   ! ECHAM6 constants
-   REAL(wp), PARAMETER ::   rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
-   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
-   REAL(wp), PARAMETER ::   rz0_0       = 1.00e-3_wp  ! Eq. 15 [m]
-   REAL(wp), PARAMETER ::   rce10_i_0   = 3.46e-3_wp  ! Eq. 48 MIZ
-   REAL(wp), PARAMETER ::   rbeta_0     = 1.4_wp      ! Eq. 47 MIZ
-   REAL(wp), PARAMETER ::   ralpha_0     = 0.2_wp      ! Eq. 12
-   REAL(wp), PARAMETER ::   rbetah_0     = 1.e-3_wp    ! Eq. 26
-   REAL(wp), PARAMETER ::   rgamma_0     = 1.25_wp     ! Eq. 26
-   REAL(wp), PARAMETER ::   r1_gamma_0   = 1._wp / rgamma_0
+   REAL(wp), PARAMETER ::   rce10_i_0 = 3.46e-3_wp ! (Eq.48) MIZ
+   REAL(wp), PARAMETER ::   rbeta_0   = 1.4_wp     ! (Eq.47) MIZ
+   REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
    
-   LOGICAL, PARAMETER :: l_use_form_drag = .TRUE.
-   LOGICAL, PARAMETER :: l_use_pond_info = .FALSE.
+   !! To be namelist parameters in NEMO:
+   REAL(wp), PARAMETER ::   rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
+   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]   
+   LOGICAL,  PARAMETER :: l_use_form_drag = .TRUE.
+   LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
 
    
    !!----------------------------------------------------------------------
@@ -169,7 +165,7 @@ CONTAINS
       DO j_itt = 1, nb_itt
                   
          ! Bulk Richardson Number:
-         RiB(:,:,1) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )
+         RiB(:,:,1) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )  ! over ice (index=1)
          
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          Cd(:,:) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
@@ -223,171 +219,6 @@ CONTAINS
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
 
    END SUBROUTINE turb_ice_lg15
-
-
-
-
-
-   SUBROUTINE Cx_LG15( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
-      !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cx_LG15  ***
-      !!
-      !!                         CASE 100 % sea-ice covered !!!
-      !!
-      !! ** Purpose :    Alternative turbulent transfer coefficients formulation
-      !!                 between sea-ice and atmosphere with distinct momentum
-      !!                 and heat coefficients depending on sea-ice concentration
-      !!                 and atmospheric stability (no meltponds effect for now).
-      !!
-      !! ** Method :     The parameterization is adapted from Lupkes & Gryanik (2015)
-      !!                 and ECHAM6 atmospheric model. Compared to Lupkes2012 scheme,
-      !!                 it considers specific skin and form drags (Andreas et al. 2010)
-      !!                 to compute neutral transfer coefficients for both heat and
-      !!                 momemtum fluxes. Atmospheric stability effect on transfer
-      !!                 coefficient is also taken into account following Louis (1979).
-      !!
-      !! ** References : Lupkes & Gryanik JGR 2015 (theory)
-      !!                 Lupkes & Gryanik ECHAM6 documentation 2015 (implementation)
-      !!
-      !! ** History :
-      !!              - G. Samson (2018,2019) original code
-      !!              - L. Brodeau (2020) AeroBulk
-      !!
-      !!----------------------------------------------------------------------
-      REAL(wp), INTENT(in   )                   :: zu     ! reference height (height for Uo_zu)   [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_i   ! sea-ice surface temperature               [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
-      !
-      REAL(wp) ::   zfi, zfo
-      REAL(wp) ::   zrib_i, ztmp
-      REAL(wp) ::   zCdn_skin, zCdn_form, zCdn
-      REAL(wp) ::   zChn_skin, zChn_form
-      REAL(wp) ::   z0i, zfmi, zfhi
-      REAL(wp) ::   zCdn_form_tmp, zwndspd_i
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      !!----------------------------------------------------------------------
-
-      ! Momentum Neutral Transfer Coefficients (should be a constant)
-      zCdn_form_tmp = rce10_i_0 * ( LOG( 10._wp / rz0_f_0 + 1._wp ) / LOG( zu / rz0_f_0 + 1._wp ) )**2   ! Eq. 46
-      zCdn_skin = ( vkarmn                                      / LOG( zu / rz0_s_0 + 1._wp ) )**2   ! Eq. 7
-      zCdn      = zCdn_skin   ! Eq. 7
-      !zCdn     = 1.89e-3         ! old ECHAM5 value (cf Eq. 32)
-
-      ! Heat Neutral Transfer Coefficients
-      zChn_skin = vkarmn**2 / ( LOG( zu / rz0_0 + 1._wp ) * LOG( zu * ralpha_0 / rz0_s_0 + 1._wp ) )   ! Eq. 50 + Eq. 52
-
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-
-            zfi  = 1._wp  ! fraction of sea-ice
-            zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
-
-            zfo  = 0._wp  ! fraction of open ocean
-
-            ! Bulk Richardson Number:
-            zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
-
-            ! Momentum and Heat Neutral Transfer Coefficients
-            zCdn_form = zCdn_form_tmp * zfi * zfo**rbeta_0                          ! Eq. 40 !LOLO: WHAT????? zfi * zfo is always 0 !!!
-            zChn_form = zCdn_form / ( 1._wp + ( LOG( 1._wp/ralpha_0 ) / vkarmn ) * SQRT( zCdn_form ) )   ! Eq. 53
-
-            ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
-            z0i = rz0_s_0                                        ! over ice
-
-            zfmi = f_m_louis( zu, zrib_i, zCdn, z0i )
-            zfhi = f_h_louis( zu, zrib_i, zCdn, z0i )  !LOLO: why "zCdn" and not "zChn" ???
-
-            ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
-            ztmp       = 1._wp / MAX( 1.e-06, zfi )
-            pcd(ji,jj) = zCdn_skin * zfmi  +  zCdn_form * ( zfmi*zfi ) * ztmp
-            pch(ji,jj) = zChn_skin * zfhi  +  zChn_form * ( zfhi*zfi ) * ztmp
-
-         END DO
-      END DO
-      !
-   END SUBROUTINE Cx_LG15
-
-
-   
-   SUBROUTINE Cx_skin_LG15( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
-      !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cx_skin_LG15  ***
-      !!
-      !!                         CASE 100 % sea-ice covered !!!
-      !!
-      !!                        Cd and Ch, WITHOUT FORM DRAG
-      !!
-      !! ** Purpose :    Alternative turbulent transfer coefficients formulation
-      !!                 between sea-ice and atmosphere with distinct momentum
-      !!                 and heat coefficients depending on sea-ice concentration
-      !!                 and atmospheric stability (no meltponds effect for now).
-      !!
-      !! ** Method :     The parameterization is adapted from Lupkes & Gryanik (2015)
-      !!                 and ECHAM6 atmospheric model. Compared to Lupkes2012 scheme,
-      !!                 it considers specific skin and form drags (Andreas et al. 2010)
-      !!                 to compute neutral transfer coefficients for both heat and
-      !!                 momemtum fluxes. Atmospheric stability effect on transfer
-      !!                 coefficient is also taken into account following Louis (1979).
-      !!
-      !! ** References : Lupkes & Gryanik JGR 2015 (theory)
-      !!                 Lupkes & Gryanik ECHAM6 documentation 2015 (implementation)
-      !!
-      !! ** History :
-      !!              - G. Samson (2018,2019) original code
-      !!              - L. Brodeau (2020) AeroBulk
-      !!
-      !!----------------------------------------------------------------------
-      REAL(wp), INTENT(in   )                   :: zu     ! reference height (height for Uo_zu)   [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_i   ! sea-ice surface temperature               [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
-      !
-      REAL(wp) ::   zrib_i
-      REAL(wp) ::   zCdn_skin, zChn_skin
-      REAL(wp) ::   ztmp
-      REAL(wp) ::   zwndspd_i
-      INTEGER  ::   ji, jj         ! dummy loop indices
-      !!----------------------------------------------------------------------
-      
-      ! Momentum Neutral Transfer Coefficients
-      !zCdn_skin = vkarmn2 / ( LOG( zu / rz0_s_0 + 1._wp ) )**2   ! Eq. 7
-      !zChn_skin = vkarmn2 / ( LOG( zu / z0      + 1._wp ) * LOG( zu * ralpha_0 / rz0_s_0 + 1._wp ) )   ! Eq. 50 + Eq. 52
-      ztmp = LOG( zu / rz0_s_0 )
-      zCdn_skin = vkarmn2 / ( ztmp * ztmp )   ! Eq. 7
-      zChn_skin = vkarmn2 / ( ztmp * LOG( zu / (ralpha_0*rz0_s_0) ) )   ! Eq. 11, 12
-      
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            
-            zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
-            
-            ! Bulk Richardson Number:
-            zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
-            
-            ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
-            pcd(ji,jj) = zCdn_skin * f_m_louis( zu, zrib_i, zCdn_skin, rz0_s_0 )
-            pch(ji,jj) = zChn_skin * f_h_louis( zu, zrib_i, zCdn_skin, rz0_s_0 ) !LOLO: why "zCdn_skin" and not "zChn" ???
-
-         END DO
-      END DO
-      !
-   END SUBROUTINE Cx_skin_LG15
-
-
-
-
-
-
-
    
    !!======================================================================
 

@@ -347,7 +347,8 @@ PROGRAM TEST_AEROBULK
          END IF
 
       CASE(3)
-         CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, SLP, rgamma, &
+         !CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, SLP, rgamma, &
+         CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
             &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
             &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
