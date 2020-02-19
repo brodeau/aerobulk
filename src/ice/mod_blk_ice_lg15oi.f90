@@ -114,15 +114,17 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: dt_zu, dq_zu, zt_zu, zq_zu  ! third dimension
-      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f ! third dimensions (size=2): 1 => ice, 2 => water
+      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
+      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zCd, zCh, zCdN_s, zChN_s, zCdN_f, zChN_f
 
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15oi@mod_blk_ice_lg15oi.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
       ALLOCATE ( dt_zu(jpi,jpj,2), dq_zu(jpi,jpj,2), zt_zu(jpi,jpj,2), zq_zu(jpi,jpj,2) )
-      ALLOCATE ( zz0_s(jpi,jpj,2), zz0_f(jpi,jpj,2), RiB(jpi,jpj,2), zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
-
+      ALLOCATE ( zz0_s(jpi,jpj,2),  zz0_f(jpi,jpj,2),    RiB(jpi,jpj,2), &
+         &      zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
+      ALLOCATE ( zCd(jpi,jpj,2), zCh(jpi,jpj,2) )
       
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -148,9 +150,9 @@ CONTAINS
       dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       
       !! Very crude first guess:
-      Cd(:,:) = rCd_ice
-      Ch(:,:) = rCd_ice
-      Ce(:,:) = rCd_ice
+      !Cd(:,:) = rCd_ice
+      !Ch(:,:) = rCd_ice
+      !Ce(:,:) = rCd_ice
 
       !! For skin drag :
       zz0_s(:,:,1) = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
@@ -175,22 +177,28 @@ CONTAINS
                   
          ! Bulk Richardson Number:
          RiB(:,:,1) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )  ! over ice (index=1)
+         RiB(:,:,2) = Ri_bulk( zu, Tw_s(:,:), t_zu(:,:), qw_s(:,:), q_zu(:,:), U_blk(:,:) )  ! over ice (index=2)
          
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
-         Cd(:,:) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
-         Ch(:,:) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
-         PRINT *, 'LOLO: Cd / skin only / ice =', REAL(Cd,4)
-
+         zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
+         zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
+         zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
+         zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
+         
 
          IF ( l_use_form_drag ) THEN
             !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
             !!   MIZ:
-            Cd(:,:) = Cd(:,:) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
-            Ch(:,:) = Ch(:,:) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" (xtmp1) and not "zChn" ???
+            zCd(:,:,1) = zCd(:,:,1) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
+            zCh(:,:,1) = zCh(:,:,1) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" (xtmp1) and not "zChn" ???
+
+            !zCd(:,:,2) = ???
+            !zCh(:,:,2) = ???
+            
          END IF
          
-         Ce(:,:) = Ch(:,:)
-         PRINT *, 'LOLO: Cd / total / ice =', REAL(Cd,4)
          
          !! Adjusting temperature and humidity from zt to zu:
          IF( .NOT. l_zt_equal_zu ) THEN
@@ -200,9 +208,9 @@ CONTAINS
             xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2 = 1._wp/SQRT(Cd)
-            zt_zu(:,:,1) = t_zt - (Ch * dt_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
-            zq_zu(:,:,1) = q_zt - (Ce * dq_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
+            xtmp2 = 1._wp/SQRT(zCd(:,:,1))
+            zt_zu(:,:,1) = t_zt - (zCh(:,:,1) * dt_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
+            zq_zu(:,:,1) = q_zt - (zCh(:,:,1) * dq_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             zq_zu(:,:,1) = MAX(0._wp, q_zu)
             dt_zu(:,:,1) = zt_zu(:,:,1) - Ti_s
             dq_zu(:,:,1) = zq_zu(:,:,1) - qi_s
@@ -212,9 +220,9 @@ CONTAINS
             xtmp2(:,:) = zz0_s(:,:,2) + zz0_f(:,:,2)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2 = 1._wp/SQRT(Cd)
-            zt_zu(:,:,2) = t_zt - (Ch * dt_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
-            zq_zu(:,:,2) = q_zt - (Ce * dq_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
+            xtmp2 = 1._wp/SQRT(zCd(:,:,2))
+            zt_zu(:,:,2) = t_zt - (zCh(:,:,2) * dt_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
+            zq_zu(:,:,2) = q_zt - (zCh(:,:,2) * dq_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             zq_zu(:,:,2) = MAX(0._wp, q_zu)
             dt_zu(:,:,2) = zt_zu(:,:,2) - Tw_s
             dq_zu(:,:,2) = zq_zu(:,:,2) - qw_s
@@ -230,6 +238,11 @@ CONTAINS
       PRINT *, 'LOLO: MUST combine theta_zu and q_zu for the mix of water + ice over the mesh !!!'
       t_zu(:,:) = mix_val_msh(zt_zu, frice)
       q_zu(:,:) = mix_val_msh(zq_zu, frice)
+
+
+      Cd(:,:) = mix_val_msh(zCd, frice)
+      Ch(:,:) = mix_val_msh(zCh, frice)
+      Ce(:,:) = Ch(:,:)
       
       
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
@@ -245,6 +258,7 @@ CONTAINS
       DEALLOCATE ( xtmp1, xtmp2 )
       DEALLOCATE ( dt_zu, dq_zu, zt_zu, zq_zu )      
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
+      DEALLOCATE ( zCd, zCh )
       
    END SUBROUTINE turb_ice_lg15oi
    
