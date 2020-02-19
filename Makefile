@@ -26,14 +26,16 @@ LIB_SRC = src/mod_const.f90 \
 	  src/mod_blk_coare3p6.f90 \
           src/mod_blk_ncar.f90 \
 	  src/mod_blk_ecmwf.f90 \
-	  src/mod_blk_ice_nemo.f90 \
-	  src/mod_blk_ice_an05.f90 \
-	  src/mod_blk_ice_lu12.f90 \
-	  src/mod_blk_ice_lg15.f90 \
-	  src/mod_blk_ice_best.f90 \
 	  src/mod_blk_neutral_10m.f90 \
           src/mod_aerobulk_compute.f90 \
-          src/mod_aerobulk.f90
+          src/mod_aerobulk.f90 \
+	  src/ice/mod_blk_ice_nemo.f90 \
+	  src/ice/mod_blk_ice_an05.f90 \
+	  src/ice/mod_blk_ice_lu12.f90 \
+	  src/ice/mod_blk_ice_lg15.f90 \
+	  src/ice/mod_blk_ice_lg15oi.f90 \
+	  src/ice/mod_blk_ice_best.f90
+
 
 LIB_OBJ = $(LIB_SRC:.f90=.o)
 
@@ -95,13 +97,13 @@ bin/cx_vs_wind_test.x: src/cx_vs_wind_test.f90 lib/libaerobulk.a
 	@mkdir -p bin dat
 	$(FC) $(FF) src/cx_vs_wind_test.f90 -o bin/cx_vs_wind_test.x $(LIB)
 
-bin/test_ice.x: src/test_ice.f90 lib/libaerobulk.a
+bin/test_ice.x: src/ice/test_ice.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/test_ice.f90 -o bin/test_ice.x $(LIB)
+	$(FC) $(FF) src/ice/test_ice.f90 -o bin/test_ice.x $(LIB)
 
-bin/test_aerobulk_ice.x: src/test_aerobulk_ice.f90 lib/libaerobulk.a
+bin/test_aerobulk_ice.x: src/ice/test_aerobulk_ice.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/test_aerobulk_ice.f90 -o bin/test_aerobulk_ice.x $(LIB)
+	$(FC) $(FF) src/ice/test_aerobulk_ice.f90 -o bin/test_aerobulk_ice.x $(LIB)
 
 
 
@@ -115,9 +117,9 @@ bin/test_aerobulk_buoy_series_skin.x: src/test_aerobulk_buoy_series_skin.f90 lib
 	@mkdir -p bin
 	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_buoy_series_skin.f90 -o bin/test_aerobulk_buoy_series_skin.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
 
-bin/test_aerobulk_ice_series.x: src/test_aerobulk_ice_series.f90 lib/libaerobulk.a mod/io_ezcdf.mod
+bin/test_aerobulk_ice_series.x: src/ice/test_aerobulk_ice_series.f90 lib/libaerobulk.a mod/io_ezcdf.mod
 	@mkdir -p bin
-	$(FC) $(FF) src/io_ezcdf.o src/test_aerobulk_ice_series.f90 -o bin/test_aerobulk_ice_series.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
+	$(FC) $(FF) src/io_ezcdf.o src/ice/test_aerobulk_ice_series.f90 -o bin/test_aerobulk_ice_series.x $(LIB) -L$(NETCDF_DIR)/lib $(L_NCDF)
 
 
 mod/io_ezcdf.mod: src/io_ezcdf.f90
