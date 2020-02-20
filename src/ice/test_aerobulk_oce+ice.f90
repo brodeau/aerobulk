@@ -4,10 +4,11 @@ PROGRAM TEST_AEROBULK_ICE
 
    USE mod_const
    USE mod_phymbl
+   USE mod_blk_ecmwf    ! we need a bulk algo over water for bulk-ice algos that do not deal with leads...
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
-   
+
    IMPLICIT NONE
 
    INTEGER, PARAMETER :: nb_algos = 3
@@ -18,6 +19,12 @@ PROGRAM TEST_AEROBULK_ICE
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
       &           vUN10, vQL, vTau, vQH, vEvap
+
+
+   !! Over water only:
+   !vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap
+
+   REAL(wp) :: Tau_w, QH_w, QL_w, Evap_w
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -32,13 +39,21 @@ PROGRAM TEST_AEROBULK_ICE
    INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(lx,ly) :: sit, sst, qsat_zt, SLP, frci, &
-      &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, siq, ssq, rho_zu, &
-      &  tmp
+   !! For both sea-ice and water:
+   REAL(wp), DIMENSION(lx,ly) :: W10, t_zt, theta_zt, q_zt, RH_zt, SLP, d_zt, frci, qsat_zt, Cp_ma, rgamma, tmp
 
-   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
+   !! Over sea-ice only :
+   REAL(wp), DIMENSION(lx,ly) :: sit, siq, &
+      &                          Cd, Ce, Ch,    &
+      &                          t_zu, theta_zu, q_zu, rho_zu, &
+      &                          Ublk, zz0, zus, zL, zUN10
+
+   !! Over water only :
+   REAL(wp), DIMENSION(lx,ly) :: sst, ssq, &
+      &                          Cd_w, Ce_w, Ch_w,    &
+      &                          t_zu_w, theta_zu_w, q_zu_w, rho_zu_w, &
+      &                          Ublk_w, zz0_w, zus_w, zL_w, zUN10_w
 
    REAL(wp) :: zt, zu, nu_air
 
@@ -112,12 +127,14 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10):'
    READ(*,*) zt
-   WRITE(6,*) ''
-
-
    IF ( (zt > 99.).OR.(zu > 99.) ) THEN
       WRITE(6,*) 'Be reasonable in your choice of zt or zu, they should not exceed a few tenths of meters!' ; STOP
    END IF
+   WRITE(6,*) ''
+   CALL prtcol( 6, ' zu', zu, 'm' )
+   CALL prtcol( 6, ' zt', zt, 'm' )
+   WRITE(6,*) ''
+   
    IF ( zt < 10. ) THEN
       WRITE(czt,'(i1,"m")') INT(zt)
    ELSE
@@ -141,26 +158,22 @@ PROGRAM TEST_AEROBULK_ICE
    sit = sit + rt0
    WRITE(6,*) ''
 
-   WRITE(6,*) 'Give sea-ice concentration (%):'
+   WRITE(6,*) 'Give sea-ice concentration > 0 and < 100 (%):'
    READ(*,*) frci
-   frci = frci/100._wp ! back to fraction 
-   IF( (frci(1,1)<0.).OR.(frci(1,1)>1.) ) THEN
-      WRITE(6,*) ' I said a concentration in % !!!' ; STOP      
+   frci = frci/100._wp ! back to fraction
+   IF( (frci(1,1)<0.01_wp).OR.(frci(1,1)>0.99) ) THEN
+      WRITE(6,*) ' Come on! It is supposed to be a mix of water and ice !!!' ; STOP
    END IF
    WRITE(6,*) '  => percentage of lead =', REAL(100.*(1.-frci),4), '%'
    WRITE(6,*) ''
 
-   IF( frci(1,1) < 1._wp ) THEN
-      WRITE(6,*) 'Give SST (in the leads) (deg. C):'
-      READ(*,*) sst
-      sst = sst + rt0
-      WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
-      WRITE(6,*) ''
-   ELSE
-      sst = -1.8_wp + rt0 ! but should not be used anyways...
-   END IF
+   WRITE(6,*) 'Give SST (in the leads) (deg. C):'
+   READ(*,*) sst
+   sst = sst + rt0
+   WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
+   WRITE(6,*) ''
 
-   
+
    IF ( .NOT. l_force_neutral ) THEN
       WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) t_zt
@@ -207,7 +220,7 @@ PROGRAM TEST_AEROBULK_ICE
    siq =                q_sat( sit, SLP, l_ice=.TRUE.  )
    ssq = rdct_qsat_salt*q_sat( sit, SLP, l_ice=.FALSE. )
 
-   
+
    IF ( l_force_neutral ) THEN
       !! At this stage we know the relative humidity at zt BUT not the temperature
       !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
@@ -219,11 +232,11 @@ PROGRAM TEST_AEROBULK_ICE
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
          t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
-      
+
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
       WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
       WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
-      
+
    END IF
 
 
@@ -270,25 +283,46 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''; WRITE(6,*) ''
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
-   READ(*,*) W10
+   READ(*,*) W10 ; CALL prtcol( 6, ' wind speed at zu', W10(1,1), 'm/s' )
    WRITE(6,*) ''
 
 
-   !! We have enough to calculate the bulk Richardson number:
-   !tmp = Ri_bulk_ecmwf( zt, theta_zt, theta_zt-sit, q_zt, q_zt-siq, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF":', REAL(tmp, 4)
-   !tmp = Ri_bulk_ecmwf( zt, sit, theta_zt, siq, q_zt, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la ECMWF#2":', REAL(tmp, 4)
-   !tmp = Ri_bulk_coare( zt, theta_zt, theta_zt-sit, q_zt, q_zt-siq, W10 )
-   !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
+   !! We have enough to calculate the bulk Richardson number based on theta and q at z=zt
    tmp = Ri_bulk( zt, sit, theta_zt, siq, q_zt, W10 )
-   WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
+   WRITE(6,*) ' *** Preliminary bulk Richardson (',TRIM(czt),') over ice:',   REAL(tmp, 4)
+   tmp = Ri_bulk( zt, sst, theta_zt, ssq, q_zt, W10 )
+   WRITE(6,*) ' *** Preliminary bulk Richardson (',TRIM(czt),') over water:', REAL(tmp, 4)
    WRITE(6,*) ''
 
 
+   !! ###### Computing fluxes over water (leads):
+
+   CALL TURB_ECMWF( 1, zt, zu, sst, theta_zt, ssq, q_zt, W10, .FALSE., .FALSE., &
+      &             Cd_w, Ch_w, Ce_w, theta_zu_w, q_zu_w, Ublk_w,               &
+      &             xz0=zz0_w, xu_star=zus_w, xL=zL_w, xUN10=zUN10_w )
+
+   WRITE(6,*) ' With ECMWF bulk algorithm we get the following transfer coeff. over water (leads):'
+   WRITE(6,*) '  * Cd =', REAL(1000.*Cd_w,4)
+   WRITE(6,*) '  * Ch =', REAL(1000.*Ch_w,4)
+   WRITE(6,*) '  * Ce =', REAL(1000.*Ce_w,4)
 
 
+   !! Turbulent fluxes over water
 
+   CALL BULK_FORMULA( zu, sst(1,1), ssq(1,1), theta_zu_w(1,1), q_zu_w(1,1), &
+      &              Cd_w(1,1), Ch_w(1,1), Ce_w(1,1), W10(1,1), Ublk_w(1,1), SLP(1,1), &
+      &              Tau_w, QH_w, QL_w,  pEvap=Evap_w )
+
+   WRITE(6,*) ' With ECMWF bulk algorithm we get the following fluxes over water (leads):'
+   WRITE(6,*) '  * Tau =', REAL(1000.*Tau_w,4), '[mN/m^2]'
+   WRITE(6,*) '  * QH  =', REAL(QH_w,4),          '[W/m^2]'
+   WRITE(6,*) '  * QL  =', REAL(QL_w,4),          '[W/m^2]'
+
+
+   !! ############################################################
+
+
+   STOP'LOLO'
 
    DO ialgo = 1, nb_algos
 
@@ -297,27 +331,27 @@ PROGRAM TEST_AEROBULK_ICE
       zz0 = 0.
       zus = 0. ; zL = 0. ; zUN10 = 0.
 
-      
+
       SELECT CASE(ialgo)
 
-      CASE(1)         
+      CASE(1)
          CALL TURB_ICE_NEMO( 1, zt, zu, sit, theta_zt, siq, q_zt, W10,   &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
-      CASE(2)         
+
+      CASE(2)
          CALL TURB_ICE_AN05( 1, zt, zu, sit, theta_zt, siq, q_zt, W10,   &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
-      CASE(3)         
+
+      CASE(3)
          CALL TURB_ICE_LG15( 1, zt, zu, sit, theta_zt, siq, q_zt, W10,   &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
+
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
-         
+
       END SELECT
 
 
@@ -442,6 +476,17 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''
    CLOSE(6)
+
+
+CONTAINS
+
+   SUBROUTINE prtcol( id, cs1, pval, cs2 )
+      INTEGER,          INTENT(in) :: id
+      CHARACTER(len=*), INTENT(in) :: cs1
+      REAL(wp),         INTENT(in) :: pval
+      CHARACTER(len=*), INTENT(in) :: cs2
+      WRITE(id,*) ACHAR(27)//'[95m ***'//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
+   END SUBROUTINE prtcol
 
 END PROGRAM TEST_AEROBULK_ICE
 

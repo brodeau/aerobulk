@@ -3,7 +3,7 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x 
+All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x  bin/test_aerobulk_oce+ice.x 
 
 test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_ice_series.x bin/test_phymbl.x bin/cx_vs_wind_test.x bin/test_ice.x
 
@@ -105,6 +105,10 @@ bin/test_aerobulk_ice.x: src/ice/test_aerobulk_ice.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/ice/test_aerobulk_ice.f90 -o bin/test_aerobulk_ice.x $(LIB)
 
+bin/test_aerobulk_oce+ice.x: src/ice/test_aerobulk_oce+ice.f90 lib/libaerobulk.a
+	@mkdir -p bin
+	$(FC) $(FF) src/ice/test_aerobulk_oce+ice.f90 -o bin/test_aerobulk_oce+ice.x $(LIB)
+
 
 
 
@@ -137,7 +141,7 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
-	rm -rf obj mod bin lib src/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat
+	rm -rf obj mod bin lib src/*.o src/ice/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat
 
 menage:
 	rm -f *.svg *.png *.eps *.gp *.out *.nc *.dat

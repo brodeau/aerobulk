@@ -120,12 +120,13 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10):'
    READ(*,*) zt
-   WRITE(6,*) ''
-
-
    IF ( (zt > 99.).OR.(zu > 99.) ) THEN
       WRITE(6,*) 'Be reasonable in your choice of zt or zu, they should not exceed a few tenths of meters!' ; STOP
    END IF
+   WRITE(6,*) ''
+   CALL prtcol( 6, 'zu', zu, 'm' )
+   CALL prtcol( 6, 'zt', zt, 'm' )
+   
    IF ( zt < 10. ) THEN
       WRITE(czt,'(i1,"m")') INT(zt)
    ELSE
@@ -149,11 +150,13 @@ PROGRAM TEST_AEROBULK
    sst = sst + rt0
    WRITE(6,*) 'For this sst the latent heat of vaporization is L_vap =', L_vap(sst), ' [J/kg]'
    WRITE(6,*) ''
+   CALL prtcol( 6, 'SST', sst(1,1), 'K' )
 
    IF ( .NOT. l_force_neutral ) THEN
       WRITE(6,*) 'Give absolute temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) t_zt
       t_zt = t_zt + rt0
+      CALL prtcol( 6, 't_zt', t_zt(1,1), 'K' )
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
    ELSE
       WRITE(6,*) 'NOT ASKING FOR temperature at ',TRIM(czt),', because you use the "-N" flag => NEUTRAL!'
@@ -189,7 +192,8 @@ PROGRAM TEST_AEROBULK
       WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
       !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    END IF
-   WRITE(6,*) ''
+
+   CALL prtcol( 6, 'q_zt', q_zt(1,1), 'kg/kg' )
 
 
    !! Spec. hum. at saturation at temperature == SST, in the presence of salt:
@@ -258,8 +262,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''; WRITE(6,*) ''
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
-   READ(*,*) W10
-   WRITE(6,*) ''
+   READ(*,*) W10 ; CALL prtcol( 6, ' wind speed at zu', W10(1,1), 'm/s' )
 
 
    !! We have enough to calculate the bulk Richardson number:
@@ -522,6 +525,17 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''
    CLOSE(6)
+
+CONTAINS
+
+   SUBROUTINE prtcol( id, cs1, pval, cs2 )
+      INTEGER,          INTENT(in) :: id
+      CHARACTER(len=*), INTENT(in) :: cs1
+      REAL(wp),         INTENT(in) :: pval
+      CHARACTER(len=*), INTENT(in) :: cs2
+      WRITE(id,*) ACHAR(27)//'[95m *** '//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
+      WRITE(id,*) ''
+   END SUBROUTINE prtcol
 
 END PROGRAM TEST_AEROBULK
 
