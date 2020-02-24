@@ -8,13 +8,14 @@ PROGRAM TEST_AEROBULK_ICE
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
+   USE mod_blk_ice_lg15oi
 
    IMPLICIT NONE
 
-   INTEGER, PARAMETER :: nb_algos = 3
+   INTEGER, PARAMETER :: nb_algos = 4
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ ' NEMdef ' , ' Andreas' , 'L&G 2015' /)
+      &      vca = (/ ' NEMdef ' , ' Andreas' , 'L&G 2015' , 'LG2015oi' /)
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -33,8 +34,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    CHARACTER(len=2) :: car
 
-   CHARACTER(len=100) :: &
-      &   calgob
+   CHARACTER(len=100) :: calgob
+   CHARACTER(len=512) :: ctitle
 
    INTEGER :: jarg, ialgo, jq, icpt
 
@@ -322,7 +323,7 @@ PROGRAM TEST_AEROBULK_ICE
    !! ############################################################
 
 
-   STOP'LOLO'
+   !STOP'LOLO'
 
    DO ialgo = 1, nb_algos
 
@@ -349,6 +350,11 @@ PROGRAM TEST_AEROBULK_ICE
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
+      CASE(4)
+         CALL TURB_ICE_LG15oi(1,zt, zu, sit,sst, theta_zt, siq,ssq, q_zt, W10, frci,  &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
@@ -414,6 +420,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
+   WRITE(ctitle,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |  ',TRIM(vca(3)),'   |   ',TRIM(vca(4))
 
    IF ( zt < zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
@@ -422,7 +429,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
+   !WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |  ',TRIM(vca(3)),'   |   ',TRIM(vca(4))
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
@@ -455,7 +463,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
+   !WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , '[10^-3]'
    WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , '[10^-3]'

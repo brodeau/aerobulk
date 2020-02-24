@@ -7,6 +7,15 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
+! NEMO actually only needs the flux over sea-ice: F_ice
+!  * F_ice is then used by SI3 which returns the basal ice-ocean flux F_b.
+!  * As its SBC "Fs", OPA then uses Fs = (1.-ifr)*F_oce + ifr*F_b
+!
+! So we do not need the present routine to return a flux over open water
+! At least when ifr is rather small...
+!
+!
+!
 MODULE mod_blk_ice_lg15oi
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
@@ -42,7 +51,7 @@ MODULE mod_blk_ice_lg15oi
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_lg15oi( kt, zt, zu, Ti_s, Tw_s, t_zt, qi_s, qw_s, q_zt, &
+   SUBROUTINE turb_ice_lg15oi( kt, zt, zu, Ts_i, Ts_w, t_zt, qs_i, qs_w, q_zt, &
       &                        U_zu, frice,                                    &
       &                        Cd, Ch, Ce, t_zu, q_zu, U_blk,                  &
       &                       xz0, xu_star, xL, xUN10 )
@@ -59,11 +68,11 @@ CONTAINS
       !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
-      !!    *  Ti_s  : surface temperature of sea-ice                         [K]
-      !!    *  Tw_s  : surface temperature of water (sea)                     [K]
+      !!    *  Ts_i  : surface temperature of sea-ice                         [K]
+      !!    *  Ts_w  : surface temperature of water (sea)                     [K]
       !!    *  t_zt : potential air temperature at zt                         [K]
-      !!    *  qi_s  : saturation specific humidity at temp. Ti_s over ice    [kg/kg]
-      !!    *  qw_s  : saturation specific humidity at temp. Tw_s over water  [kg/kg]
+      !!    *  qs_i  : saturation specific humidity at temp. Ts_i over ice    [kg/kg]
+      !!    *  qs_w  : saturation specific humidity at temp. Ts_w over water  [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    * frice : sea-ice concentration        (fraction)
@@ -89,11 +98,11 @@ CONTAINS
       INTEGER,  INTENT(in )                     :: kt    ! current time step
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ti_s  ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Tw_s  ! water surface temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_w  ! water surface temperature              [Kelvin]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qi_s  ! sat. spec. hum. at ice/air interface    [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qw_s  ! sat. spec. hum. at water/air interface  [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_w  ! sat. spec. hum. at water/air interface  [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: frice ! sea-ice concentration        (fraction)
@@ -138,14 +147,16 @@ CONTAINS
       U_blk = MAX( U_zu, 0.2_wp )
            
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
+      zt_zu(:,:,1) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
+      zq_zu(:,:,1) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
+      zt_zu(:,:,2) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
+      zq_zu(:,:,2) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
       
       !! Air-Ice & Air-Sea differences (and we don't want them to be 0!)
-      dt_zu(:,:,1) = t_zu - Ti_s    
-      dq_zu(:,:,1) = q_zu - qi_s    
-      dt_zu(:,:,2) = t_zu - Tw_s    
-      dq_zu(:,:,2) = q_zu - qw_s    
+      dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i    
+      dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i    
+      dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w    
+      dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w    
       dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       
@@ -167,37 +178,39 @@ CONTAINS
       IF ( l_use_form_drag ) THEN
          zz0_f(:,:,1) = rz0_f_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
          xtmp1(:,:) = 1._wp / zz0_f(:,:,1)
-         xtmp2(:,:) = rce10_i_0 * ( LOG( 10._wp * xtmp1(:,:) ) / LOG( zu * xtmp1(:,:) ) )**2       ! part of (Eq.46)
-         zCdN_f(:,:,1) = xtmp2(:,:) * frice(:,:) * (1._wp - frice(:,:))**rbeta_0           ! (Eq.46)  [ index 1 is for ice, 2 for water ]
-         zChN_f(:,:,1) = zCdN_f(:,:,1) / ( 1._wp + LOG(1._wp/ralpha_0)/vkarmn * SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
+         xtmp2(:,:) = rce10_i_0 * ( LOG( 10._wp * xtmp1(:,:) ) / LOG( zu * xtmp1(:,:) ) )**2      ! part of (Eq.46)
+         zCdN_f(:,:,1) = xtmp2(:,:) * frice(:,:) * (1._wp - frice(:,:))**rbeta_0                  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
+         zChN_f(:,:,1) = zCdN_f(:,:,1)/( 1._wp + LOG(1._wp/ralpha_0)/vkarmn*SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
       END IF
       
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
                   
          ! Bulk Richardson Number:
-         RiB(:,:,1) = Ri_bulk( zu, Ti_s(:,:), t_zu(:,:), qi_s(:,:), q_zu(:,:), U_blk(:,:) )  ! over ice (index=1)
-         RiB(:,:,2) = Ri_bulk( zu, Tw_s(:,:), t_zu(:,:), qw_s(:,:), q_zu(:,:), U_blk(:,:) )  ! over ice (index=2)
+         RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )  ! over ice (index=1)
+         !RiB(:,:,2) = Ri_bulk( zu, Ts_w(:,:), zt_zu(:,:,2), qs_w(:,:), zq_zu(:,:,2), U_blk(:,:) )  ! over ice (index=2)
          
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
          PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
-         zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
-         zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
-         PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
+         !zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
+         !zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         !PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
          
 
          IF ( l_use_form_drag ) THEN
             !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
             !!   MIZ:
             zCd(:,:,1) = zCd(:,:,1) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
-            zCh(:,:,1) = zCh(:,:,1) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" (xtmp1) and not "zChn" ???
-
+            zCh(:,:,1) = zCh(:,:,1) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" and not "zChn" ???
+            PRINT *, 'LOLO: Cd / form only / ice   =', REAL(zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ),4)
             !zCd(:,:,2) = ???
             !zCh(:,:,2) = ???
             
          END IF
+
+         PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(zCd(:,:,1),4), REAL(zCh(:,:,1),4)
          
          
          !! Adjusting temperature and humidity from zt to zu:
@@ -209,40 +222,47 @@ CONTAINS
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
             xtmp2 = 1._wp/SQRT(zCd(:,:,1))
+
             zt_zu(:,:,1) = t_zt - (zCh(:,:,1) * dt_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
             zq_zu(:,:,1) = q_zt - (zCh(:,:,1) * dq_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
-            zq_zu(:,:,1) = MAX(0._wp, q_zu)
-            dt_zu(:,:,1) = zt_zu(:,:,1) - Ti_s
-            dq_zu(:,:,1) = zq_zu(:,:,1) - qi_s
+            zq_zu(:,:,1) = MAX(0._wp, zq_zu(:,:,1))
+            
+            dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i
+            dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i
             
             !! Over water:
-            xtmp1(:,:) = zCdN_s(:,:,2) + zCdN_f(:,:,2)    ! total neutral drag coeff!
-            xtmp2(:,:) = zz0_s(:,:,2) + zz0_f(:,:,2)      ! total roughness length z0
-            xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) ) &
-               &               - f_h_louis( zt, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2 = 1._wp/SQRT(zCd(:,:,2))
-            zt_zu(:,:,2) = t_zt - (zCh(:,:,2) * dt_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
-            zq_zu(:,:,2) = q_zt - (zCh(:,:,2) * dq_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
-            zq_zu(:,:,2) = MAX(0._wp, q_zu)
-            dt_zu(:,:,2) = zt_zu(:,:,2) - Tw_s
-            dq_zu(:,:,2) = zq_zu(:,:,2) - qw_s
+            !xtmp1(:,:) = zCdN_s(:,:,2) + zCdN_f(:,:,2)    ! total neutral drag coeff!
+            !xtmp2(:,:) = zz0_s(:,:,2) + zz0_f(:,:,2)      ! total roughness length z0
+            !xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) ) &
+            !   &               - f_h_louis( zt, RiB(:,:,2), xtmp1(:,:), xtmp2(:,:) )
+            !xtmp2 = 1._wp/SQRT(zCd(:,:,2))
+            !zt_zu(:,:,2) = t_zt - (zCh(:,:,2) * dt_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
+            !zq_zu(:,:,2) = q_zt - (zCh(:,:,2) * dq_zu(:,:,2) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
+            !zq_zu(:,:,2) = MAX(0._wp, q_zu)
+            !dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
+            !dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
             
             dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
          PRINT *, ''!LOLO         
+
       END DO !DO j_itt = 1, nb_itt
+      PRINT *, ''!LOLO         
 
+      !! Result is ice + ocean:
+      !t_zu(:,:) = mix_val_msh(zt_zu, frice)
+      !q_zu(:,:) = mix_val_msh(zq_zu, frice)
+      !Cd(:,:) = mix_val_msh(zCd, frice)
+      !Ch(:,:) = mix_val_msh(zCh, frice)
 
-      PRINT *, 'LOLO: MUST combine theta_zu and q_zu for the mix of water + ice over the mesh !!!'
-      t_zu(:,:) = mix_val_msh(zt_zu, frice)
-      q_zu(:,:) = mix_val_msh(zq_zu, frice)
-
-
-      Cd(:,:) = mix_val_msh(zCd, frice)
-      Ch(:,:) = mix_val_msh(zCh, frice)
-      Ce(:,:) = Ch(:,:)
+      !! Result is over ice only:
+      t_zu(:,:) = zt_zu(:,:,1)
+      q_zu(:,:) = zq_zu(:,:,1)
+      Cd(:,:)   =   zCd(:,:,1)
+      Ch(:,:)   =   zCh(:,:,1)
+      Ce(:,:)   = Ch(:,:)      
       
       
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
@@ -250,7 +270,8 @@ CONTAINS
       IF( lreturn_ustar ) xu_star = SQRT(Cd) * U_blk
       IF( lreturn_L ) THEN
          xtmp1 = SQRT(Cd)
-         xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*mix_val_msh(dt_zu,frice)/xtmp1, Ce*mix_val_msh(dq_zu,frice)/xtmp1)
+         !xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*mix_val_msh(dt_zu,frice)/xtmp1, Ce*mix_val_msh(dq_zu,frice)/xtmp1)
+         xL    = 1./One_on_L( t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu(:,:,1)/xtmp1, Ce*dq_zu(:,:,1)/xtmp1 )
       END IF
       
       IF( lreturn_UN10 ) xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./(z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )) )

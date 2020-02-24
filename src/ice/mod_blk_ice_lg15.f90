@@ -170,7 +170,7 @@ CONTAINS
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          Cd(:,:) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          Ch(:,:) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
-         PRINT *, 'LOLO: Cd / skin only / ice =', REAL(Cd,4)
+         !PRINT *, 'LOLO: Cd / skin only / ice =', REAL(Cd,4)
 
 
          IF ( l_use_form_drag ) THEN
@@ -181,7 +181,7 @@ CONTAINS
          END IF
          
          Ce(:,:) = Ch(:,:)
-         PRINT *, 'LOLO: Cd / total / ice =', REAL(Cd,4)
+         !PRINT *, 'LOLO: Cd / total / ice =', REAL(Cd,4)
          
          !! Adjusting temperature and humidity from zt to zu:
          IF( .NOT. l_zt_equal_zu ) THEN
@@ -193,16 +193,16 @@ CONTAINS
             t_zu = t_zt - (Ch * dt_zu * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
             q_zu = q_zt - (Ce * dq_zu * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             q_zu = MAX(0._wp, q_zu)
-            PRINT *, 'LOLO: height adjustment (mod_blk_ice_lg15)! Cd=', REAL(Cd,4)
+            !PRINT *, 'LOLO: height adjustment (mod_blk_ice_lg15)! Cd=', REAL(Cd,4)
             dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-         PRINT *, ''!LOLO         
+         !PRINT *, ''!LOLO         
       END DO !DO j_itt = 1, nb_itt
 
 
-      PRINT *, 'LOLO: CDN10_skin_ice =', REAL( zCdN_s(:,:,1), 4)
+      !PRINT *, 'LOLO: CDN10_skin_ice =', REAL( zCdN_s(:,:,1), 4)
       
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
       

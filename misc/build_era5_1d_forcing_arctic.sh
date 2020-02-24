@@ -89,6 +89,8 @@ if [ `hostname` != "ige-meom-cal1" ]; then
 fi
 
 
+exit
+
 if [ `hostname` = "ige-meom-cal1" ]; then
     rm -f ${fo}
 
