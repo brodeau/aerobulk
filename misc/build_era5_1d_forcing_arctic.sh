@@ -15,7 +15,8 @@ DIR_IN2="/mnt/meom/workdir/brodeau/ECMWF/ERA5-T720/ARCTIC/build"
 
 if [ `hostname` = "ige-meom-cal1" ]; then
 
-    for cv in "istl1" "skt"; do
+    #for cv in "istl1" "skt"; do
+    for cv in "siconc"; do
         echo
         ftmp="./${cv}_era5.nc4"
         #
