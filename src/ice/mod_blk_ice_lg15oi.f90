@@ -46,7 +46,7 @@ MODULE mod_blk_ice_lg15oi
    REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]   
    LOGICAL,  PARAMETER :: l_use_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
-   LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
+   LOGICAL,  PARAMETER :: l_dbg_print     = .TRUE.
 
    
    !!----------------------------------------------------------------------
@@ -162,9 +162,9 @@ CONTAINS
       dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
       
       !! Very crude first guess:
-      !Cd(:,:) = rCd_ice
-      !Ch(:,:) = rCd_ice
-      !Ce(:,:) = rCd_ice
+      Cd(:,:) = rCd_ice
+      Ch(:,:) = rCd_ice
+      Ce(:,:) = rCd_ice
 
       !! For skin drag :
       zz0_s(:,:,1) = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
@@ -183,18 +183,50 @@ CONTAINS
          zCdN_f(:,:,1) = xtmp2(:,:) * frice(:,:) * (1._wp - frice(:,:))**rbeta_0                  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
          zChN_f(:,:,1) = zCdN_f(:,:,1)/( 1._wp + LOG(1._wp/ralpha_0)/vkarmn*SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
       END IF
+
+      !! Some other first guess values, needed to compute wind at zt:
+      zCd(:,:,1) = zCdN_s(:,:,1) + zCdN_f(:,:,1)
+      zCh(:,:,1) = zChN_s(:,:,1) + zChN_f(:,:,1)
+      RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), U_blk(:,:) )  ! over ice (index=1)
+
       
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
-                  
-         ! Bulk Richardson Number:
-         RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )  ! over ice (index=1)
+
+         IF(l_dbg_print) PRINT *, 'LOLO: LOOP #', INT(j_itt,1)
+         IF(l_dbg_print) PRINT *, 'LOLO: theta_zu, Ts_i, U_blk =', REAL(zt_zu(:,:,1),4), REAL(Ts_i(:,:),4), REAL(U_blk(:,:),4)
+         IF(l_dbg_print) PRINT *, 'LOLO:     q_zu =', REAL(zq_zu(:,:,1),4)
+         IF(l_dbg_print) PRINT *, 'LOLO:  CdN_s, zCdN_f   =', REAL(zCdN_s(:,:,1),4), REAL(zCdN_f(:,:,1),4)
+
+         
+         !! Bulk Richardson Number:
+         !! PROBLEM: when computed at z=zu, with adjusted theta and q, it is numerically unstable in some rare events (unstable)
+         !!          => fix: compute RiB at zt, with ajusted wind at zt... => seems to be more stable
+         !RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )  ! over ice (index=1)
+         ! or use RiB at zt: !lolo
+         IF( .NOT. l_zt_equal_zu ) THEN
+            xtmp1(:,:) = zCdN_s(:,:,1) + zCdN_f(:,:,1)    ! total neutral drag coeff! 
+            xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
+            xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
+               &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
+            xtmp2(:,:) = MAX ( U_blk(:,:) + (SQRT(zCd(:,:,1))*U_blk)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*U_blk == u* !)
+         ELSE
+            xtmp2(:,:) = U_blk(:,:)
+         END IF
+         IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
+         RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), xtmp2(:,:) )  ! over ice (index=1)
+         
+                           
          !RiB(:,:,2) = Ri_bulk( zu, Ts_w(:,:), zt_zu(:,:,2), qs_w(:,:), zq_zu(:,:,2), U_blk(:,:) )  ! over ice (index=2)
+         IF(l_dbg_print) PRINT *, 'LOLO: Ri_bulk =', RiB(:,:,1)
          
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         IF(l_dbg_print) PRINT *, 'LOLO: f_m_louis_s =', f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) )
+         IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_s =', f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) )         
          IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
+         
          !zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
          !zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
          !IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
@@ -205,6 +237,9 @@ CONTAINS
             !!   MIZ:
             zCd(:,:,1) = zCd(:,:,1) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
             zCh(:,:,1) = zCh(:,:,1) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" and not "zChn" ???
+            IF(l_dbg_print) PRINT *, 'LOLO: f_m_louis_f =', f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) )
+            IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_f =', f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) )
+
             IF(l_dbg_print) PRINT *, 'LOLO: Cd / form only / ice   =', REAL(zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ),4)
             !zCd(:,:,2) = ???
             !zCh(:,:,2) = ???

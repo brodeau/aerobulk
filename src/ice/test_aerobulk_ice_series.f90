@@ -21,7 +21,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    !INTEGER :: DISP_DEBUG
 
    LOGICAL, PARAMETER :: lverbose = .TRUE.
-   LOGICAL, PARAMETER :: ldebug   = .TRUE.
+   LOGICAL, PARAMETER :: ldebug   = .FALSE.
+   INTEGER, PARAMETER :: jtdbg    = 1   ! if (ldebug) that's the time step we'll start from...
+   !INTEGER, PARAMETER :: jtdbg    = 1447   ! if (ldebug) that's the time step we'll start from...
 
    INTEGER, PARAMETER :: nb_algos = 4
 
@@ -36,7 +38,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jt, jarg, ialgo, jq, n0, info
+   INTEGER :: jt0, jt, jarg, ialgo, jq, n0, info
 
    INTEGER :: nx, ny, Nt, ians
 
@@ -250,10 +252,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    d_idate%minute = 0
    d_idate%second = 0
 
-
-
+   jt0 = 1
+   IF( ldebug .AND. (jt>0) ) jt0 = jtdbg
+   
    !! Time loop:
-   DO jt = 1, Nt
+   DO jt = jt0, Nt
 
       d_idate = time_to_date( tut_time_unit, vtime(jt),  date_prev=d_idate )
 
@@ -384,7 +387,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       !! Sanity check:
       IF( ldebug ) THEN
-         IF( ABS(RiB_zt(1,1,jt)) > 40._wp ) THEN
+         IF( ABS(RiB_zu(1,1,jt)) > 40._wp ) THEN
             PRINT *, 'Fucked up Richardson number!!!, is everything okay???'
             STOP
          END IF
