@@ -128,7 +128,7 @@ CONTAINS
       q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, 0.2_wp )
+      U_blk = MAX( U_zu, wspd_thrshld_ice )
 
       !! Pot. temp. difference (and we don't want it to be 0!)
       dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
@@ -220,8 +220,8 @@ CONTAINS
             zfi = pic(ji,jj)    ! fraction of sea-ice
             zfo = 1._wp - zfi    ! fraction of open ocean
 
-            zwndspd_o = MAX( 0.5, Uo_zu(ji,jj) )
-            zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
+            zwndspd_o = MAX( Uo_zu(ji,jj), wspd_thrshld_ice )
+            zwndspd_i = MAX( Ui_zu(ji,jj), wspd_thrshld_ice )
 
             ! Specific humidities at saturation at air-sea and air-ice interface [kg/kg]:
             zqsat_o = rdct_qsat_salt*q_sat( Ts_o(ji,jj), pslp(ji,jj) )

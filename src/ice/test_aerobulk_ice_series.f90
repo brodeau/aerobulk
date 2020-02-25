@@ -13,18 +13,21 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
+   USE mod_blk_ice_lg15oi
    !USE mod_blk_ice_best
 
    IMPLICIT NONE
 
    !INTEGER :: DISP_DEBUG
 
-   LOGICAL, PARAMETER :: ldebug=.TRUE.
-   !LOGICAL, PARAMETER :: ldebug=.FALSE.
+   LOGICAL, PARAMETER :: lverbose = .TRUE.
+   LOGICAL, PARAMETER :: ldebug   = .TRUE.
 
-   INTEGER, PARAMETER :: nb_algos = 3
+   INTEGER, PARAMETER :: nb_algos = 4
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
+
+   CHARACTER(len=80) :: csep='#################################################################################'
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -37,7 +40,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    INTEGER :: nx, ny, Nt, ians
 
-   CHARACTER(len=9) :: calgo
+   CHARACTER(len=10) :: calgo
 
    INTEGER(4)        :: ihh, imm, isecday_utc
 
@@ -50,16 +53,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime, vlon
 
    !! Input (or deduced from input) variables:
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SLP, W10, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SST, SKT, SLP, W10, SIC, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zu
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zt, rho_zu
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, siq, rgamma, Cp_ma, tmp
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, SIQ, SSQ, rgamma, Cp_ma, tmp
 
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB, TAU, SBLM
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, RiB_zt, RiB_zu, TAU, SBLM
 
    REAL(wp) :: zt, zu
 
@@ -78,7 +81,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    nb_itt = 20 ! 20 itterations in bulk algorithm...
 
-   !OPEN(6, FORM='formatted', RECL=512)
+   OPEN(6, FORM='formatted', RECL=512)
 
 
    !----------------------------------------------
@@ -145,12 +148,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
-   ALLOCATE ( SIT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
-      &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt) )
-   ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
-   ALLOCATE ( xlon(nx,ny), siq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
+   ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SKT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
+      &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), SIC(nx,ny,Nt) )
+   ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zt(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
+   ALLOCATE ( xlon(nx,ny), SIQ(nx,ny), SSQ(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE ( Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
-      &       RiB(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
+      &       RiB_zt(nx,ny,Nt), RiB_zu(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
 
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
@@ -162,7 +165,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
    PRINT *, ' *** Digested time unit is: ', tut_time_unit
 
+   CALL GETVAR_1D(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
+
    CALL GETVAR_1D(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
+
+   CALL GETVAR_1D(cf_data, 'sst',    SST  )  ; ! sst is in K !
+
+   CALL GETVAR_1D(cf_data, 'skt',    SKT  )  ; ! skt is in K !
 
    CALL GETVAR_1D(cf_data, 'msl',    SLP  )
 
@@ -187,16 +196,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
    ians=-1
-   DO WHILE ( (ians<0).OR.(ians>nb_algos) )
-      WRITE(6,*) 'Which algo to use? "NEMO default (v4)" => 1 | "Andreas (2005)" => 2 | "Lupkes & Gryanik (2015)" => 3 :'
+   DO WHILE ( (ians<1).OR.(ians>nb_algos) )
+      WRITE(6,*) 'Which algo to use?'
+      WRITE(6,*) ' * "NEMO default (v4)"                        => 1'
+      WRITE(6,*) ' * "Andreas (2005)"                           => 2'
+      WRITE(6,*) ' * "Lupkes & Gryanik (2015)" 100% ice-covered => 3'
+      WRITE(6,*) ' * "Lupkes & Gryanik (2015)" ice - water mix  => 4'
       READ(*,*) ians
       IF ( ians == 1 ) calgo = 'nemo'
       IF ( ians == 2 ) calgo = 'an05'
       IF ( ians == 3 ) calgo = 'lg15'
+      IF ( ians == 4 ) calgo = 'lg15oi'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
-
 
 
 
@@ -249,86 +262,82 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       WRITE(cldate(jt),'(i4.4,"/",i2.2,"/",i2.2,"-",i2.2,":",i2.2)') d_idate%year,  d_idate%month,  d_idate%day,  ihh, imm
       isecday_utc = ihh*3600 + imm*60 ! UTC time in seconds since midnight...
 
-      IF (ldebug) THEN
+      IF (lverbose) THEN
          WRITE(6,*) ''; WRITE(6,*) ''
-         WRITE(6,*) '##########################################################'
+         WRITE(6,*) csep
       END IF
-      WRITE(6,'(" #### Time = ",a," => isecday_utc = ",i6.6)') cldate(jt), isecday_utc
-      IF (ldebug) THEN
-         WRITE(6,*) '##########################################################'
+      WRITE(6,'(" #### Time = ",a," => isecday_utc = ",i6.6," => jt = ",i4.4)') cldate(jt), isecday_utc, jt
+      IF (lverbose) THEN
+         WRITE(6,*) csep
          WRITE(6,*) ''
          WRITE(6,*) '           ---- BEFORE BULK ALGO ----'
          WRITE(6,*) ''
       END IF
 
-      info = DISP_DEBUG(ldebug, 'scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
+      info = DISP_DEBUG(lverbose, 'SIC', SIC(:,:,jt), '[fraction]')
 
-      info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
+      info = DISP_DEBUG(lverbose, 'Scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
+
+      !! Air density at zt:
+      rho_zt(:,:,jt) = rho_air( t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt) )
+      info = DISP_DEBUG(lverbose, 'Air density at zt', rho_zt(:,:,jt) , '[kg/m^3]')
 
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
-      info = DISP_DEBUG(ldebug, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
+      info = DISP_DEBUG(lverbose, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
 
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
-      info = DISP_DEBUG(ldebug, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
+      info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
 
-      info = DISP_DEBUG(ldebug, 'SIT', SIT(:,:,jt)-rt0, '[degC]')
+      info = DISP_DEBUG(lverbose, 'SIT', SIT(:,:,jt)-rt0, '[degC]')
+      info = DISP_DEBUG(lverbose, 'SST', SST(:,:,jt)-rt0, '[degC]')
+      info = DISP_DEBUG(lverbose, 'SKT', SKT(:,:,jt)-rt0, '[degC]')
 
-      siq = q_sat( SIT(:,:,jt), SLP(:,:,jt), l_ice=.TRUE. )
-      info = DISP_DEBUG(ldebug, 'SIQ = ', 1000.*siq, '[g/kg] (over ice!!!)')
+      SIQ = q_sat( SIT(:,:,jt), SLP(:,:,jt), l_ice=.TRUE. )
+      info = DISP_DEBUG(lverbose, 'SIQ over ice = ', 1000.*SIQ, '[g/kg]')
 
-      info = DISP_DEBUG(ldebug, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
+      SSQ = rdct_qsat_salt*q_sat( SST(:,:,jt), SLP(:,:,jt), l_ice=.FALSE. )
+      info = DISP_DEBUG(lverbose, 'SSQ over water = ', 1000.*SSQ, '[g/kg]')
+
+      info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
 
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
-      info = DISP_DEBUG(ldebug, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
+      info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
 
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
-      info = DISP_DEBUG(ldebug, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
-      info = DISP_DEBUG(ldebug, 'Pot. temp. diff. air/ice at '//TRIM(czt),    theta_zt(:,:,jt) - SIT(:,:,jt), '[deg.C]')
-      info = DISP_DEBUG(ldebug, 'Virt. pot. temp. diff. air/ice at '//TRIM(czt),    tmp - virt_temp(SIT(:,:,jt), siq), '[deg.C]')
+      info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
+      info = DISP_DEBUG(lverbose, 'Pot. temp. diff. air-ice at '//TRIM(czt),    theta_zt(:,:,jt) - SIT(:,:,jt), '[deg.C]')
+      info = DISP_DEBUG(lverbose, 'Virt. pot. temp. diff. at '//TRIM(czt),    tmp - virt_temp(SIT(:,:,jt), SIQ), '[deg.C]')
 
-      !! We know enough to estimate the bulk Richardson number:
-      info = DISP_DEBUG(ldebug, 'Initial Bulk Richardson number', Ri_bulk( zt, SIT(:,:,jt), theta_zt(:,:,jt), siq, q_zt(:,:,jt), W10(:,:,jt) ), '[--]')
+      !! We know enough to estimate the bulk Richardson number at zt:
+      RiB_zt(:,:,jt) = Ri_bulk(zt, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt),  MAX(W10(:,:,jt),wspd_thrshld_ice) )
+      info = DISP_DEBUG(lverbose, 'Bulk Richardson number at zt', RiB_zt(:,:,jt) , '[--]')
 
-      !STOP
-
-      !IF ( l_use_cswl ) THEN
-      !   STOP 'LOLO not like this...'
-      !   WRITE(6,*) ''
-      !   WRITE(6,*) '----------------------------------------------------------'
-      !   WRITE(6,*) '          Will consider the skin temperature!'
-      !   WRITE(6,*) ' => using cool-skin warm-layer param. in COARE and ECMWF'
-      !   WRITE(6,*) ' => need the downwelling radiative fluxes at the surface'
-      !   WRITE(6,*) '----------------------------------------------------------'
-      !   WRITE(6,*) ''
-      !   !WRITE(6,*) 'Give downwelling shortwave (solar) radiation at the surface:'
-      !   !READ(*,*) rad_sw
-      !   !WRITE(6,*)
-      !   !WRITE(6,*) 'Give downwelling longwave (infrared) radiation at the surface:'
-      !   !READ(*,*) rad_lw
-      !   WRITE(6,*)
-      !END IF
-
-
-
-      Qsw(:,:,jt) = (1._wp - rice_alb0)*rad_sw(:,:,jt) ! Net solar heat flux into sea-ice...
+      !! Net solar heat flux into sea-ice:
+      Qsw(:,:,jt) = (1._wp - rice_alb0)*rad_sw(:,:,jt)
 
 
       SELECT CASE ( TRIM(calgo) )
 
       CASE ( 'nemo' )
-         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
+
       CASE ( 'an05' )
-         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE ( 'lg15' )
-         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), siq(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+      CASE ( 'lg15oi' )
+         CALL turb_ice_lg15oi( jt, zt, zu, SIT(:,:,jt), SST(:,:,jt), theta_zt(:,:,jt),               &
+            &                  SIQ(:,:), SSQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt),           &
+            &                  Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &                  xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
@@ -344,10 +353,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       END DO
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
-      RiB(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), siq(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
+      RiB_zu(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), SIQ(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
 
       !! Turbulent heat fluxes:
-      CALL BULK_FORMULA( zu, SIT(:,:,jt), siq(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
+      CALL BULK_FORMULA( zu, SIT(:,:,jt), SIQ(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
          &              Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
          &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
          &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
@@ -359,18 +368,30 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt)
 
 
-      IF (ldebug) THEN
+      IF (lverbose) THEN
          WRITE(6,*) ''
          WRITE(6,*) '           ---- AFTER BULK ALGO ----'
          WRITE(6,*) ''
       END IF
-      info = DISP_DEBUG(ldebug, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
-      info = DISP_DEBUG(ldebug, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
+      info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
+      info = DISP_DEBUG(lverbose, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
 
 
-      IF (ldebug) THEN
+      IF (lverbose) THEN
          WRITE(6,*) ''
-         WRITE(6,*) '##############################################'
+         WRITE(6,*) csep
+      END IF
+
+      !! Sanity check:
+      IF( ldebug ) THEN
+         IF( ABS(RiB_zt(1,1,jt)) > 40._wp ) THEN
+            PRINT *, 'Fucked up Richardson number!!!, is everything okay???'
+            STOP
+         END IF
+         IF( (ABS(rho_zu(1,1,jt)) > 1.7_wp).OR.(ABS(rho_zu(1,1,jt)) < 0.9_wp) ) THEN
+            PRINT *, 'We fucked up, density at zu is irrealistic!!!'
+            STOP
+         END IF
       END IF
 
 
@@ -395,12 +416,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt10=REAL( 1000.*Cd(1,1,:),4), cv_dt10='Cd', cun10='',      cln10='Drag coefficient',       &
       &           vdt11=REAL( 1000.*Ch(1,1,:),4), cv_dt11='Ch', cun11='',      cln11='Sens. Heat coeff.',      &
       &           vdt12=REAL(  zz0(1,1,:),4), cv_dt12='z0',     cun12='m',     cln12='Roughness length',       &
-      &           vdt13=REAL(  RiB(1,1,:),4), cv_dt13='Rib',    cun13='m',     cln13='Bulk Richardson number', &
-      &           vdt14=REAL(SIT(1,1,:)-rt0,4), cv_dt14='SIT',  cun14='deg.C', cln14='Sea-ice temperature',    &
-      &           vdt15=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt15='t2m-SIT', cun15='deg.C', cln15='2m air-sea temperature difference' )
-   
-   WRITE(6,*) ''; WRITE(6,*) ''
+      &           vdt13=REAL(  RiB_zt(1,1,:),4), cv_dt13='Rib_zt', cun13='',   cln13='Bulk Richardson number at zt', &
+      &           vdt14=REAL(  RiB_zu(1,1,:),4), cv_dt14='Rib_zu', cun14='m',  cln14='Bulk Richardson number at zu', &
+      &           vdt15=REAL(SIT(1,1,:)-rt0,4), cv_dt15='SIT',  cun15='deg.C', cln15='Sea-ice temperature',    &
+      &           vdt16=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt16='t2m-SIT', cun16='deg.C', cln16='2m air-sea temperature difference' )
 
+   WRITE(6,*) ''; WRITE(6,*) ''
+   CLOSE(6)
 
 CONTAINS
 
@@ -413,14 +435,11 @@ CONTAINS
       !!
       DISP_DEBUG = 0
       IF ( ldbg ) THEN
-         !WRITE(6,*) ' *** '//TRIM(cstr)
-         !WRITE(6,*) ' *** '//TRIM(cstr), ' => ', REAL(rval(1,1),4), ' '//TRIM(cunit)
-         WRITE(6,'(" *** ",a40," => ",f12.4," ",a9)') TRIM(cstr),  REAL(rval(1,1),4), TRIM(cunit)
-         !WRITE(6,*) ''
+         WRITE(6,'(" *** ",a48,f12.4," ",a)') &
+            &       TRIM(cstr)//' => '//ACHAR(27)//'[91m ',  REAL(rval(1,1),4), ACHAR(27)//'[0m'//TRIM(cunit)
          DISP_DEBUG = 1
       END IF
    END FUNCTION DISP_DEBUG
-
 
 END PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 

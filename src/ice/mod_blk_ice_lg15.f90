@@ -127,7 +127,7 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, 0.2_wp )
+      U_blk = MAX( U_zu, wspd_thrshld_ice )
            
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...

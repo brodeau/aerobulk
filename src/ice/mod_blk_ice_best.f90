@@ -129,7 +129,7 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, 0.2_wp )
+      U_blk = MAX( U_zu, wspd_thrshld_ice )
 
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt
@@ -176,7 +176,7 @@ CONTAINS
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m_ice(zeta_u)
-         ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
+         ztmp0 = MAX( wspd_thrshld_ice , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
 
          CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
          sqrtCdn10 = sqrt(Cd)

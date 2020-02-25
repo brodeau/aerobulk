@@ -85,7 +85,8 @@ MODULE mod_const
 
    REAL(wp), PARAMETER, PUBLIC :: to_mm_p_day = 24._wp*3600._wp  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
 
-
+   REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 0.2_wp !: minimum scalar wind speed accepted over sea-ice...
+   
 
 
 

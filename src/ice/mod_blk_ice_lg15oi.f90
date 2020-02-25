@@ -46,6 +46,7 @@ MODULE mod_blk_ice_lg15oi
    REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]   
    LOGICAL,  PARAMETER :: l_use_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
+   LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
    
    !!----------------------------------------------------------------------
@@ -144,7 +145,7 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE. ! testing "zu == zt" is risky with double precision
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, 0.2_wp )
+      U_blk = MAX( U_zu, wspd_thrshld_ice )
            
       !! First guess of temperature and humidity at height zu:
       zt_zu(:,:,1) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
@@ -193,10 +194,10 @@ CONTAINS
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
-         PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
+         IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
          !zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
          !zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
-         !PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
+         !IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
          
 
          IF ( l_use_form_drag ) THEN
@@ -204,13 +205,13 @@ CONTAINS
             !!   MIZ:
             zCd(:,:,1) = zCd(:,:,1) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
             zCh(:,:,1) = zCh(:,:,1) + zChN_f(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_f" and not "zChn" ???
-            PRINT *, 'LOLO: Cd / form only / ice   =', REAL(zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ),4)
+            IF(l_dbg_print) PRINT *, 'LOLO: Cd / form only / ice   =', REAL(zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ),4)
             !zCd(:,:,2) = ???
             !zCh(:,:,2) = ???
             
          END IF
 
-         PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(zCd(:,:,1),4), REAL(zCh(:,:,1),4)
+         IF(l_dbg_print) PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(zCd(:,:,1),4), REAL(zCh(:,:,1),4)
          
          
          !! Adjusting temperature and humidity from zt to zu:
@@ -246,10 +247,10 @@ CONTAINS
             dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-         PRINT *, ''!LOLO         
+         IF(l_dbg_print) PRINT *, ''!LOLO         
 
       END DO !DO j_itt = 1, nb_itt
-      PRINT *, ''!LOLO         
+      IF(l_dbg_print) PRINT *, ''!LOLO         
 
       !! Result is ice + ocean:
       !t_zu(:,:) = mix_val_msh(zt_zu, frice)
