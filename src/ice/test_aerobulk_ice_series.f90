@@ -9,12 +9,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    USE mod_phymbl
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
-
+   
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
    USE mod_blk_ice_lg15oi
-   !USE mod_blk_ice_best
 
    IMPLICIT NONE
 
@@ -30,11 +29,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
 
    CHARACTER(len=80) :: csep='#################################################################################'
-
-   INTEGER, PARAMETER ::   &
-      &   n_dt   = 21,   &
-      &   n_u    = 30,   &
-      &   n_q    = 10
 
    CHARACTER(len=2) :: car
 
@@ -84,7 +78,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    nb_itt = 20 ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
-
 
    !----------------------------------------------
 
@@ -302,6 +295,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       info = DISP_DEBUG(lverbose, 'SSQ over water = ', 1000.*SSQ, '[g/kg]')
 
       info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
+      info = DISP_DEBUG(lverbose, 'Specific   air humi. at '//TRIM(czt),     1000.*q_zt(:,:,jt), '[g/kg]') ! Air temperatures at zt...
 
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
@@ -386,16 +380,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       END IF
 
       !! Sanity check:
-      IF( ldebug ) THEN
-         IF( ABS(RiB_zu(1,1,jt)) > 40._wp ) THEN
-            PRINT *, 'Fucked up Richardson number!!!, is everything okay???'
-            STOP
-         END IF
-         IF( (ABS(rho_zu(1,1,jt)) > 1.7_wp).OR.(ABS(rho_zu(1,1,jt)) < 0.9_wp) ) THEN
-            PRINT *, 'We fucked up, density at zu is irrealistic!!!'
-            STOP
-         END IF
+      !IF( ldebug ) THEN
+      IF( ABS(RiB_zu(1,1,jt)) > 40._wp ) THEN
+         PRINT *, 'Fucked up Richardson number!!!, is everything okay???'
+         STOP
       END IF
+      IF( (ABS(rho_zu(1,1,jt)) > 1.7_wp).OR.(ABS(rho_zu(1,1,jt)) < 0.9_wp) ) THEN
+         PRINT *, 'We fucked up, density at zu is irrealistic!!!'
+         STOP
+      END IF
+      !END IF
 
 
    END DO !DO jt = 1, Nt

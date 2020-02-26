@@ -30,7 +30,7 @@ MODULE mod_blk_ice_lg15oi
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
-   USE mod_phymbl      !: misc. physical functions 
+   USE mod_phymbl      !: misc. physical functions
 
    IMPLICIT NONE
    PRIVATE
@@ -40,15 +40,15 @@ MODULE mod_blk_ice_lg15oi
    REAL(wp), PARAMETER ::   rce10_i_0 = 3.46e-3_wp ! (Eq.48) MIZ
    REAL(wp), PARAMETER ::   rbeta_0   = 1.4_wp     ! (Eq.47) MIZ
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
-   
+
    !! To be namelist parameters in NEMO:
    REAL(wp), PARAMETER ::   rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
-   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]   
+   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
    LOGICAL,  PARAMETER :: l_use_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
-   LOGICAL,  PARAMETER :: l_dbg_print     = .TRUE.
+   LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
-   
+
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -135,7 +135,7 @@ CONTAINS
       ALLOCATE ( zz0_s(jpi,jpj,2),  zz0_f(jpi,jpj,2),    RiB(jpi,jpj,2), &
          &      zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
       ALLOCATE ( zCd(jpi,jpj,2), zCh(jpi,jpj,2) )
-      
+
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -146,21 +146,21 @@ CONTAINS
 
       !! Scalar wind speed cannot be below 0.2 m/s
       U_blk = MAX( U_zu, wspd_thrshld_ice )
-           
+
       !! First guess of temperature and humidity at height zu:
       zt_zu(:,:,1) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
       zq_zu(:,:,1) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
       zt_zu(:,:,2) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
       zq_zu(:,:,2) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
-      
+
       !! Air-Ice & Air-Sea differences (and we don't want them to be 0!)
-      dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i    
-      dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i    
-      dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w    
-      dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w    
+      dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i
+      dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i
+      dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
+      dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
       dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-      
+
       !! Very crude first guess:
       Cd(:,:) = rCd_ice
       Ch(:,:) = rCd_ice
@@ -187,9 +187,9 @@ CONTAINS
       !! Some other first guess values, needed to compute wind at zt:
       zCd(:,:,1) = zCdN_s(:,:,1) + zCdN_f(:,:,1)
       zCh(:,:,1) = zChN_s(:,:,1) + zChN_f(:,:,1)
-      RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), U_blk(:,:) )  ! over ice (index=1)
+      RiB(:,:,1) = Ri_bulk( zt, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), U_blk(:,:) )  ! over ice (index=1)
 
-      
+
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
@@ -198,39 +198,41 @@ CONTAINS
          IF(l_dbg_print) PRINT *, 'LOLO:     q_zu =', REAL(zq_zu(:,:,1),4)
          IF(l_dbg_print) PRINT *, 'LOLO:  CdN_s, zCdN_f   =', REAL(zCdN_s(:,:,1),4), REAL(zCdN_f(:,:,1),4)
 
-         
-         !! Bulk Richardson Number:
+
+         !! Bulk Richardson Number
+         !! ======================
          !! PROBLEM: when computed at z=zu, with adjusted theta and q, it is numerically unstable in some rare events (unstable)
          !!          => fix: compute RiB at zt, with ajusted wind at zt... => seems to be more stable
          !RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )  ! over ice (index=1)
          ! or use RiB at zt: !lolo
          IF( .NOT. l_zt_equal_zu ) THEN
-            xtmp1(:,:) = zCdN_s(:,:,1) + zCdN_f(:,:,1)    ! total neutral drag coeff! 
+            ! U_zt = U_zu + u_star/vkarmn*(LOG(zt/zu) + psi_m_coare(zu/L) - psi_m_coare(zt/L))
+            xtmp1(:,:) = zCdN_s(:,:,1) + zCdN_f(:,:,1)    ! total neutral drag coeff!
             xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
             xtmp2(:,:) = MAX ( U_blk(:,:) + (SQRT(zCd(:,:,1))*U_blk)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*U_blk == u* !)
+            IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
          ELSE
             xtmp2(:,:) = U_blk(:,:)
          END IF
-         IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
-         RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), xtmp2(:,:) )  ! over ice (index=1)
-         
-                           
+         RiB(:,:,1) = Ri_bulk( zt, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), xtmp2(:,:) )  ! over ice (index=1)
+
+
          !RiB(:,:,2) = Ri_bulk( zu, Ts_w(:,:), zt_zu(:,:,2), qs_w(:,:), zq_zu(:,:,2), U_blk(:,:) )  ! over ice (index=2)
-         IF(l_dbg_print) PRINT *, 'LOLO: Ri_bulk =', RiB(:,:,1)
-         
+         IF(l_dbg_print) PRINT *, 'LOLO: RiB_zt =', RiB(:,:,1)
+
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
          IF(l_dbg_print) PRINT *, 'LOLO: f_m_louis_s =', f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) )
-         IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_s =', f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) )         
+         IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_s =', f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) )
          IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:,1),4)
-         
+
          !zCd(:,:,2) = zCdN_s(:,:,2) * f_m_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.6)
          !zCh(:,:,2) = zChN_s(:,:,2) * f_h_louis( zu, RiB(:,:,2), zCdN_s(:,:,2), zz0_s(:,:,2) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
          !IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / water =', REAL(zCd(:,:,2),4)
-         
+
 
          IF ( l_use_form_drag ) THEN
             !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
@@ -243,12 +245,12 @@ CONTAINS
             IF(l_dbg_print) PRINT *, 'LOLO: Cd / form only / ice   =', REAL(zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ),4)
             !zCd(:,:,2) = ???
             !zCh(:,:,2) = ???
-            
+
          END IF
 
          IF(l_dbg_print) PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(zCd(:,:,1),4), REAL(zCh(:,:,1),4)
-         
-         
+
+
          !! Adjusting temperature and humidity from zt to zu:
          IF( .NOT. l_zt_equal_zu ) THEN
 
@@ -262,10 +264,10 @@ CONTAINS
             zt_zu(:,:,1) = t_zt - (zCh(:,:,1) * dt_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
             zq_zu(:,:,1) = q_zt - (zCh(:,:,1) * dq_zu(:,:,1) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             zq_zu(:,:,1) = MAX(0._wp, zq_zu(:,:,1))
-            
+
             dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i
             dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i
-            
+
             !! Over water:
             !xtmp1(:,:) = zCdN_s(:,:,2) + zCdN_f(:,:,2)    ! total neutral drag coeff!
             !xtmp2(:,:) = zz0_s(:,:,2) + zz0_f(:,:,2)      ! total roughness length z0
@@ -277,15 +279,15 @@ CONTAINS
             !zq_zu(:,:,2) = MAX(0._wp, q_zu)
             !dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
             !dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
-            
+
             dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-         IF(l_dbg_print) PRINT *, ''!LOLO         
+         IF(l_dbg_print) PRINT *, ''!LOLO
 
       END DO !DO j_itt = 1, nb_itt
-      IF(l_dbg_print) PRINT *, ''!LOLO         
+      IF(l_dbg_print) PRINT *, ''!LOLO
 
       !! Result is ice + ocean:
       !t_zu(:,:) = mix_val_msh(zt_zu, frice)
@@ -298,30 +300,30 @@ CONTAINS
       q_zu(:,:) = zq_zu(:,:,1)
       Cd(:,:)   =   zCd(:,:,1)
       Ch(:,:)   =   zCh(:,:,1)
-      Ce(:,:)   = Ch(:,:)      
-      
-      
+      Ce(:,:)   = Ch(:,:)
+
+
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
-      
+
       IF( lreturn_ustar ) xu_star = SQRT(Cd) * U_blk
       IF( lreturn_L ) THEN
          xtmp1 = SQRT(Cd)
          !xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*mix_val_msh(dt_zu,frice)/xtmp1, Ce*mix_val_msh(dq_zu,frice)/xtmp1)
          xL    = 1./One_on_L( t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu(:,:,1)/xtmp1, Ce*dq_zu(:,:,1)/xtmp1 )
       END IF
-      
+
       IF( lreturn_UN10 ) xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./(z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )) )
-      
+
       DEALLOCATE ( xtmp1, xtmp2 )
-      DEALLOCATE ( dt_zu, dq_zu, zt_zu, zq_zu )      
+      DEALLOCATE ( dt_zu, dq_zu, zt_zu, zq_zu )
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
       DEALLOCATE ( zCd, zCh )
-      
+
    END SUBROUTINE turb_ice_lg15oi
-   
+
    !!======================================================================
-   
-   
+
+
 
    FUNCTION mix_val_msh( pfld, pfri )
       REAL(wp), DIMENSION(jpi,jpj) :: mix_val_msh
@@ -329,5 +331,5 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj),   INTENT(in) :: pfri  ! sea-ice concentration (fraction)
       mix_val_msh(:,:) = pfri(:,:) * pfld(:,:,1) + (1._wp - pfri(:,:)) * pfld(:,:,2)
    END FUNCTION mix_val_msh
-   
+
 END MODULE mod_blk_ice_lg15oi

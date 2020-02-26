@@ -369,7 +369,7 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION Ri_bulk_sclr( pz, psst, ptha, pssq, pqa, pub )
+   FUNCTION Ri_bulk_sclr( pz, psst, ptha, pssq, pqa, pub,  pta_layer, pqa_layer )
       !!----------------------------------------------------------------------------------
       !! Bulk Richardson number according to "wide-spread equation"...
       !!
@@ -384,24 +384,34 @@ CONTAINS
       REAL(wp), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
       REAL(wp), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
       REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
-      REAL(wp) ::   zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
+      REAL(wp), INTENT(in), OPTIONAL :: pta_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
+      REAL(wp), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
+      !!
+      LOGICAL  :: l_ptqa_l_prvd = .FALSE.
+      REAL(wp) :: zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
-      zqa = 0.5_wp*( pqa  + pssq )                             ! ~ mean q within the layer...
-      zta = 0.5_wp*( psst + ptha - gamma_moist(ptha, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-      zta = 0.5_wp*( psst + ptha - gamma_moist( zta, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-      zgamma =  gamma_moist(zta, zqa)                          ! Adiabatic lapse-rate for moist air within the layer
+      IF( PRESENT(pta_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       !
       zsstv = virt_temp_sclr( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
       !
       zdthv = virt_temp_sclr( ptha, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
       !
-      ztv = 0.5_wp*( zsstv + (ptha - zgamma*pz)*(1._wp + rctv0*pqa) )  ! ~ mean absolute virtual temp. within the layer
+      !! ztv: estimate of the ABSOLUTE virtual temp. within the layer
+      IF ( l_ptqa_l_prvd ) THEN
+         ztv = virt_temp_sclr( pta_layer, pqa_layer )
+      ELSE
+         zqa = 0.5_wp*( pqa  + pssq )                             ! ~ mean q within the layer...
+         zta = 0.5_wp*( psst + ptha - gamma_moist(ptha, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+         zta = 0.5_wp*( psst + ptha - gamma_moist( zta, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
+         zgamma =  gamma_moist(zta, zqa)                          ! Adiabatic lapse-rate for moist air within the layer
+         ztv = 0.5_wp*( zsstv + virt_temp_sclr( ptha-zgamma*pz, pqa ) )
+      END IF
       !
-      Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )                            ! the usual definition of Ri_bulk_sclr
+      Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )      ! the usual definition of Ri_bulk_sclr
       !
    END FUNCTION Ri_bulk_sclr
    !!
-   FUNCTION Ri_bulk_vctr( pz, psst, ptha, pssq, pqa, pub )
+   FUNCTION Ri_bulk_vctr( pz, psst, ptha, pssq, pqa, pub,  pta_layer, pqa_layer )
       REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_vctr
       REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
@@ -409,10 +419,20 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pta_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
+      !!
+      LOGICAL  :: l_ptqa_l_prvd = .FALSE.
       INTEGER  ::   ji, jj
+      IF( PRESENT(pta_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       DO jj = 1, jpj
          DO ji = 1, jpi
-            Ri_bulk_vctr(ji,jj) = Ri_bulk_sclr( pz, psst(ji,jj), ptha(ji,jj), pssq(ji,jj), pqa(ji,jj), pub(ji,jj) )
+            IF ( l_ptqa_l_prvd ) THEN
+               Ri_bulk_vctr(ji,jj) = Ri_bulk_sclr( pz, psst(ji,jj), ptha(ji,jj), pssq(ji,jj), pqa(ji,jj), pub(ji,jj), &
+                  &                                pta_layer=pta_layer(ji,jj ),  pqa_layer=pqa_layer(ji,jj ) )
+            ELSE
+               Ri_bulk_vctr(ji,jj) = Ri_bulk_sclr( pz, psst(ji,jj), ptha(ji,jj), pssq(ji,jj), pqa(ji,jj), pub(ji,jj) )
+            END IF
          END DO
       END DO
    END FUNCTION Ri_bulk_vctr

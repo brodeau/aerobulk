@@ -263,9 +263,13 @@ PROGRAM TEST_AEROBULK_ICE
    !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
    tmp = Ri_bulk( zt, sit, theta_zt, siq, q_zt, W10 )
    WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
-   WRITE(6,*) ''
-
-
+   !WRITE(6,*) ' *** this was with:'
+   !WRITE(6,*)  ' sit =', sit
+   !WRITE(6,*)  ' theta_zt =', theta_zt
+   !WRITE(6,*)  ' sit =', siq
+   !WRITE(6,*)  ' q_zt =', q_zt
+   !WRITE(6,*)  ' W10 =', W10
+   !WRITE(6,*) ''
 
 
 
