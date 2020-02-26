@@ -16,9 +16,16 @@ EOF
 2
 EOF
 
-# Lupkes & Gryanik (2015)
+# Lupkes & Gryanik, 90% ice (2015)
 ./bin/test_aerobulk_ice_series.x -f ${F_IN} <<EOF
 3
+10
+2
+EOF
+
+# Lupkes & Gryanik, FULL (2015)
+./bin/test_aerobulk_ice_series.x -f ${F_IN} <<EOF
+4
 10
 2
 EOF

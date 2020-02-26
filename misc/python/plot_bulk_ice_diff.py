@@ -34,11 +34,11 @@ clr_mod = '#008ab8'
 #rDPI=400.
 rDPI=150.
 
-L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lu15'     ,  'best'  ]
+L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lg15'     ,  'lg15oi'  ]
 l_color = [   '0.1'    ,   clr_gre      , clr_blu       ,  clr_red ] ; # colors to differentiate algos on the plot
 l_width = [     1      ,       1        ,     0.6       ,    0.5   ] ; # line-width to differentiate algos on the plot
 l_style = [    '-'     ,      '-'       ,     '-'       ,  '--'    ] ; # line-style
-l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes (2015)','Brodeau' ]
+l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 90% (2015)','Lupkes & Gryanik (2015)' ]
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
 #L_VARO  = [   'Qlat'    ,    'Qsen'     ,     'Qnet'   ,   'Qlw'     ,  'Tau'      ,    'dT_skin'         ] ; # name of variable on figure
@@ -48,7 +48,7 @@ l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes (2015)','Brodeau' ]
 #L_VMIN  = [   -250.     ,    -25.       ,   -400.      ,   -150.     ,    0.       ,       0.7            ]
 #L_ANOM  = [   True      ,    True       ,    True      ,    True     ,   True      ,      False           ]
 
-L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib'    ]
+L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib_zu' ]
 L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib'    ] ; # name of variable on figure
 L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$', r'$Ri_{B}$'] ; # name of variable in latex mode
 L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''    ,    r''     ]

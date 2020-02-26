@@ -203,25 +203,27 @@ CONTAINS
          !! ======================
          !! PROBLEM: when computed at z=zu, with adjusted theta and q, it is numerically unstable in some rare events (unstable)
          !!          => fix: compute RiB at zt, with ajusted wind at zt... => seems to be more stable
-         !RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )  ! over ice (index=1)
-         ! or use RiB at zt: !lolo
          IF( .NOT. l_zt_equal_zu ) THEN
             ! U_zt = U_zu + u_star/vkarmn*(LOG(zt/zu) + psi_m_coare(zu/L) - psi_m_coare(zt/L))
             xtmp1(:,:) = zCdN_s(:,:,1) + zCdN_f(:,:,1)    ! total neutral drag coeff!
             xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2(:,:) = MAX ( U_blk(:,:) + (SQRT(zCd(:,:,1))*U_blk)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*U_blk == u* !)
+            xtmp2(:,:) = MAX( U_blk(:,:) + (SQRT(zCd(:,:,1))*U_blk)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*U_blk == u* !)
+            xtmp2(:,:) = MIN( xtmp2(:,:) , U_blk(:,:) )
             IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
          ELSE
             xtmp2(:,:) = U_blk(:,:)
          END IF
          RiB(:,:,1) = Ri_bulk( zt, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), xtmp2(:,:) )  ! over ice (index=1)
-
-
-         !RiB(:,:,2) = Ri_bulk( zu, Ts_w(:,:), zt_zu(:,:,2), qs_w(:,:), zq_zu(:,:,2), U_blk(:,:) )  ! over ice (index=2)
          IF(l_dbg_print) PRINT *, 'LOLO: RiB_zt =', RiB(:,:,1)
 
+         !RiB(:,:,1) = Ri_bulk( zu, Ts_i(:,:), zt_zu(:,:,1), qs_i(:,:), zq_zu(:,:,1), U_blk(:,:) )
+         !IF(l_dbg_print) PRINT *, 'LOLO: RiB_zu =', RiB(:,:,1)
+
+         !RiB(:,:,2) = Ri_bulk( zu, Ts_w(:,:), zt_zu(:,:,2), qs_w(:,:), zq_zu(:,:,2), U_blk(:,:) )  ! over ice (index=2)
+         
+         
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
          zCd(:,:,1) = zCdN_s(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.6)
          zCh(:,:,1) = zChN_s(:,:,1) * f_h_louis( zu, RiB(:,:,1), zCdN_s(:,:,1), zz0_s(:,:,1) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
