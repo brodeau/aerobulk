@@ -187,8 +187,8 @@ CONTAINS
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m(zeta_u)
-         ztmp0 = MAX( 0.25_wp , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
-         ztmp0 = CD_N10_NCAR(ztmp0)                                               ! Cd_n10
+         ztmp0 = MAX( 0.25_wp , UN10_from_CD(zu, U_blk, Cd, ppsi=ztmp2) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
+         ztmp0 = CD_N10_NCAR(ztmp0)                                       ! Cd_n10
          sqrtCdn10 = sqrt(ztmp0)
 
          !! Update of transfer coefficients:
@@ -213,7 +213,7 @@ CONTAINS
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*U_blk
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   = U_blk/(1. + sqrtCdn10/vkarmn*(LOG(zu/10.) - psi_m(zeta_u)))
+      IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, U_blk, Cd, ppsi=psi_m(zeta_u) )
 
       DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 

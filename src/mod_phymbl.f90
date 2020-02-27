@@ -115,6 +115,8 @@ MODULE mod_phymbl
    PUBLIC qlw_net
    PUBLIC z0_from_Cd
    PUBLIC f_m_louis, f_h_louis
+   PUBLIC UN10_from_CDN
+   PUBLIC UN10_from_CD
 
    REAL(wp), PARAMETER :: repsilon = 1.e-6
 
@@ -1091,8 +1093,41 @@ CONTAINS
 
 
 
+   FUNCTION UN10_from_CDN( pzu, pUb, pCdn, ppsi )
+      !!----------------------------------------------------------------------------------
+      !!  Provides the neutral-stability wind speed at 10 m
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: UN10_from_CDN  !: [m/s]
+      REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCdn !: neutral-stability drag coefficient
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" correction profile in non neutral conditions []
+      !!----------------------------------------------------------------------------------
+      UN10_from_CDN(:,:) = pUb / ( 1._wp + SQRT(pCdn(:,:))/vkarmn * (LOG(pzu/10._wp) - ppsi(:,:)) )
+      !!
+   END FUNCTION UN10_from_CDN
+
+   
+   FUNCTION UN10_from_CD( pzu, pUb, pCd, ppsi )
+      !!----------------------------------------------------------------------------------
+      !!  Provides the neutral-stability wind speed at 10 m
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: UN10_from_CD  !: [m/s]
+      REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd  !: drag coefficient
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" correction profile in non neutral conditions []
+      !!----------------------------------------------------------------------------------
+      !! Reminder: UN10 = u*/vkarmn * log(10/z0)
+      !!     and: u* = sqrt(Cd) * Ub
+      !!                                  u*/vkarmn * log(   10   /       z0    ) 
+      UN10_from_CD(:,:) = SQRT(pCd(:,:))*pUb/vkarmn * LOG( 10._wp / z0_from_Cd( pzu, pCd(:,:), ppsi=ppsi(:,:) ) )
+      !!
+   END FUNCTION UN10_from_CD
 
 
+
+   
 
 
 
