@@ -86,7 +86,7 @@ CONTAINS
       &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                           &
       &                      Qsw, rad_lw, slp, pdT_cs,                                & ! optionals for cool-skin (and warm-layer)
       &                      pdT_wl, pHz_wl,                                          & ! optionals for warm-layer only
-      &                      xz0, xu_star, xL, xUN10 )
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
       !!
@@ -144,10 +144,13 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
-      !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Obukhov length                          [m]
-      !!    * xUN10       : neutral wind speed at 10m                          [m/s]
+      !!    * CdN      : neutral-stability drag coefficient
+      !!    * ChN      : neutral-stability sensible heat coefficient
+      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * xz0      : return the aerodynamic roughness length (integration constant for wind stress) [m]
+      !!    * xu_star  : return u* the friction velocity                    [m/s]
+      !!    * xL       : return the Obukhov length                          [m]
+      !!    * xUN10    : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
@@ -175,6 +178,9 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pHz_wl   !             [m]
       !
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
@@ -195,7 +201,8 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       !
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ecmwf@mod_blk_ecmwf.f90'
       !!----------------------------------------------------------------------------------
 
@@ -208,6 +215,9 @@ CONTAINS
 
       IF ( kt == nit000 ) CALL ECMWF_INIT(l_use_cs, l_use_wl)
 
+      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
+      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
+      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -396,6 +406,12 @@ CONTAINS
       ztmp2 = log(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = vkarmn*vkarmn/(func_m*ztmp2)
 
+
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
+      IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0t)
+      IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0q)
+      
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./Linv

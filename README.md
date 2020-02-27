@@ -37,22 +37,22 @@ Check that ```bin/test_aerobulk.x``` has been compiled and execute it:
      ./bin/test_aerobulk.x
 
 You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```test_aerobulk.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
-    
+
  List of command line options for ```test_aerobulk.x```:
 
     -p   => Ask for sea-level pressure, otherwize assume 1010 hPa
-     
+
     -r   => Ask for relative humidity rather than specific humidity
-     
+
     -S   => Use the Cool Skin Warm Layer parameterization to compute
             and use the skin temperature instead of the bulk SST
             only in COARE and ECMWF
-     
+
     -N   => Force neutral stability in surface atmospheric layer
             -> will not ask for air temp. at zt, instead will only
             ask for relative humidity at zt and will force the air
             temperature at zt that yields a neutral-stability!
-     
+
     -h   => Show this message
 
 
@@ -67,25 +67,31 @@ Example of an output obtained with the following setup:
 
 <!-- $$  SST = 22^{\circ}C \\ \theta_z = 20^{\circ}C $$ -->
 
-
-    ==============================================================================================
+     ==============================================================================================
        Algorithm:         coare3p0   |   coare3p6    |    ncar     |    ecmwf
      ==============================================================================================
-           C_D     =      1.194853       1.077194       1.203364       1.286136     [10^-3]
-           C_E     =      1.333859       1.371873       1.361128       1.314227     [10^-3]
-           C_H     =      1.333859       1.371873       1.276986       1.263498     [10^-3]
-     
-           z_0     =     4.4075474E-05  2.1968808E-05  4.4993241E-05  6.9879621E-05 [m]
-           u*      =     0.1757273      0.1669037      0.1734477      0.1819191     [m/s]
-           L       =     -20.49414      -17.06292      -20.60953      -24.04519     [m]
-           Ri_bulk =    -3.7855532E-02 -3.7841696E-02 -3.9046984E-02 -3.7954889E-02 [-]
-           UN10    =      5.417758       5.436250       5.338539       5.399049     [m/s]
-     Equ. Charn p. =     1.1003618E-02  4.2458484E-03  1.1553471E-02  1.8003261E-02
-     
-      Wind stress  =      36.17918       32.62693       35.83599       38.85762     [mN/m^2]
-      Evaporation  =      3.096374       3.186471       3.112082       3.045712     [mm/day]
-         QL        =     -87.76142      -90.31508      -88.20663      -86.32549     [W/m^2]
-         QH        =     -17.82528      -18.34391      -16.72399      -16.80469     [W/m^2]
+           C_D     =      1.195414       1.077550       1.203832       1.286208      [10^-3]
+           C_E     =      1.334589       1.372951       1.361890       1.314309      [10^-3]
+           C_H     =      1.334589       1.372951       1.277672       1.263574      [10^-3]
+
+           z_0     =     4.4093682E-05  2.1928567E-05  4.4988010E-05  6.9883550E-05  [m]
+           u*      =     0.1757807      0.1667222      0.1734814      0.1819254      [m/s]
+           L       =     -20.38346      -16.91987      -20.49400      -24.02985      [m]
+           Ri_bulk =    -3.7870664E-02 -3.7953738E-02 -3.9068658E-02 -3.7979994E-02  [-]
+
+       == Neutral-stability: ==
+           UN10    =      5.419222       5.431102       5.339627       5.399212      [m/s]
+           C_D_N   =      1.052128       0.942347       1.055562       1.135340      [10^-3]
+           C_E_N   =      1.107706       1.111940       1.124134       1.106443      [10^-3]
+           C_H_N   =      1.107706       1.111940       1.062404       1.068018      [10^-3]
+
+     Equ. Charn p. =     1.1003609E-02  4.2371023E-03  1.1547875E-02  1.8003255E-02
+
+      Wind stress  =      36.19867       32.59680       35.84993       38.86012      [mN/m^2]
+      Evaporation  =      3.105902       3.192532       3.121510       3.053830      [mm/day]
+         QL        =     -88.03146      -90.48684      -88.47384      -86.55556      [W/m^2]
+         QH        =     -17.83335      -18.33073      -16.73051      -16.80536      [W/m^2]
+
 
 # **> Computing turbulent fluxes with AeroBulk**
 
@@ -215,7 +221,7 @@ Using COARE 3.0 without the cool-skin warm-layer parameterization, with air temp
                   ...
               END PROGRAM TEST_COEFF
 
-In this case, Ts and qs, the surface temperature and saturation specific humidity won't be modified. The relevant value of qs must be provided as input.  
+In this case, Ts and qs, the surface temperature and saturation specific humidity won't be modified. The relevant value of qs must be provided as input.
 
 Now the same but using the cool-skin warm-layer parameterization:
 
@@ -227,7 +233,7 @@ Now the same but using the cool-skin warm-layer parameterization:
                   jpj = Nj ! y-shape of the 2D domain
                   ...
                   CALL TURB_COARE_3P0( '3.0', 2., 10., Ts, t2, qs, q2, U10, &
-                  &                Cd, Ch, Ce, t10, q10, U_blk,         & 
+                  &                Cd, Ch, Ce, t10, q10, U_blk,         &
                   &                Qsw=Rsw, rad_lw=Rlw, slp=MSL )
                   ...
               END PROGRAM TEST_COEFF
@@ -247,7 +253,7 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
                   USE mod_const
                   USE mod_phymbl
                   ...
-    
+
                   SSQ(:,:) = 0.98*q_sat(SST, SLP)
                   ...
               END PROGRAM TEST_PHYMBL
@@ -261,5 +267,5 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
 
 **> Acknowledging AeroBulk**
 
-_To acknowledge/reference AeroBulk in your scientific work, please cite:_  
-Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically significant effects of some approximations in the bulk parameterizations of turbulent air-sea fluxes. _J. Phys. Oceanogr._, **47 (1)**, 5–28, 10.1175/JPO-D-16-0169.1. [ [DOI](http://dx.doi.org/10.1175/JPO-D-16-0169.1) ]  
+_To acknowledge/reference AeroBulk in your scientific work, please cite:_
+Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically significant effects of some approximations in the bulk parameterizations of turbulent air-sea fluxes. _J. Phys. Oceanogr._, **47 (1)**, 5–28, 10.1175/JPO-D-16-0169.1. [ [DOI](http://dx.doi.org/10.1175/JPO-D-16-0169.1) ]

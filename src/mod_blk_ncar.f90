@@ -39,7 +39,7 @@ CONTAINS
    !   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, SLP, gamma, &
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
       &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,                  &
-      &                   xz0, xu_star, xL, xUN10 )
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
       !!
@@ -71,33 +71,39 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
-      !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Obukhov length                          [m]
-      !!    * xUN10       : neutral wind speed at 10m                          [m/s]
+      !!    * CdN      : neutral-stability drag coefficient
+      !!    * ChN      : neutral-stability sensible heat coefficient
+      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * xz0      : return the aerodynamic roughness length (integration constant for wind stress) [m]
+      !!    * xu_star  : return u* the friction velocity                    [m/s]
+      !!    * xL       : return the Obukhov length                          [m]
+      !!    * xUN10    : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in )                     ::   zt       ! height for t_zt and q_zt                    [m]
-      REAL(wp), INTENT(in )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   SLP      ! sea level pressure                         [Pa]
-      !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   gamma    ! adiabatic lapse-rate of moist air         [K/m]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   sst      ! sea surface temperature                [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
+      !REAL(wp), INTENT(in  ), DIMENSION(jpi,jpj) ::   SLP      ! sea level pressure                         [Pa]
+      !REAL(wp), INTENT(in  ), DIMENSION(jpi,jpj) ::   gamma    ! adiabatic lapse-rate of moist air         [K/m]
+      REAL(wp), INTENT( out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -108,7 +114,8 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
       !
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ncar@mod_blk_ncar.f90'
       !!----------------------------------------------------------------------------------
 
@@ -116,6 +123,9 @@ CONTAINS
          &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj),      &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
+      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
+      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
+      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -210,6 +220,9 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
 
+      IF( lreturn_cdn )   CdN = sqrtCdn10*sqrtCdn10
+      IF( lreturn_chn )   ChN = CH_N10_NCAR( sqrtCdn10 , 0.5_wp+sign(0.5_wp,zeta_u) )
+      IF( lreturn_cen )   CeN = CE_N10_NCAR( sqrtCdn10 )
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*U_blk
       IF( lreturn_L )     xL      = zu/zeta_u

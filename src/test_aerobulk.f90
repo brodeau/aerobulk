@@ -19,7 +19,8 @@ PROGRAM TEST_AEROBULK
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw, vQu_sane
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw, vQu_sane,        &
+      &           vCdN, vChN, vCeN
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -34,7 +35,7 @@ PROGRAM TEST_AEROBULK
    INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
+   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10, zCdN, zChN, zCeN
 
    REAL(wp), DIMENSION(lx,ly) :: sst, Ts, qsat_zt, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
@@ -126,7 +127,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
    CALL prtcol( 6, 'zu', zu, 'm' )
    CALL prtcol( 6, 'zt', zt, 'm' )
-   
+
    IF ( zt < 10. ) THEN
       WRITE(czt,'(i1,"m")') INT(zt)
    ELSE
@@ -199,7 +200,7 @@ PROGRAM TEST_AEROBULK
    !! Spec. hum. at saturation at temperature == SST, in the presence of salt:
    ssq = rdct_qsat_salt*q_sat(sst, SLP)
 
-   
+
    IF ( l_force_neutral ) THEN
       !! At this stage we know the relative humidity at zt BUT not the temperature
       !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
@@ -211,11 +212,11 @@ PROGRAM TEST_AEROBULK
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
          t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
-      
+
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
       WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
       WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
-      
+
    END IF
 
 
@@ -303,7 +304,12 @@ PROGRAM TEST_AEROBULK
       calgob = TRIM(vca(ialgo))
 
       zz0 = 0.
-      zus = 0. ; zL = 0. ; zUN10 = 0.
+      zus = 0.
+      zL = 0.
+      zUN10 = 0.
+      zCdN = 0.
+      zChN = 0.
+      zCeN = 0.
 
 
       !! Mind that TURB_COARE and TURB_ECMWF will modify SST and SSQ if their
@@ -321,13 +327,15 @@ PROGRAM TEST_AEROBULK
          IF ( l_use_coolsk ) THEN
             CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,        &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
             CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
@@ -338,13 +346,15 @@ PROGRAM TEST_AEROBULK
          IF ( l_use_coolsk ) THEN
             CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,         &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,        &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
             CALL TURB_COARE3P6( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
@@ -353,19 +363,22 @@ PROGRAM TEST_AEROBULK
          !CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, SLP, rgamma, &
          CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
             &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
+            &            CdN=zCdN, ChN=zChN, CeN=zCeN,                       &
             &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
 
       CASE(4)
          IF ( l_use_coolsk ) THEN
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
-               &             Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,          &
+               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &             Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,        &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
-               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                               &
+               &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
+               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                               &
                &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
@@ -376,7 +389,7 @@ PROGRAM TEST_AEROBULK
 
       END SELECT
 
-      !! Absolute temperature at zu ?      
+      !! Absolute temperature at zu ?
       !t_zu = theta_zu ! first guess...
       !DO jq = 1, 4
       !   rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
@@ -384,14 +397,14 @@ PROGRAM TEST_AEROBULK
       !END DO
       t_zu = theta_zu - rgamma*zu    ! !! using the old gamma based on t_zt and q_zt seems like the wisest choice...
       vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
-      
+
       !! So what is the saturation at t_zu then ???
       vQu_sane(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
 
       vQu(ialgo)  =  q_zu(1,1)
-      
 
-            
+
+
       !! Bulk Richardson Number for layer "sea-level -- zu":
       tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
       vBRN(ialgo) = tmp(1,1)
@@ -418,6 +431,9 @@ PROGRAM TEST_AEROBULK
       vL(ialgo) = zL(1,1)
 
       vUN10(ialgo) = zUN10(1,1)
+      vCdN(ialgo)  = 1000.*zCdN(1,1)
+      vChN(ialgo)  = 1000.*zChN(1,1)
+      vCeN(ialgo)  = 1000.*zCeN(1,1)
 
       !! Air density at zu (10m)
       rho_zu = rho_air(t_zu, q_zu, SLP)
@@ -473,7 +489,7 @@ PROGRAM TEST_AEROBULK
    PRINT *, 'LOLO: test_aerobulk.f90 => gamma_moist =', rgamma
    PRINT *, 'LOLO: test_aerobulk.f90 => t_zu =', t_zu
    PRINT *, ''
- 
+
    WRITE(6,*) ''
 
 
@@ -505,7 +521,13 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '      u*      =   ', REAL(vus  ,4) , ' [m/s]'
    WRITE(6,*) '      L       =   ', REAL(vL   ,4) , ' [m]'
    WRITE(6,*) '      Ri_bulk =   ', REAL(vBRN ,4) , ' [-]'
+   WRITE(6,*) ''
+   WRITE(6,*) '                 *** Neutral-stability: ***'
    WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , ' [m/s]'
+   WRITE(6,*) '      C_D_N   =   ', REAL(vCdN ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_E_N   =   ', REAL(vCeN ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_H_N   =   ', REAL(vChN ,4) , ' [10^-3]'
+   WRITE(6,*) ''
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
    WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]'
