@@ -352,8 +352,9 @@ PROGRAM TEST_AEROBULK_ICE
 
       CASE(4)
          CALL TURB_ICE_LG15oi(1,zt, zu, sit,sst, theta_zt, siq,ssq, q_zt, W10, frci,  &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   Cd, Ch, Ce, theta_zu, q_zu,                           &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         Ublk = MAX( W10, wspd_thrshld_ice )
          
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP

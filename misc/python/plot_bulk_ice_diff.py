@@ -48,8 +48,8 @@ l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 90% (2015)','Lupkes &
 #L_VMIN  = [   -250.     ,    -25.       ,   -400.      ,   -150.     ,    0.       ,       0.7            ]
 #L_ANOM  = [   True      ,    True       ,    True      ,    True     ,   True      ,      False           ]
 
-L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib_zu' ]
-L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib'    ] ; # name of variable on figure
+L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ]
+L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ] ; # name of variable on figure
 L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$', r'$Ri_{B}$'] ; # name of variable in latex mode
 L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''    ,    r''     ]
 L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5    ,    5.      ]
