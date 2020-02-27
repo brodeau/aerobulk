@@ -52,7 +52,7 @@ L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     
 L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd'    ,   'Rib'    ] ; # name of variable on figure
 L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$', r'$Ri_{B}$'] ; # name of variable in latex mode
 L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''    ,    r''     ]
-L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.01   ,    3.5    ,    5.      ]
+L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5    ,    5.      ]
 L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.    ,   -5.      ]
 L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True   ,    False   ]
 
@@ -209,7 +209,7 @@ for ja in range(nb_algos):
     plt.scatter(vx, vcd, s=4, c='k', alpha=0.7)
     #label=l_lgnm[ja], zorder=10+ja)
     
-    ax1.set_ylim(0.,6.) ; # Range for CD*1000
+    ax1.set_ylim(0.,3.) ; # Range for CD*1000
     plt.ylabel(r'$C_D$')
     ax1.set_xlim(-2.,2.) ; # Range for RiB
     plt.xlabel(r'$Ri_B$')

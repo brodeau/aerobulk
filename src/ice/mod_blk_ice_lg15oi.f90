@@ -150,14 +150,14 @@ CONTAINS
       !! First guess of temperature and humidity at height zu:
       zt_zu(:,:,1) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
       zq_zu(:,:,1) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
-      zt_zu(:,:,2) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
-      zq_zu(:,:,2) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
+      !zt_zu(:,:,2) = MAX( t_zt(:,:) ,   100._wp )   ! who knows what's given on masked-continental regions...
+      !zq_zu(:,:,2) = MAX( q_zt(:,:) , 0.1e-6_wp )   !               "
 
       !! Air-Ice & Air-Sea differences (and we don't want them to be 0!)
       dt_zu(:,:,1) = zt_zu(:,:,1) - Ts_i
       dq_zu(:,:,1) = zq_zu(:,:,1) - qs_i
-      dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
-      dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
+      !dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
+      !dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
       dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
@@ -313,8 +313,15 @@ CONTAINS
          !xL    = 1./One_on_L(t_zu, q_zu, xtmp1*U_blk, Ch*mix_val_msh(dt_zu,frice)/xtmp1, Ce*mix_val_msh(dq_zu,frice)/xtmp1)
          xL    = 1./One_on_L( t_zu, q_zu, xtmp1*U_blk, Ch*dt_zu(:,:,1)/xtmp1, Ce*dq_zu(:,:,1)/xtmp1 )
       END IF
+      
+      IF( lreturn_UN10 ) THEN
+         xtmp1 = zCdN_s(:,:,1) + zCdN_f(:,:,1)  ! => CdN
+         xUN10 = SQRT(Cd) * U_blk/vkarmn * LOG( 10._wp / z0_from_Cd(zu, xtmp1) )
+         !xtmp2 = f_m_louis( zu, RiB(:,:,1), xtmp1, z0_from_Cd(zu, xtmp1) ) ! => f_m
+         !xUN10 = UN10_from_CD( zu, U_blk, Cd, ppsi=xtmp2 )
+      END IF
 
-      IF( lreturn_UN10 ) xUN10   = (SQRT(Cd) * U_blk) / vkarmn*LOG(10./(z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )) )
+      
 
       DEALLOCATE ( xtmp1, xtmp2 )
       DEALLOCATE ( dt_zu, dq_zu, zt_zu, zq_zu )
