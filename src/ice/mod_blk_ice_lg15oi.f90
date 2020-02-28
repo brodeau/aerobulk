@@ -55,7 +55,7 @@ CONTAINS
    SUBROUTINE turb_ice_lg15oi( kt, zt, zu, Ts_i, Ts_w, t_zt, qs_i, qs_w, q_zt, U_zu, frice, &
       &                        Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,                        &
       &                        Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,                            &
-      &                        xz0, xu_star, xL, xUN10 )
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lg15oi  ***
       !!
@@ -94,6 +94,9 @@ CONTAINS
       !!    *  Ce_w   : sublimation coefficient over water
       !!    *  t_zu_w : pot. air temp. adjusted at zu over water             [K]
       !!    *  q_zu_w : spec. hum. of air adjusted at zu over water          [kg/kg]
+      !!    * CdN      : neutral-stability drag coefficient
+      !!    * ChN      : neutral-stability sensible heat coefficient
+      !!    * CeN      : neutral-stability evaporation coefficient
       !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star : return u* the friction velocity                    [m/s]
       !!    * xL      : return the Obukhov length                          [m]
@@ -124,10 +127,13 @@ CONTAINS
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Ce_w    ! transfert coefficient for sublimation over ice
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: t_zu_w  ! pot. air temp. adjusted at zu over water    [K]
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: q_zu_w  ! spec. humidity adjusted at zu over water [kg/kg]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xz0     ! Aerodynamic roughness length                [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xu_star ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xL      ! Obukhov length                              [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xUN10   ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -137,8 +143,10 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zCd, zCh, zCdN_s, zChN_s, zCdN_f, zChN_f
 
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       LOGICAL :: lreturn_o_water=.FALSE.
+      !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15oi@mod_blk_ice_lg15oi.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
@@ -150,6 +158,9 @@ CONTAINS
       lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
 
       IF( PRESENT(Cd_w) ) lreturn_o_water = .TRUE.
+      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
+      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
+      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -319,6 +330,10 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
       IF(l_dbg_print) PRINT *, ''!LOLO
+      
+      IF( lreturn_cdn )   CdN = zCdN_s(:,:,1)+zCdN_f(:,:,1)
+      IF( lreturn_chn )   ChN = zChN_s(:,:,1)+zChN_f(:,:,1)
+      IF( lreturn_cen )   CeN = zChN_s(:,:,1)+zChN_f(:,:,1)
 
       !! Result is ice + ocean:
       !t_zu(:,:) = mix_val_msh(zt_zu, frice)

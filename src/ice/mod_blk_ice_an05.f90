@@ -13,7 +13,7 @@ MODULE mod_blk_ice_an05
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
+   !!   * the "effective" bulk wind speed at zu: Ub (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!       Routine turb_ice_an05 maintained and developed in AeroBulk
@@ -23,7 +23,7 @@ MODULE mod_blk_ice_an05
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
-   USE mod_phymbl      !: misc. physical functions 
+   USE mod_phymbl      !: misc. physical functions
 
    IMPLICIT NONE
    PRIVATE
@@ -34,9 +34,9 @@ MODULE mod_blk_ice_an05
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_an05( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu, &
-      &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,             &
-      &                     xz0, xu_star, xL, xUN10 )
+   SUBROUTINE turb_ice_an05( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu,         &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                       &
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_an05  ***
       !!
@@ -50,9 +50,9 @@ CONTAINS
       !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
-      !!    *  Ti_s  : surface temperature of sea-ice                         [K]
+      !!    *  Ts_i  : surface temperature of sea-ice                         [K]
       !!    *  t_zt : potential air temperature at zt                         [K]
-      !!    *  qi_s  : SSQ aka saturation specific humidity at temp. Ti_s     [kg/kg]
+      !!    *  qs_i  : saturation specific humidity at temp. Ts_i over ice    [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!
@@ -63,37 +63,43 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind speed at zu                                 [m/s]
+      !!    *  Ub     : bulk wind speed at zu that we used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * xz0         : return the aerodynamic roughness length (integration constant for wind stress) [m]
-      !!    * xu_star     : return u* the friction velocity                    [m/s]
-      !!    * xL          : return the Obukhov length                          [m]
-      !!    * xUN10       : neutral wind speed at 10m                          [m/s]
+      !!    * CdN      : neutral-stability drag coefficient
+      !!    * ChN      : neutral-stability sensible heat coefficient
+      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
+      !!    * xu_star : return u* the friction velocity                    [m/s]
+      !!    * xL      : return the Obukhov length                          [m]
+      !!    * xUN10   : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, January 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in )                     ::   kt       ! current time step
-      REAL(wp), INTENT(in )                     ::   zt       ! height for t_zt and q_zt                    [m]
-      REAL(wp), INTENT(in )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   Ti_s     ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   qi_s     ! specific humidity at ice/air interface  [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
+      INTEGER,  INTENT(in )                     :: kt    ! current time step
+      REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd    ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch    ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce    ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu  ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu  ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
-      !
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
+      !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
@@ -103,19 +109,24 @@ CONTAINS
          &  znu_a,           & !: Nu_air = kinematic viscosity of air
          &  z0
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE  :: z0tq
-      
+
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
       !
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_an05@mod_blk_ice_an05.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj),  q_star(jpi,jpj),  &
          &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),   dq_zu(jpi,jpj),  &
          &        znu_a(jpi,jpj),  ztmp1(jpi,jpj),   ztmp2(jpi,jpj),  &
          &           z0(jpi,jpj),   z0tq(jpi,jpj,2), ztmp0(jpi,jpj)   )
-      
+
+      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
+      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
+      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -127,27 +138,27 @@ CONTAINS
 
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      U_blk = MAX( U_zu, wspd_thrshld_ice )
-           
+      Ub = MAX( U_zu, wspd_thrshld_ice )
+
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
-      
+
       !! Air-Ice differences (and we don't want it to be 0!)
-      dt_zu = t_zu - Ti_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-      dq_zu = q_zu - qi_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      dt_zu = t_zu - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+      dq_zu = q_zu - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
-      
+
       !! Very crude first guesses of z0:
       z0 = 8.0E-4_wp
-      
+
       !! Crude first guess of turbulent scales
-      u_star = 0.035_wp*U_blk*LOG( 10._wp/z0 )/LOG( zu/z0 )
+      u_star = 0.035_wp*Ub*LOG( 10._wp/z0 )/LOG( zu/z0 )
       z0 = rough_leng_m( u_star , znu_a )
 
       DO j_itt = 1, 2
-         u_star = MAX ( U_blk*vkarmn/(LOG(zu) - LOG(z0)) , 1.E-9 )
+         u_star = MAX ( Ub*vkarmn/(LOG(zu) - LOG(z0)) , 1.E-9 )
          z0 = rough_leng_m( u_star , znu_a )
       END DO
 
@@ -156,7 +167,7 @@ CONTAINS
       q_star = dq_zu*vkarmn/(LOG(zu/z0tq(:,:,2)))
 
 
-      
+
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
@@ -177,27 +188,32 @@ CONTAINS
          z0tq = rough_leng_tq( z0, u_star , znu_a )
 
          !! Turbulent scales at zu :
-         ztmp0   = psi_h_ice(zeta_u)         
+         ztmp0   = psi_h_ice(zeta_u)
          t_star =      dt_zu*vkarmn/(LOG(zu) - LOG(z0tq(:,:,1)) - ztmp0)
          q_star =      dq_zu*vkarmn/(LOG(zu) - LOG(z0tq(:,:,2)) - ztmp0)
-         u_star = MAX( U_blk*vkarmn/(LOG(zu) - LOG(z0(:,:)) - psi_m_ice(zeta_u)) , 1.E-9 )
+         u_star = MAX( Ub*vkarmn/(LOG(zu) - LOG(z0(:,:)) - psi_m_ice(zeta_u)) , 1.E-9 )
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
             ztmp1 = LOG(zt/zu) + ztmp0 - psi_h_ice(zeta_t)
             t_zu = t_zt - t_star/vkarmn*ztmp1
             q_zu = q_zt - q_star/vkarmn*ztmp1
-            dt_zu = t_zu - Ti_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-            dq_zu = q_zu - qi_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+            dt_zu = t_zu - Ts_i ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+            dq_zu = q_zu - qs_i ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
-         
+
       END DO !DO j_itt = 1, nb_itt
 
       ! compute transfer coefficients at zu :
-      ztmp0 = u_star/U_blk
+      ztmp0 = u_star/Ub
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
+
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
+      IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0tq(:,:,1))
+      IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0tq(:,:,2))
 
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
@@ -226,18 +242,18 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
-            
+
             zus = MAX( pus(ji,jj) , 1.E-9_wp )
 
             zz = (zus - 0.18_wp) / 0.1_wp
-            
+
             rough_leng_m(ji,jj) = 0.135*pnua(ji,jj)/zus + 0.035*zus*zus/grav*( 5.*EXP(-zz*zz) + 1._wp ) ! Eq.(19) Andreas et al., 2005
-            
+
          END DO
       END DO
       !!
    END FUNCTION rough_leng_m
-   
+
    FUNCTION rough_leng_tq( pz0, pus , pnua )
       !!----------------------------------------------------------------------------------
       !! Computes the roughness length of sea-ice according to Andreas et al. 2005, (eq. 22)
@@ -268,18 +284,18 @@ CONTAINS
             ztrans = 0.5_wp + SIGN( 0.5_wp, (2.49999_wp - zre) ) - zsmoot
             !! Rough ( R* > 2.5):
             zrough = 0.5_wp + SIGN( 0.5_wp, (zre - 2.5_wp) )
-            
+
             IF( (zsmoot+ztrans+zrough > 1.001_wp).OR.(zsmoot+ztrans+zrough < 0.999_wp) ) &
                CALL ctl_stop( ' rough_leng_tq@mod_blk_ice_an05.f90 => something wrong with zsmoot, ztrans, zrough!' )
 
             zlog  = LOG(zre)
             zlog2 = zlog*zlog
-            
+
             !! z0t:
             zb0 = zsmoot*1.25_wp + ztrans*0.149_wp + zrough*0.317_wp
             zb1 =                - ztrans*0.550_wp - zrough*0.565_wp
             zb2 =                                  - zrough*0.183_wp
-            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2            
+            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2
             rough_leng_tq(ji,jj,1) = zz0 * EXP( zlog_z0s_on_z0 )
 
             !! z0q:
@@ -287,7 +303,7 @@ CONTAINS
             zb1 =                - ztrans*0.628_wp - zrough*0.512_wp
             zb2 =                                  - zrough*0.180_wp
             zlog = LOG(zre)
-            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2            
+            zlog_z0s_on_z0 = zb0 + zb1*zlog + zb2*zlog2
             rough_leng_tq(ji,jj,2) = zz0 * EXP( zlog_z0s_on_z0 )
 
          END DO
@@ -301,7 +317,7 @@ CONTAINS
 
 
 
-   
+
 
    FUNCTION psi_m_ice( pzeta )
       !!----------------------------------------------------------------------------------

@@ -13,7 +13,7 @@ MODULE mod_cswl_ecmwf
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
-   !!   * the effective bulk wind speed at 10m U_blk
+   !!   * the effective bulk wind speed at 10m Ub
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!    Using the bulk formulation/param. of ECMWF

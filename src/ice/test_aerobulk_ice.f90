@@ -7,7 +7,7 @@ PROGRAM TEST_AEROBULK_ICE
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
-   
+
    IMPLICIT NONE
 
    INTEGER, PARAMETER :: nb_algos = 3
@@ -17,7 +17,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap
+      &           vUN10, vQL, vTau, vQH, vEvap,       &
+      &           vCdN, vChN, vCeN
 
    INTEGER, PARAMETER ::   &
       &   n_dt   = 21,   &
@@ -32,7 +33,7 @@ PROGRAM TEST_AEROBULK_ICE
    INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10
+   REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10, zCdN, zChN, zCeN
 
    REAL(wp), DIMENSION(lx,ly) :: sit, Ts, qsat_zt, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, siq, qs, rho_zu, &
@@ -112,12 +113,13 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) 'Give "zt", height of air temp. and humidity measurement in meters (generally 2 or 10):'
    READ(*,*) zt
-   WRITE(6,*) ''
-
-
    IF ( (zt > 99.).OR.(zu > 99.) ) THEN
       WRITE(6,*) 'Be reasonable in your choice of zt or zu, they should not exceed a few tenths of meters!' ; STOP
    END IF
+   WRITE(6,*) ''
+   CALL prtcol( 6, 'zu', zu, 'm' )
+   CALL prtcol( 6, 'zt', zt, 'm' )
+
    IF ( zt < 10. ) THEN
       WRITE(czt,'(i1,"m")') INT(zt)
    ELSE
@@ -141,11 +143,13 @@ PROGRAM TEST_AEROBULK_ICE
    sit = sit + rt0
    WRITE(6,*) 'For this sit the latent heat of vaporization is L_vap =', L_vap(sit), ' [J/kg]'
    WRITE(6,*) ''
+   CALL prtcol( 6, 'SIT', sit(1,1), 'K' )
 
    IF ( .NOT. l_force_neutral ) THEN
-      WRITE(6,*) 'Give temperature at ',TRIM(czt),' (deg. C):'
+      WRITE(6,*) 'Give absolute temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) t_zt
       t_zt = t_zt + rt0
+      CALL prtcol( 6, 't_zt', t_zt(1,1), 'K' )
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
    ELSE
       WRITE(6,*) 'NOT ASKING FOR temperature at ',TRIM(czt),', because you use the "-N" flag => NEUTRAL!'
@@ -181,13 +185,13 @@ PROGRAM TEST_AEROBULK_ICE
       WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
       !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    END IF
-   WRITE(6,*) ''
 
+   CALL prtcol( 6, 'q_zt', q_zt(1,1), 'kg/kg' )
 
    !! Spec. hum. at saturation at temperature == SIT, over sea-ice:
    siq = q_sat( sit, SLP, l_ice=.TRUE. )
 
-   
+
    IF ( l_force_neutral ) THEN
       !! At this stage we know the relative humidity at zt BUT not the temperature
       !! We need to find the air temperature that yields neutral-stability, i.e. vertical gradient of
@@ -199,11 +203,11 @@ PROGRAM TEST_AEROBULK_ICE
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
          t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
-      
+
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
       WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
       WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
-      
+
    END IF
 
 
@@ -250,8 +254,7 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''; WRITE(6,*) ''
 
    WRITE(6,*) 'Give wind speed at zu (m/s):'
-   READ(*,*) W10
-   WRITE(6,*) ''
+   READ(*,*) W10 ; CALL prtcol( 6, ' wind speed at zu', W10(1,1), 'm/s' )
 
 
    !! We have enough to calculate the bulk Richardson number:
@@ -263,13 +266,7 @@ PROGRAM TEST_AEROBULK_ICE
    !WRITE(6,*) ' *** Bulk Richardson number "a la COARE":', REAL(tmp, 4)
    tmp = Ri_bulk( zt, sit, theta_zt, siq, q_zt, W10 )
    WRITE(6,*) ' *** Initial Bulk Richardson number:', REAL(tmp, 4)
-   !WRITE(6,*) ' *** this was with:'
-   !WRITE(6,*)  ' sit =', sit
-   !WRITE(6,*)  ' theta_zt =', theta_zt
-   !WRITE(6,*)  ' sit =', siq
-   !WRITE(6,*)  ' q_zt =', q_zt
-   !WRITE(6,*)  ' W10 =', W10
-   !WRITE(6,*) ''
+   WRITE(6,*) ''
 
 
 
@@ -279,7 +276,12 @@ PROGRAM TEST_AEROBULK_ICE
       calgob = TRIM(vca(ialgo))
 
       zz0 = 0.
-      zus = 0. ; zL = 0. ; zUN10 = 0.
+      zus = 0.
+      zL = 0.
+      zUN10 = 0.
+      zCdN = 0.
+      zChN = 0.
+      zCeN = 0.
 
 
       Ts = sit
@@ -288,24 +290,27 @@ PROGRAM TEST_AEROBULK_ICE
 
       SELECT CASE(ialgo)
 
-      CASE(1)         
-         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,   &
+      CASE(1)
+         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
-      CASE(2)         
-         CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,   &
+
+      CASE(2)
+         CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
-      CASE(3)         
-         CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,   &
+
+      CASE(3)
+         CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
+
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
-         
+
       END SELECT
 
 
@@ -345,6 +350,9 @@ PROGRAM TEST_AEROBULK_ICE
       vL(ialgo) = zL(1,1)
 
       vUN10(ialgo) = zUN10(1,1)
+      vCdN(ialgo)  = 1000.*zCdN(1,1)
+      vChN(ialgo)  = 1000.*zChN(1,1)
+      vCeN(ialgo)  = 1000.*zCeN(1,1)
 
       !! Air density at zu (10m)
       rho_zu = rho_air(t_zu, q_zu, SLP)
@@ -411,25 +419,43 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , '[10^-3]'
-   WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , '[10^-3]'
-   WRITE(6,*) '      C_H     =   ', REAL(vCh  ,4) , '[10^-3]'
+   WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_H     =   ', REAL(vCh  ,4) , ' [10^-3]'
    WRITE(6,*) ''
-   WRITE(6,*) '      z_0     =   ', REAL(vz0  ,4) , '[m]'
-   WRITE(6,*) '      u*      =   ', REAL(vus  ,4) , '[m/s]'
-   WRITE(6,*) '      L       =   ', REAL(vL   ,4) , '[m]'
-   WRITE(6,*) '      Ri_bulk =   ', REAL(vBRN ,4) , '[-]'
-   WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , '[m/s]'
+   WRITE(6,*) '      z_0     =   ', REAL(vz0  ,4) , ' [m]'
+   WRITE(6,*) '      u*      =   ', REAL(vus  ,4) , ' [m/s]'
+   WRITE(6,*) '      L       =   ', REAL(vL   ,4) , ' [m]'
+   WRITE(6,*) '      Ri_bulk =   ', REAL(vBRN ,4) , ' [-]'
+   WRITE(6,*) ''
+   WRITE(6,*) '                 *** Neutral-stability: ***'
+   WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , ' [m/s]'
+   WRITE(6,*) '      C_D_N   =   ', REAL(vCdN ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_E_N   =   ', REAL(vCeN ,4) , ' [10^-3]'
+   WRITE(6,*) '      C_H_N   =   ', REAL(vChN ,4) , ' [10^-3]'
+   WRITE(6,*) ''
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
-   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , '[mN/m^2]'
-   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , '[mm/day]'
-   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , '[W/m^2]'
-   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , '[W/m^2]'
+   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]'
+   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]'
+   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , ' [W/m^2]'
+   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , ' [W/m^2]'
    WRITE(6,*) ''
 
    WRITE(6,*) ''
    CLOSE(6)
+
+CONTAINS
+
+   SUBROUTINE prtcol( id, cs1, pval, cs2 )
+      INTEGER,          INTENT(in) :: id
+      CHARACTER(len=*), INTENT(in) :: cs1
+      REAL(wp),         INTENT(in) :: pval
+      CHARACTER(len=*), INTENT(in) :: cs2
+      WRITE(id,*) ACHAR(27)//'[95m *** '//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
+      WRITE(id,*) ''
+   END SUBROUTINE prtcol
+
 
 END PROGRAM TEST_AEROBULK_ICE
 

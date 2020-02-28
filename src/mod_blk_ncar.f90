@@ -14,7 +14,7 @@ MODULE mod_blk_ncar
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
-   !!   * the effective bulk wind speed at 10m U_blk
+   !!   * the effective bulk wind speed at 10m Ub
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!    Using the bulk formulation/param. of Large & Yeager 2008
@@ -38,7 +38,7 @@ CONTAINS
 
    !   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, SLP, gamma, &
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                  Cd, Ch, Ce, t_zu, q_zu, U_blk,                  &
+      &                  Cd, Ch, Ce, t_zu, q_zu, Ub,                  &
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
@@ -67,7 +67,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind speed at zu                                 [m/s]
+      !!    *  Ub  : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -95,7 +95,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ub    ! bulk wind speed at zu                     [m/s]
       !
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
@@ -134,9 +134,9 @@ CONTAINS
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      U_blk = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
+      Ub = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
-      ztmp0 = cd_n10_ncar( U_blk )
+      ztmp0 = cd_n10_ncar( Ub )
       sqrtCdn10 = SQRT( ztmp0 )
 
       !! Initializing transf. coeff. with their first guess neutral equivalents :
@@ -160,7 +160,7 @@ CONTAINS
          ztmp2 = q_zu - ssq
 
          ! Updating turbulent scales :   (L&Y 2004 Eq. (7))
-         ztmp0 = sqrtCd*U_blk       ! u*
+         ztmp0 = sqrtCd*Ub       ! u*
          ztmp1 = Ch/sqrtCd*ztmp1    ! theta*
          ztmp2 = Ce/sqrtCd*ztmp2    ! q*
 
@@ -197,7 +197,7 @@ CONTAINS
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m(zeta_u)
-         ztmp0 = MAX( 0.25_wp , UN10_from_CD(zu, U_blk, Cd, ppsi=ztmp2) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
+         ztmp0 = MAX( 0.25_wp , UN10_from_CD(zu, Ub, Cd, ppsi=ztmp2) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
          ztmp0 = CD_N10_NCAR(ztmp0)                                       ! Cd_n10
          sqrtCdn10 = sqrt(ztmp0)
 
@@ -224,9 +224,9 @@ CONTAINS
       IF( lreturn_chn )   ChN     = CH_N10_NCAR( sqrtCdn10 , 0.5_wp+sign(0.5_wp,zeta_u) )
       IF( lreturn_cen )   CeN     = CE_N10_NCAR( sqrtCdn10 )
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, sqrtCdn10*sqrtCdn10 )
-      IF( lreturn_ustar ) xu_star = SQRT( Cd )*U_blk
+      IF( lreturn_ustar ) xu_star = SQRT( Cd )*Ub
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, U_blk, Cd, ppsi=psi_m(zeta_u) )
+      IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, Ub, Cd, ppsi=psi_m(zeta_u) )
 
       DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 

@@ -17,7 +17,7 @@ MODULE mod_blk_coare3p6
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: U_blk (including gustiness contribution in unstable conditions)
+   !!   * the "effective" bulk wind speed at zu: Ub (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!       Routine turb_coare3p6 maintained and developed in AeroBulk
@@ -75,7 +75,7 @@ CONTAINS
 
 
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, U_blk,                              &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                              &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -134,7 +134,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  U_blk  : bulk wind speed at zu                                 [m/s]
+      !!    *  Ub  : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -163,7 +163,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ub    ! bulk wind speed at zu                     [m/s]
       !
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
@@ -245,11 +245,11 @@ CONTAINS
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      U_blk = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+      Ub = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
 
       ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
-      u_star = 0.035_wp*U_blk*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+      u_star = 0.035_wp*Ub*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn_coare3p6(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
@@ -261,7 +261,7 @@ CONTAINS
 
       ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
 
-      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, U_blk ) ! Bulk Richardson Number (BRN)
+      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ub ) ! Bulk Richardson Number (BRN)
 
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
@@ -273,7 +273,7 @@ CONTAINS
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
-      u_star = MAX ( U_blk*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+      u_star = MAX ( Ub*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
@@ -303,8 +303,8 @@ CONTAINS
          !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
          ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
          !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
-         U_blk = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
-         ! => 0.2 prevents U_blk to be 0 in stable case when U_zu=0.
+         Ub = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
+         ! => 0.2 prevents Ub to be 0 in stable case when U_zu=0.
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -332,7 +332,7 @@ CONTAINS
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
-         u_star = MAX( U_blk*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+         u_star = MAX( Ub*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
@@ -344,7 +344,7 @@ CONTAINS
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
 
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, U_blk, slp, rad_lw, &
+            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ub, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
             CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2 )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
@@ -356,7 +356,7 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, U_blk, slp, rad_lw, &
+            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ub, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
             CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
@@ -375,7 +375,7 @@ CONTAINS
       END DO !DO j_itt = 1, nb_itt
 
       ! compute transfer coefficients at zu :
-      ztmp0 = u_star/U_blk
+      ztmp0 = u_star/Ub
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu

@@ -12,7 +12,7 @@ MODULE mod_blk_ice_lg15
    !!       Computes turbulent components of surface fluxes over sea-ice
    !!       Following Lupkes & Gryanik, 2015
    !!
-   !!              => case when 100 % sea-ice
+   !!              => case when `rfixed_ice_frac0` % sea-ice
    !!
    !!       Routine turb_ice_lg15 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -47,8 +47,8 @@ MODULE mod_blk_ice_lg15
 CONTAINS
 
    SUBROUTINE turb_ice_lg15( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu,         &
-      &                        Cd, Ch, Ce, t_zu, q_zu, Ub,                  &
-      &                       xz0, xu_star, xL, xUN10 )
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                       &
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lg15  ***
       !!
@@ -75,10 +75,13 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ub  : bulk wind speed at zu that was used                    [m/s]
+      !!    *  Ub     : bulk wind speed at zu that we used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
+      !!    * CdN      : neutral-stability drag coefficient
+      !!    * ChN      : neutral-stability sensible heat coefficient
+      !!    * CeN      : neutral-stability evaporation coefficient
       !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star : return u* the friction velocity                    [m/s]
       !!    * xL      : return the Obukhov length                          [m]
@@ -101,10 +104,13 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu  ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xz0     ! Aerodynamic roughness length                [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xu_star ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xL      ! Obukhov length                              [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xUN10   ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -114,14 +120,18 @@ CONTAINS
       REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: frice
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f ! third dimensions (size=2): 1 => ice, 2 => water
 
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
       ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj), frice(jpi,jpj) )
       ALLOCATE ( zz0_s(jpi,jpj,2), zz0_f(jpi,jpj,2), RiB(jpi,jpj,2), zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
 
-
+      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
+      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
+      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
@@ -247,7 +257,10 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
       IF(l_dbg_print) PRINT *, ''!LOLO
-
+      
+      IF( lreturn_cdn )   CdN = zCdN_s(:,:,1)+zCdN_f(:,:,1)
+      IF( lreturn_chn )   ChN = zChN_s(:,:,1)+zChN_f(:,:,1)
+      IF( lreturn_cen )   CeN = zChN_s(:,:,1)+zChN_f(:,:,1)
 
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
       IF( lreturn_ustar ) xu_star = SQRT(Cd) * Ub
