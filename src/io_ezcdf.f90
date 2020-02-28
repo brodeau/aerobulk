@@ -1009,7 +1009,11 @@ CONTAINS
       &                 vdt13, cv_dt13, cun13, cln13,  &
       &                 vdt14, cv_dt14, cun14, cln14,  &
       &                 vdt15, cv_dt15, cun15, cln15,  &
-      &                 vdt16, cv_dt16, cun16, cln16   )
+      &                 vdt16, cv_dt16, cun16, cln16,  &
+      &                 vdt17, cv_dt17, cun17, cln17,  &
+      &                 vdt18, cv_dt18, cun18, cln18,  &
+      &                 vdt19, cv_dt19, cun19, cln19,  &
+      &                 vdt20, cv_dt20, cun20, cln20   )
 
       !! INPUT :
       !! -------
@@ -1032,19 +1036,25 @@ CONTAINS
       REAL(4),                    INTENT(in)  :: vflag
       CHARACTER(len=*), OPTIONAL, INTENT(in)  :: ct_unit, ct_clnd
       REAL(4), DIMENSION(:), OPTIONAL, INTENT(in)  :: vdt02, vdt03, vdt04, vdt05, vdt06, vdt07, vdt08, &
-         &                                            vdt09, vdt10, vdt11, vdt12, vdt13, vdt14, vdt15, vdt16
+         &                                            vdt09, vdt10, vdt11, vdt12, vdt13, vdt14, vdt15, &
+         &                                            vdt16, vdt17, vdt18, vdt19, vdt20
       CHARACTER(len=*),      OPTIONAL, INTENT(in)  :: cv_dt02, cv_dt03, cv_dt04, cv_dt05, cv_dt06, cv_dt07, cv_dt08, &
-         &                                            cv_dt09, cv_dt10, cv_dt11, cv_dt12, cv_dt13, cv_dt14, cv_dt15, cv_dt16, &
-         &                                            cun02, cun03, cun04, cun05, cun06, cun07, cun08, &
-         &                                            cun09, cun10, cun11, cun12, cun13, cun14, cun15, cun16, &
-         &                                            cln02, cln03, cln04, cln05, cln06, cln07, cln08,  &
-         &                                            cln09, cln10, cln11, cln12, cln13, cln14, cln15, cln16
+         &                                            cv_dt09, cv_dt10, cv_dt11, cv_dt12, cv_dt13, cv_dt14, cv_dt15, &
+         &                                            cv_dt16, cv_dt17, cv_dt18, cv_dt19, cv_dt20
+      CHARACTER(len=*),      OPTIONAL, INTENT(in)  :: cun02, cun03, cun04, cun05, cun06, cun07, cun08, &
+         &                                            cun09, cun10, cun11, cun12, cun13, cun14, cun15, &
+         &                                            cun16, cun17, cun18, cun19, cun20
+      CHARACTER(len=*),      OPTIONAL, INTENT(in) ::  cln02, cln03, cln04, cln05, cln06, cln07, cln08,  &
+         &                                            cln09, cln10, cln11, cln12, cln13, cln14, cln15,  &
+         &                                            cln16, cln17, cln18, cln19, cln20
       !!
       INTEGER :: idf, idtd, idt, nbt, jt
-      INTEGER :: idv01, idv02, idv03, idv04, idv05, idv06, idv07, idv08, idv09, idv10, idv11, idv12, idv13, idv14, idv15, idv16      
+      INTEGER :: idv01, idv02, idv03, idv04, idv05, idv06, idv07, idv08, idv09, idv10, &
+         &       idv11, idv12, idv13, idv14, idv15, idv16, idv17, idv18, idv19, idv20      
       REAL(4) :: rmin, rmax
-      LOGICAL :: ldv02=.FALSE., ldv03=.FALSE., ldv04=.FALSE., ldv05=.FALSE., ldv06=.FALSE., ldv07=.FALSE., ldv08=.FALSE., &
-         &       ldv09=.FALSE., ldv10=.FALSE., ldv11=.FALSE., ldv12=.FALSE., ldv13=.FALSE., ldv14=.FALSE., ldv15=.FALSE., ldv16=.FALSE.
+      LOGICAL :: ldv02=.FALSE.,ldv03=.FALSE.,ldv04=.FALSE.,ldv05=.FALSE.,ldv06=.FALSE.,ldv07=.FALSE.,ldv08=.FALSE.,ldv09=.FALSE., &
+         &       ldv10=.FALSE.,ldv11=.FALSE.,ldv12=.FALSE.,ldv13=.FALSE.,ldv14=.FALSE.,ldv15=.FALSE., &
+         &       ldv16=.FALSE.,ldv17=.FALSE.,ldv18=.FALSE.,ldv19=.FALSE.,ldv20=.FALSE.
 
       CHARACTER(len=80), PARAMETER :: crtn = 'PT_SERIES'
 
@@ -1063,25 +1073,33 @@ CONTAINS
       IF (PRESENT(vdt14)) ldv14=.true.
       IF (PRESENT(vdt15)) ldv15=.true.
       IF (PRESENT(vdt16)) ldv16=.true.
+      IF (PRESENT(vdt17)) ldv17=.true.
+      IF (PRESENT(vdt18)) ldv18=.true.
+      IF (PRESENT(vdt19)) ldv19=.true.
+      IF (PRESENT(vdt20)) ldv20=.true.
 
       nbt = SIZE(vtime,1)
       
-      IF (                    SIZE(vdt01,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #1 dont agree in size! => '//TRIM(cv_dt01))
-      IF ( ldv02 ) THEN ; IF ( SIZE(vdt02,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #2 dont agree in size! => '//TRIM(cv_dt02)); ENDIF
-      IF ( ldv03 ) THEN ; IF ( SIZE(vdt03,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #3 dont agree in size! => '//TRIM(cv_dt03)); ENDIF
-      IF ( ldv04 ) THEN ; IF ( SIZE(vdt04,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #4 dont agree in size! => '//TRIM(cv_dt04)); ENDIF
-      IF ( ldv05 ) THEN ; IF ( SIZE(vdt05,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #5 dont agree in size! => '//TRIM(cv_dt05)); ENDIF
-      IF ( ldv06 ) THEN ; IF ( SIZE(vdt06,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #6 dont agree in size! => '//TRIM(cv_dt06)); ENDIF
-      IF ( ldv07 ) THEN ; IF ( SIZE(vdt07,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #7 dont agree in size! => '//TRIM(cv_dt07)); ENDIF
-      IF ( ldv08 ) THEN ; IF ( SIZE(vdt08,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #8 dont agree in size! => '//TRIM(cv_dt08)); ENDIF
-      IF ( ldv09 ) THEN ; IF ( SIZE(vdt09,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #2 dont agree in size! => '//TRIM(cv_dt09)); ENDIF
-      IF ( ldv10 ) THEN ; IF ( SIZE(vdt10,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #3 dont agree in size! => '//TRIM(cv_dt10)); ENDIF
-      IF ( ldv11 ) THEN ; IF ( SIZE(vdt11,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #4 dont agree in size! => '//TRIM(cv_dt11)); ENDIF
-      IF ( ldv12 ) THEN ; IF ( SIZE(vdt12,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #5 dont agree in size! => '//TRIM(cv_dt12)); ENDIF
-      IF ( ldv13 ) THEN ; IF ( SIZE(vdt13,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #6 dont agree in size! => '//TRIM(cv_dt13)); ENDIF
-      IF ( ldv14 ) THEN ; IF ( SIZE(vdt14,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #7 dont agree in size! => '//TRIM(cv_dt14)); ENDIF
-      IF ( ldv15 ) THEN ; IF ( SIZE(vdt15,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #8 dont agree in size! => '//TRIM(cv_dt15)); ENDIF
-      IF ( ldv16 ) THEN ; IF ( SIZE(vdt16,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #8 dont agree in size! => '//TRIM(cv_dt16)); ENDIF
+      IF (                     SIZE(vdt01,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #01 dont agree in size! => '//TRIM(cv_dt01))
+      IF ( ldv02 ) THEN ; IF ( SIZE(vdt02,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #02 dont agree in size! => '//TRIM(cv_dt02)); ENDIF
+      IF ( ldv03 ) THEN ; IF ( SIZE(vdt03,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #03 dont agree in size! => '//TRIM(cv_dt03)); ENDIF
+      IF ( ldv04 ) THEN ; IF ( SIZE(vdt04,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #04 dont agree in size! => '//TRIM(cv_dt04)); ENDIF
+      IF ( ldv05 ) THEN ; IF ( SIZE(vdt05,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #05 dont agree in size! => '//TRIM(cv_dt05)); ENDIF
+      IF ( ldv06 ) THEN ; IF ( SIZE(vdt06,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #06 dont agree in size! => '//TRIM(cv_dt06)); ENDIF
+      IF ( ldv07 ) THEN ; IF ( SIZE(vdt07,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #07 dont agree in size! => '//TRIM(cv_dt07)); ENDIF
+      IF ( ldv08 ) THEN ; IF ( SIZE(vdt08,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #08 dont agree in size! => '//TRIM(cv_dt08)); ENDIF
+      IF ( ldv09 ) THEN ; IF ( SIZE(vdt09,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #09 dont agree in size! => '//TRIM(cv_dt09)); ENDIF
+      IF ( ldv10 ) THEN ; IF ( SIZE(vdt10,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #10 dont agree in size! => '//TRIM(cv_dt10)); ENDIF
+      IF ( ldv11 ) THEN ; IF ( SIZE(vdt11,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #11 dont agree in size! => '//TRIM(cv_dt11)); ENDIF
+      IF ( ldv12 ) THEN ; IF ( SIZE(vdt12,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #12 dont agree in size! => '//TRIM(cv_dt12)); ENDIF
+      IF ( ldv13 ) THEN ; IF ( SIZE(vdt13,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #13 dont agree in size! => '//TRIM(cv_dt13)); ENDIF
+      IF ( ldv14 ) THEN ; IF ( SIZE(vdt14,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #14 dont agree in size! => '//TRIM(cv_dt14)); ENDIF
+      IF ( ldv15 ) THEN ; IF ( SIZE(vdt15,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #15 dont agree in size! => '//TRIM(cv_dt15)); ENDIF
+      IF ( ldv16 ) THEN ; IF ( SIZE(vdt16,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #16 dont agree in size! => '//TRIM(cv_dt16)); ENDIF
+      IF ( ldv17 ) THEN ; IF ( SIZE(vdt17,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #17 dont agree in size! => '//TRIM(cv_dt17)); ENDIF
+      IF ( ldv18 ) THEN ; IF ( SIZE(vdt18,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #18 dont agree in size! => '//TRIM(cv_dt18)); ENDIF
+      IF ( ldv19 ) THEN ; IF ( SIZE(vdt19,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #19 dont agree in size! => '//TRIM(cv_dt19)); ENDIF
+      IF ( ldv20 ) THEN ; IF ( SIZE(vdt20,1)/=nbt ) CALL print_err(crtn, 'Time vec and series vec #20 dont agree in size! => '//TRIM(cv_dt20)); ENDIF
 
       IF ( vflag /= 0.) THEN
          rmin =  1.E6 ; rmax = -1.E6
@@ -1106,7 +1124,7 @@ CONTAINS
       CALL sherr( NF90_PUT_ATT(idf, idt, 'valid_max', vextrema(3,2)),                        crtn,cf_in,cv_t)
 
       !! Variable(s):
-      CALL             sherr( NF90_DEF_VAR(idf, TRIM(cv_dt01), NF90_FLOAT, idtd, idv01, deflate_level=9), crtn,cf_in,cv_dt01 )
+      CALL              sherr( NF90_DEF_VAR(idf, TRIM(cv_dt01), NF90_FLOAT, idtd, idv01, deflate_level=9), crtn,cf_in,cv_dt01 )
       IF ( ldv02 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt02), NF90_FLOAT, idtd, idv02, deflate_level=9), crtn,cf_in,cv_dt02 )
       IF ( ldv03 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt03), NF90_FLOAT, idtd, idv03, deflate_level=9), crtn,cf_in,cv_dt03 )
       IF ( ldv04 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt04), NF90_FLOAT, idtd, idv04, deflate_level=9), crtn,cf_in,cv_dt04 )
@@ -1122,6 +1140,10 @@ CONTAINS
       IF ( ldv14 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt14), NF90_FLOAT, idtd, idv14, deflate_level=9), crtn,cf_in,cv_dt14 )
       IF ( ldv15 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt15), NF90_FLOAT, idtd, idv15, deflate_level=9), crtn,cf_in,cv_dt15 )
       IF ( ldv16 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt16), NF90_FLOAT, idtd, idv16, deflate_level=9), crtn,cf_in,cv_dt16 )
+      IF ( ldv17 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt17), NF90_FLOAT, idtd, idv17, deflate_level=9), crtn,cf_in,cv_dt17 )
+      IF ( ldv18 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt18), NF90_FLOAT, idtd, idv18, deflate_level=9), crtn,cf_in,cv_dt18 )
+      IF ( ldv19 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt19), NF90_FLOAT, idtd, idv19, deflate_level=9), crtn,cf_in,cv_dt19 )
+      IF ( ldv20 ) CALL sherr( NF90_DEF_VAR(idf, TRIM(cv_dt20), NF90_FLOAT, idtd, idv20, deflate_level=9), crtn,cf_in,cv_dt20 )
 
       !! V01:
       CALL sherr( NF90_PUT_ATT(idf, idv01, 'long_name', trim(cln01) ),  crtn,cf_in,cv_dt01)
@@ -1220,6 +1242,30 @@ CONTAINS
          CALL sherr( NF90_PUT_ATT(idf, idv16, 'units',     TRIM(cun16) ),  crtn,cf_in,cv_dt16)
          IF ( vflag /= 0. ) CALL sherr( NF90_PUT_ATT(idf, idv16,trim(cmv0),vflag),  crtn,cf_in,cv_dt16)
       END IF
+      !! V17:
+      IF ( ldv17 ) THEN
+         CALL sherr( NF90_PUT_ATT(idf, idv17, 'long_name', TRIM(cln17) ),  crtn,cf_in,cv_dt17)
+         CALL sherr( NF90_PUT_ATT(idf, idv17, 'units',     TRIM(cun17) ),  crtn,cf_in,cv_dt17)
+         IF ( vflag /= 0. ) CALL sherr( NF90_PUT_ATT(idf, idv17,trim(cmv0),vflag),  crtn,cf_in,cv_dt17)
+      END IF
+      !! V18:
+      IF ( ldv18 ) THEN
+         CALL sherr( NF90_PUT_ATT(idf, idv18, 'long_name', TRIM(cln18) ),  crtn,cf_in,cv_dt18)
+         CALL sherr( NF90_PUT_ATT(idf, idv18, 'units',     TRIM(cun18) ),  crtn,cf_in,cv_dt18)
+         IF ( vflag /= 0. ) CALL sherr( NF90_PUT_ATT(idf, idv18,trim(cmv0),vflag),  crtn,cf_in,cv_dt18)
+      END IF
+      !! V19:
+      IF ( ldv19 ) THEN
+         CALL sherr( NF90_PUT_ATT(idf, idv19, 'long_name', TRIM(cln19) ),  crtn,cf_in,cv_dt19)
+         CALL sherr( NF90_PUT_ATT(idf, idv19, 'units',     TRIM(cun19) ),  crtn,cf_in,cv_dt19)
+         IF ( vflag /= 0. ) CALL sherr( NF90_PUT_ATT(idf, idv19,trim(cmv0),vflag),  crtn,cf_in,cv_dt19)
+      END IF
+      !! V20:
+      IF ( ldv20 ) THEN
+         CALL sherr( NF90_PUT_ATT(idf, idv20, 'long_name', TRIM(cln20) ),  crtn,cf_in,cv_dt20)
+         CALL sherr( NF90_PUT_ATT(idf, idv20, 'units',     TRIM(cun20) ),  crtn,cf_in,cv_dt20)
+         IF ( vflag /= 0. ) CALL sherr( NF90_PUT_ATT(idf, idv20,trim(cmv0),vflag),  crtn,cf_in,cv_dt20)
+      END IF
 
       
       CALL sherr( NF90_ENDDEF(idf),  crtn,cf_in,cv_dt01)
@@ -1244,6 +1290,10 @@ CONTAINS
       IF ( ldv14 ) CALL sherr( NF90_PUT_VAR(idf, idv14, vdt14),  crtn,cf_in,cv_dt14)
       IF ( ldv15 ) CALL sherr( NF90_PUT_VAR(idf, idv15, vdt15),  crtn,cf_in,cv_dt15)
       IF ( ldv16 ) CALL sherr( NF90_PUT_VAR(idf, idv16, vdt16),  crtn,cf_in,cv_dt16)
+      IF ( ldv17 ) CALL sherr( NF90_PUT_VAR(idf, idv17, vdt17),  crtn,cf_in,cv_dt17)
+      IF ( ldv18 ) CALL sherr( NF90_PUT_VAR(idf, idv18, vdt18),  crtn,cf_in,cv_dt18)
+      IF ( ldv19 ) CALL sherr( NF90_PUT_VAR(idf, idv19, vdt19),  crtn,cf_in,cv_dt19)
+      IF ( ldv20 ) CALL sherr( NF90_PUT_VAR(idf, idv20, vdt20),  crtn,cf_in,cv_dt20)
 
       CALL sherr( NF90_CLOSE(idf),  crtn,cf_in,cv_dt01)
 

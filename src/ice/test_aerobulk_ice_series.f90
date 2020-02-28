@@ -51,7 +51,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    !! Input (or deduced from input) variables:
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SST, SKT, SLP, W10, SIC, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10, zCdN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zt, rho_zu
 
@@ -141,7 +141,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
-   ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
+   ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt), zCdN(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
    ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SKT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), SIC(nx,ny,Nt) )
@@ -231,10 +231,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    !! Some initializations:
 
    ialgo = 0
-   zz0 = 0.
+   zz0 = 0.   
    zus = 0.
    zL  = 0.
    zUN10 = 0.
+   zCdN = 0.
 
    isecday_utc = 0
 
@@ -318,23 +319,23 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       CASE ( 'nemo' )
          CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE ( 'an05' )
          CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE ( 'lg15' )
          CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE ( 'lg15oi' )
          CALL turb_ice_lg15oi( jt, zt, zu, SIT(:,:,jt), SST(:,:,jt), theta_zt(:,:,jt),               &
             &                  SIQ(:,:), SSQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt),           &
             &         Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
-            &                  xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &                  CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          Ublk(:,:,jt) = MAX( W10(:,:,jt), wspd_thrshld_ice )
          
       CASE DEFAULT
@@ -411,14 +412,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt07=REAL(  W10(1,1,:),4), cv_dt07='Wind',   cun07='m/s',   cln07='Module of Wind Speed',   &
       &           vdt08=REAL(  TAU(1,1,:),4), cv_dt08='Tau',    cun08='N/m^2', cln08='Module of Wind Stress',  &
       &           vdt09=REAL(to_mm_p_day*SBLM(1,1,:),4), cv_dt09='SBLM',       cun09='mm/day', cln09='Sublimation of ice', &
-      &           vdt10=REAL( 1000.*Cd_i(1,1,:),4), cv_dt10='Cd_i', cun10='',      cln10='Drag coefficient',       &
-      &           vdt11=REAL( 1000.*Ch_i(1,1,:),4), cv_dt11='Ch_i', cun11='',      cln11='Sens. Heat coeff.',      &
+      &           vdt10=REAL( 1000.*Cd_i(1,1,:),4), cv_dt10='Cd_i', cun10='',  cln10='Drag coefficient',       &
+      &           vdt11=REAL( 1000.*Ch_i(1,1,:),4), cv_dt11='Ch_i', cun11='',  cln11='Sens. Heat coeff.',      &
       &           vdt12=REAL(  zz0(1,1,:),4), cv_dt12='z0',     cun12='m',     cln12='Roughness length',       &
       &           vdt13=REAL(  RiB_zt(1,1,:),4), cv_dt13='Rib_zt', cun13='',   cln13='Bulk Richardson number at zt', &
       &           vdt14=REAL(  RiB_zu(1,1,:),4), cv_dt14='Rib_zu', cun14='m',  cln14='Bulk Richardson number at zu', &
       &           vdt15=REAL(SIT(1,1,:)-rt0,4), cv_dt15='SIT',  cun15='deg.C', cln15='Sea-ice temperature',    &
-      &           vdt16=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt16='t2m-SIT', cun16='deg.C', cln16='2m air-sea temperature difference' )
-
+      &           vdt16=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt16='t2m-SIT',     cun16='deg.C', cln16='2m air-sea temperature difference', &
+      &           vdt17=REAL(1000.*zCdN(1,1,:),4), cv_dt17='CdN', cun17='',    cln17='Neutral-stability drag coefficient'  &
+      &           )
+   
    WRITE(6,*) ''; WRITE(6,*) ''
    CLOSE(6)
 

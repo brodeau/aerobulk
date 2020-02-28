@@ -50,13 +50,13 @@ l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 100% (2015)','Lupkes 
 #L_VMIN  = [   -250.     ,    -25.       ,   -400.      ,   -150.     ,    0.       ,       0.7            ]
 #L_ANOM  = [   True      ,    True       ,    True      ,    True     ,   True      ,      False           ]
 
-L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ]
-L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ] ; # name of variable on figure
-L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$', r'$Ri_{B}$'] ; # name of variable in latex mode
-L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''    ,    r''     ]
-L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5    ,    5.      ]
-L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.    ,   -5.      ]
-L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True   ,    False   ]
+L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ,   'CdN'      ]
+L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ,   'CdN'      ] ; # name of variable on figure
+L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$'  , r'$Ri_{B}$', r'C_{D}^{N}' ] ; # name of variable in latex mode
+L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''      ,    r''     ,    r''       ]
+L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5     ,    5.      ,    2.5       ]
+L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.      ,   -5.      ,    1.        ]
+L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True     ,    False   ,    False     ]
 
 
 nb_algos = len(L_ALGOS) ; print(nb_algos)
@@ -188,6 +188,7 @@ for jv in range(nb_var):
 
 for ja in range(nb_algos):
 
+    i_cdn=7
     i_rib=6
     i_cd=5
 
@@ -203,28 +204,38 @@ for ja in range(nb_algos):
     ccd_lnm = id_in.variables[L_VNEM[i_cd]].long_name
     id_in.close()
 
+    # Ordonates = Cdn
+    id_in = Dataset(cf_in[ja])
+    vcdn = id_in.variables[L_VNEM[i_cdn]][:] # only the center point of the 3x3 spatial domain!
+    ccdn_lnm = id_in.variables[L_VNEM[i_cdn]].long_name
+    id_in.close()
 
 
+    rDPI=100.
+
+    # CD(RiB)
     fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')    
-    ax1 = plt.axes([0.07, 0.22, 0.9, 0.75])
-    
-    #ax1.set_xticks(vtime[::xticks_d])
-    #ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
-    #plt.xticks(rotation='60')
-    
+    ax1 = plt.axes([0.07, 0.1, 0.9, 0.83])
     plt.scatter(vx, vcd, s=4, c='k', alpha=0.7)
-    #label=l_lgnm[ja], zorder=10+ja)
-    
     ax1.set_ylim(0.,3.) ; # Range for CD*1000
     plt.ylabel(r'$C_D$')
     ax1.set_xlim(-2.,2.) ; # Range for RiB
     plt.xlabel(r'$Ri_B$')
-    
     ax1.grid(color='k', linestyle='-', linewidth=0.3)
-    #plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
-    #ax1.annotate(cvar_lnm+' over sea-ice', xy=(0.3, 0.97), xycoords='axes fraction',  \
-    #    bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
     plt.savefig('Cd_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
+    plt.close(jv)
+
+
+    # CD/CDN(RiB)
+    fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')    
+    ax1 = plt.axes([0.07, 0.1, 0.9, 0.83])
+    plt.scatter(vx, vcd/vcdn, s=4, c='k', alpha=0.7)
+    ax1.set_ylim(0.,2.) ; # Range for CD*1000
+    plt.ylabel(r'$C_D/C_D^N$')
+    ax1.set_xlim(-1.,1.) ; # Range for RiB
+    plt.xlabel(r'$Ri_B$')
+    ax1.grid(color='k', linestyle='-', linewidth=0.3)
+    plt.savefig('CdoCdN_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
     plt.close(jv)
     
     

@@ -16,6 +16,13 @@
 !
 !
 !
+! In "ice.F90" of SI3 (NEMO), the following pond information is available (also the same per ice cat.):
+!  at_ip      !: total melt pond concentration
+!  hm_ip      !: mean melt pond depth                     [m]
+!  vt_ip      !: total melt pond volume per gridcell area [m]
+!
+!
+!
 MODULE mod_blk_ice_lg15oi
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
@@ -330,7 +337,7 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
       IF(l_dbg_print) PRINT *, ''!LOLO
-      
+
       IF( lreturn_cdn )   CdN = zCdN_s(:,:,1)+zCdN_f(:,:,1)
       IF( lreturn_chn )   ChN = zChN_s(:,:,1)+zChN_f(:,:,1)
       IF( lreturn_cen )   CeN = zChN_s(:,:,1)+zChN_f(:,:,1)
