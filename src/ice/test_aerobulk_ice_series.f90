@@ -333,7 +333,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       CASE ( 'lg15oi' )
          CALL turb_ice_lg15oi( jt, zt, zu, SIT(:,:,jt), SST(:,:,jt), theta_zt(:,:,jt),               &
             &                  SIQ(:,:), SSQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt),           &
-            &                  Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt),   &
+            &         Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
             &                  xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          Ublk(:,:,jt) = MAX( W10(:,:,jt), wspd_thrshld_ice )
          

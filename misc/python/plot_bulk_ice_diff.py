@@ -22,7 +22,8 @@ sys.setdefaultencoding('utf8')
 
 
 dir_figs='.'
-size_fig=(13,7)
+#size_fig=(13,7)
+size_fig=(13,10)
 fig_ext='png'
 
 clr_red = '#AD0000'
@@ -32,13 +33,14 @@ clr_sat = '#ffed00'
 clr_mod = '#008ab8'
 
 #rDPI=400.
-rDPI=150.
+#rDPI=150.
+rDPI=300.
 
 L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lg15'     ,  'lg15oi'  ]
 l_color = [   '0.1'    ,   clr_gre      , clr_blu       ,  clr_red ] ; # colors to differentiate algos on the plot
 l_width = [     1      ,       1        ,     0.6       ,    0.5   ] ; # line-width to differentiate algos on the plot
 l_style = [    '-'     ,      '-'       ,     '-'       ,  '--'    ] ; # line-style
-l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 90% (2015)','Lupkes & Gryanik (2015)' ]
+l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 100% (2015)','Lupkes & Gryanik (2015)' ]
 
 #L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
 #L_VARO  = [   'Qlat'    ,    'Qsen'     ,     'Qnet'   ,   'Qlw'     ,  'Tau'      ,    'dT_skin'         ] ; # name of variable on figure
@@ -122,7 +124,8 @@ for jv in range(nb_var):
 
     fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')
 
-    ax1 = plt.axes([0.07, 0.22, 0.9, 0.75])
+    #ax1 = plt.axes([0.07, 0.22, 0.9, 0.75])
+    ax1 = plt.axes([0.07, 0.15, 0.9, 0.83])
 
     ax1.set_xticks(vtime[::xticks_d])
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
@@ -134,6 +137,9 @@ for jv in range(nb_var):
     ax1.set_ylim(L_VMIN[jv], L_VMAX[jv]) ; ax1.set_xlim(vtime[0],vtime[Nt-1])
     plt.ylabel(L_VARL[jv]+' ['+L_VUNT[jv]+']')
 
+    if L_VARO[jv] == 'Rib':
+        plt.yscale('symlog', linthreshy=0.015)
+    
     ax1.grid(color='k', linestyle='-', linewidth=0.3)
     plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
     ax1.annotate(cvar_lnm+' over sea-ice', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)

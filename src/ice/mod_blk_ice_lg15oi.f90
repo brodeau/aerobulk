@@ -53,7 +53,7 @@ MODULE mod_blk_ice_lg15oi
 CONTAINS
 
    SUBROUTINE turb_ice_lg15oi( kt, zt, zu, Ts_i, Ts_w, t_zt, qs_i, qs_w, q_zt, U_zu, frice, &
-      &                        Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i,                            &
+      &                        Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,                        &
       &                        Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,                            &
       &                        xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
@@ -85,6 +85,7 @@ CONTAINS
       !!    *  Ce_i   : sublimation coefficient over sea-ice
       !!    *  t_zu_i : pot. air temp. adjusted at zu over sea-ice             [K]
       !!    *  q_zu_i : spec. hum. of air adjusted at zu over sea-ice          [kg/kg]
+      !!    *  Ub  : bulk wind speed at zu that was used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -114,8 +115,9 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! drag coefficient over sea-ice
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfert coefficient for heat over ice
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i  ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i  ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Cd_w    ! drag coefficient over sea-ice
       REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Ch_w    ! transfert coefficient for heat over ice
@@ -130,7 +132,7 @@ CONTAINS
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
-      REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: Ub, xtmp1, xtmp2        !! bulk wind speed at zu + temporary arrays
+      REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: dt_zu, dq_zu, zt_zu, zq_zu  ! third dimension
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zCd, zCh, zCdN_s, zChN_s, zCdN_f, zChN_f
@@ -139,13 +141,13 @@ CONTAINS
       LOGICAL :: lreturn_o_water=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15oi@mod_blk_ice_lg15oi.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( Ub(jpi,jpj), xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
+      ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
       ALLOCATE ( dt_zu(jpi,jpj,2), dq_zu(jpi,jpj,2), zt_zu(jpi,jpj,2), zq_zu(jpi,jpj,2) )
       ALLOCATE ( zz0_s(jpi,jpj,2),  zz0_f(jpi,jpj,2),    RiB(jpi,jpj,2), &
          &      zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
       ALLOCATE ( zCd(jpi,jpj,2), zCh(jpi,jpj,2) )
 
-      lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w) 
+      lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
 
       IF( PRESENT(Cd_w) ) lreturn_o_water = .TRUE.
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
@@ -308,7 +310,7 @@ CONTAINS
                dt_zu(:,:,2) = zt_zu(:,:,2) - Ts_w
                dq_zu(:,:,2) = zq_zu(:,:,2) - qs_w
             END IF
-            
+
             dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
@@ -338,13 +340,12 @@ CONTAINS
          Ch_w(:,:)   =   zCh(:,:,2)
          Ce_w(:,:)   =  Ch_w(:,:)
       END IF
-               
+
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:,1)+zCdN_f(:,:,1) )
 
       IF( lreturn_ustar ) xu_star = SQRT(Cd_i) * Ub
       IF( lreturn_L ) THEN
          xtmp1 = SQRT(Cd_i)
-         !xL    = 1./One_on_L(t_zu_i, q_zu, xtmp1*Ub, Ch_i*mix_val_msh(dt_zu,frice)/xtmp1, Ce_i*mix_val_msh(dq_zu,frice)/xtmp1)
          xL    = 1./One_on_L( t_zu_i, q_zu_i, xtmp1*Ub, Ch_i*dt_zu(:,:,1)/xtmp1, Ce_i*dq_zu(:,:,1)/xtmp1 )
       END IF
 
@@ -357,7 +358,7 @@ CONTAINS
 
 
 
-      DEALLOCATE ( Ub, xtmp1, xtmp2 )
+      DEALLOCATE ( xtmp1, xtmp2 )
       DEALLOCATE ( dt_zu, dq_zu, zt_zu, zq_zu )
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
       DEALLOCATE ( zCd, zCh )
