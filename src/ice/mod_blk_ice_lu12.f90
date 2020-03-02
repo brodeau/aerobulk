@@ -10,10 +10,6 @@
 MODULE mod_blk_ice_lu12
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
-
-
-
-
    !!       Routine turb_ice_lu12 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
@@ -21,15 +17,13 @@ MODULE mod_blk_ice_lu12
    !!
    !!====================================================================================
    USE mod_const       !: physical and othe constants
-   USE mod_phymbl      !: thermodynamics
+   !USE mod_phymbl      !: thermodynamics
 
    IMPLICIT NONE
    PRIVATE
 
    PUBLIC :: Cdn10_Lupkes2012
-   !PUBLIC :: rough_leng_m, rough_leng_tq
-
-
+   
    REAL(wp), PARAMETER ::   zCe   = 2.23e-03_wp
    REAL(wp), PARAMETER ::   znu   = 1._wp
    REAL(wp), PARAMETER ::   zmu   = 1._wp
@@ -37,11 +31,8 @@ MODULE mod_blk_ice_lu12
    
    !!----------------------------------------------------------------------
 CONTAINS
-
-
-
-
-   SUBROUTINE Cdn10_Lupkes2012( pic, pcd )
+   
+   SUBROUTINE Cdn10_Lupkes2012( pcd_i_s, pfrice, pcdn )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  Cdn10_Lupkes2012  ***
       !!
@@ -71,27 +62,23 @@ CONTAINS
       !!                 Lupkes et al. GRL 2013 (application to GCM)
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pic   ! ice concentration [fraction]  => at_i_b
-      REAL(wp), DIMENSION(:,:), INTENT(out) :: pcd
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pcd_i_s  ! skin drag coefficient for a 100% ice covered region
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pfrice   ! ice concentration [fraction]  => at_i_b
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pcdn     ! neutral drag coefficient over sea-ice
       !!----------------------------------------------------------------------
       REAL(wp)            ::   zcoef
       !!----------------------------------------------------------------------
       zcoef = znu + 1._wp / ( 10._wp * zbeta )
+      
+      !! We are not an AGCM, we are an OGCM!!! => we drop term "(1 - A)*Cd_w"
+      !!  => so we keep only the two last rhs terms of Eq.(1) of Lupkes et al, 2013 divided by "A"...
+      
+      pcdn(:,:) = pcd_i_s +  zCe * pfrice(:,:)**(zmu - 1._wp) * (1._wp - pfrice(:,:))**zcoef
 
-      ! generic drag over a cell partly covered by ice
-      !!Cd(:,:) = Cd_oce(:,:) * ( 1._wp - pic(:,:) ) +  &                        ! pure ocean drag
-      !!   &      Cd_ice      *           pic(:,:)   +  &                        ! pure ice drag
-      !!   &      zCe         * ( 1._wp - pic(:,:) )**zcoef * pic(:,:)**zmu   ! change due to sea-ice morphology
+      !! => seems okay for winter 100% sea-ice as second rhs term vanishes as pfrice == 1....
 
-      ! ice-atm drag
-      pcd(:,:) = rCd_ice +  &                                               ! pure ice drag
-         &       zCe * ( 1._wp - pic(:,:) )**zcoef * pic(:,:)**(zmu-1._wp)  ! change due to sea-ice morphology
-
+      
    END SUBROUTINE Cdn10_Lupkes2012
-
-
-
-
 
 
    !!======================================================================
