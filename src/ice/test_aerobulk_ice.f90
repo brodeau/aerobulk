@@ -14,6 +14,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
       &      vca = (/ ' NEMdef ' , ' Andreas' , 'L&G 2015' /)
+      !      &      vca = (/ ' NEMdef ' , ' Andreas' , 'LU 2012', 'L&G 2015' /)
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -302,6 +303,13 @@ PROGRAM TEST_AEROBULK_ICE
             &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
+      !LOLO: must ask for sea-ice fraction and then use TURB_ICE_LG15OI instead of TURB_ICE_LG15 !!!
+      !CASE(3)
+      !   CALL TURB_ICE_LU12( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
+      !      &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+      !      &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
+      !      &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         
       CASE(3)
          CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &

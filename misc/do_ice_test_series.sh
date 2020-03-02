@@ -35,3 +35,11 @@ EOF
 10
 2
 EOF
+
+
+# Lupkes et al, FULL (2012)
+./bin/test_aerobulk_ice_series.x -f ${F_IN} <<EOF
+5
+10
+2
+EOF
