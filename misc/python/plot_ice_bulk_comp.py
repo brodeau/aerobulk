@@ -36,19 +36,12 @@ clr_mod = '#008ab8'
 #rDPI=150.
 rDPI=300.
 
-L_ALGOS = [ 'nemo'     ,     'an05'     ,    'lg15'     ,  'lg15oi'  ]
-l_color = [   '0.1'    ,   clr_gre      , clr_blu       ,  clr_red ] ; # colors to differentiate algos on the plot
-l_width = [     1      ,       1        ,     0.6       ,    0.5   ] ; # line-width to differentiate algos on the plot
-l_style = [    '-'     ,      '-'       ,     '-'       ,  '--'    ] ; # line-style
-l_lgnm  = [ 'NEMO def.','Andreas (2005)','Lupkes & Gryanik 100% (2015)','Lupkes & Gryanik (2015)' ]
+L_ALGOS = [ 'nemo'     ,     'an05'   ,    'lu12'    ,        'lg15'            ]
+l_color = [   '0.1'    ,   clr_gre    ,   clr_blu    ,        clr_red           ] ; # colors to differentiate algos on the plot
+l_width = [     1      ,       1      ,       1      ,          0.8             ] ; # line-width to differentiate algos on the plot
+l_style = [    '-'     ,      '-'     ,      '-'     ,          '-'             ] ; # line-style
+l_lgnm  = [ 'NEMO def.','Andreas 2005','Andreas 2005','Lupkes & Gryanik (2015)' ]
 
-#L_VNEM  = [   'qla'     ,     'qsb'     ,     'qt'     ,   'qlw'     ,  'taum'     ,    'dt_skin'         ]
-#L_VARO  = [   'Qlat'    ,    'Qsen'     ,     'Qnet'   ,   'Qlw'     ,  'Tau'      ,    'dT_skin'         ] ; # name of variable on figure
-#L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$Q_{net}$' , r'$Q_{lw}$' , r'$|\tau|$' , r'$\Delta T_{skin}$' ] ; # name of variable in latex mode
-#L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$W/m^2$'   , r'$W/m^2$'  , r'$N/m^2$'  ,      'K'             ]
-#L_VMAX  = [     75.     ,     25.       ,    800.      ,     25.     ,    1.2      ,      -0.7            ]
-#L_VMIN  = [   -250.     ,    -25.       ,   -400.      ,   -150.     ,    0.       ,       0.7            ]
-#L_ANOM  = [   True      ,    True       ,    True      ,    True     ,   True      ,      False           ]
 
 L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ,   'CdN'      ]
 L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ,   'CdN'      ] ; # name of variable on figure

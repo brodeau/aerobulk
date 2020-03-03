@@ -13,7 +13,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
-   USE mod_blk_ice_lg15oi
    USE mod_blk_ice_lu12
 
    IMPLICIT NONE
@@ -25,7 +24,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    INTEGER, PARAMETER :: jtdbg    = 1   ! if (ldebug) that's the time step we'll start from...
    !INTEGER, PARAMETER :: jtdbg    = 1447   ! if (ldebug) that's the time step we'll start from...
 
-   INTEGER, PARAMETER :: nb_algos = 5
+   INTEGER, PARAMETER :: nb_algos = 4
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
 
@@ -194,17 +193,16 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    ians=-1
    DO WHILE ( (ians<1).OR.(ians>nb_algos) )
       WRITE(6,*) 'Which algo to use?'
-      WRITE(6,*) ' * "NEMO default (v4)"                        => 1'
-      WRITE(6,*) ' * "Andreas (2005)"                           => 2'
-      WRITE(6,*) ' * "Lupkes & Gryanik (2015)" 100% ice-covered => 3'
-      WRITE(6,*) ' * "Lupkes & Gryanik (2015)" ice - water mix  => 4'
-      WRITE(6,*) ' * "Lupkes et al (2012)"     ice - water mix  => 5'
+      WRITE(6,*) ' * "NEMO default (v4)"       => 1'
+      WRITE(6,*) ' * "Andreas (2005)"          => 2'
+      WRITE(6,*) ' * "Lupkes et al (2012)"     => 3'
+      WRITE(6,*) ' * "Lupkes & Gryanik (2015)" => 4'
+
       READ(*,*) ians
       IF ( ians == 1 ) calgo = 'nemo'
       IF ( ians == 2 ) calgo = 'an05'
-      IF ( ians == 3 ) calgo = 'lg15'
-      IF ( ians == 4 ) calgo = 'lg15oi'
-      IF ( ians == 5 ) calgo = 'lu12'
+      IF ( ians == 3 ) calgo = 'lu12'
+      IF ( ians == 4 ) calgo = 'lg15'
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -320,28 +318,22 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       SELECT CASE ( TRIM(calgo) )
 
       CASE ( 'nemo' )
-         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
+         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),            &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
+         
       CASE ( 'an05' )
-         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),             &
+            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),     &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
-      CASE ( 'lg15' )
-         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),   &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
-      CASE ( 'lg15oi' )
-         CALL turb_ice_lg15oi( jt, zt, zu, SIT(:,:,jt), SST(:,:,jt), theta_zt(:,:,jt),               &
-            &                  SIQ(:,:), SSQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt),           &
-            &         Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
-            &                  CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-
+         
       CASE ( 'lu12' )
          CALL turb_ice_lu12( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
+            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
+            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         
+      CASE ( 'lg15' )
+         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
@@ -349,8 +341,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP
       END SELECT
-
-
+      
+      
       !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
       t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
       DO jq = 1, 4

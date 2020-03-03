@@ -6,15 +6,16 @@ PROGRAM TEST_AEROBULK_ICE
    USE mod_phymbl
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
+   USE mod_blk_ice_lu12
    USE mod_blk_ice_lg15
-
+   
    IMPLICIT NONE
 
-   INTEGER, PARAMETER :: nb_algos = 3
+   INTEGER, PARAMETER :: nb_algos = 4
+   
+   CHARACTER(len=12), DIMENSION(nb_algos), PARAMETER :: &
+      &      vca = (/ '   NEMdef   ' , '   Andreas  ' , 'Lupkes 2012 ' , '  L&G 2015  ' /)
 
-   CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ ' NEMdef ' , ' Andreas' , 'L&G 2015' /)
-      !      &      vca = (/ ' NEMdef ' , ' Andreas' , 'LU 2012', 'L&G 2015' /)
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -28,15 +29,15 @@ PROGRAM TEST_AEROBULK_ICE
 
    CHARACTER(len=2) :: car
 
-   CHARACTER(len=100) :: &
-      &   calgob
+   CHARACTER(len=100) :: calgob
+   CHARACTER(len=512) :: ctitle
 
    INTEGER :: jarg, ialgo, jq, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10, zCdN, zChN, zCeN
 
-   REAL(wp), DIMENSION(lx,ly) :: sit, Ts, qsat_zt, SLP, &
+   REAL(wp), DIMENSION(lx,ly) :: frice, sit, Ts, qsat_zt, SLP, &
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, siq, qs, rho_zu, &
       &  tmp
 
@@ -101,9 +102,11 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
    WRITE(6,*) ''
 
-
-
-
+   WRITE(6,*) 'Give the sea-ice concentration in %'
+   READ(*,*) frice
+   frice = frice/100.
+   CALL prtcol( 6, 'frice', frice(1,1), '[0-1]' )
+   WRITE(6,*) ''
 
    WRITE(6,*) ''
 
@@ -292,35 +295,34 @@ PROGRAM TEST_AEROBULK_ICE
       SELECT CASE(ialgo)
 
       CASE(1)
-         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
+         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,              &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(2)
-         CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
+         CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,              &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
-      !LOLO: must ask for sea-ice fraction and then use TURB_ICE_LG15OI instead of TURB_ICE_LG15 !!!
-      !CASE(3)
-      !   CALL TURB_ICE_LU12( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
-      !      &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-      !      &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
-      !      &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
       CASE(3)
-         CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,  &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,             &
+         CALL TURB_ICE_LU12( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,               &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-
+         
+      CASE(4)
+         CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
+            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,               &
+            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
       END SELECT
-
+      
 
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
@@ -370,20 +372,19 @@ PROGRAM TEST_AEROBULK_ICE
 
 
 
-      !! Turbulent fluxes:
-
+      !! Turbulent fluxes
+      !! ----------------
       CALL BULK_FORMULA( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
-         &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo), l_ice=.TRUE. )
+         &               vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo), l_ice=.TRUE. )
 
       vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
-
-
+      
    END DO
-
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
+   WRITE(ctitle,*) '  Algorithm:      ',TRIM(vca(1)),'   | ',TRIM(vca(2)),'    |  ',TRIM(vca(3)),'   |   ',TRIM(vca(4))
 
    IF ( zt < zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
@@ -392,7 +393,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
@@ -425,7 +426,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:           ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3))!,'     |    ',TRIM(vca(4))
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , ' [10^-3]'
    WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , ' [10^-3]'
