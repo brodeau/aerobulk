@@ -210,7 +210,7 @@ CONTAINS
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG( zu/z0(:,:) )
       IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
       IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0tq(:,:,1))
       IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0tq(:,:,2))

@@ -36,11 +36,11 @@ clr_mod = '#008ab8'
 #rDPI=150.
 rDPI=300.
 
-L_ALGOS = [ 'nemo'     ,     'an05'   ,    'lu12'    ,        'lg15'            ]
-l_color = [   '0.1'    ,   clr_gre    ,   clr_blu    ,        clr_red           ] ; # colors to differentiate algos on the plot
-l_width = [     1      ,       1      ,       1      ,          0.8             ] ; # line-width to differentiate algos on the plot
-l_style = [    '-'     ,      '-'     ,      '-'     ,          '-'             ] ; # line-style
-l_lgnm  = [ 'NEMO def.','Andreas 2005','Andreas 2005','Lupkes & Gryanik (2015)' ]
+L_ALGOS = [ 'nemo'     ,     'an05'   ,        'lu12'        ,        'lg15'            ]
+l_color = [   '0.1'    ,   clr_gre    ,       clr_blu        ,        clr_red           ] ; # colors to differentiate algos on the plot
+l_width = [     1      ,       1      ,           1          ,          0.8             ] ; # line-width to differentiate algos on the plot
+l_style = [    '-'     ,      '-'     ,          '-'         ,          '-'             ] ; # line-style
+l_lgnm  = [ 'NEMO def.','Andreas 2005','Lupkes et al. (2012)','Lupkes & Gryanik (2015)' ]
 
 
 L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ,   'CdN'      ]
