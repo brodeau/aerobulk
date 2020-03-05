@@ -114,6 +114,7 @@ MODULE mod_phymbl
    PUBLIC bulk_formula
    PUBLIC qlw_net
    PUBLIC z0_from_Cd
+   PUBLIC Cd_from_z0
    PUBLIC f_m_louis, f_h_louis
    PUBLIC UN10_from_CDN
    PUBLIC UN10_from_CD
@@ -996,21 +997,34 @@ CONTAINS
       !!
       !! If pCd is the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
-      !!
-      LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
-      lice = .FALSE.
       IF ( PRESENT(ppsi) ) THEN
-         !! Cd provided is the actual Cd, not the neutral-stability CdN :
-         z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd) + ppsi ) ) !LB: ok, double-checked!
+         !! Cd provided is the actual Cd (not the neutral-stability CdN) :
+         z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd(:,:)) + ppsi(:,:) ) ) !LB: ok, double-checked!
       ELSE
          !! Cd provided is the neutral-stability Cd, aka CdN :
-         z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd) )            !LB: ok, double-checked!
+         z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd(:,:)) )            !LB: ok, double-checked!
       END IF
    END FUNCTION z0_from_Cd
-
-
-   ! Drop: pt_zu,pq_zu,pwnd,pTs,pqs
+   
+   FUNCTION Cd_from_z0( pzu, pz0,  ppsi )
+      REAL(wp), DIMENSION(jpi,jpj) :: Cd_from_z0        !: (neutral or non-neutral) drag coefficient []
+      REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0   !: roughness length [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi  !: (non neutral case) stability correction (Psi(zu/L)) []
+      !!
+      !! If we want to return the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
+      !! If we want to return the stability-corrected Cd (i.e. in stable or unstable conditions) then pssi must be provided
+      !!----------------------------------------------------------------------------------
+      IF ( PRESENT(ppsi) ) THEN
+         !! The Cd we return is the actual Cd (not the neutral-stability CdN) :
+         Cd_from_z0 = 1._wp / ( LOG( pzu / pz0(:,:) ) - ppsi(:,:) )
+      ELSE
+         !! The Cd we return is the neutral-stability Cd, aka CdN :
+         Cd_from_z0 = 1._wp /   LOG( pzu / pz0(:,:) )
+      END IF
+      Cd_from_z0 = vkarmn2 * Cd_from_z0 * Cd_from_z0
+   END FUNCTION Cd_from_z0   
 
 
    FUNCTION f_m_louis_sclr( pzu, pRib, pCdn, pz0 )

@@ -20,7 +20,7 @@
 !  at_ip      !: total melt pond concentration
 !  hm_ip      !: mean melt pond depth                     [m]
 !  vt_ip      !: total melt pond volume per gridcell area [m]
-!
+! 
 !
 !
 MODULE mod_blk_ice_lu12
@@ -38,12 +38,13 @@ MODULE mod_blk_ice_lu12
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lu12, Cdn10_Lupkes2012
-   
-   REAL(wp), PARAMETER ::   zCe   = 2.23e-03_wp   !LOLO: this one can be more accurate when sea-ice data => Lupkes et al (2013), Eq.(1)
-   REAL(wp), PARAMETER ::   znu   = 1._wp
-   REAL(wp), PARAMETER ::   zmu   = 1._wp
-   REAL(wp), PARAMETER ::   zbeta = 1._wp
+   PUBLIC :: turb_ice_lu12, CdN10_form_LU12
+
+   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
+   REAL(wp), PARAMETER :: rCe_0    = 2.23E-3_wp !LOLO: this one can be more accurate when sea-ice data => Lupkes et al (2013), Eq.(1)
+   REAL(wp), PARAMETER :: rNu_0    = 1._wp
+   REAL(wp), PARAMETER :: rMu_0    = 1._wp
+   REAL(wp), PARAMETER :: rBeta_0  = 1._wp
    
    !!----------------------------------------------------------------------
 CONTAINS
@@ -145,8 +146,15 @@ CONTAINS
       dt_zu = t_zu - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
-      Ce(:,:) = rCd_ice !! temporary array to contain: Ce == Cd_s_i == "skin drag coefficient for a 100% ice covered region"      
-      Cd(:,:) = Cdn10_Lupkes2012( Ce(:,:), frice(:,:) )
+
+
+      !! To estimate CDN10_skin:
+      !!  we use the method that comes in LG15, i.e. by starting from a default roughness length z0 for skin drag:
+
+      Ce(:,:) = rz0_s_0 !! temporary array to contain roughness length for skin drag !
+      !!
+      Cd(:,:) = Cd_from_z0( zu, Ce(:,:) )  + CdN10_form_LU12( frice(:,:) )
+      !!          N10 skin drag                     N10 form drag
 
       Ch(:,:) = Cd(:,:)
       Ce(:,:) = Cd(:,:)
@@ -168,14 +176,16 @@ CONTAINS
 
 
    
-   FUNCTION Cdn10_Lupkes2012( pcd_i_s, pfrice )
+   FUNCTION CdN10_form_LU12( pfrice )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  Cdn10_Lupkes2012  ***
+      !!                      ***  ROUTINE  CdN10_form_LU12  ***
       !!
-      !! ** Purpose :    Recompute the neutral air-ice drag referenced at 10m
-      !!                 to make it dependent on edges at leads, melt ponds and flows.
-      !!                 After some approximations, this can be resumed to a dependency
-      !!                 on ice concentration.
+      !! ** Purpose :    Computes the "form" contribution of the neutral air-ice
+      !!                 drag referenced at 10m to make it dependent on edges at
+      !!                 leads, melt ponds and flows (to be added to the "skin"
+      !!                 contribution. After some
+      !!                 approximations, this can be resumed to a dependency on
+      !!                 ice concentration.
       !!
       !! ** Method :     The parameterization is taken from Lupkes et al. (2012) eq.(50)
       !!                 with the highest level of approximation: level4, eq.(59)
@@ -198,24 +208,22 @@ CONTAINS
       !!                 Lupkes et al. GRL 2013 (application to GCM)
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)              :: Cdn10_Lupkes2012 ! neutral drag coefficient over sea-ice
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pcd_i_s          ! skin drag coefficient for a 100% ice covered region
+      REAL(wp), DIMENSION(jpi,jpj)              :: CdN10_form_LU12  ! neutral FORM drag coefficient contribution over sea-ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pfrice           ! ice concentration [fraction]  => at_i_b
 
       !!----------------------------------------------------------------------
       REAL(wp)            ::   zcoef
       !!----------------------------------------------------------------------
-      zcoef = znu + 1._wp / ( 10._wp * zbeta )
+      zcoef = rNu_0 + 1._wp / ( 10._wp * rBeta_0 )
       
       !! We are not an AGCM, we are an OGCM!!! => we drop term "(1 - A)*Cd_w"
-      !!  => so we keep only the two last rhs terms of Eq.(1) of Lupkes et al, 2013 divided by "A"...
+      !!  => so we keep only the last rhs terms of Eq.(1) of Lupkes et al, 2013 that we divide by "A":
       
-      Cdn10_Lupkes2012(:,:) = pcd_i_s(:,:) +  zCe * pfrice(:,:)**(zmu - 1._wp) * (1._wp - pfrice(:,:))**zcoef
+      CdN10_form_LU12(:,:) = rCe_0 * pfrice(:,:)**(rMu_0 - 1._wp) * (1._wp - pfrice(:,:))**zcoef
       
       !! => seems okay for winter 100% sea-ice as second rhs term vanishes as pfrice == 1....
-
       
-   END FUNCTION Cdn10_Lupkes2012
+   END FUNCTION CdN10_form_LU12
 
 
    !!======================================================================

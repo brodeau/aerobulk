@@ -49,9 +49,10 @@ MODULE mod_blk_ice_lg15
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
-   REAL(wp), PARAMETER ::   rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
-   REAL(wp), PARAMETER ::   rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
-   LOGICAL,  PARAMETER :: l_use_form_drag = .TRUE.
+   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
+   REAL(wp), PARAMETER :: rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
+   
+   LOGICAL,  PARAMETER :: l_add_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
    LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
@@ -60,9 +61,9 @@ MODULE mod_blk_ice_lg15
 CONTAINS
    
    SUBROUTINE turb_ice_lg15( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
-      &                        Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,            &
-      &                        Ts_w, qs_w, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
-      &                        CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
+      &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,            &
+      &                      Ts_w, qs_w, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lg15  ***
       !!
@@ -212,16 +213,15 @@ CONTAINS
       END IF
 
       !! For skin drag :
-      zz0_s(:,:,1) = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
-      xtmp1(:,:) = LOG( zu / zz0_s(:,:,1) )
-      zCdN_s(:,:,1) = vkarmn2 / ( xtmp1(:,:) * xtmp1(:,:) )                          ! (Eq.7)   [ index 1 is for ice, 2 for water ]
-      zChN_s(:,:,1) = vkarmn2 / ( xtmp1(:,:) * LOG( zu / (ralpha_0*zz0_s(:,:,1)) ) )     ! (Eq.11,12)  [ "" ]
+      zz0_s(:,:,1)  = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
+      zCdN_s(:,:,1) = Cd_from_z0( zu, zz0_s(:,:,1) )
+      zChN_s(:,:,1) = vkarmn2 / ( LOG( zu / zz0_s(:,:,1) ) * LOG( zu / (ralpha_0*zz0_s(:,:,1)) ) )     ! (Eq.11,12)  [ "" ]
 
       !! For form drag in MIZ:
       zz0_f(:,:,:)  = 0._wp
       zCdN_f(:,:,:) = 0._wp
       zChN_f(:,:,:) = 0._wp
-      IF ( l_use_form_drag ) THEN
+      IF ( l_add_form_drag ) THEN
          zz0_f(:,:,1) = rz0_f_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
          xtmp1(:,:) = 1._wp / zz0_f(:,:,1)
          xtmp2(:,:) = rce10_i_0 * ( LOG( 10._wp * xtmp1(:,:) ) / LOG( zu * xtmp1(:,:) ) )**2      ! part of (Eq.46)
@@ -285,7 +285,7 @@ CONTAINS
          END IF
 
 
-         IF ( l_use_form_drag ) THEN
+         IF ( l_add_form_drag ) THEN
             !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
             !!   MIZ:
             zCd(:,:,1) = zCd(:,:,1) + zCdN_f(:,:,1) * f_m_louis( zu, RiB(:,:,1), zCdN_f(:,:,1), zz0_f(:,:,1) ) ! (Eq.6)
