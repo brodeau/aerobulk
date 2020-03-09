@@ -22,6 +22,14 @@
 !  vt_ip      !: total melt pond volume per gridcell area [m]
 ! 
 !
+! # "h_f" in Lupkes is mean floe freeboard
+!
+! "ice freeboard" is saved as:
+!    ( zrho1 * hm_i(:,:) - zrho2 * hm_s(:,:) )
+!    WHERE( z2d < 0._wp )   z2d = 0._wp
+! into "icewri.F90"   
+!
+!   possibly "h_f" in Lupkes* 
 !
 MODULE mod_blk_ice_lu12
    !!====================================================================================
