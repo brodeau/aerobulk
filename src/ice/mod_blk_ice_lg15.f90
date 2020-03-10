@@ -49,9 +49,9 @@ MODULE mod_blk_ice_lg15
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
-   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  ! Eq. 43 [m]
-   REAL(wp), PARAMETER :: rz0_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
-   
+   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  !           Eq. 43 [m]
+   REAL(wp), PARAMETER :: rz0_i_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
+
    LOGICAL,  PARAMETER :: l_add_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
    LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
@@ -59,7 +59,7 @@ MODULE mod_blk_ice_lg15
 
    !!----------------------------------------------------------------------
 CONTAINS
-   
+
    SUBROUTINE turb_ice_lg15( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
       &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,            &
       &                      Ts_w, qs_w, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
@@ -164,12 +164,12 @@ CONTAINS
       ALLOCATE ( zCd(jpi,jpj,2), zCh(jpi,jpj,2) )
 
       lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
-      
+
       IF( ( lreturn_o_water ) .AND. (.NOT.(PRESENT(Ts_w)) .OR. .NOT.(PRESENT(qs_w))) ) THEN
          PRINT *, ' ERROR: turb_ice_lg15@mod_blk_ice_lg15 => you must specify "Ts_w" and "qs_w" as input'
          STOP
       END IF
-      
+
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
       IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
       IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
@@ -222,10 +222,8 @@ CONTAINS
       zCdN_f(:,:,:) = 0._wp
       zChN_f(:,:,:) = 0._wp
       IF ( l_add_form_drag ) THEN
-         zz0_f(:,:,1) = rz0_f_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
-         xtmp1(:,:) = 1._wp / zz0_f(:,:,1)
-         xtmp2(:,:) = rce10_i_0 * ( LOG( 10._wp * xtmp1(:,:) ) / LOG( zu * xtmp1(:,:) ) )**2      ! part of (Eq.46)
-         zCdN_f(:,:,1) = xtmp2(:,:) * frice(:,:) * (1._wp - frice(:,:))**rbeta_0                  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
+         zz0_f(:,:,1)  = rz0_i_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!         
+         zCdN_f(:,:,1) = CdN10_f_LG15( zu, frice(:,:), zz0_f(:,:,1) )         
          zChN_f(:,:,1) = zCdN_f(:,:,1)/( 1._wp + LOG(1._wp/ralpha_0)/vkarmn*SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
       END IF
 
@@ -393,6 +391,41 @@ CONTAINS
 
    !!======================================================================
 
+   FUNCTION CdN10_f_LG15( pzu, pfrice, pz0_f )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  CdN10_f_LG15  ***
+      !!
+      !! ** Purpose :    Computes the "form" contribution of the neutral air-ice
+      !!                 drag referenced at 10m to make it dependent on edges at
+      !!                 leads, melt ponds and flows (to be added to the "skin"
+      !!                 contribution. After some
+      !!                 approximations, this can be resumed to a dependency on
+      !!                 ice concentration.
+      !!
+      !! ** References : Lupkes & Gryanik (2015)
+      !!
+      !!----------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: CdN10_f_LG15  ! neutral FORM drag coefficient contribution over sea-ice
+      REAL(wp),                     INTENT(in) :: pzu    ! reference height [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pfrice ! ice concentration [fraction]  => at_i_b
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0_f   ! roughness length over water  [m]
+      !!----------------------------------------------------------------------
+      REAL(wp) :: ztmp, zrlog, zfri
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zfri = pfrice(ji,jj)
+
+            ztmp = 1._wp / pz0_f(ji,jj)
+            zrlog = LOG( 10._wp * ztmp ) / LOG( pzu * ztmp ) ! part of (Eq.46)
+
+            CdN10_f_LG15(:,:) = rce10_i_0 *zrlog*zrlog * zfri * (1._wp - zfri)**rbeta_0  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
+
+         END DO
+      END DO
+   END FUNCTION CdN10_f_LG15
 
 
    FUNCTION mix_val_msh( pfld, pfri )

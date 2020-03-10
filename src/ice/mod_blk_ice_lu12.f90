@@ -54,7 +54,7 @@ MODULE mod_blk_ice_lu12
    REAL(wp), PARAMETER :: rCe_0    = 2.23E-3_wp !LOLO: this one can be more accurate when sea-ice data => Lupkes et al (2013), Eq.(1)
    REAL(wp), PARAMETER :: rNu_0    = 1._wp
    REAL(wp), PARAMETER :: rMu_0    = 1._wp
-   REAL(wp), PARAMETER :: rBeta_0  = 1._wp
+   REAL(wp), PARAMETER :: rBeta_0  = 1.4_wp
    
    REAL(wp), PARAMETER :: rhmin_0 = 0.286_wp  ! Eq.(25)
    REAL(wp), PARAMETER :: rhmax_0 = 0.534_wp  ! Eq.(25)
@@ -191,13 +191,13 @@ CONTAINS
 
       !! Method #2:
       !! We need an estimate of z0 over water:
-      !!z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
+      z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
       !PRINT *, 'LOLO: estimate of z0_w =>', z0_w      
-      !!Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) )
+      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) ) / frice(:,:)
       !!          N10 skin drag                     N10 form drag
       
       !! Method #3:
-      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) ) + CdN10_f_LU12_eq36( frice(:,:) )
+      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) ) + CdN10_f_LU12_eq36( frice(:,:) )
       
       !PRINT *, 'LOLO: estimate of Cd_f_i method #2 =>', CdN10_f_LU12( frice(:,:), z0_w(:,:) )
 
@@ -339,8 +339,7 @@ CONTAINS
             ztmp  = 1._wp/pz0w(ji,jj)
             zrlog = LOG(zhf*ztmp) / LOG(10._wp*ztmp)
 
-
-            CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc*zSc * zhf/zDi   ! Eq.(22)
+            CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(22)
             !!                   1/2      Ce
 
          END DO
@@ -350,7 +349,7 @@ CONTAINS
 
 
    FUNCTION CdN10_f_LU12_eq36( pfrice )
-      REAL(wp), DIMENSION(jpi,jpj)                       :: CdN10_f_LU12_eq36  ! neutral FORM drag coefficient contribution over sea-ice
+      REAL(wp), DIMENSION(jpi,jpj)                       :: CdN10_f_LU12_eq36 ! neutral FORM drag coefficient contribution over sea-ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pfrice ! ice concentration [fraction]  => at_i_b  ! NOT USED if pSc, phf and pDi all provided...
       !!----------------------------------------------------------------------
       REAL(wp) :: ztmp, zrlog, zfri, zhf, zDi

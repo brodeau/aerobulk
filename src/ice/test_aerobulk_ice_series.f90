@@ -77,7 +77,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    nb_itt = 8 ! 8 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   !OPEN(6, FORM='formatted', RECL=512)
 
    !----------------------------------------------
 
