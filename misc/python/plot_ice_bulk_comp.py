@@ -43,13 +43,13 @@ l_style = [    '-'     ,      '-'     ,          '-'         ,          '-'     
 l_lgnm  = [ 'NEMO def.','Andreas 2005','Lupkes et al. (2012)','Lupkes & Gryanik (2015)' ]
 
 
-L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ,   'CdN'      ]
-L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ,   'CdN'      ] ; # name of variable on figure
-L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$'  , r'$Ri_{B}$', r'C_{D}^{N}' ] ; # name of variable in latex mode
-L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''      ,    r''     ,    r''       ]
-L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5     ,    5.      ,    2.5       ]
-L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.      ,   -5.      ,    1.        ]
-L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True     ,    False   ,    False     ]
+L_VNEM  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib_zu' ,   'CdN'     ,   'A'  ]
+L_VARO  = [   'Qlat'    ,    'Qsen'     ,  'Tau'      ,   'Qlw'    ,   'z0'     ,   'Cd_i'    ,   'Rib'    ,   'CdN'     ,   'A'  ] ; # name of variable on figure
+L_VARL  = [ r'$Q_{lat}$', r'$Q_{sens}$' , r'$|\tau|$' , r'$Q_{lw}$', r'$z_{0}$' , r'$C_{D}$'  , r'$Ri_{B}$', r'C_{D}^{N}',   'A'  ] ; # name of variable in latex mode
+L_VUNT  = [ r'$W/m^2$'  , r'$W/m^2$'    , r'$N/m^2$'  , r'$W/m^2$' ,   r'$m$'   ,    r''      ,    r''     ,    r''      ,    ''  ]
+L_VMAX  = [      50.     ,     50.       ,    0.5     ,     20.    ,     0.006   ,    3.5     ,    5.      ,    2.5      ,    1.  ]
+L_VMIN  = [     -50.     ,    -50.       ,    0.      ,   -100.    ,     0.     ,     0.      ,   -5.      ,    1.       ,    0.  ]
+L_ANOM  = [   True      ,    True       ,   True      ,    True    ,    True    ,    True     ,    False   ,    False    , False  ]
 
 
 nb_algos = len(L_ALGOS) ; print(nb_algos)
@@ -184,23 +184,30 @@ for ja in range(nb_algos):
     i_cdn=7
     i_rib=6
     i_cd=5
+    i_a=8
 
-    # Absciss = RiB
+    # RiB
     id_in = Dataset(cf_in[ja])
-    vx = id_in.variables[L_VNEM[i_rib]][:] # only the center point of the 3x3 spatial domain!
+    vrib = id_in.variables[L_VNEM[i_rib]][:] # only the center point of the 3x3 spatial domain!
     crib_lnm = id_in.variables[L_VNEM[i_rib]].long_name
     id_in.close()
 
-    # Ordonates = Cd
+    # Cd
     id_in = Dataset(cf_in[ja])
     vcd = id_in.variables[L_VNEM[i_cd]][:] # only the center point of the 3x3 spatial domain!
     ccd_lnm = id_in.variables[L_VNEM[i_cd]].long_name
     id_in.close()
 
-    # Ordonates = Cdn
+    # Cdn
     id_in = Dataset(cf_in[ja])
     vcdn = id_in.variables[L_VNEM[i_cdn]][:] # only the center point of the 3x3 spatial domain!
     ccdn_lnm = id_in.variables[L_VNEM[i_cdn]].long_name
+    id_in.close()
+
+    # A (ice fraction)
+    id_in = Dataset(cf_in[ja])
+    va = id_in.variables[L_VNEM[i_a]][:] # only the center point of the 3x3 spatial domain!
+    ca_lnm = id_in.variables[L_VNEM[i_a]].long_name
     id_in.close()
 
 
@@ -209,26 +216,39 @@ for ja in range(nb_algos):
     # CD(RiB)
     fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')    
     ax1 = plt.axes([0.07, 0.1, 0.9, 0.83])
-    plt.scatter(vx, vcd, s=4, c='k', alpha=0.7)
+    plt.scatter(vrib, vcd, s=4, c='k', alpha=0.7)
     ax1.set_ylim(0.,3.) ; # Range for CD*1000
     plt.ylabel(r'$C_D$')
     ax1.set_xlim(-2.,2.) ; # Range for RiB
     plt.xlabel(r'$Ri_B$')
     ax1.grid(color='k', linestyle='-', linewidth=0.3)
-    plt.savefig('Cd_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
+    plt.savefig('scat_Cd_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
     plt.close(jv)
 
 
     # CD/CDN(RiB)
     fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')    
     ax1 = plt.axes([0.07, 0.1, 0.9, 0.83])
-    plt.scatter(vx, vcd/vcdn, s=4, c='k', alpha=0.7)
+    plt.scatter(vrib, vcd/vcdn, s=4, c='k', alpha=0.7)
     ax1.set_ylim(0.,2.) ; # Range for CD*1000
     plt.ylabel(r'$C_D/C_D^N$')
     ax1.set_xlim(-1.,1.) ; # Range for RiB
     plt.xlabel(r'$Ri_B$')
     ax1.grid(color='k', linestyle='-', linewidth=0.3)
-    plt.savefig('CdoCdN_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
+    plt.savefig('scat_CdoCdN_Rib_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
+    plt.close(jv)
+    
+    
+    # CDN10 ( A )
+    fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')    
+    ax1 = plt.axes([0.07, 0.1, 0.9, 0.83])
+    plt.scatter(va, vcdn, s=4, c='k', alpha=0.7)
+    ax1.set_ylim(1.,2.5) ; # Range for CDN*1000
+    plt.ylabel(r'$C_D^{N10}$')
+    ax1.set_xlim(0.,1.) ; # Range for A
+    plt.xlabel(r'Ice concentration')
+    ax1.grid(color='k', linestyle='-', linewidth=0.3)
+    plt.savefig('scat_CdN_A_'+L_ALGOS[ja]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
     plt.close(jv)
     
     

@@ -418,7 +418,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           vdt14=REAL(  RiB_zu(1,1,:),4), cv_dt14='Rib_zu', cun14='m',  cln14='Bulk Richardson number at zu', &
       &           vdt15=REAL(SIT(1,1,:)-rt0,4), cv_dt15='SIT',  cun15='deg.C', cln15='Sea-ice temperature',    &
       &           vdt16=REAL(t_zt(1,1,:)-SIT(1,1,:),4), cv_dt16='t2m-SIT',     cun16='deg.C', cln16='2m air-sea temperature difference', &
-      &           vdt17=REAL(1000.*zCdN(1,1,:),4), cv_dt17='CdN', cun17='',    cln17='Neutral-stability drag coefficient'  &
+      &           vdt17=REAL(1000.*zCdN(1,1,:),4), cv_dt17='CdN', cun17='',    cln17='Neutral-stability drag coefficient',  &
+      &           vdt18=REAL(SIC(1,1,:),4),        cv_dt18='A',   cun18='',    cln18='Sea-ice concentration'  &
       &           )
    
    WRITE(6,*) ''; WRITE(6,*) ''

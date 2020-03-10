@@ -48,17 +48,19 @@ MODULE mod_blk_ice_lu12
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lu12, CdN10_form_LU12
+   PUBLIC :: turb_ice_lu12, CdN10_f_LU13
 
    REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
    REAL(wp), PARAMETER :: rCe_0    = 2.23E-3_wp !LOLO: this one can be more accurate when sea-ice data => Lupkes et al (2013), Eq.(1)
    REAL(wp), PARAMETER :: rNu_0    = 1._wp
    REAL(wp), PARAMETER :: rMu_0    = 1._wp
    REAL(wp), PARAMETER :: rBeta_0  = 1._wp
-   REAL(wp), PARAMETER :: rhmin_0  = 0.286_wp  ! Eq.(25)
-   REAL(wp), PARAMETER :: rhmax_0  = 0.534_wp  ! Eq.(25)
+   
+   REAL(wp), PARAMETER :: rhmin_0 = 0.286_wp  ! Eq.(25)
+   REAL(wp), PARAMETER :: rhmax_0 = 0.534_wp  ! Eq.(25)
    REAL(wp), PARAMETER :: rDmin_0 =   8._wp      ! Eq.(27)
    REAL(wp), PARAMETER :: rDmax_0 = 300._wp      ! Eq.(27)
+   REAL(wp), PARAMETER :: rz0_w_0 = 3.27E-4   ! fixed roughness length over water (paragraph below Eq.36)
    
    !!----------------------------------------------------------------------
 CONTAINS
@@ -182,16 +184,21 @@ CONTAINS
 
       Ce(:,:) = rz0_s_0 !! temporary array to contain roughness length for skin drag !
 
-      
-      !Cd(:,:) = Cd_from_z0( zu, Ce(:,:) )  + CdN10_form_LU12( frice(:,:) )
-      !PRINT *, 'LOLO: estimate of Cd_f_i method #1 =>', CdN10_form_LU12( frice(:,:) ); PRINT *, ''
-      
-      !! We need an estimate of z0 over water:
-      z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
-      !PRINT *, 'LOLO: estimate of z0_w =>', z0_w      
-      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) )
-      !!          N10 skin drag                     N10 form drag
 
+      !! Method #1:
+      !Cd(:,:) = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU13( frice(:,:) )
+      !PRINT *, 'LOLO: estimate of Cd_f_i method #1 =>', CdN10_f_LU13( frice(:,:) ); PRINT *, ''
+
+      !! Method #2:
+      !! We need an estimate of z0 over water:
+      !!z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
+      !PRINT *, 'LOLO: estimate of z0_w =>', z0_w      
+      !!Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) )
+      !!          N10 skin drag                     N10 form drag
+      
+      !! Method #3:
+      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) ) + CdN10_f_LU12_eq36( frice(:,:) )
+      
       !PRINT *, 'LOLO: estimate of Cd_f_i method #2 =>', CdN10_f_LU12( frice(:,:), z0_w(:,:) )
 
       
@@ -215,9 +222,9 @@ CONTAINS
 
 
 
-   FUNCTION CdN10_form_LU12( pfrice )
+   FUNCTION CdN10_f_LU13( pfrice )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  CdN10_form_LU12  ***
+      !!                      ***  ROUTINE  CdN10_f_LU13  ***
       !!
       !! ** Purpose :    Computes the "form" contribution of the neutral air-ice
       !!                 drag referenced at 10m to make it dependent on edges at
@@ -247,7 +254,7 @@ CONTAINS
       !!                 Lupkes et al. GRL 2013 (application to GCM)
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)              :: CdN10_form_LU12  ! neutral FORM drag coefficient contribution over sea-ice
+      REAL(wp), DIMENSION(jpi,jpj)              :: CdN10_f_LU13  ! neutral FORM drag coefficient contribution over sea-ice
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pfrice           ! ice concentration [fraction]  => at_i_b
 
       !!----------------------------------------------------------------------
@@ -259,10 +266,10 @@ CONTAINS
       !!  => so we keep only the last rhs terms of Eq.(1) of Lupkes et al, 2013 that we divide by "A":
       !! (we multiply Cd_i_s and Cd_i_f by A later, when applying ocean-ice partitioning...
 
-      CdN10_form_LU12(:,:) = rCe_0 * pfrice(:,:)**(rMu_0 - 1._wp) * (1._wp - pfrice(:,:))**zcoef
+      CdN10_f_LU13(:,:) = rCe_0 * pfrice(:,:)**(rMu_0 - 1._wp) * (1._wp - pfrice(:,:))**zcoef
       !! => seems okay for winter 100% sea-ice as second rhs term vanishes as pfrice == 1....
 
-   END FUNCTION CdN10_form_LU12
+   END FUNCTION CdN10_f_LU13
 
 
 
@@ -340,6 +347,37 @@ CONTAINS
       END DO
    END FUNCTION CdN10_f_LU12
 
+
+
+   FUNCTION CdN10_f_LU12_eq36( pfrice )
+      REAL(wp), DIMENSION(jpi,jpj)                       :: CdN10_f_LU12_eq36  ! neutral FORM drag coefficient contribution over sea-ice
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pfrice ! ice concentration [fraction]  => at_i_b  ! NOT USED if pSc, phf and pDi all provided...
+      !!----------------------------------------------------------------------
+      REAL(wp) :: ztmp, zrlog, zfri, zhf, zDi
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------
+      !zhf   = 0.28   ! h_fc
+      zhf   = 0.41   ! h_fc
+      zDi   = rDmin_0
+      
+      ztmp  = 1._wp/rz0_w_0
+      zrlog = LOG(zhf*ztmp) / LOG(10._wp*ztmp)
+
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            
+            zfri = pfrice(ji,jj)
+            
+            CdN10_f_LU12_eq36(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zhf/zDi  * (1._wp - zfri)**rBeta_0 ! Eq.(35) & (36)
+            !!                        1/2      Ce
+            
+         END DO
+      END DO
+   END FUNCTION CdN10_f_LU12_eq36
+
+
+
+   
 
    !!======================================================================
 END MODULE mod_blk_ice_lu12
