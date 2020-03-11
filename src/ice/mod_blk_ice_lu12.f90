@@ -61,6 +61,9 @@ MODULE mod_blk_ice_lu12
    REAL(wp), PARAMETER :: rDmin_0 =   8._wp      ! Eq.(27)
    REAL(wp), PARAMETER :: rDmax_0 = 300._wp      ! Eq.(27)
    REAL(wp), PARAMETER :: rz0_w_0 = 3.27E-4   ! fixed roughness length over water (paragraph below Eq.36)
+
+
+   REAL(wp), PARAMETER :: rz0_i_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m] (LG15)
    
    !!----------------------------------------------------------------------
 CONTAINS
@@ -143,7 +146,7 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu, z0_w
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu, z0_w, z0_i
       !!
       LOGICAL :: l_known_hf=.FALSE., l_known_Di=.FALSE.
       LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
@@ -164,7 +167,7 @@ CONTAINS
 
 
       !u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj) , z0_w(jpi,jpj) )
+      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj) , z0_w(jpi,jpj), z0_i(jpi,jpj) )
 
       !! Scalar wind speed cannot be below 0.2 m/s
       Ub = MAX( U_zu, wspd_thrshld_ice )
@@ -191,9 +194,9 @@ CONTAINS
 
       !! Method #2:
       !! We need an estimate of z0 over water:
-      z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
-      !PRINT *, 'LOLO: estimate of z0_w =>', z0_w      
-      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) ) / frice(:,:)
+      !z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
+      !!PRINT *, 'LOLO: estimate of z0_w =>', z0_w      
+      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) ) / frice(:,:)
       !!          N10 skin drag                     N10 form drag
       
       !! Method #3:
@@ -201,6 +204,13 @@ CONTAINS
       
       !PRINT *, 'LOLO: estimate of Cd_f_i method #2 =>', CdN10_f_LU12( frice(:,:), z0_w(:,:) )
 
+      !! Method #4:
+      !! using eq.21 of LG15 instead:
+      z0_i(:,:) = rz0_i_0
+      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) / frice(:,:)
+      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
+      
+      
       
       Ch(:,:) = Cd(:,:)
       Ce(:,:) = Cd(:,:)
@@ -345,6 +355,81 @@ CONTAINS
          END DO
       END DO
    END FUNCTION CdN10_f_LU12
+
+
+   FUNCTION CdN_f_LG15( pzu, pfrice, pz0i,  pSc, phf, pDi  )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  CdN_f_LG15  ***
+      !!
+      !!        GENERAL FORM OF EQUATION 21 of Lupkes & Gryanik (2015)
+      !!        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      !!
+      !! ** Purpose :    Computes the "form" contribution of the neutral air-ice
+      !!                 drag referenced at 10m to make it dependent on edges at
+      !!                 leads, melt ponds and flows (to be added to the "skin"
+      !!                 contribution. After some
+      !!                 approximations, this can be resumed to a dependency on
+      !!                 ice concentration.
+      !!
+      !! ** References : Lupkes & Gryanik (2015)
+      !!
+      !!----------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)                       :: CdN_f_LG15  ! neutral FORM drag coefficient contribution over sea-ice
+      REAL(wp),                     INTENT(in )          :: pzu    ! reference height                       [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pfrice ! ice concentration [fraction]  => at_i_b  ! NOT USED if pSc, phf and pDi all provided...
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pz0i   ! roughness length over ICE  [m] (in LU12, it's over water ???)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pSc    ! shletering function [0-1] (Sc->1 for large distance between floes, ->0 for small distances)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: phf    ! mean freeboard of floes    [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pDi    ! cross wind dimension of the floe (aka effective edge length for form drag)   [m]
+      !!----------------------------------------------------------------------
+      LOGICAL :: l_known_Sc=.FALSE., l_known_hf=.FALSE., l_known_Di=.FALSE.
+      REAL(wp) :: ztmp, zrlog, zfri, zfrw, zSc, zhf, zDi
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------
+      l_known_Sc    = PRESENT(pSc)
+      l_known_hf    = PRESENT(phf)
+      l_known_Di    = PRESENT(pDi)
+
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zfri = pfrice(ji,jj)
+            zfrw = (1._wp - zfri)
+            
+            IF(l_known_Sc) THEN
+               zSc = pSc(ji,jj)
+            ELSE
+               !! Sc parameterized in terms of A (ice fraction):
+               zSc = zfrw**(1._wp / ( 10._wp * rBeta_0 ))   ! Eq.(31)
+               PRINT *, 'LOLO: Sc PARAMETERIZED !!! =>', zSc
+            END IF
+            
+            IF(l_known_hf) THEN
+               zhf = phf(ji,jj)
+            ELSE
+               !! hf parameterized in terms of A (ice fraction):
+               zhf = rhmax_0*zfri + rhmin_0*zfrw  ! Eq.(25)
+               PRINT *, 'LOLO: hf PARAMETERIZED !!! =>', zhf
+            END IF
+            
+            IF(l_known_Di) THEN
+               zDi = pDi(ji,jj)
+            ELSE
+               !! Di parameterized in terms of A (ice fraction):
+               ztmp = 1._wp / ( 1._wp - (rDmin_0/rDmax_0)**(1._wp/rBeta_0) )   ! A* Eq.(27)
+               zDi =  rDmin_0 * ( ztmp/(ztmp - zfri) )**rBeta_0                !    Eq.(26)
+               PRINT *, 'LOLO: Di PARAMETERIZED !!! =>', zDi
+            END IF
+            
+            ztmp  = 1._wp/pz0i(ji,jj)
+            zrlog = LOG(zhf*ztmp/2.718_wp) / LOG(pzu*ztmp)  !LOLO: adding number "e" !!!
+
+            CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
+            !!                   1/2      Ce
+
+         END DO
+      END DO
+   END FUNCTION CdN_f_LG15
 
 
 
