@@ -38,14 +38,13 @@ MODULE mod_blk_ice_lg15
    !!====================================================================================
    USE mod_const       !: physical and other constants
    USE mod_phymbl      !: misc. physical functions
+   USE mod_cdn_form_ice
 
    IMPLICIT NONE
    PRIVATE
 
    PUBLIC :: turb_ice_lg15
 
-   REAL(wp), PARAMETER ::   rce10_i_0 = 3.46e-3_wp ! (Eq.48) MIZ
-   REAL(wp), PARAMETER ::   rbeta_0   = 1.4_wp     ! (Eq.47) MIZ
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
@@ -62,7 +61,7 @@ CONTAINS
 
    SUBROUTINE turb_ice_lg15( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
       &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ub,            &
-      &                      Ts_w, qs_w, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
+      &                      Ts_w, qs_w, CdN_frm, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lg15  ***
@@ -78,13 +77,16 @@ CONTAINS
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  Ts_i  : surface temperature of sea-ice                         [K]
-      !!    *  Ts_w  : surface temperature of water (sea)                     [K]
       !!    *  t_zt : potential air temperature at zt                         [K]
       !!    *  qs_i  : saturation specific humidity at temp. Ts_i over ice    [kg/kg]
-      !!    *  qs_w  : saturation specific humidity at temp. Ts_w over water  [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    * frice : sea-ice concentration        (fraction)
+      !!
+      !! OPTIONAL INPUT:
+      !! ---------------
+      !!    *  Ts_w  : surface temperature of water (sea)                     [K]
+      !!    *  qs_w  : saturation specific humidity at temp. Ts_w over water  [kg/kg]
       !!
       !! OUTPUT :
       !! --------
@@ -97,14 +99,15 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    *  Cd_w   : drag coefficient over water
-      !!    *  Ch_w   : sensible heat coefficient over water
-      !!    *  Ce_w   : sublimation coefficient over water
-      !!    *  t_zu_w : pot. air temp. adjusted at zu over water             [K]
-      !!    *  q_zu_w : spec. hum. of air adjusted at zu over water          [kg/kg]
-      !!    * CdN      : neutral-stability drag coefficient
-      !!    * ChN      : neutral-stability sensible heat coefficient
-      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * CdN_frm : sea-ice-related neutral FORM drag coefficient caused by floe egges etc...
+      !!    * Cd_w    : drag coefficient over water
+      !!    * Ch_w    : sensible heat coefficient over water
+      !!    * Ce_w    : sublimation coefficient over water
+      !!    * t_zu_w  : pot. air temp. adjusted at zu over water             [K]
+      !!    * q_zu_w  : spec. hum. of air adjusted at zu over water          [kg/kg]
+      !!    * CdN     : neutral-stability drag coefficient
+      !!    * ChN     : neutral-stability sensible heat coefficient
+      !!    * CeN     : neutral-stability evaporation coefficient
       !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star : return u* the friction velocity                    [m/s]
       !!    * xL      : return the Obukhov length                          [m]
@@ -128,20 +131,22 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub     ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in ), OPTIONAL, DIMENSION(jpi,jpj) :: Ts_w  ! water surface temperature              [Kelvin]
-      REAL(wp), INTENT(in ), OPTIONAL, DIMENSION(jpi,jpj) :: qs_w  ! sat. spec. hum. at water/air interface  [kg/kg]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Cd_w    ! drag coefficient over sea-ice
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Ch_w    ! transfert coefficient for heat over ice
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: Ce_w    ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: t_zu_w  ! pot. air temp. adjusted at zu over water    [K]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: q_zu_w  ! spec. humidity adjusted at zu over water [kg/kg]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: CdN
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: ChN
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: CeN
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) :: xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: Ts_w  ! water surface temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: qs_w  ! sat. spec. hum. at water/air interface  [kg/kg]
+      !!                                                 
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN_frm  ! form drag
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Cd_w    ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Ch_w    ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Ce_w    ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: t_zu_w  ! pot. air temp. adjusted at zu over water    [K]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: q_zu_w  ! spec. humidity adjusted at zu over water [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -151,7 +156,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zCd, zCh, zCdN_s, zChN_s, zCdN_f, zChN_f
 
-      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+      LOGICAL ::  lreturn_cdfrm=.FALSE., lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       LOGICAL :: lreturn_o_water=.FALSE.
       !!
@@ -170,13 +175,14 @@ CONTAINS
          STOP
       END IF
 
-      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
-      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
-      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
+      lreturn_cdfrm = PRESENT(CdN_frm)
+      lreturn_cdn   = PRESENT(CdN)
+      lreturn_chn   = PRESENT(ChN)
+      lreturn_cen   = PRESENT(CeN)
+      lreturn_z0    = PRESENT(xz0)
+      lreturn_ustar = PRESENT(xu_star)
+      lreturn_L     = PRESENT(xL)
+      lreturn_UN10  = PRESENT(xUN10)
 
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE. ! testing "zu == zt" is risky with double precision
@@ -222,8 +228,8 @@ CONTAINS
       zCdN_f(:,:,:) = 0._wp
       zChN_f(:,:,:) = 0._wp
       IF ( l_add_form_drag ) THEN
-         zz0_f(:,:,1)  = rz0_i_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!         
-         zCdN_f(:,:,1) = CdN10_f_LG15( zu, frice(:,:), zz0_f(:,:,1) )         
+         zz0_f(:,:,1)  = rz0_i_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
+         zCdN_f(:,:,1) = CdN_f_LG15_light( zu, frice(:,:), zz0_f(:,:,1) )
          zChN_f(:,:,1) = zCdN_f(:,:,1)/( 1._wp + LOG(1._wp/ralpha_0)/vkarmn*SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
       END IF
 
@@ -340,6 +346,8 @@ CONTAINS
       END DO !DO j_itt = 1, nb_itt
       IF(l_dbg_print) PRINT *, ''!LOLO
 
+
+      IF( lreturn_cdfrm ) CdN_frm = zCdN_f(:,:,1)      
       IF( lreturn_cdn )   CdN = zCdN_s(:,:,1)+zCdN_f(:,:,1)
       IF( lreturn_chn )   ChN = zChN_s(:,:,1)+zChN_f(:,:,1)
       IF( lreturn_cen )   CeN = zChN_s(:,:,1)+zChN_f(:,:,1)
@@ -390,43 +398,6 @@ CONTAINS
    END SUBROUTINE turb_ice_lg15
 
    !!======================================================================
-
-   FUNCTION CdN10_f_LG15( pzu, pfrice, pz0_f )
-      !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  CdN10_f_LG15  ***
-      !!
-      !! ** Purpose :    Computes the "form" contribution of the neutral air-ice
-      !!                 drag referenced at 10m to make it dependent on edges at
-      !!                 leads, melt ponds and flows (to be added to the "skin"
-      !!                 contribution. After some
-      !!                 approximations, this can be resumed to a dependency on
-      !!                 ice concentration.
-      !!
-      !! ** References : Lupkes & Gryanik (2015)
-      !!
-      !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: CdN10_f_LG15  ! neutral FORM drag coefficient contribution over sea-ice
-      REAL(wp),                     INTENT(in) :: pzu    ! reference height [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pfrice ! ice concentration [fraction]  => at_i_b
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0_f   ! roughness length over water  [m]
-      !!----------------------------------------------------------------------
-      REAL(wp) :: ztmp, zrlog, zfri
-      INTEGER  :: ji, jj
-      !!----------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-
-            zfri = pfrice(ji,jj)
-
-            ztmp = 1._wp / pz0_f(ji,jj)
-            zrlog = LOG( 10._wp * ztmp ) / LOG( pzu * ztmp ) ! part of (Eq.46)
-
-            CdN10_f_LG15(:,:) = rce10_i_0 *zrlog*zrlog * zfri * (1._wp - zfri)**rbeta_0  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
-
-         END DO
-      END DO
-   END FUNCTION CdN10_f_LG15
-
 
    FUNCTION mix_val_msh( pfld, pfri )
       REAL(wp), DIMENSION(jpi,jpj) :: mix_val_msh
