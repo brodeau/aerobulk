@@ -50,9 +50,10 @@ MODULE mod_blk_ice_lu12
 
    PUBLIC :: turb_ice_lu12
 
-   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
-   REAL(wp), PARAMETER :: rz0_w_0 = 3.27E-4   ! fixed roughness length over water (paragraph below Eq.36)
-   REAL(wp), PARAMETER :: rz0_i_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m] (LG15)
+   REAL(wp), PARAMETER :: rz0_i_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
+   REAL(wp), PARAMETER :: rz0_i_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m] (LG15)   
+   REAL(wp), PARAMETER :: rz0_w_s_0 = 3.27E-4      ! fixed roughness length over water (paragraph below Eq.36)
+
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -176,7 +177,7 @@ CONTAINS
       !! To estimate CDN10_skin:
       !!  we use the method that comes in LG15, i.e. by starting from a default roughness length z0 for skin drag:
 
-      Ce(:,:) = rz0_s_0 !! temporary array to contain roughness length for skin drag !
+      Ce(:,:) = rz0_i_s_0 !! temporary array to contain roughness length for skin drag !
 
 
       !! Method #1:
@@ -199,7 +200,7 @@ CONTAINS
 
       !! Method #4:
       !! using eq.21 of LG15 instead:
-      z0_i(:,:) = rz0_i_0
+      z0_i(:,:) = rz0_i_f_0
       !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) / frice(:,:)
       Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
       IF( lreturn_cdfrm ) CdN_frm = CdN_f_LG15( zu, frice(:,:), z0_i(:,:) )

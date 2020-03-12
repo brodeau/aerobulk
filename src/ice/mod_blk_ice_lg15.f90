@@ -48,8 +48,8 @@ MODULE mod_blk_ice_lg15
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
-   REAL(wp), PARAMETER :: rz0_s_0  = 0.69e-3_wp  !           Eq. 43 [m]
-   REAL(wp), PARAMETER :: rz0_i_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
+   REAL(wp), PARAMETER :: rz0_i_s_0  = 0.69e-3_wp  !           Eq. 43 [m]
+   REAL(wp), PARAMETER :: rz0_i_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m]
 
    LOGICAL,  PARAMETER :: l_add_form_drag = .TRUE.
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
@@ -219,7 +219,7 @@ CONTAINS
       END IF
 
       !! For skin drag :
-      zz0_s(:,:,1)  = rz0_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_s_0)...
+      zz0_s(:,:,1)  = rz0_i_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_i_s_0)...
       zCdN_s(:,:,1) = Cd_from_z0( zu, zz0_s(:,:,1) )
       zChN_s(:,:,1) = vkarmn2 / ( LOG( zu / zz0_s(:,:,1) ) * LOG( zu / (ralpha_0*zz0_s(:,:,1)) ) )     ! (Eq.11,12)  [ "" ]
 
@@ -228,7 +228,7 @@ CONTAINS
       zCdN_f(:,:,:) = 0._wp
       zChN_f(:,:,:) = 0._wp
       IF ( l_add_form_drag ) THEN
-         zz0_f(:,:,1)  = rz0_i_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
+         zz0_f(:,:,1)  = rz0_i_f_0        !LOLO/RFI! ! Room for improvement. We use the same z0_form everywhere !!!
          zCdN_f(:,:,1) = CdN_f_LG15_light( zu, frice(:,:), zz0_f(:,:,1) )
          zChN_f(:,:,1) = zCdN_f(:,:,1)/( 1._wp + LOG(1._wp/ralpha_0)/vkarmn*SQRT(zCdN_f(:,:,1)) ) ! (Eq.60,61)   [ "" ]
       END IF
