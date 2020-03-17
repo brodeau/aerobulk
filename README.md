@@ -16,7 +16,7 @@ and humidity.
 
 The following figure provides a schematic view on the way turbulent fluxes are computed in AeroBulk:
 
-![Aerobulk Approach](https://brodeau.github.io/images/projects/fig_bulk_model.svg)
+![Aerobulk Approach](https://brodeau.github.io/images/projects/fig_bulk_model_ftp.svg)
 
 
 In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
