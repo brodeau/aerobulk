@@ -4,17 +4,20 @@
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
-**AeroBulk** is a Fortran package/library that gathers state-of-the-art algorithms, turbulent closures, parameterizations, and thermodynamics functions used to compute turbulent fluxes at the air-sea interface.  These turbulent fluxes are wind stress, evaporation (latent heat flux) and sensible heat flux. These fluxes are estimated by means of so-called **aerodynamic bulk formula from the sea surface temperature, and atmospheric surface parameters: wind speed, air temperature and specific humidity.
+**AeroBulk** is a library and a collection of tools (Fortran 90) that gather state-of-the-art parameterizations and functions needed to estimate turbulent air-sea fluxes in the most accurate way, based on **aerodynamic bulk formulae**.
 
-![Aerobulk Logo](https://brodeau.github.io/images/projects/bulk.svg)
+These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and
+sensible heat flux, are estimated by means of sea surface temperature, and
+near-surface atmospheric surface state: (relative) wind speed, air temperature
+and humidity.
 
-<!-- $$ \tau= \rho_{air}  C_D U_z ~ {\bf U_B} \\
-Q_H = \rho_{air}~C_H~C_P~\big[ \theta_z - T_s \big] ~ {\bf U_B} \\
-E      = \rho_{air}~C_E    ~\big[    q_s   - q_z \big] ~ {\bf U_B}   \\
-Q_L           = -L_v \, E   $$
-with:
-$$  \theta_z \simeq T_z+\gamma z \\ q_s \simeq 0.98\,q_{sat}(T_s,P_0) $$
--->
+![Bulk Formula](https://brodeau.github.io/images/projects/bulk.svg)
+
+
+The following figure provides a schematic view on the way turbulent fluxes are computed in AeroBulk:
+
+![Aerobulk Approach](https://brodeau.github.io/images/projects/fig_bulk_model.svg)
+
 
 In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
@@ -40,7 +43,7 @@ You will be guided and interactively prompted for different sea-surface and ABL 
 
  List of command line options for ```test_aerobulk.x```:
 
-    -p   => Ask for sea-level pressure, otherwize assume 1010 hPa
+    -p   => Ask for sea-level pressure, otherwise assume 1010 hPa
 
     -r   => Ask for relative humidity rather than specific humidity
 
