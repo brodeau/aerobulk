@@ -39,13 +39,13 @@ l_style = [    '-'  ,    '-'   ,     '-'  ,   '-'  ,   '-'   ] ; # line-style
 l_lgnm  = [ 'LG15l' ,   'LG15' ,   'LU12l', 'LU12' , 'LU13'  ]
 
 
-L_VNEM  = [  'A'  ,    'Wind'     ,  'CdN_f_i'   ]
-L_VARO  = [  'A'  ,    'Wind'     ,   'CdN'      ] ; # name of variable on figure
-L_VARL  = [  'A'  , r'$|U_{10}|$' , r'C_{D}^{N}' ] ; # name of variable in latex mode
-L_VUNT  = [  ''   ,   'm/s'       ,    r''       ]
-L_VMAX  = [  1.1  ,     20.       ,    0.5       ]
-L_VMIN  = [  0.5  ,      0.       ,   -0.1       ]
-L_ANOM  = [ False ,   False       ,    True      ]
+L_VNEM  = [  'A'  ,    'Wind'     ,  'CdN_f_i'     ]
+L_VARO  = [  'A'  ,    'Wind'     ,   'CdN'        ] ; # name of variable on figure
+L_VARL  = [  'A'  , r'$|U_{10}|$' , r'$C_{D}^{N}$' ] ; # name of variable in latex mode
+L_VUNT  = [  ''   ,   'm/s'       ,    r''         ]
+L_VMAX  = [  1.1  ,     20.       ,    0.5         ]
+L_VMIN  = [  0.5  ,      0.       ,   -0.1         ]
+L_ANOM  = [ False ,   False       ,    True        ]
 
 
 nb_algos = len(L_ALGOS) ; print(nb_algos)
