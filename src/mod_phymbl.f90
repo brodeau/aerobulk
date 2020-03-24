@@ -805,15 +805,11 @@ CONTAINS
    END SUBROUTINE UPDATE_QNSOL_TAU
 
 
-
-
-
-
-
-
-
-   SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap, prhoa,  l_ice )
+   SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, &
+      &                          pCd, pCh, pCe,           &
+      &                          pwnd, pUb, pslp,         &
+      &                          pTau, pQsen, pQlat,      &
+      &                          pEvap, prhoa, l_ice      )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
@@ -841,7 +837,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF ( PRESENT(l_ice) ) lice = l_ice
-      !!
+
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
       ztaa = pTa ! first guess...
       DO jq = 1, 4
@@ -870,8 +866,11 @@ CONTAINS
 
    END SUBROUTINE BULK_FORMULA_SCLR
    !!
-   SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, pCd, pCh, pCe, pwnd, pUb, pslp, &
-      &                                 pTau, pQsen, pQlat,  pEvap, prhoa,  l_ice )
+   SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, &
+      &                          pCd, pCh, pCe,           &
+      &                          pwnd, pUb, pslp,         &
+      &                          pTau, pQsen, pQlat,      & 
+      &                          pEvap, prhoa, l_ice )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
@@ -899,21 +898,21 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF ( PRESENT(l_ice) ) lice = l_ice
-      !!
+
       DO jj = 1, jpj
          DO ji = 1, jpi
-            !!
-            CALL BULK_FORMULA_SCLR( pzu,  pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj),  &
-               &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj), pwnd(ji,jj), pUb(ji,jj), &
-               &                   pslp(ji,jj), pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),  &
-               & pEvap=zevap, prhoa=zrho, l_ice=lice )
-            !!
-            IF ( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
-            IF ( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
+
+         CALL BULK_FORMULA_SCLR( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), &
+            &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
+            &                    pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj),                &
+            &                    pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),             &
+            &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
+
+         IF( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
+         IF( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
          END DO
       END DO
    END SUBROUTINE BULK_FORMULA_VCTR
-
 
 
    FUNCTION alpha_sw_vctr( psst )
