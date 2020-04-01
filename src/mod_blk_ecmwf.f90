@@ -65,19 +65,19 @@ CONTAINS
       LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
-      IF ( l_use_wl ) THEN
+      IF( l_use_wl ) THEN
          ierr = 0
          ALLOCATE ( dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_wl & Hz_wl failed!' )
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
-      END IF
-      IF ( l_use_cs ) THEN
+      ENDIF
+      IF( l_use_cs ) THEN
          ierr = 0
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      END IF
+      ENDIF
    END SUBROUTINE ecmwf_init
 
 
@@ -213,7 +213,7 @@ CONTAINS
          &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
 
-      IF ( kt == nit000 ) CALL ECMWF_INIT(l_use_cs, l_use_wl)
+      IF( kt == nit000 ) CALL ECMWF_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
       IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
@@ -227,18 +227,18 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       !! Initializations for cool skin and warm layer:
-      IF ( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+      IF( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use cool-skin param!' )
 
-      IF ( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+      IF( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use warm-layer param!' )
 
-      IF ( l_use_cs .OR. l_use_wl ) THEN
+      IF( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
-      END IF
+      ENDIF
 
 
       ! Identical first gess as in COARE, with IFS parameter values though...
@@ -296,7 +296,7 @@ CONTAINS
          !
          dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-      END IF
+      ENDIF
 
 
       !! => that was same first guess as in COARE...
@@ -361,7 +361,7 @@ CONTAINS
             ztmp2  = ztmp0 - func_m + ztmp2
             ztmp1  = LOG(zt/zu) + ztmp2
             q_zu   = q_zt - q_star/vkarmn*ztmp1
-         END IF
+         ENDIF
 
          !! Updating because of updated z0 and z0t and new Linv...
          ztmp0 = zu*Linv
@@ -381,7 +381,7 @@ CONTAINS
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
-         END IF
+         ENDIF
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
@@ -392,12 +392,12 @@ CONTAINS
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         END IF
+         ENDIF
 
          IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-         END IF
+         ENDIF
 
       END DO !DO j_itt = 1, nb_itt
 
@@ -420,11 +420,11 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, func_m, func_h, &
          &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
 
-      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
-      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
+      IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
+      IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
+      IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_ecmwf
 

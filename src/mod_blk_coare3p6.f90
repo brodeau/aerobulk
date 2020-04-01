@@ -55,7 +55,7 @@ CONTAINS
       LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
-      IF ( l_use_wl ) THEN
+      IF( l_use_wl ) THEN
          ierr = 0
          ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
@@ -63,13 +63,13 @@ CONTAINS
          Qnt_ac(:,:) = 0._wp
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = Hwl_max
-      END IF
-      IF ( l_use_cs ) THEN
+      ENDIF
+      IF( l_use_cs ) THEN
          ierr = 0
          ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      END IF
+      ENDIF
    END SUBROUTINE coare3p6_init
 
 
@@ -205,7 +205,7 @@ CONTAINS
          &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
          &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
 
-      IF ( kt == nit000 ) CALL COARE3P6_INIT(l_use_cs, l_use_wl)
+      IF( kt == nit000 ) CALL COARE3P6_INIT(l_use_cs, l_use_wl)
 
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
       IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
@@ -220,20 +220,20 @@ CONTAINS
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
       !! Initializations for cool skin and warm layer:
-      IF ( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
+      IF( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use cool-skin param!' )
 
-      IF ( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)     &
+      IF( l_use_wl .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp)     &
          &  .AND. PRESENT(isecday_utc) .AND. PRESENT(plong)) ) ) &
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw, slp, isecday_utc', &
          &   ' & plong to use warm-layer param!'  )
 
-      IF ( l_use_cs .OR. l_use_wl ) THEN
+      IF( l_use_cs .OR. l_use_wl ) THEN
          ALLOCATE ( zsst(jpi,jpj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
-      END IF
+      ENDIF
 
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
@@ -289,7 +289,7 @@ CONTAINS
          !
          dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
          dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-      END IF
+      ENDIF
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
@@ -312,10 +312,10 @@ CONTAINS
          IF( .NOT. l_zt_equal_zu ) THEN
             zeta_t = zt*ztmp0
             zeta_t = SIGN( MIN(ABS(zeta_t),50.0_wp), zeta_t )
-         END IF
+         ENDIF
 
          !! Adjustment the wind at 10m (not needed in the current algo form):
-         !IF ( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
+         !IF( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
 
          !! Roughness lengthes z0, z0t (z0q = z0t) :
          ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
@@ -339,7 +339,7 @@ CONTAINS
             ztmp1 = LOG(zt/zu) + ztmp0 - psi_h_coare(zeta_t)
             t_zu = t_zt - t_star/vkarmn*ztmp1
             q_zu = q_zt - q_star/vkarmn*ztmp1
-         END IF
+         ENDIF
 
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
@@ -352,7 +352,7 @@ CONTAINS
             T_s(:,:) = zsst(:,:) + dT_cs(:,:)
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         END IF
+         ENDIF
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
@@ -365,12 +365,12 @@ CONTAINS
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         END IF
+         ENDIF
 
          IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
             dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-         END IF
+         ENDIF
 
       END DO !DO j_itt = 1, nb_itt
 
@@ -394,11 +394,11 @@ CONTAINS
       DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
-      IF ( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
-      IF ( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
-      IF ( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
+      IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
+      IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
+      IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF ( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
    END SUBROUTINE turb_coare3p6
 

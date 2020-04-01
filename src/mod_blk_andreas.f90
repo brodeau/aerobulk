@@ -7,10 +7,16 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
 !
-MODULE mod_blk_ncar
+MODULE mod_blk_andreas
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes
-   !!         according to Large & Yeager (2004,2008)
+   !!         according to Andreas et al. (2015)
+   !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   !!       Andreas, E.L., Mahrt, L. and Vickers, D. (2015),
+   !!       An improved bulk air–sea surface flux algorithm,
+   !!       including spray‐mediated transfer.
+   !!       Q.J.R. Meteorol. Soc., 141: 642-654. doi:10.1002/qj.2424
+   !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (2m) to zu (10m) if needed
@@ -19,10 +25,10 @@ MODULE mod_blk_ncar
    !!
    !!    Using the bulk formulation/param. of Large & Yeager 2008
    !!
-   !!       Routine turb_ncar maintained and developed in AeroBulk
+   !!       Routine turb_andreas maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, 2016
+   !!            Author: Laurent Brodeau, 2020
    !!
    !!====================================================================================
    USE mod_const       !: physical and othe constants
@@ -31,17 +37,17 @@ MODULE mod_blk_ncar
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_NCAR, CD_N10_NCAR, CH_N10_NCAR, CE_N10_NCAR
+   PUBLIC :: TURB_ANDREAS, CD_N10_ANDREAS, CH_N10_ANDREAS, CE_N10_ANDREAS
 
    !!----------------------------------------------------------------------
 CONTAINS
 
-   !   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, SLP, gamma, &
-   SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
+   !   SUBROUTINE turb_andreas( zt, zu, sst, t_zt, ssq, q_zt, U_zu, SLP, gamma, &
+   SUBROUTINE turb_andreas( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
       &                  Cd, Ch, Ce, t_zu, q_zu, Ub,                  &
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_ncar  ***
+      !!                      ***  ROUTINE  turb_andreas  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
       !!                fluxes according to Large & Yeager (2004) and Large & Yeager (2008)
@@ -116,7 +122,7 @@ CONTAINS
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
-      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ncar@mod_blk_ncar.f90'
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
 
       ALLOCATE( Cx_n10(jpi,jpj), sqrtCdn10(jpi,jpj), &
@@ -136,16 +142,16 @@ CONTAINS
 
       Ub = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
-      ztmp0 = cd_n10_ncar( Ub )
+      ztmp0 = cd_n10_andreas( Ub )
       sqrtCdn10 = SQRT( ztmp0 )
 
       !! Initializing transf. coeff. with their first guess neutral equivalents :
       Cd = ztmp0
 
-      Ce = CE_N10_NCAR( sqrtCdn10 )
+      Ce = CE_N10_ANDREAS( sqrtCdn10 )
 
       ztmp0 = 0.5_wp + SIGN(0.5_wp, virt_temp(t_zt, q_zt) - virt_temp(sst, ssq)) ! we guess stability based on delta of virt. pot. temp.
-      Ch = CH_N10_NCAR( sqrtCdn10 , ztmp0 )
+      Ch = CH_N10_ANDREAS( sqrtCdn10 , ztmp0 )
 
       sqrtCd = sqrtCdn10
 
@@ -186,10 +192,10 @@ CONTAINS
             !! Prevent q_zu to reach beyond saturation:
             !ztmp0 = t_zu - zu*gamma  ! ztmp0 = absolute temp. at zu (slightly colder that pot. temp. at zu)
             !q_zu = MIN( q_sat( ztmp0, SLP ), q_zu )
-            !PRINT *, 'LOLO: mod_blk_ncar.f90 => SLP =', SLP
-            !PRINT *, 'LOLO: mod_blk_ncar.f90 => gamma_moist =', gamma
-            !PRINT *, 'LOLO: mod_blk_ncar.f90 => t_zu =', REAL(ztmp0-rt0, 4)
-            !PRINT *, 'LOLO: mod_blk_ncar.f90 => q_zu_sane =', q_sat( ztmp0, SLP ) ;            PRINT *, ''
+            !PRINT *, 'LOLO: mod_blk_andreas.f90 => SLP =', SLP
+            !PRINT *, 'LOLO: mod_blk_andreas.f90 => gamma_moist =', gamma
+            !PRINT *, 'LOLO: mod_blk_andreas.f90 => t_zu =', REAL(ztmp0-rt0, 4)
+            !PRINT *, 'LOLO: mod_blk_andreas.f90 => q_zu_sane =', q_sat( ztmp0, SLP ) ;            PRINT *, ''
          END IF
 
          ! Update neutral wind speed at 10m and neutral Cd at 10m (L&Y 2004 Eq. 9a)...
@@ -198,7 +204,7 @@ CONTAINS
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
          ztmp2 = psi_m(zeta_u)
          ztmp0 = MAX( 0.25_wp , UN10_from_CD(zu, Ub, Cd, ppsi=ztmp2) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
-         ztmp0 = CD_N10_NCAR(ztmp0)                                       ! Cd_n10
+         ztmp0 = CD_N10_ANDREAS(ztmp0)                                       ! Cd_n10
          sqrtCdn10 = sqrt(ztmp0)
 
          !! Update of transfer coefficients:
@@ -210,19 +216,19 @@ CONTAINS
          ztmp2  = sqrtCd / sqrtCdn10
 
          ztmp1  = 0.5_wp + sign(0.5_wp,zeta_u)       ! stability flag
-         Cx_n10 = CH_N10_NCAR( sqrtCdn10 , ztmp1 )
+         Cx_n10 = CH_N10_ANDREAS( sqrtCdn10 , ztmp1 )
          ztmp1  = 1._wp + Cx_n10*ztmp0
          Ch     = Cx_n10*ztmp2 / ztmp1   ! L&Y 2004 Eq. (10b)
 
-         Cx_n10 = CE_N10_NCAR( sqrtCdn10 )
+         Cx_n10 = CE_N10_ANDREAS( sqrtCdn10 )
          ztmp1  = 1._wp + Cx_n10*ztmp0
          Ce     = Cx_n10*ztmp2 / ztmp1  ! L&Y 2004 Eq. (10c)
 
       END DO !DO j_itt = 1, nb_itt
 
       IF( lreturn_cdn )   CdN     = sqrtCdn10*sqrtCdn10
-      IF( lreturn_chn )   ChN     = CH_N10_NCAR( sqrtCdn10 , 0.5_wp+sign(0.5_wp,zeta_u) )
-      IF( lreturn_cen )   CeN     = CE_N10_NCAR( sqrtCdn10 )
+      IF( lreturn_chn )   ChN     = CH_N10_ANDREAS( sqrtCdn10 , 0.5_wp+sign(0.5_wp,zeta_u) )
+      IF( lreturn_cen )   CeN     = CE_N10_ANDREAS( sqrtCdn10 )
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, sqrtCdn10*sqrtCdn10 )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*Ub
       IF( lreturn_L )     xL      = zu/zeta_u
@@ -230,10 +236,69 @@ CONTAINS
 
       DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 
-   END SUBROUTINE turb_ncar
+   END SUBROUTINE turb_andreas
+
+   
+   FUNCTION U_STAR_ANDREAS( pun10 )
+      !!----------------------------------------------------------------------------------
+      !! Estimate of the friction velocity as a function of the neutral-stability wind
+      !! speed at at 10m
+      !!
+      !! Origin: Eq.(2.2) of Andreas et al. (2015)
+      !!
+      !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pun10          !: neutral-stability scalar wind speed at 10m (m/s)
+      REAL(wp), DIMENSION(jpi,jpj)             :: u_star_andreas !: friction velocity    [m/s]
+      !
+      INTEGER  ::     ji, jj ! dummy loop indices
+      REAL(wp) :: za, zt, zw ! local scalars
+      !!----------------------------------------------------------------------------------
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            
+            zw  = pun10(ji,jj)
+            
+            za = zw - 8.271_wp
+            
+            zt = za + SQRT( MAX( 0.12_wp*za*za + 0.181_wp , 0._wp ) )
+            
+            u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
+            
+         END DO
+      END DO
+      !
+   END FUNCTION U_STAR_ANDREAS
+   
 
 
-   FUNCTION CD_N10_NCAR( pw10 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+   FUNCTION CD_N10_ANDREAS( pw10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral drag coefficient at 10m as a function
       !! of neutral wind  speed at 10m
@@ -243,7 +308,7 @@ CONTAINS
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
-      REAL(wp), DIMENSION(jpi,jpj)             :: cd_n10_ncar
+      REAL(wp), DIMENSION(jpi,jpj)             :: cd_n10_andreas
       !
       INTEGER  ::     ji, jj     ! dummy loop indices
       REAL(wp) :: zgt33, zw, zw6 ! local scalars
@@ -259,50 +324,50 @@ CONTAINS
             ! When wind speed > 33 m/s => Cyclone conditions => special treatment
             zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
             !
-            cd_n10_ncar(ji,jj) = 1.e-3_wp * ( &
+            cd_n10_andreas(ji,jj) = 1.e-3_wp * ( &
                &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
-            cd_n10_ncar(ji,jj) = MAX(cd_n10_ncar(ji,jj), 1.E-6_wp)
+            cd_n10_andreas(ji,jj) = MAX(cd_n10_andreas(ji,jj), 1.E-6_wp)
             !
          END DO
       END DO
       !
-   END FUNCTION CD_N10_NCAR
+   END FUNCTION CD_N10_ANDREAS
 
 
 
-   FUNCTION CH_N10_NCAR( psqrtcdn10 , pstab )
+   FUNCTION CH_N10_ANDREAS( psqrtcdn10 , pstab )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (12)
 
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: ch_n10_ncar
+      REAL(wp), DIMENSION(jpi,jpj)             :: ch_n10_andreas
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pstab      ! stable ABL => 1 / unstable ABL => 0
       !!----------------------------------------------------------------------------------
       IF( ANY(pstab < -0.00001) .OR. ANY(pstab >  1.00001) ) THEN
-         PRINT *, 'ERROR: CH_N10_NCAR@mod_blk_ncar.f90: pstab ='
+         PRINT *, 'ERROR: CH_N10_ANDREAS@mod_blk_andreas.f90: pstab ='
          PRINT *, pstab
          STOP
       END IF
       !
-      ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )   ! Eq. (9) & (12) Large & Yeager, 2008
+      ch_n10_andreas = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )   ! Eq. (9) & (12) Large & Yeager, 2008
       !
-   END FUNCTION CH_N10_NCAR
+   END FUNCTION CH_N10_ANDREAS
 
-   FUNCTION CE_N10_NCAR( psqrtcdn10 )
+   FUNCTION CE_N10_ANDREAS( psqrtcdn10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (13)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_ncar
+      REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_andreas
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
       !!----------------------------------------------------------------------------------
-      ce_n10_ncar = 1.e-3_wp * ( 34.6_wp * psqrtcdn10 )
+      ce_n10_andreas = 1.e-3_wp * ( 34.6_wp * psqrtcdn10 )
       !
-   END FUNCTION CE_N10_NCAR
+   END FUNCTION CE_N10_ANDREAS
 
 
 
@@ -373,4 +438,4 @@ CONTAINS
    END FUNCTION psi_h
 
    !!======================================================================
-END MODULE mod_blk_ncar
+END MODULE mod_blk_andreas

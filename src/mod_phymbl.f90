@@ -116,6 +116,7 @@ MODULE mod_phymbl
    PUBLIC z0_from_Cd
    PUBLIC Cd_from_z0
    PUBLIC f_m_louis, f_h_louis
+   PUBLIC UN10_from_ustar
    PUBLIC UN10_from_CDN
    PUBLIC UN10_from_CD
 
@@ -992,7 +993,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral or non-neutral) drag coefficient []
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi  !: (non neutral case) stability correction (Psi(zu/L)) []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!
       !! If pCd is the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
@@ -1010,7 +1011,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: Cd_from_z0        !: (neutral or non-neutral) drag coefficient []
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0   !: roughness length [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi  !: (non neutral case) stability correction (Psi(zu/L)) []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []            
       !!
       !! If we want to return the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If we want to return the stability-corrected Cd (i.e. in stable or unstable conditions) then pssi must be provided
@@ -1102,10 +1103,21 @@ CONTAINS
    END FUNCTION f_h_louis_vctr
 
 
+   FUNCTION UN10_from_ustar( pzu, pUzu, pus, ppsi )
+      !!----------------------------------------------------------------------------------
+      !!  Provides the neutral-stability wind speed at 10 m
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: UN10_from_ustar  !: neutral stability wind speed at 10m [m/s]
+      REAL(wp),                     INTENT(in) :: pzu   !: measurement heigh of wind speed   [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUzu  !: bulk wind speed at height pzu m   [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   !: friction velocity                 [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
+      !!----------------------------------------------------------------------------------
+      UN10_from_ustar(:,:) = pUzu(:,:) - pus(:,:)/vkarmn * ( LOG(pzu/10._wp) - ppsi(:,:) )
+      !!
+   END FUNCTION UN10_from_ustar
 
-
-
-
+   
    FUNCTION UN10_from_CDN( pzu, pUb, pCdn, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1114,7 +1126,7 @@ CONTAINS
       REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCdn !: neutral-stability drag coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" correction profile in non neutral conditions []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!----------------------------------------------------------------------------------
       UN10_from_CDN(:,:) = pUb / ( 1._wp + SQRT(pCdn(:,:))/vkarmn * (LOG(pzu/10._wp) - ppsi(:,:)) )
       !!
@@ -1129,7 +1141,7 @@ CONTAINS
       REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd  !: drag coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" correction profile in non neutral conditions []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!----------------------------------------------------------------------------------
       !! Reminder: UN10 = u*/vkarmn * log(10/z0)
       !!     and: u* = sqrt(Cd) * Ub
