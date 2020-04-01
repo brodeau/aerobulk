@@ -9,13 +9,14 @@ PROGRAM TEST_AEROBULK
    USE mod_blk_coare3p6
    USE mod_blk_ncar
    USE mod_blk_ecmwf
+   USE mod_blk_andreas
 
    IMPLICIT NONE
 
-   INTEGER, PARAMETER :: nb_algos = 4
+   INTEGER, PARAMETER :: nb_algos = 5
 
    CHARACTER(len=8), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ' /)
+      &      vca = (/ 'coare3p0', 'coare3p6', 'ncar    ', 'ecmwf   ', 'andreas ' /)
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
@@ -29,10 +30,10 @@ PROGRAM TEST_AEROBULK
 
    CHARACTER(len=2) :: car
 
-   CHARACTER(len=100) :: &
-      &   calgob
+   CHARACTER(len=100) :: calgob
+   CHARACTER(len=512) :: ctitle
 
-   INTEGER :: jarg, ialgo, jq, icpt
+   INTEGER :: jarg, ialgo, icpt
 
    INTEGER, PARAMETER :: lx=1, ly=1
    REAL(wp),    DIMENSION(lx,ly) :: Ublk, zz0, zus, zL, zUN10, zCdN, zChN, zCeN
@@ -383,7 +384,12 @@ PROGRAM TEST_AEROBULK
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
 
-
+      CASE(5)
+         CALL TURB_ANDREAS( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
+            &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
+            &            CdN=zCdN, ChN=zChN, CeN=zCeN,                       &
+            &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+        
       CASE DEFAULT
          WRITE(6,*) 'Bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
@@ -463,6 +469,8 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
+   WRITE(ctitle,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),&
+      '     |    ',TRIM(vca(4)),'     |    ',TRIM(vca(5))
 
    IF ( zt < zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
@@ -471,7 +479,7 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
+    WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
@@ -511,7 +519,7 @@ PROGRAM TEST_AEROBULK
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),'     |    ',TRIM(vca(4))
+    WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , ' [10^-3]'
    WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , ' [10^-3]'
