@@ -1,3 +1,5 @@
+!!! TO DO: consistent psi_m and psi_h needed!!! For now is those of NCAR !!!
+!!
 ! AeroBulk / 2020 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
@@ -111,7 +113,8 @@ CONTAINS
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   u_star   ! square root of Cd_n10
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   u_star, t_star, q_star
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   z0       ! roughness length (momentum) [m]
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
@@ -121,7 +124,8 @@ CONTAINS
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
 
-      ALLOCATE( u_star(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
+      ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
+         &          z0(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
          &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
 
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
@@ -136,7 +140,7 @@ CONTAINS
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
       Ub = MAX( 0.25_wp , U_zu ) !  relative bulk wind speed at zu
-      
+
       !! First guess:
       Cd = 1.2E-3_wp
       Ch = 1.2E-3_wp
@@ -144,65 +148,79 @@ CONTAINS
 
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt
-      q_zu = q_zt      
+      q_zu = q_zt
 
+      !! First guess of turbulent scales:
       ztmp0  = SQRT(Cd)
       u_star = ztmp0*Ub       ! u*
+      t_star = Ch/ztmp0*(t_zu - sst) ! theta*
+      q_star = Ce/ztmp0*(q_zu - ssq) ! q*
+
 
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
 
-         ztmp1 = t_zu - sst   ! Updating air/sea differences
-         ztmp2 = q_zu - ssq
-
-         ! Updating turbulent scales (ztmp0 == SQRT(Cd)):
-         ztmp1 = Ch/ztmp0*ztmp1    ! theta*
-         ztmp2 = Ce/ztmp0*ztmp2    ! q*
-
-         ! Estimate the inverse of Obukov length (1/L) at height zu:
-         ztmp0 = One_on_L( t_zu, q_zu, u_star, ztmp1, ztmp2 )
-         
-         !! Stability parameters :
-         zeta_u   = zu*ztmp0
+         !! Stability parameter :
+         zeta_u   = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )
          zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
 
-         !! Shifting temperature and humidity at zu (L&Y 2004 Eq. (9b-9c))
-         IF( .NOT. l_zt_equal_zu ) THEN
-            ztmp0 = zt*ztmp0 ! zeta_t !
-            ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
-            ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
-            t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
-            !!
-            q_zu = MAX( q_zt - ztmp2/vkarmn*ztmp0 , 0._wp )   ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
-            !!
-         END IF
-
          ztmp0 = UN10_from_ustar( zu, Ub, u_star, psi_m(zeta_u) ) ! UN10
-         
+
          u_star = U_STAR_ANDREAS( ztmp0 )
 
+         !! Drag coefficient:
          ztmp0 = u_star/Ub
          Cd    = ztmp0*ztmp0
-         
-         ztmp0 = SQRT(Cd)
 
-         
+         !! Roughness length:
+         z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
+
+         !! z0t and z0q, based on LKB, just like into COARE 2.5:
+         ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
+         ztmp1 = z0tq_LKB( 1, ztmp0, z0 )    ! z0t
+         ztmp2 = z0tq_LKB( 2, ztmp0, z0 )    ! z0q
+
+         !! Turbulent scales at zu :
+         ztmp0   = psi_h(zeta_u)   ! lolo: zeta_u for scalars???
+         t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
+         q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
+
+         IF( .NOT. l_zt_equal_zu ) THEN
+            !! Re-updating temperature and humidity at zu if zt /= zu:
+            ztmp0 = zt*One_on_L( t_zu, q_zu, u_star, t_star, q_star ) ! zeta_t
+            ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)
+            t_zu = t_zt - t_star/vkarmn*ztmp0
+            q_zu = q_zt - q_star/vkarmn*ztmp0
+         ENDIF
+
       END DO !DO j_itt = 1, nb_itt
+
       
+      ! compute transfer coefficients at zu:
+      ztmp0 = u_star/Ub
+      Cd   = ztmp0*ztmp0
+
+      ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
+      ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
+      Ch   = ztmp0*t_star/ztmp1
+      Ce   = ztmp0*q_star/ztmp2
+      
+
       IF( lreturn_cdn )   CdN     = -999.
       IF( lreturn_chn )   ChN     = -999.
       IF( lreturn_cen )   CeN     = -999.
-      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
+      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
+      IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = zu/zeta_u
       IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m(zeta_u) )
 
-      DEALLOCATE( u_star, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
+      DEALLOCATE( u_star, t_star, q_star, z0, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 
    END SUBROUTINE turb_andreas
 
-   
+
    FUNCTION U_STAR_ANDREAS( pun10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the friction velocity as a function of the neutral-stability wind
@@ -221,15 +239,15 @@ CONTAINS
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            
+
             zw  = pun10(ji,jj)
-            
+
             za = zw - 8.271_wp
-            
+
             zt = za + SQRT( MAX( 0.12_wp*za*za + 0.181_wp , 0._wp ) )
-            
+
             u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
-            
+
          END DO
       END DO
       !

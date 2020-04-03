@@ -119,6 +119,9 @@ MODULE mod_phymbl
    PUBLIC UN10_from_ustar
    PUBLIC UN10_from_CDN
    PUBLIC UN10_from_CD
+   PUBLIC Re_rough_tq_LKB
+   PUBLIC z0tq_LKB
+
 
    REAL(wp), PARAMETER :: repsilon = 1.e-6
 
@@ -291,7 +294,7 @@ CONTAINS
    END FUNCTION cp_air_sclr
 
 
-   
+
    !===============================================================================================
    FUNCTION gamma_moist_sclr( ptak, pqa )
       !!----------------------------------------------------------------------------------
@@ -870,7 +873,7 @@ CONTAINS
    SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, &
       &                          pCd, pCh, pCe,           &
       &                          pwnd, pUb, pslp,         &
-      &                          pTau, pQsen, pQlat,      & 
+      &                          pTau, pQsen, pQlat,      &
       &                          pEvap, prhoa, l_ice )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
@@ -903,14 +906,14 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-         CALL BULK_FORMULA_SCLR( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), &
-            &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
-            &                    pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj),                &
-            &                    pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),             &
-            &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
+            CALL BULK_FORMULA_SCLR( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), &
+               &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
+               &                    pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj),                &
+               &                    pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),             &
+               &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
 
-         IF( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
-         IF( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
+            IF( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
+            IF( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
          END DO
       END DO
    END SUBROUTINE BULK_FORMULA_VCTR
@@ -1006,12 +1009,12 @@ CONTAINS
          z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd(:,:)) )            !LB: ok, double-checked!
       END IF
    END FUNCTION z0_from_Cd
-   
+
    FUNCTION Cd_from_z0( pzu, pz0,  ppsi )
       REAL(wp), DIMENSION(jpi,jpj) :: Cd_from_z0        !: (neutral or non-neutral) drag coefficient []
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0   !: roughness length [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []            
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!
       !! If we want to return the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If we want to return the stability-corrected Cd (i.e. in stable or unstable conditions) then pssi must be provided
@@ -1024,7 +1027,7 @@ CONTAINS
          Cd_from_z0 = 1._wp /   LOG( pzu / pz0(:,:) )
       END IF
       Cd_from_z0 = vkarmn2 * Cd_from_z0 * Cd_from_z0
-   END FUNCTION Cd_from_z0   
+   END FUNCTION Cd_from_z0
 
 
    FUNCTION f_m_louis_sclr( pzu, pRib, pCdn, pz0 )
@@ -1064,7 +1067,7 @@ CONTAINS
       END DO
    END FUNCTION f_m_louis_vctr
 
-   
+
    FUNCTION f_h_louis_sclr( pzu, pRib, pChn, pz0 )
       !!----------------------------------------------------------------------------------
       !!  Stability correction function for HEAT
@@ -1117,7 +1120,7 @@ CONTAINS
       !!
    END FUNCTION UN10_from_ustar
 
-   
+
    FUNCTION UN10_from_CDN( pzu, pUb, pCdn, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1132,7 +1135,7 @@ CONTAINS
       !!
    END FUNCTION UN10_from_CDN
 
-   
+
    FUNCTION UN10_from_CD( pzu, pUb, pCd, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1145,14 +1148,165 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Reminder: UN10 = u*/vkarmn * log(10/z0)
       !!     and: u* = sqrt(Cd) * Ub
-      !!                                  u*/vkarmn * log(   10   /       z0    ) 
+      !!                                  u*/vkarmn * log(   10   /       z0    )
       UN10_from_CD(:,:) = SQRT(pCd(:,:))*pUb/vkarmn * LOG( 10._wp / z0_from_Cd( pzu, pCd(:,:), ppsi=ppsi(:,:) ) )
       !!
    END FUNCTION UN10_from_CD
 
 
+   FUNCTION Re_rough_tq_LKB( iflag, pRer )
+      !!---------------------------------------------------------------------------------
+      !!       ***  FUNCTION Re_rough_tq_LKB  ***
+      !!
+      !! ** Purpose : returns the "temperature/humidity roughness Reynolds number"
+      !!              * iflag==1 => temperature => returns: [z_{0t} u*]/Nu_{air}
+      !!              * iflag==2 => humidity    => returns: [z_{0q} u*]/Nu_{air}
+      !!              from roughness reynold number "pRer" (i.e. [z_0 u*]/Nu_{air})
+      !!              between 0 and 1000. Out of range "pRer" indicated by prt=-999.
+      !!
+      !!              Based on Liu et al. (1979) JAS 36 1722-1723s
+      !!
+      !!              Note: this is what is used into COARE 2.5 to estimate z_{0t} and z_{0q}
+      !!
+      !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: Re_rough_tq_LKB
+      INTEGER,                      INTENT(in) :: iflag     !: 1 => dealing with temperature; 2 => dealing with humidity
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pRer      !: roughness Reynolds number  [z_0 u*]/Nu_{air}
+      !-------------------------------------------------------------------
+      ! Scalar Re_r relation from Liu et al.
+      REAL(wp), DIMENSION(8,2), PARAMETER :: &
+         & XA = (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5,  &
+         &         0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5 /)
+      !!
+      REAL(wp), DIMENSION(8,2), PARAMETER :: &
+         & XB = (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935,  &
+         &         0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616 /)
+      !!
+      REAL(wp), DIMENSION(0:8),   PARAMETER :: &
+         & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
+      !-------------------------------------------------------------------
+      !
+      !-------------------------------------------------------------------
+      ! Scalar Re_r relation from Moana Wave data.
+      !
+      !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
+      !      integer iflag
+      !      DATA A/0.177,2.7e3,1.03,1.026,1.625,4.661,34.904,1667.19,5.88E5,
+      !     &       0.292,3.7e3,1.4,1.393,1.956,4.994,30.709,1448.68,2.98E5/
+      !      DATA B/0.,4.28,0,-0.599,-1.018,-1.475,-2.067,-2.907,-3.935,
+      !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
+      !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
+      !-------------------------------------------------------------------
+
+      LOGICAL  :: lfound=.FALSE.
+      REAL(wp) :: zrr
+      INTEGER  :: ji, jj, jm
+
+      Re_rough_tq_LKB(:,:) = -999._wp
+
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zrr    = pRer(ji,jj)
+            lfound = .FALSE.
+
+            IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
+               jm = 0
+               DO WHILE ( .NOT. lfound )
+                  jm = jm + 1
+                  lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
+               END DO
+               Re_rough_tq_LKB(ji,jj) = XA(jm,iflag) * zrr**XB(jm,iflag)
+            END IF
+
+         END DO
+      END DO
+   END FUNCTION Re_rough_tq_LKB
+
+
+
+
+   FUNCTION z0tq_LKB( iflag, pRer, pz0 )
+      !!---------------------------------------------------------------------------------
+      !!       ***  FUNCTION z0tq_LKB  ***
+      !!
+      !! ** Purpose : returns the "temperature/humidity roughness lengths"
+      !!              * iflag==1 => temperature => returns: z_{0t}
+      !!              * iflag==2 => humidity    => returns: z_{0q}
+      !!              from roughness reynold number "pRer" (i.e. [z_0 u*]/Nu_{air})
+      !!              between 0 and 1000. Out of range "pRer" indicated by prt=-999.
+      !!              and roughness length (for momentum)
+      !!
+      !!              Based on Liu et al. (1979) JAS 36 1722-1723s
+      !!
+      !!              Note: this is what is used into COARE 2.5 to estimate z_{0t} and z_{0q}
+      !!
+      !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: z0tq_LKB
+      INTEGER,                      INTENT(in) :: iflag     !: 1 => dealing with temperature; 2 => dealing with humidity
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pRer      !: roughness Reynolds number  [z_0 u*]/Nu_{air}
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0       !: roughness length (for momentum) [m]
+      !-------------------------------------------------------------------
+      ! Scalar Re_r relation from Liu et al.
+      REAL(wp), DIMENSION(8,2), PARAMETER :: &
+         & XA = (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5,  &
+         &         0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5 /)
+      !!
+      REAL(wp), DIMENSION(8,2), PARAMETER :: &
+         & XB = (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935,  &
+         &         0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616 /)
+      !!
+      REAL(wp), DIMENSION(0:8),   PARAMETER :: &
+         & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
+      !-------------------------------------------------------------------
+      !
+      !-------------------------------------------------------------------
+      ! Scalar Re_r relation from Moana Wave data.
+      !
+      !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
+      !      integer iflag
+      !      DATA A/0.177,2.7e3,1.03,1.026,1.625,4.661,34.904,1667.19,5.88E5,
+      !     &       0.292,3.7e3,1.4,1.393,1.956,4.994,30.709,1448.68,2.98E5/
+      !      DATA B/0.,4.28,0,-0.599,-1.018,-1.475,-2.067,-2.907,-3.935,
+      !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
+      !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
+      !-------------------------------------------------------------------
+
+      LOGICAL  :: lfound=.FALSE.
+      REAL(wp) :: zrr
+      INTEGER  :: ji, jj, jm
+
+      z0tq_LKB(:,:) = -999._wp
+
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zrr    = pRer(ji,jj)
+            lfound = .FALSE.
+
+            IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
+               jm = 0
+               DO WHILE ( .NOT. lfound )
+                  jm = jm + 1
+                  lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
+               END DO
+               
+               z0tq_LKB(ji,jj) = XA(jm,iflag)*zrr**XB(jm,iflag) * pz0(ji,jj)/zrr
+
+            END IF
+
+         END DO
+      END DO
+
+      z0tq_LKB(:,:) = MIN( MAX(ABS(z0tq_LKB(:,:)), 1.E-9) , 0.05_wp )
+      
+   END FUNCTION z0tq_LKB
+
 
    
+
 
 
 
