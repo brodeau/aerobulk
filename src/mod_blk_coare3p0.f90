@@ -33,7 +33,7 @@ MODULE mod_blk_coare3p0
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0, charn_coare3p0
+   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0, charn_coare3p0, psi_m_coare, psi_h_coare
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...

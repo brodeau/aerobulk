@@ -33,12 +33,18 @@ MODULE mod_blk_andreas
    !!            Author: Laurent Brodeau, 2020
    !!
    !!====================================================================================
-   USE mod_const       !: physical and othe constants
-   USE mod_phymbl      !: thermodynamics
+   USE mod_const                                         !: physical and othe constants
+   USE mod_phymbl                                        !: thermodynamics
+   USE mod_blk_coare3p0, ONLY: psi_m_coare, psi_h_coare
+   USE mod_blk_ncar    , ONLY: cd_n10_ncar, ch_n10_ncar, ce_n10_ncar
 
+   
    IMPLICIT NONE
    PRIVATE
 
+   REAL(wp), PARAMETER :: psi_min = -10._wp
+
+   
    PUBLIC :: TURB_ANDREAS
 
    !!----------------------------------------------------------------------
@@ -65,7 +71,6 @@ CONTAINS
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    *  SLP  : sea level pressure (needed if zt /= zu)                 [Pa]
-      !!    *  gamma: adiabatic lapse-rate of moist air (needed if zt /= zu)  [K/m]
       !!
       !! OUTPUT :
       !! --------
@@ -95,35 +100,36 @@ CONTAINS
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   ssq      ! sea surface specific humidity           [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT( out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
+      !!
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ub    ! bulk wind speed at zu                     [m/s]
-      !
+      !!
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
-      !
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0     ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL      ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10   ! Neutral wind at zu
+      !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
-      !
+      !!
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   u_star, t_star, q_star
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   z0       ! roughness length (momentum) [m]
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
-      !
+      !!
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
-
+      
       ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
          &          z0(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
          &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
@@ -136,20 +142,23 @@ CONTAINS
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
-      l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
-
+      l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp ) ! testing "zu == zt" is risky with double precision
+      
       Ub = MAX( 0.25_wp , U_zu ) !  relative bulk wind speed at zu
 
       !! First guess:
-      Cd = 1.2E-3_wp
-      Ch = 1.2E-3_wp
-      Ce = 1.2E-3_wp
-
+      !Cd = 1.1E-3_wp
+      !Ch = 1.1E-3_wp
+      !Ce = 1.1E-3_wp
+      !! ... better first guess ?
+      Cd = cd_n10_ncar( Ub )
+      Ce = ce_n10_ncar( Ub )
+      Ch = Ce
+      
       !! Initializing values at z_u with z_t values:
       t_zu = t_zt
       q_zu = q_zt
-
+      
       !! First guess of turbulent scales:
       ztmp0  = SQRT(Cd)
       u_star = ztmp0*Ub       ! u*
@@ -160,36 +169,81 @@ CONTAINS
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
+      !DO j_itt = 1, 5
 
+         PRINT *, 'LOLO'
+         PRINT *, 'LOLO'
+
+         PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
+         PRINT *, 'LOLO *** q_zu =', q_zu, j_itt
+         PRINT *, 'LOLO *** u* =', u_star, j_itt
+         PRINT *, 'LOLO *** theta* =', t_star, j_itt
+         PRINT *, 'LOLO *** q* =', q_star, j_itt
+
+         
          !! Stability parameter :
-         zeta_u   = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )
-         zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
+         !ztmp0 = 1._wp / One_on_L( t_zu, q_zu, u_star, t_star, q_star )  ! L !
+         !ztmp0 = MIN( ztmp0 , 0.5_wp )
+         !zeta_u   = zu/ztmp0
+         
+         zeta_u   = zu*MIN( One_on_L( t_zu, q_zu, u_star, t_star, q_star ), 1._wp / 0.2_wp )
+         !zeta_u   = sign( min(abs(zeta_u),10._wp), zeta_u )
 
-         ztmp0 = UN10_from_ustar( zu, Ub, u_star, psi_m(zeta_u) ) ! UN10
+         PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
+         PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
+         PRINT *, 'LOLO *** Ub =', Ub, j_itt
 
+         ztmp1 = MAX( psi_m_coare(zeta_u) , psi_min )   ! Psi_m
+         !ztmp1 = psi_m_coare(zeta_u)
+         
+         PRINT *, 'LOLO *** Psi_m =', ztmp1, j_itt
+         
+         IF( j_itt > 1 ) THEN
+            ztmp0 = MAX( 0.25_wp , UN10_from_ustar( zu, Ub, u_star, ztmp1 ) ) ! UN10
+         ELSE
+            ztmp0 = Ub ! assume UN10 = Ub for first go...
+         END IF
+         PRINT *, 'LOLO *** UN10 =', ztmp0, j_itt
+         
+         !STOP'L0L0'
          u_star = U_STAR_ANDREAS( ztmp0 )
-
+         
+         PRINT *, 'LOLO *** u* =', u_star, j_itt
+         
          !! Drag coefficient:
          ztmp0 = u_star/Ub
          Cd    = ztmp0*ztmp0
-
+         PRINT *, 'LOLO *** CD =', Cd, j_itt
+         
          !! Roughness length:
-         z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
+         IF( j_itt > 1 ) THEN
+            ztmp1 = MAX( psi_m_coare(zeta_u) , psi_min )   ! Psi_m
+            z0    = z0_from_Cd( zu, Cd,  ppsi=ztmp1 )
+            !z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_coare(zeta_u) )
+         ELSE
+            z0    = z0_from_Cd( zu, Cd )
+         END IF
 
+         PRINT *, 'LOLO *** z0 =', z0, j_itt
+         
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
          ztmp1 = z0tq_LKB( 1, ztmp0, z0 )    ! z0t
          ztmp2 = z0tq_LKB( 2, ztmp0, z0 )    ! z0q
 
          !! Turbulent scales at zu :
-         ztmp0   = psi_h(zeta_u)   ! lolo: zeta_u for scalars???
+         ztmp0   = MAX( psi_h_coare(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
+         PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
+         
+
+         
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
 
-         IF( .NOT. l_zt_equal_zu ) THEN
+         IF( (.NOT. l_zt_equal_zu).AND.( j_itt > 1 ) ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zt*One_on_L( t_zu, q_zu, u_star, t_star, q_star ) ! zeta_t
-            ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)
+            ztmp0 = LOG(zt/zu) + MAX( psi_h_coare(zeta_u), psi_min ) - MAX(psi_h_coare(ztmp0), psi_min )
             t_zu = t_zt - t_star/vkarmn*ztmp0
             q_zu = q_zt - q_star/vkarmn*ztmp0
          ENDIF
@@ -210,11 +264,11 @@ CONTAINS
       IF( lreturn_cdn )   CdN     = -999.
       IF( lreturn_chn )   ChN     = -999.
       IF( lreturn_cen )   CeN     = -999.
-      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m(zeta_u) )
+      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m_coare(zeta_u) )
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m(zeta_u) )
+      IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m_coare(zeta_u) )
 
       DEALLOCATE( u_star, t_star, q_star, z0, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 
@@ -254,67 +308,6 @@ CONTAINS
    END FUNCTION U_STAR_ANDREAS
 
 
-   FUNCTION psi_m( pzeta )
-      !!----------------------------------------------------------------------------------
-      !! Universal profile stability function for momentum
-      !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
-      !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
-      !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_m
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
-      !
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zx2, zx, zstab   ! local scalars
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1._wp )
-            zx  = SQRT( zx2 )
-            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
-            !
-            psi_m(ji,jj) =        zstab  * (-5._wp*pzeta(ji,jj))       &          ! Stable
-               &          + (1._wp - zstab) * (2._wp*LOG((1._wp + zx)*0.5_wp)   &          ! Unstable
-               &               + LOG((1._wp + zx2)*0.5_wp) - 2._wp*ATAN(zx) + rpi*0.5_wp)  !    "
-            !
-         END DO
-      END DO
-   END FUNCTION psi_m
-
-
-   FUNCTION psi_h( pzeta )
-      !!----------------------------------------------------------------------------------
-      !! Universal profile stability function for temperature and humidity
-      !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
-      !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
-      !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_h
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
-      !
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zx2, zstab  ! local scalars
-      !!----------------------------------------------------------------------------------
-      !
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1._wp )
-            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
-            !
-            psi_h(ji,jj) =         zstab  * (-5._wp*pzeta(ji,jj))        &  ! Stable
-               &           + (1._wp - zstab) * (2._wp*LOG( (1._wp + zx2)*0.5_wp ))   ! Unstable
-            !
-         END DO
-      END DO
-   END FUNCTION psi_h
 
    !!======================================================================
 END MODULE mod_blk_andreas
