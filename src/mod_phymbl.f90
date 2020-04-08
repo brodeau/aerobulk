@@ -1305,16 +1305,6 @@ CONTAINS
    END FUNCTION z0tq_LKB
 
 
-   
-
-
-
-
-
-
-
-
-
    !   FUNCTION f_m_louis_sclr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pCdn, pz0 )
    !      !!----------------------------------------------------------------------------------
    !      !!  Stability correction function for MOMENTUM

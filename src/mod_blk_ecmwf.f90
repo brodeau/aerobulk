@@ -407,11 +407,11 @@ CONTAINS
       Ce = vkarmn*vkarmn/(func_m*ztmp2)
 
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
       IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0t)
       IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0q)
-      
+
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./Linv
@@ -444,31 +444,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zzeta, zx, ztmp, psi_unst, psi_stab, stab
+      REAL(wp) :: zzeta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
       !!----------------------------------------------------------------------------------
+      zc = 5._wp/0.35_wp
+      !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            !
+
             zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!):
+
+            ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
+            zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
+            ztmp = 1._wp + zx
+            zpsi_unst = LOG( 0.125_wp*ztmp*ztmp*(1._wp + zx2) ) - 2._wp*ATAN( zx ) + 0.5_wp*rpi
+
+            ! *** Stable                   [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
+            zpsi_stab = -2._wp/3._wp*(zzeta - zc)*EXP(-0.35_wp*zzeta) &
+               &       - zzeta - 2._wp/3._wp*zc
             !
-            ! Unstable (Paulson 1970):
-            !   eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
-            zx = SQRT(ABS(1._wp - 16._wp*zzeta))
-            ztmp = 1._wp + SQRT(zx)
-            ztmp = ztmp*ztmp
-            psi_unst = LOG( 0.125_wp*ztmp*(1._wp + zx) )   &
-               &       -2._wp*ATAN( SQRT(zx) ) + 0.5_wp*rpi
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
             !
-            ! Unstable:
-            ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
-            psi_stab = -2._wp/3._wp*(zzeta - 5._wp/0.35_wp)*EXP(-0.35_wp*zzeta) &
-               &       - zzeta - 2._wp/3._wp*5._wp/0.35_wp
+            psi_m_ecmwf(ji,jj) =         zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
             !
-            ! Combining:
-            stab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
-            !
-            psi_m_ecmwf(ji,jj) = (1._wp - stab) * psi_unst & ! (zzeta < 0) Unstable
-               &                +      stab  * psi_stab      ! (zzeta > 0) Stable
          END DO
       END DO
    END FUNCTION psi_m_ecmwf
@@ -489,28 +488,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) ::  zzeta, zx, psi_unst, psi_stab, stab
+      REAL(wp) ::  zzeta, zx2, zpsi_unst, zpsi_stab, zstab, zc
       !!----------------------------------------------------------------------------------
+      zc = 5._wp/0.35_wp
+      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
             zzeta = MIN(pzeta(ji,jj) , 5._wp)   ! Very stable conditions (L positif and big!):
             !
-            zx  = ABS(1._wp - 16._wp*zzeta)**.25        ! this is actually (1/phi_m)**2  !!!
-            !                                     ! eq.3.19, Chap.3, p.33, IFS doc - Cy31r1
-            ! Unstable (Paulson 1970) :
-            psi_unst = 2._wp*LOG(0.5_wp*(1._wp + zx*zx))   ! eq.3.20, Chap.3, p.33, IFS doc - Cy31r1
+            ! *** Unstable (Paulson 1970)   [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
+            zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
             !
-            ! Stable:
-            psi_stab = -2._wp/3._wp*(zzeta - 5._wp/0.35_wp)*EXP(-0.35_wp*zzeta) & ! eq.3.22, Chap.3, p.33, IFS doc - Cy31r1
-               &       - ABS(1._wp + 2._wp/3._wp*zzeta)**1.5_wp - 2._wp/3._wp*5._wp/0.35_wp + 1._wp
+            ! *** Stable [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
+            zpsi_stab = -2._wp/3._wp*(zzeta - zc)*EXP(-0.35_wp*zzeta) &
+               &       - ABS(1._wp + 2._wp/3._wp*zzeta)**1.5_wp - 2._wp/3._wp*zc + 1._wp
+            !
             ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
             !
-            stab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => stab = 1
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
             !
+            psi_h_ecmwf(ji,jj) =         zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable            
             !
-            psi_h_ecmwf(ji,jj) = (1._wp - stab) * psi_unst &   ! (zzeta < 0) Unstable
-               &                +    stab    * psi_stab        ! (zzeta > 0) Stable
          END DO
       END DO
    END FUNCTION psi_h_ecmwf

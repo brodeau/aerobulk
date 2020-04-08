@@ -1,5 +1,7 @@
 !!! TO DO: consistent psi_m and psi_h needed!!! For now is those of NCAR !!!
 !!
+!! DAns les psi_x_ecmwf: zeta est corrigé tel qu'il ne peut pas dépasser 5 en conditions très stable!
+!!
 ! AeroBulk / 2020 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
@@ -35,16 +37,13 @@ MODULE mod_blk_andreas
    !!====================================================================================
    USE mod_const                                         !: physical and othe constants
    USE mod_phymbl                                        !: thermodynamics
-   USE mod_blk_coare3p0, ONLY: psi_m_coare, psi_h_coare
-   !USE mod_blk_ncar    , ONLY: cd_n10_ncar, ch_n10_ncar, ce_n10_ncar
 
-   
    IMPLICIT NONE
    PRIVATE
-   
+
    !REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
    REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
-   
+
    PUBLIC :: TURB_ANDREAS
 
    !!----------------------------------------------------------------------
@@ -130,7 +129,7 @@ CONTAINS
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
-      
+
       ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
          &          z0(jpi,jpj),   UN10(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
          &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
@@ -144,7 +143,7 @@ CONTAINS
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp ) ! testing "zu == zt" is risky with double precision
-      
+
       Ub = MAX( 0.25_wp , U_zu ) !  relative bulk wind speed at zu
 
       !! First guess:
@@ -154,7 +153,7 @@ CONTAINS
       Ce   = 1.1E-3_wp
       t_zu = t_zt
       q_zu = q_zt
-      
+
       !! First guess of turbulent scales for scalars:
       ztmp0  = SQRT(Cd)
       t_star = Ch/ztmp0*(t_zu - sst) ! theta*
@@ -163,7 +162,7 @@ CONTAINS
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
-      !DO j_itt = 1, 5
+         !DO j_itt = 1, 5
 
          PRINT *, 'LOLO'
 
@@ -177,40 +176,40 @@ CONTAINS
 
          !! Stability parameter :
          ztmp0 = One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! 1/L
-         ztmp0 = MIN( ztmp0 , 1._wp/L_min )  ! 1/L LOLO: needed WHY ????
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...) 
+         !ztmp0 = MIN( ztmp0 , 1._wp/L_min )  ! 1/L LOLO: needed WHY ????
+         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
          zeta_u = zu*ztmp0
          !zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
 
          PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
          PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
-         PRINT *, 'LOLO *** Ub =', Ub, j_itt         
-         
-         
+         PRINT *, 'LOLO *** Ub =', Ub, j_itt
+
+
          !! Drag coefficient:
          ztmp0 = u_star/Ub
          Cd    = ztmp0*ztmp0
          PRINT *, 'LOLO *** CD =', Cd, j_itt
-         
+
          !! Roughness length:
          IF( j_itt > 1 ) THEN
-            !ztmp1 = MAX( psi_m_coare(zeta_u) , psi_min )   ! Psi_m
+            !ztmp1 = MAX( psi_m_ncar(zeta_u) , psi_min )   ! Psi_m
             !z0    = z0_from_Cd( zu, Cd,  ppsi=ztmp1 )
-            z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_coare(zeta_u) )
+            z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
          ELSE
             z0    = z0_from_Cd( zu, Cd )
          END IF
 
          PRINT *, 'LOLO *** z0 =', z0, j_itt
-         
+
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
          ztmp1 = z0tq_LKB( 1, ztmp0, z0 )    ! z0t
          ztmp2 = z0tq_LKB( 2, ztmp0, z0 )    ! z0q
 
          !! Turbulent scales at zu :
-         !ztmp0   = MAX( psi_h_coare(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
-         ztmp0 = psi_h_coare(zeta_u)  ! lolo: zeta_u for scalars???
+         !ztmp0   = MAX( psi_h_andreas(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
+         ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
          PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
@@ -219,19 +218,19 @@ CONTAINS
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zeta_u/zu*zt   ! zeta_t
             !ztmp0 = SIGN( MIN(ABS(ztmp0),zeta_abs_max), ztmp0 )  ! zeta_t
-            ztmp0 = LOG(zt/zu) + psi_h_coare(zeta_u) - psi_h_coare(ztmp0)
+            ztmp0 = LOG(zt/zu) + psi_h_andreas(zeta_u) - psi_h_andreas(ztmp0)
             t_zu = t_zt - t_star/vkarmn*ztmp0
             q_zu = q_zt - q_star/vkarmn*ztmp0
          ENDIF
 
          !! Update neutral-stability wind at zu:
-         UN10 = MAX( 0.25_wp , UN10_from_ustar( zu, Ub, u_star, psi_m_coare(zeta_u) ) ) ! UN10
+         UN10 = MAX( 0.25_wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
          PRINT *, 'LOLO *** UN10 =', UN10, j_itt
          PRINT *, 'LOLO'
-         
+
       END DO !DO j_itt = 1, nb_itt
 
-      
+
       ! compute transfer coefficients at zu:
       ztmp0 = u_star/Ub
       Cd   = ztmp0*ztmp0
@@ -240,21 +239,21 @@ CONTAINS
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
       Ch   = ztmp0*t_star/ztmp1
       Ce   = ztmp0*q_star/ztmp2
-      
+
 
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN     = vkarmn2*ztmp0*ztmp0
-      
+
       IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = z0 * u_star / visc_air(t_zu)  ! Re_r
       IF( lreturn_chn )   ChN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 1, ztmp1, z0 ))
       IF( lreturn_cen )   CeN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 2, ztmp1, z0 ))
 
-      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m_coare(zeta_u) )
+      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m_coare(zeta_u) )
-      
+      IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) )
+
 
       DEALLOCATE( u_star, t_star, q_star, z0, UN10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 
@@ -292,6 +291,87 @@ CONTAINS
       END DO
       !
    END FUNCTION U_STAR_ANDREAS
+
+
+   FUNCTION psi_m_andreas( pzeta )
+      !!----------------------------------------------------------------------------------
+      !!      Universal profile stability function for momentum
+      !!  TO DO !!!!!!!!!!!!!!!!!!!!!
+      !! LOLO: paper says Paulson 1970 when unstable and Grachev et al 2007 for STABLE
+      !!
+      !! pzeta : stability paramenter, z/L where z is altitude measurement
+      !!         and L is M-O length
+      !!
+      !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_m_andreas
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      !
+      INTEGER  ::   ji, jj    ! dummy loop indices
+      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!)
+            !
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
+            zx2 = MAX( zx2 , 1._wp )
+            zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
+            zpsi_unst = 2._wp*LOG( (1._wp + zx )*0.5_wp )   &
+               &            + LOG( (1._wp + zx2)*0.5_wp )   &
+               &          - 2._wp*ATAN(zx) + rpi*0.5_wp
+            !
+            zpsi_stab = -5._wp*zzeta
+            !
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            !
+            psi_m_andreas(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            !
+         END DO
+      END DO
+   END FUNCTION psi_m_andreas
+
+   
+   FUNCTION psi_h_andreas( pzeta )
+      !!----------------------------------------------------------------------------------
+      !! Universal profile stability function for temperature and humidity
+      !!
+      !!    TO DO
+      !!       !! LOLO: paper says Paulson 1970 when unstable and Grachev et al 2007 for STABLE
+      !!
+      !! pzeta : stability paramenter, z/L where z is altitude measurement
+      !!         and L is M-O length
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_h_andreas
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      !
+      INTEGER  ::   ji, jj     ! dummy loop indices
+      REAL(wp) :: zzeta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
+      !!----------------------------------------------------------------------------------
+      !
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            !
+            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!)
+            !
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
+            zx2 = MAX( zx2 , 1._wp )
+            zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
+            !
+            zpsi_stab = -5._wp*zzeta
+            !
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            !
+            psi_h_andreas(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            !
+         END DO
+      END DO
+   END FUNCTION psi_h_andreas
 
 
 

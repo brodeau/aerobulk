@@ -459,31 +459,31 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zzeta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zta = pzeta(ji,jj)
+            zzeta = pzeta(ji,jj)
             !
-            zphi_m = ABS(1. - 15.*zta)**.25    !!Kansas unstable
+            zphi_m = ABS(1. - 15.*zzeta)**.25    !!Kansas unstable
             !
             zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
                & - 2.*ATAN(zphi_m) + 0.5*rpi
             !
-            zphi_c = ABS(1. - 10.15*zta)**.3333                   !!Convective
+            zphi_c = ABS(1. - 10.15*zzeta)**.3333                   !!Convective
             !
             zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
                &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
             !
-            zf = zta*zta
+            zf = zzeta*zzeta
             zf = zf/(1. + zf)
-            zc = MIN(50._wp, 0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
+            zc = MIN(50._wp, 0.35_wp*zzeta)
+            zstab = 0.5 + SIGN(0.5_wp, zzeta)
             !
-            psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
-               &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
-               &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )   !     "
+            psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zzeta < 0)
+               &                -   zstab     * ( 1. + 1.*zzeta     &                ! (zzeta > 0)
+               &                         + 0.6667*(zzeta - 14.28)/EXP(zc) + 8.525 )   !     "
          END DO
       END DO
    END FUNCTION psi_m_coare
@@ -509,30 +509,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zzeta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zta = pzeta(ji,jj)
+            zzeta = pzeta(ji,jj)
             !
-            zphi_h = (ABS(1. - 15.*zta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
+            zphi_h = (ABS(1. - 15.*zzeta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
             !
             zpsi_k = 2.*LOG((1. + zphi_h)/2.)
             !
-            zphi_c = (ABS(1. - 34.15*zta))**.3333   !! Convective
+            zphi_c = (ABS(1. - 34.15*zzeta))**.3333   !! Convective
             !
             zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
                &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
             !
-            zf = zta*zta
+            zf = zzeta*zzeta
             zf = zf/(1. + zf)
-            zc = MIN(50._wp,0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
+            zc = MIN(50._wp,0.35_wp*zzeta)
+            zstab = 0.5 + SIGN(0.5_wp, zzeta)
             !
             psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-               &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
-               &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
+               &                -   zstab     * ( (ABS(1. + 2.*zzeta/3.))**1.5     &
+               &                           + .6667*(zzeta - 14.28)/EXP(zc) + 8.525 )
          END DO
       END DO
    END FUNCTION psi_h_coare

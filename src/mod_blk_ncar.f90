@@ -31,7 +31,7 @@ MODULE mod_blk_ncar
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: TURB_NCAR, CD_N10_NCAR, CH_N10_NCAR, CE_N10_NCAR
+   PUBLIC :: TURB_NCAR, CD_N10_NCAR, CH_N10_NCAR, CE_N10_NCAR, psi_m_ncar, psi_h_ncar
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -177,7 +177,7 @@ CONTAINS
          IF( .NOT. l_zt_equal_zu ) THEN
             ztmp0 = zt*ztmp0 ! zeta_t !
             ztmp0 = SIGN( MIN(ABS(ztmp0),10._wp), ztmp0 )  ! Temporaty array ztmp0 == zeta_t !!!
-            ztmp0 = LOG(zt/zu) + psi_h(zeta_u) - psi_h(ztmp0)                   ! ztmp0 just used as temp array again!
+            ztmp0 = LOG(zt/zu) + psi_h_ncar(zeta_u) - psi_h_ncar(ztmp0)                   ! ztmp0 just used as temp array again!
             t_zu = t_zt - ztmp1/vkarmn*ztmp0    ! ztmp1 is still theta*  L&Y 2004 Eq. (9b)
             !!
             q_zu = q_zt - ztmp2/vkarmn*ztmp0    ! ztmp2 is still q*      L&Y 2004 Eq. (9c)
@@ -196,7 +196,7 @@ CONTAINS
          !   In very rare low-wind conditions, the old way of estimating the
          !   neutral wind speed at 10m leads to a negative value that causes the code
          !   to crash. To prevent this a threshold of 0.25m/s is imposed.
-         ztmp2 = psi_m(zeta_u)
+         ztmp2 = psi_m_ncar(zeta_u)
          ztmp0 = MAX( 0.25_wp , UN10_from_CD(zu, Ub, Cd, ppsi=ztmp2) ) ! U_n10 (ztmp2 == psi_m(zeta_u))
          ztmp0 = CD_N10_NCAR(ztmp0)                                       ! Cd_n10
          sqrtCdn10 = sqrt(ztmp0)
@@ -206,7 +206,7 @@ CONTAINS
          Cd     = ztmp0 / ( ztmp1*ztmp1 )
          sqrtCd = SQRT( Cd )
 
-         ztmp0  = ( LOG(zu/10._wp) - psi_h(zeta_u) ) / vkarmn / sqrtCdn10
+         ztmp0  = ( LOG(zu/10._wp) - psi_h_ncar(zeta_u) ) / vkarmn / sqrtCdn10
          ztmp2  = sqrtCd / sqrtCdn10
 
          ztmp1  = 0.5_wp + sign(0.5_wp,zeta_u)       ! stability flag
@@ -226,7 +226,7 @@ CONTAINS
       IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, sqrtCdn10*sqrtCdn10 )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*Ub
       IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, Ub, Cd, ppsi=psi_m(zeta_u) )
+      IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, Ub, Cd, ppsi=psi_m_ncar(zeta_u) )
 
       DEALLOCATE( Cx_n10, sqrtCdn10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
 
@@ -310,7 +310,7 @@ CONTAINS
 
 
 
-   FUNCTION psi_m( pzeta )
+   FUNCTION psi_m_ncar( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
@@ -320,29 +320,37 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_m
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zx2, zx, zstab   ! local scalars
+      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1._wp )
-            zx  = SQRT( zx2 )
-            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
+
+            zzeta = pzeta(ji,jj)
             !
-            psi_m(ji,jj) =        zstab  * (-5._wp*pzeta(ji,jj))       &          ! Stable
-               &          + (1._wp - zstab) * (2._wp*LOG((1._wp + zx)*0.5_wp)   &          ! Unstable
-               &               + LOG((1._wp + zx2)*0.5_wp) - 2._wp*ATAN(zx) + rpi*0.5_wp)  !    "
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
+            zx2 = MAX( zx2 , 1._wp )
+            zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
+            zpsi_unst = 2._wp*LOG( (1._wp + zx )*0.5_wp )   &
+               &            + LOG( (1._wp + zx2)*0.5_wp )   &
+               &          - 2._wp*ATAN(zx) + rpi*0.5_wp
+            !
+            zpsi_stab = -5._wp*zzeta
+            !
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            !
+            psi_m_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
             !
          END DO
       END DO
-   END FUNCTION psi_m
+   END FUNCTION psi_m_ncar
 
 
-   FUNCTION psi_h( pzeta )
+   FUNCTION psi_h_ncar( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
@@ -352,25 +360,32 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_h
+      REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zx2, zstab  ! local scalars
+      REAL(wp) :: zzeta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zx2 = SQRT( ABS( 1._wp - 16._wp*pzeta(ji,jj) ) )
-            zx2 = MAX( zx2 , 1._wp )
-            zstab = 0.5_wp + SIGN( 0.5_wp , pzeta(ji,jj) )
             !
-            psi_h(ji,jj) =         zstab  * (-5._wp*pzeta(ji,jj))        &  ! Stable
-               &           + (1._wp - zstab) * (2._wp*LOG( (1._wp + zx2)*0.5_wp ))   ! Unstable
+            zzeta = pzeta(ji,jj)
+            !
+            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
+            zx2 = MAX( zx2 , 1._wp )
+            zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
+            !
+            zpsi_stab = -5._wp*zzeta
+            !
+            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            !
+            psi_h_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable            
             !
          END DO
       END DO
-   END FUNCTION psi_h
+   END FUNCTION psi_h_ncar
 
    !!======================================================================
 END MODULE mod_blk_ncar
