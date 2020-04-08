@@ -38,6 +38,7 @@ MODULE mod_blk_coare3p0
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.25_wp    ! gustiness parameter
+   REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -296,7 +297,7 @@ CONTAINS
 
          !!Inverse of Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! (prevents FPE from stupid values from masked region later on...)
+         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
 
          ztmp1 = u_star*u_star   ! u*^2
 
@@ -308,10 +309,10 @@ CONTAINS
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
-         zeta_u = SIGN( MIN(ABS(zeta_u),50.0_wp), zeta_u )
+         zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
          IF( .NOT. l_zt_equal_zu ) THEN
             zeta_t = zt*ztmp0
-            zeta_t = SIGN( MIN(ABS(zeta_t),50.0_wp), zeta_t )
+            zeta_t = SIGN( MIN(ABS(zeta_t),zeta_abs_max), zeta_t )
          ENDIF
 
          !! Adjustment the wind at 10m (not needed in the current algo form):
