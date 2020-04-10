@@ -43,9 +43,9 @@ MODULE mod_blk_andreas
 
    !REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
    REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
-
-   PUBLIC :: TURB_ANDREAS
-
+   
+   PUBLIC :: TURB_ANDREAS, psi_m_andreas, psi_h_andreas
+   
    !!----------------------------------------------------------------------
 CONTAINS
 
@@ -307,12 +307,14 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: psi_m_andreas
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
-      REAL(wp), PARAMETER :: zam  = 1._wp   !LOLO: what is the actual a_m ????
+      REAL(wp), PARAMETER :: zam  = 5._wp      ! a_m (just below Eq.(9b)
+      REAL(wp), PARAMETER :: zbm = zam/6.5_wp  ! b_m (just below Eq.(9b)
+      !
       REAL(wp), PARAMETER :: z1o3 = 1._wp/3._wp
       REAL(wp), PARAMETER :: zsr3 = SQRT(3._wp)
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zsbm, zbbm, zpsi_stab,  zstab   ! local scalars
+      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zbbm, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -328,11 +330,10 @@ CONTAINS
                &          - 2._wp*ATAN(zx) + rpi*0.5_wp
             !
             !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(12) Grachev et al 2007]:
-            zx  = ABS(1._wp + zzeta)**z1o3
-            zsbm = zam/6.5_wp                       ! b_m
-            zbbm = ABS( (1._wp - zsbm)/zsbm )**z1o3 ! B_m
+            zx   = ABS(1._wp + zzeta)**z1o3
+            zbbm = ABS( (1._wp - zbm)/zbm )**z1o3 ! B_m
             !
-            zpsi_stab = -3.*zam/zsbm*(zx - 1._wp) + zam*zbbm/(2.*zsbm) * ( &
+            zpsi_stab = -3.*zam/zbm*(zx - 1._wp) + zam*zbbm/(2.*zbm) * ( &
                &        2.*LOG( (zx + zbbm)/(1._wp + zbbm) )               &
                &         - LOG( (zx*zx - zx*zbbm + zbbm*zbbm)/(1._wp - zbbm + zbbm*zbbm) ) &
                & + 2.*zsr3*( ATAN( (2.*zx - zbbm)/(zsr3*zbbm) ) - ATAN( (2._wp - zbbm)/(zsr3*zbbm) ) ) )
@@ -363,8 +364,13 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: psi_h_andreas
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
+      REAL(wp), PARAMETER ::  zah = 5._wp       ! a_h (just below Eq.(9b)
+      REAL(wp), PARAMETER ::  zbh = 5._wp       ! b_h (just below Eq.(9b)
+      REAL(wp), PARAMETER ::  zch = 3._wp       ! c_h (just below Eq.(9b)
+      REAL(wp), PARAMETER :: zbbh = SQRT(5._wp) ! B_h (just below Eq.(13)
+      !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zzeta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
+      REAL(wp) :: zzeta, zz, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
@@ -372,22 +378,25 @@ CONTAINS
             !
             zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!)
             !
+            !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
             zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
-            !
-            zpsi_stab = -5._wp*zzeta
+            !            
+            !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(13) Grachev et al 2007]:
+            zz = 2.*zzeta + zch
+            zpsi_stab = - 0.5*zbh*LOG(1._wp + zch*zzeta + zzeta*zzeta) &
+               &        +  (-zah/zbbh + 0.5*zbh*zch/zbbh)  &
+               &          *( LOG((zz - zbbh)/(zz + zbbh)) - LOG((zch - zbbh)/(zch + zbbh)) )
             !
             zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
             !
-            psi_h_andreas(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            psi_h_andreas(ji,jj) =            zstab  * zpsi_stab &  ! (zzeta > 0) Stable
+               &                   + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
             !
          END DO
       END DO
    END FUNCTION psi_h_andreas
-
-
 
    !!======================================================================
 END MODULE mod_blk_andreas

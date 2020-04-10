@@ -119,6 +119,8 @@ CONTAINS
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ncar@mod_blk_ncar.f90'
       !!----------------------------------------------------------------------------------
 
+      !IF( jpi+jpj == 0 ) CALL ctl_stop( 'jpi and jpi were no initialized' )
+      
       ALLOCATE( Cx_n10(jpi,jpj), sqrtCdn10(jpi,jpj), &
          &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj),      &
          &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
