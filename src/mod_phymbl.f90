@@ -113,7 +113,7 @@ MODULE mod_phymbl
    PUBLIC alpha_sw
    PUBLIC bulk_formula
    PUBLIC qlw_net
-   PUBLIC z0_from_Cd
+   PUBLIC z0_from_Cd, z0_from_ustar
    PUBLIC Cd_from_z0
    PUBLIC f_m_louis, f_h_louis
    PUBLIC UN10_from_ustar
@@ -1010,6 +1010,20 @@ CONTAINS
       END IF
    END FUNCTION z0_from_Cd
 
+
+   FUNCTION z0_from_ustar( pzu, pus, puzu )
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_ustar    !: roughness length    [m]
+      REAL(wp)                    , INTENT(in) :: pzu  !: reference height zu [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus  !: friction velocity   [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: puzu !: wind speed at z=pzu [m/s]
+      !!----------------------------------------------------------------------------------
+      z0_from_ustar = pzu * EXP( -  vkarmn*puzu(:,:)/pus(:,:) )
+      !!
+   END FUNCTION z0_from_ustar
+
+
+
    FUNCTION Cd_from_z0( pzu, pz0,  ppsi )
       REAL(wp), DIMENSION(jpi,jpj) :: Cd_from_z0        !: (neutral or non-neutral) drag coefficient []
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
@@ -1028,6 +1042,14 @@ CONTAINS
       END IF
       Cd_from_z0 = vkarmn2 * Cd_from_z0 * Cd_from_z0
    END FUNCTION Cd_from_z0
+
+
+
+
+
+
+
+
 
 
    FUNCTION f_m_louis_sclr( pzu, pRib, pCdn, pz0 )
@@ -1292,7 +1314,7 @@ CONTAINS
                   jm = jm + 1
                   lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
                END DO
-               
+
                z0tq_LKB(ji,jj) = XA(jm,iflag)*zrr**XB(jm,iflag) * pz0(ji,jj)/zrr
 
             END IF
@@ -1301,7 +1323,7 @@ CONTAINS
       END DO
 
       z0tq_LKB(:,:) = MIN( MAX(ABS(z0tq_LKB(:,:)), 1.E-9) , 0.05_wp )
-      
+
    END FUNCTION z0tq_LKB
 
 

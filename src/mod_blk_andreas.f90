@@ -129,19 +129,19 @@ CONTAINS
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
-
-      ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), &
-         &          z0(jpi,jpj),   UN10(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
+      
+      ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), z0(jpi,jpj), &
+         &        UN10(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
          &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
-
-      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
-      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
-      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
-
+      
+      lreturn_cdn   = PRESENT(CdN)   
+      lreturn_chn   = PRESENT(ChN)   
+      lreturn_cen   = PRESENT(CeN)   
+      lreturn_z0    = PRESENT(xz0)   
+      lreturn_ustar = PRESENT(xu_star)
+      lreturn_L     = PRESENT(xL)    
+      lreturn_UN10  = PRESENT(xUN10) 
+      
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp ) ! testing "zu == zt" is risky with double precision
 
       Ub = MAX( 0.25_wp , U_zu ) !  relative bulk wind speed at zu
@@ -161,8 +161,8 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
-         !DO j_itt = 1, 5
+      !DO j_itt = 1, nb_itt
+      DO j_itt = 1, 100
 
          PRINT *, 'LOLO'
 
@@ -192,16 +192,22 @@ CONTAINS
          PRINT *, 'LOLO *** CD =', Cd, j_itt
 
          !! Roughness length:
-         IF( j_itt > 1 ) THEN
-            !ztmp1 = MAX( psi_m_ncar(zeta_u) , psi_min )   ! Psi_m
-            !z0    = z0_from_Cd( zu, Cd,  ppsi=ztmp1 )
-            z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
-         ELSE
-            z0    = z0_from_Cd( zu, Cd )
-         END IF
+         !IF( j_itt > 1 ) THEN
+         !   !ztmp1 = MAX( psi_m_ncar(zeta_u) , psi_min )   ! Psi_m
+         !   !z0    = z0_from_Cd( zu, Cd,  ppsi=ztmp1 )
+         !z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
+         !ELSE
+         !   z0    = z0_from_Cd( zu, Cd )
+         !END IF
 
+         !z0    = MAX( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )  , 1.E-6_wp ) 
+         
+         !PRINT *, 'LOLO *** u*,, Ub =', u_star, Ub, j_itt
+         z0 = MAX( z0_from_ustar( zu, u_star, Ub ) , 1.E-6_wp )
+         !z0 = z0_from_ustar( zu, u_star, Ub )
          PRINT *, 'LOLO *** z0 =', z0, j_itt
-
+         PRINT *, 'LOLO'
+         
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
          ztmp1 = z0tq_LKB( 1, ztmp0, z0 )    ! z0t
@@ -210,6 +216,7 @@ CONTAINS
          !! Turbulent scales at zu :
          !ztmp0   = MAX( psi_h_andreas(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
          ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
+         !ztmp0 = psi_h_andreas(zeta_u/zu*zt)  ! lolo: zeta_u for scalars???
          PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
@@ -224,7 +231,7 @@ CONTAINS
          ENDIF
 
          !! Update neutral-stability wind at zu:
-         UN10 = MAX( 0.25_wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
+         UN10 = MAX( 0._wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
          PRINT *, 'LOLO *** UN10 =', UN10, j_itt
          PRINT *, 'LOLO'
 
@@ -325,8 +332,8 @@ CONTAINS
             zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
-            zpsi_unst = 2._wp*LOG( (1._wp + zx )*0.5_wp )   &
-               &            + LOG( (1._wp + zx2)*0.5_wp )   &
+            zpsi_unst = 2._wp*LOG(ABS( (1._wp + zx )*0.5_wp ))   &
+               &            + LOG(ABS( (1._wp + zx2)*0.5_wp ))   &
                &          - 2._wp*ATAN(zx) + rpi*0.5_wp
             !
             !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(12) Grachev et al 2007]:
@@ -334,8 +341,8 @@ CONTAINS
             zbbm = ABS( (1._wp - zbm)/zbm )**z1o3 ! B_m
             !
             zpsi_stab = -3.*zam/zbm*(zx - 1._wp) + zam*zbbm/(2.*zbm) * ( &
-               &        2.*LOG( (zx + zbbm)/(1._wp + zbbm) )               &
-               &         - LOG( (zx*zx - zx*zbbm + zbbm*zbbm)/(1._wp - zbbm + zbbm*zbbm) ) &
+               &        2.*LOG(ABS( (   zx     +   zbbm         )/(1._wp        +   zbbm   ) )) &
+               &         - LOG(ABS( (zx*zx - zx*zbbm + zbbm*zbbm)/(1._wp - zbbm + zbbm*zbbm) )) &
                & + 2.*zsr3*( ATAN( (2.*zx - zbbm)/(zsr3*zbbm) ) - ATAN( (2._wp - zbbm)/(zsr3*zbbm) ) ) )
             !
             !
@@ -376,7 +383,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!)
+            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and large!)
             !
             !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
             zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
@@ -385,9 +392,10 @@ CONTAINS
             !            
             !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(13) Grachev et al 2007]:
             zz = 2.*zzeta + zch
-            zpsi_stab = - 0.5*zbh*LOG(1._wp + zch*zzeta + zzeta*zzeta) &
+            zpsi_stab = - 0.5*zbh*LOG(ABS(1._wp + zch*zzeta + zzeta*zzeta)) &
                &        +  (-zah/zbbh + 0.5*zbh*zch/zbbh)  &
-               &          *( LOG((zz - zbbh)/(zz + zbbh)) - LOG((zch - zbbh)/(zch + zbbh)) )
+               &          *( LOG(ABS((zz  - zbbh)/(zz  + zbbh))) &
+               &           - LOG(ABS((zch - zbbh)/(zch + zbbh)))    )
             !
             zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
             !

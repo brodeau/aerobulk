@@ -36,7 +36,7 @@ MODULE mod_blk_ecmwf
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: ECMWF_INIT, TURB_ECMWF
+   PUBLIC :: ECMWF_INIT, TURB_ECMWF, psi_m_ecmwf, psi_h_ecmwf
 
    !! ECMWF own values for given constants, taken form IFS documentation...
    REAL(wp), PARAMETER, PUBLIC :: charn0_ecmwf = 0.018_wp    ! Charnock constant (pretty high value here !!!

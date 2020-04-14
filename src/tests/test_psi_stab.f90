@@ -22,19 +22,22 @@ PROGRAM test_psi_stab
    USE mod_phymbl                                        !: thermodynamics
    USE io_ezcdf
    
-   USE mod_blk_ncar,     ONLY: psi_m_ncar,  psi_h_ncar
-   USE mod_blk_coare3p6, ONLY: psi_m_coare, psi_h_coare
+   USE mod_blk_ncar,     ONLY: psi_m_ncar,    psi_h_ncar
+   USE mod_blk_coare3p6, ONLY: psi_m_coare,   psi_h_coare
+   USE mod_blk_ecmwf,    ONLY: psi_m_ecmwf,   psi_h_ecmwf
+   USE mod_blk_andreas,  ONLY: psi_m_andreas, psi_h_andreas
    
    IMPLICIT NONE
    
-   INTEGER,  PARAMETER :: Nz = 201
-   REAL(wp), PARAMETER :: zeta_min = -10._wp, zeta_max = 10._wp
+   INTEGER,  PARAMETER :: Nz = 1001, &
+      &                   nalgos = 4
+   REAL(wp), PARAMETER :: zeta_min = -15._wp, zeta_max = 15._wp
    
    INTEGER  :: jz
    REAL(wp) :: dzeta
    
    REAL(wp), DIMENSION(Nz,1)   :: vzeta
-   REAL(4),  DIMENSION(Nz,1,2) :: vpsi_m, vpsi_h
+   REAL(4),  DIMENSION(Nz,1,nalgos) :: vpsi_m, vpsi_h
 
    !! Aerobulk initialization:
    jpi=Nz
@@ -57,6 +60,12 @@ PROGRAM test_psi_stab
    vpsi_m(:,:,2) = REAL( psi_m_coare( vzeta ) , 4 )
    vpsi_h(:,:,2) = REAL( psi_h_coare( vzeta ) , 4 )
 
+   vpsi_m(:,:,3) = REAL( psi_m_ecmwf( vzeta ) , 4 )
+   vpsi_h(:,:,3) = REAL( psi_h_ecmwf( vzeta ) , 4 )
+
+   vpsi_m(:,:,4) = REAL( psi_m_andreas( vzeta ) , 4 )
+   vpsi_h(:,:,4) = REAL( psi_h_andreas( vzeta ) , 4 )
+
 
    PRINT *, ' *** vpsi_m =', vpsi_m
    PRINT *, ''
@@ -67,7 +76,11 @@ PROGRAM test_psi_stab
       &             '[]', '[]',              &
       &            vdt02=vpsi_h(:,1,1), cv_dt02='Psi_h_NCAR', &
       &            vdt03=vpsi_m(:,1,2), cv_dt03='Psi_m_COARE', &
-      &            vdt04=vpsi_h(:,1,2), cv_dt04='Psi_h_COARE' &      
+      &            vdt04=vpsi_h(:,1,2), cv_dt04='Psi_h_COARE', &      
+      &            vdt05=vpsi_m(:,1,3), cv_dt05='Psi_m_ECMWF', &
+      &            vdt06=vpsi_h(:,1,3), cv_dt06='Psi_h_ECMWF', &      
+      &            vdt07=vpsi_m(:,1,4), cv_dt07='Psi_m_ANDREAS', &
+      &            vdt08=vpsi_h(:,1,4), cv_dt08='Psi_h_ANDREAS'  &
       &  )
 
 
