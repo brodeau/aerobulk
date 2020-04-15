@@ -41,8 +41,8 @@ MODULE mod_blk_andreas
    IMPLICIT NONE
    PRIVATE
 
-   !REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
-   REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
+   REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
+   !REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
    
    PUBLIC :: TURB_ANDREAS, psi_m_andreas, psi_h_andreas
    
@@ -115,12 +115,12 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL      ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10   ! Neutral wind at zu
       !!
-      INTEGER :: j_itt
+      INTEGER :: j_itt, ja
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   u_star, t_star, q_star
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   z0       ! roughness length (momentum) [m]
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   UN10     ! Neutral wind speed at zu [m/s]
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   UN10, UN10_old     ! Neutral wind speed at zu [m/s]
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
@@ -131,7 +131,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       
       ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), z0(jpi,jpj), &
-         &        UN10(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
+         &        UN10(jpi,jpj), UN10_old(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
          &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
       
       lreturn_cdn   = PRESENT(CdN)   
@@ -161,8 +161,8 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      !DO j_itt = 1, nb_itt
-      DO j_itt = 1, 100
+      DO j_itt = 1, nb_itt
+      !DO j_itt = 1, 4
 
          PRINT *, 'LOLO'
 
@@ -176,10 +176,13 @@ CONTAINS
 
          !! Stability parameter :
          ztmp0 = One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! 1/L
+         !! algorithm is not stable when very stable and wind very weak:
          !ztmp0 = MIN( ztmp0 , 1._wp/L_min )  ! 1/L LOLO: needed WHY ????
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
+         ztmp0 = MIN( ztmp0 , 1.5 )
+         
+         !ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
          zeta_u = zu*ztmp0
-         !zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
+         zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
 
          PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
          PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
@@ -192,18 +195,16 @@ CONTAINS
          PRINT *, 'LOLO *** CD =', Cd, j_itt
 
          !! Roughness length:
-         !IF( j_itt > 1 ) THEN
-         !   !ztmp1 = MAX( psi_m_ncar(zeta_u) , psi_min )   ! Psi_m
-         !   !z0    = z0_from_Cd( zu, Cd,  ppsi=ztmp1 )
-         !z0    = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
-         !ELSE
-         !   z0    = z0_from_Cd( zu, Cd )
-         !END IF
-
+         IF( j_itt > 1 ) THEN
+            z0 = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
+         ELSE
+            z0 = z0_from_Cd( zu, Cd )
+         END IF
+         
          !z0    = MAX( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )  , 1.E-6_wp ) 
          
          !PRINT *, 'LOLO *** u*,, Ub =', u_star, Ub, j_itt
-         z0 = MAX( z0_from_ustar( zu, u_star, Ub ) , 1.E-6_wp )
+         !z0 = MAX( z0_from_ustar( zu, u_star, Ub ) , 1.E-6_wp )
          !z0 = z0_from_ustar( zu, u_star, Ub )
          PRINT *, 'LOLO *** z0 =', z0, j_itt
          PRINT *, 'LOLO'
@@ -224,7 +225,7 @@ CONTAINS
          IF( (.NOT. l_zt_equal_zu).AND.( j_itt > 1 ) ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zeta_u/zu*zt   ! zeta_t
-            !ztmp0 = SIGN( MIN(ABS(ztmp0),zeta_abs_max), ztmp0 )  ! zeta_t
+            ztmp0 = SIGN( MIN(ABS(ztmp0),zeta_abs_max), ztmp0 )  ! zeta_t
             ztmp0 = LOG(zt/zu) + psi_h_andreas(zeta_u) - psi_h_andreas(ztmp0)
             t_zu = t_zt - t_star/vkarmn*ztmp0
             q_zu = q_zt - q_star/vkarmn*ztmp0
@@ -232,7 +233,13 @@ CONTAINS
 
          !! Update neutral-stability wind at zu:
          UN10 = MAX( 0._wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
+         !WHERE( One_on_L( t_zu, q_zu, u_star, t_star, q_star ) > 1. )
+         !   !! Uber stable, will screw everything!
+         !   UN10 = 0.75*Ub  ! just decreasing wind speed...
+         !END WHERE
+         !PRINT *, 'LOLO *** 1/L =', One_on_L( t_zu, q_zu, u_star, t_star, q_star ), j_itt
          PRINT *, 'LOLO *** UN10 =', UN10, j_itt
+
          PRINT *, 'LOLO'
 
       END DO !DO j_itt = 1, nb_itt
@@ -285,20 +292,15 @@ CONTAINS
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-
             zw  = pun10(ji,jj)
-
             za = zw - 8.271_wp
-
-            zt = za + SQRT( MAX( 0.12_wp*za*za + 0.181_wp , 0._wp ) )
-
+            zt = za + SQRT( 0.12_wp*za*za + 0.181_wp )
             u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
-
          END DO
       END DO
       !
    END FUNCTION U_STAR_ANDREAS
-
+   
 
    FUNCTION psi_m_andreas( pzeta )
       !!----------------------------------------------------------------------------------
@@ -326,7 +328,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
 
-            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!)
+            zzeta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and big!)
             !
             !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
             zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
@@ -383,7 +385,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and large!)
+            zzeta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and large!)
             !
             !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
             zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
