@@ -6,22 +6,20 @@ PROGRAM cx_vs_wind_test
    USE mod_blk_coare3p6
    USE mod_blk_ncar
    USE mod_blk_ecmwf
-
+   USE mod_blk_andreas
+   
    IMPLICIT NONE
-
-
+   
    REAL(wp), PARAMETER :: &
       &                zt =  2. ,  &
       &                zu = 10. ,  &
       &             wind_max = 60.
 
+   !! Relative humidities to test:
    REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
 
-   LOGICAL, PARAMETER :: &
-      &   ldebug = .FALSE.
-
-   REAL(wp), PARAMETER ::        &
-      &   wdebug = 4.2
+   LOGICAL,  PARAMETER :: ldebug = .FALSE.
+   REAL(wp), PARAMETER :: wdebug = 4.2
 
    INTEGER, PARAMETER :: &
       &   ndt    = 75,   &
@@ -34,7 +32,7 @@ PROGRAM cx_vs_wind_test
    CHARACTER(len=100) :: &
       &   cextra = '', &
       &   cf_cd, cf_ce, cf_ch, cf_ac, cf_ublk, cf_us, cf_z0
-
+   
    REAL(wp) :: Dtv, dt
 
    REAL(wp), DIMENSION(1,1) :: sst, sstk, qsat_sst, sst_v, slp, t10, w10, q10, U_bulk, &
@@ -42,21 +40,16 @@ PROGRAM cx_vs_wind_test
       &  mCd, mCe, mCh, mzeta, mz0, mz0t, mz0q, mus, mts, mqs, &
       &  Cd, Ce, Ch, dw0, dw, zeta, &
       &  ac, mac, mublk, tmp
-
-
+   
    INTEGER :: nrh, isst, jh, jdt, jw
 
-   REAL(wp), DIMENSION(n_w) :: &
-      &   t_w10
+   REAL(wp), DIMENSION(n_w) :: t_w10
 
    REAL(wp), DIMENSION(2,1) :: v_tq
    !!
-   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
-      &     v_ta_qa, &
-      &     XT_a, XQ_a
+   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: v_ta_qa, XT_a, XQ_a
    !!
-   REAL(wp), DIMENSION(ndt) :: &
-      &   t_dvt
+   REAL(wp), DIMENSION(ndt) :: t_dvt
 
    REAL(wp), DIMENSION(n_w) :: &
       &   t_zeta,  &
@@ -68,37 +61,32 @@ PROGRAM cx_vs_wind_test
       &   t_ac, t_ublk
 
    IF ( command_argument_count() /= 2 ) THEN
-      PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare3p0/coare3p6/ncar/ecmwf)> <SST (deg.C)>'
+      PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare3p0/coare3p6/ncar/ecmwf/andreas)> <SST (deg.C)>'
       STOP
    END IF
    
-   CALL get_command_argument(1,calgo)
-   CALL get_command_argument(2,csst) ; READ(csst,'(i2)') isst ; sst = REAL(isst)
+   CALL get_command_ARGUMENT(1,calgo)
+   CALL get_command_ARGUMENT(2,csst) ; READ(csst,'(i2)') isst ; sst = REAL(isst)
    sstk = sst + rt0
 
 
 
    !! We want a large nb_itt !
    nb_itt = 20
+   jpi = 1
+   jpj = 1
+
+   
    !nb_itt = 1
-
-
 
    nrh = size(vrh)
 
    PRINT *, 'nrh =', nrh
-
-
+   
    ALLOCATE ( v_ta_qa(2,nrh) , XT_a(ndt,nrh), XQ_a(ndt,nrh) )
 
-
-
-   jpi = 1 ; jpj = 1
-
    slp = Patm
-
-
-
+   
    !!
    !! Table of wind speeds from 0 to wind_max  m/s :
    dw0 = wind_max/(n_w - 1)
@@ -125,8 +113,7 @@ PROGRAM cx_vs_wind_test
       &     -0.01, 0.0, 0.01, 0.05, 0.07, 0.1 , 0.12, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.75 ,  &
       &       1. , 1.25, 1.5, 1.75, 2.,  2.5 ,  3.  , 3.5  , 4.  , 4.5  , 5.  , 5.5  ,  &
       &       6. , 6.5  , 7.   , 7.5  ,  8.  , 8.5  , 9.  , 9.5  , 10. , 11.  , 12./)
-
-
+   
    DO jdt = 1, ndt
       !!
       CALL FIND_COUPLES(sstk, t_dvt(jdt), nrh, vrh, v_ta_qa)
@@ -135,14 +122,13 @@ PROGRAM cx_vs_wind_test
       XQ_a(jdt,:) = v_ta_qa(2,:)    ! specific humidities
       !!
    END DO
-
+   
    qsat_sst = rdct_qsat_salt*q_sat(sst + rt0,slp)
 
    sst_v = (sst + rt0)*(1. + rctv0*qsat_sst) ! virtual SST (K)
    PRINT *, ''; PRINT *, 'Virtual Sea Surface temperature =', REAL(sst_v - rt0,4); PRINT *, ''
 
    IF ( trim(stab) == 's' ) GOTO 201
-
 
 
    DO jdt = 1, ndt
@@ -220,6 +206,10 @@ PROGRAM cx_vs_wind_test
             
             IF ( TRIM(calgo) == 'ecmwf' ) &
                CALL TURB_ECMWF( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
+               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+            
+            IF ( TRIM(calgo) == 'andreas' ) &
+               CALL TURB_ANDREAS(  zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
                &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
             
             
@@ -369,6 +359,10 @@ PROGRAM cx_vs_wind_test
 
       IF ( trim(calgo) == 'ecmwf' ) &
          CALL TURB_ECMWF(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
+         &             Cd, Ch, Ce, t10, q10, U_bulk)
+
+      IF ( trim(calgo) == 'andreas' ) &
+         CALL TURB_ANDREAS( zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
          &             Cd, Ch, Ce, t10, q10, U_bulk)
 
 
