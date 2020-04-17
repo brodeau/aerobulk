@@ -39,8 +39,8 @@ clr_mod = '#008ab8'
 rDPI=120.
 
 L_ALGOS = [  'COARE'   , 'ECMWF'   , 'NCAR' , 'ANDREAS' ]
-l_color = [  '#ffed00' , '#008ab8' , '0.4'  , '#AD0000' ] ; # colors to differentiate algos on the plot
-l_width = [     4      ,    2      ,  1     ,  2        ] ; # line-width to differentiate algos on the plot
+l_color = [  '#ffed00' , '#008ab8' , '0.6'  , '#AD0000' ] ; # colors to differentiate algos on the plot
+l_width = [     5      ,    3      ,  2     ,  2        ] ; # line-width to differentiate algos on the plot
 l_style = [    '-'     ,   '-'     , '--'   , '--'      ] ; # line-style
 nb_algos = len(L_ALGOS) ; print(nb_algos)
 
@@ -89,7 +89,7 @@ ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
 for ja in range(nb_algos):
     plt.plot(vzeta, XPSI_M[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
 
-ax1.set_ylim(-40.,5.)
+ax1.set_ylim(-30.,5.)
 ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
 plt.ylabel(r'$\Psi_m(\zeta)$')
 plt.xlabel(r'$\zeta$')
