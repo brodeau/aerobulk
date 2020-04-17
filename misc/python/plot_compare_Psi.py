@@ -83,83 +83,29 @@ font_inf = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':18 }
 
 
 fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
-
 ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
-
 for ja in range(nb_algos):
     plt.plot(vzeta, XPSI_M[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
-
 ax1.set_ylim(-30.,5.)
 ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
 plt.ylabel(r'$\Psi_m(\zeta)$')
 plt.xlabel(r'$\zeta$')
-
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
 plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
 #ax1.annotate(cvar_lnm+' ('+ctest+')', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
 plt.savefig('Comparaison_Psi_m.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)
 
-
-
-sys.exit(0)
-
-
-# Difference skin vs noskin:
-xFns = nmp.zeros((nbr,nb_algos))
-
-for jv in range(nb_var-1):
-    print('\n *** Treating variable: '+L_VARO[jv]+' ('+ctest+') !')
-
-    for ja in range(nb_algos-1):
-        id_in = Dataset(cf_in[ja])
-        xF[:,ja]   = id_in.variables[L_VNEM[jv]][jt0:,1,1] # only the center point of the 3x3 spatial domain!
-        if ja == 0: cvar_lnm = id_in.variables[L_VNEM[jv]].long_name
-        id_in.close()
-        #
-        id_in = Dataset(cf_in_ns[ja])
-        xFns[:,ja] = id_in.variables[L_VNEM[jv]][jt0:,1,1] # only the center point of the 3x3 spatial domain!
-        if ja == 0: cvar_lnm = id_in.variables[L_VNEM[jv]].long_name
-        id_in.close()
-
-        xFa[:,ja] = xF[:,ja] - xFns[:,ja]  ; # difference!
-
-
-    # Want a symetric y-range that makes sense for the anomaly we're looking at:
-    rmax = nmp.max(xFa) ; rmin = nmp.min(xFa)
-    rmax = max( abs(rmax) , abs(rmin) )
-    romagn = math.floor(math.log(rmax, 10)) ; # order of magnitude of the anomaly  we're dealing with
-    rmlt = 10.**(int(romagn)) / 2.
-    yrng = math.copysign( math.ceil(abs(rmax)/rmlt)*rmlt , rmax)
-    print 'yrng = ', yrng ;  #sys.exit(0)
-
-
-
-
-    for ja in range(nb_algos-1):
-
-        calgo = L_ALGOS[ja]
-
-        if nmp.sum(xFa[:,ja]) == 0.0:
-            print('     Well! Seems that for variable '+L_VARO[jv]+', and algo '+calgo+', skin param has no impact')
-            print('          ==> skipping difference plot...')
-
-        else:
-
-            fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')
-            ax1 = plt.axes([0.07, 0.22, 0.9, 0.75])
-
-            ax1.set_xticks(vtime[::xticks_d])
-            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
-            plt.xticks(rotation='60')
-
-            plt.plot(vtime, xFa[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=None, zorder=10+ja)
-
-            ax1.set_ylim(-yrng,yrng) ; ax1.set_xlim(vtime[0],vtime[nbr-1])
-            plt.ylabel(L_VARL[jv]+' ['+L_VUNT[jv]+']')
-
-            ax1.grid(color='k', linestyle='-', linewidth=0.3)
-            #plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
-            ax1.annotate(cvar_lnm+' ('+ctest+')', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
-            plt.savefig('diff_skin-noskin_'+L_VARO[jv]+'_'+calgo+'_'+ctest+'.'+fig_ext, dpi=int(rDPI), transparent=False)
-            plt.close(jv)
+fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
+ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
+for ja in range(nb_algos):
+    plt.plot(vzeta, XPSI_H[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
+ax1.set_ylim(-30.,5.)
+ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
+plt.ylabel(r'$\Psi_h(\zeta)$')
+plt.xlabel(r'$\zeta$')
+ax1.grid(color='k', linestyle='-', linewidth=0.3)
+plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
+#ax1.annotate(cvar_lnm+' ('+ctest+')', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
+plt.savefig('Comparaison_Psi_h.'+fig_ext, dpi=int(rDPI), transparent=False)
+plt.close(1)
