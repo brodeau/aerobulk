@@ -30,9 +30,9 @@ ntv = len(vtv_u)
 #valgo_DN    = [ 'NCAR'   , 'COARE 3.0', 'COARE 3.6', 'ECMWF'  , 'Andreas' ]
 #vcolor      = [ '#3465a4', '#cc0000'  ,     'k'    , '#58FAAC',   'orange'  ]
 
-valgo_nm    = [ 'ncar'   , 'coare3p6' , 'ecmwf'  , 'andreas' ]
-valgo_DN    = [ 'NCAR'   , 'COARE 3.6', 'ECMWF'  , 'Andreas' ]
-vcolor      = [ '#3465a4',    'k'     , '#58FAAC',   '#cc0000'  ]
+valgo_nm    = [ 'ncar'   , 'coare3p6', 'ecmwf'  , 'andreas' ]
+valgo_DN    = [ 'NCAR'   , 'COARE'   ,  'ECMWF'  , 'Andreas' ]
+vcolor      = [ '#3465a4',    'k'    , '#58FAAC',   '#cc0000'  ]
 
 
 nb_algo = len(valgo_nm)
@@ -92,16 +92,16 @@ dCd_u = 0.2 ; dCd_s = 0.5
 dCe = 0.2
 
 F_cd_u_min = 0.8
-F_cd_u_max = 2.8
+F_cd_u_max = 3.
 F_cd_s_min = 0.
 F_cd_s_max = 2.5
 
-F_ch_u_min = 1.
+F_ch_u_min = 0.8
 F_ch_u_max = 1.8
 F_ch_s_min = 0.
-F_ch_s_max = 1.6
+F_ch_s_max = 1.4
 
-F_ce_u_min = 1.
+F_ce_u_min = 0.8
 F_ce_u_max = 1.8
 F_ce_s_min = 0.
 F_ce_s_max = 1.6
@@ -111,33 +111,28 @@ F_ce_s_max = 1.6
 dF = 0.25
 
 U_min = 0.
-U_max = 35.
+U_max = 34.
 dU = 1.
 
 
+DPI_FIG = 100
 
-#execfile('./0_config_time_series.py')
-
-DPI_FIG = 120
-params = { 'font.family': 'Monaco',
+rscale  = 1.25
+params = { 'font.family': 'Open Sans',
            'font.size':   40,
-           'legend.fontsize': 13,
-           'xtick.labelsize': 14,
-           'ytick.labelsize': 14,
-           'axes.labelsize':  16}
+           'legend.fontsize': rscale*10,
+           'xtick.labelsize': rscale*14,
+           'ytick.labelsize': rscale*14,
+           'axes.labelsize':  rscale*16}
 mpl.rcParams.update(params)
-font_ttl = { 'fontname':'Trebuchet MS', 'fontweight':'normal', 'fontsize':22 }
-font_ylb = { 'fontname':'Arial', 'fontweight':'normal', 'fontsize':16 }
-font_xlb = { 'fontname':'Arial', 'fontweight':'normal', 'fontsize':18 }
-font_lab = { 'fontname':'Arial', 'fontweight':'normal', 'fontsize':22 }
-#font_info= { 'fontname':'Arial', 'fontweight':'normal', 'fontsize':16 }
-#font_lab = { 'fontname':'Arial', 'fontweight':'normal', 'fontsize':16 }
+#
+font_ttl = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*22 }
+font_ylb = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*16 }
+font_xlb = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*18 }
+font_lab = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*22 }
+#font_info= { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*16 }
+#font_lab = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':rscale*16 }
 
-
-
-
-
-cf_fig = 'Fig02'
 
 y_tit = 0.92
 y_lbl = 0.9
@@ -155,17 +150,24 @@ vU[:] = xcd_u[0,:,jtv,0]
 
 
 
-
-
-if not l_multi_fig:
-    fig = plt.figure(num=1, figsize=(14.,8.), facecolor='w', edgecolor='k')
-    ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])    
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_min, cx_max, dcx, istab=0 ):
+    #
+    cstblt = 'Unstable'
+    csgn   = '-'
+    if istab==1:
+        cstblt = 'Stable'
+        csgn   = '+'
+    #
+    fig = plt.figure(num=1, figsize=(14.,10.), facecolor='w', edgecolor='k')
+    ax1 = plt.axes([0.07, 0.08, 0.9, 0.9])    
     ax1.grid(color='k', linestyle='-', linewidth=0.2, zorder=0.1)
-    ax1.annotate('Unstable', xy=(0.4, 1.06), xycoords='axes fraction', **font_ttl)
-    for jtv in range(ntv):
-        for ja in range(nb_algo):
-            ax1.plot(vU, xcd_u[1,:,jtv,ja], linewidth=3.5-jtv*0.7, color=vcolor[ja], zorder=0.75 )
-    vx_ticks = nmp.arange(U_min, U_max+dU, dU)
+    ax1.annotate(cstblt, xy=(0.4, 1.06), xycoords='axes fraction', **font_ttl)
+    for jtv in range(nvt):
+        for ja in range(nba):
+            ax1.plot( vu10, xCx[1,:,jtv,ja], label=valg_dn[ja]+r' $\Delta\Theta=$'+csgn+str(vstab[jtv])+'K', \
+                      linewidth=3.5-jtv*0.7, color=vcolor[ja], zorder=0.75 )
+    vx_ticks = nmp.arange(w_min, w_max+dw, dw)
     plt.xticks( vx_ticks )
     locs, labels = plt.xticks() ; jl=0; newlabels = []
     for ll in locs:
@@ -174,22 +176,33 @@ if not l_multi_fig:
         newlabels.append(clab); jl=jl+1
     plt.xticks(locs,newlabels)
     ax1.set_xlim(U_min, U_max)
-    vy_ticks = nmp.arange(F_cd_u_min, F_cd_u_max+dCd_u, dCd_u) ; plt.yticks( vy_ticks )
-    ax1.set_ylim(F_cd_u_min, F_cd_u_max + dCd_u*0.8)
-    #ax1.annotate('a)', xy=xy_labs, xycoords='axes fraction', **font_lab)
-    ctit = r'$C_D$ (Unstable)'
+    vy_ticks = nmp.arange(cx_min, cx_max+dcx, dcx) ; plt.yticks( vy_ticks )
+    ax1.set_ylim(cx_min, cx_max + dcx*0.8)
+    #
+    ctit = r'$'+cvar_nm+'$ ('+cstblt+')'
     plt.text(0.5, y_tit, ctit, horizontalalignment='center', transform = ax1.transAxes, bbox=dict(boxstyle="square", fc='w'), **font_ttl)
-    if lshow_xylabs: plt.ylabel(r'$(10^{-3})$', **font_ylb)
-
-    plt.savefig('C_D_'+cf_fig+'.'+fig_frmt, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
+    plt.ylabel(r'$10^{-3}\times '+cvar_nm+'$', **font_ylb)
+    plt.xlabel(r'$U_{10m}$ [m/s]',     **font_xlb)
+    plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
+    #
+    plt.savefig(cvar_nm+'_'+cstblt+'.'+fig_frmt, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
     plt.close(1)
+    return 0
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    sys.exit(0)
 
+if not l_multi_fig:
 
+    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_u, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_u_min, F_cd_u_max, dCd_u, istab=0 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_s, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_s_min, F_cd_s_max, dCd_u, istab=1 )
+
+    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_u_min, F_ch_u_max, dCd_u, istab=0 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_s_min, F_ch_s_max, dCd_u, istab=1 )
+
+    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_u_min, F_ce_u_max, dCd_u, istab=0 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_s_min, F_ce_s_max, dCd_u, istab=1 )
 
 else:
-
     
     fig = plt.figure(num = 1, figsize=(12,14), facecolor='w', edgecolor='k')
     ax1  = plt.axes([rleft, 2*rheig+3*rbott+rbext, rwidt, rheig])
