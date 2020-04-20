@@ -30,9 +30,14 @@ ntv = len(vtv_u)
 #valgo_DN    = [ 'NCAR'   , 'COARE 3.0', 'COARE 3.6', 'ECMWF'  , 'Andreas' ]
 #vcolor      = [ '#3465a4', '#cc0000'  ,     'k'    , '#58FAAC',   'orange'  ]
 
-valgo_nm    = [ 'ncar'   , 'coare3p6', 'ecmwf'  , 'andreas' ]
+valgo_nm    = [ 'ncar'   , 'coare3p6', 'ecmwf'   , 'andreas' ]
 valgo_DN    = [ 'NCAR'   , 'COARE'   ,  'ECMWF'  , 'Andreas' ]
-vcolor      = [ '#3465a4',    'k'    , '#58FAAC',   '#cc0000'  ]
+vcolor      = [ '#3465a4',    'k'    , '#58FAAC' , '#cc0000' ]
+vlines      = [   '-'    ,    '-'    ,    '-'    ,   '--'    ]
+
+#valgo_nm    = [ 'ncar'   , 'coare3p6' ]
+#valgo_DN    = [ 'NCAR'   , 'COARE'    ]
+#vcolor      = [ '#3465a4',    'k'     ]
 
 
 nb_algo = len(valgo_nm)
@@ -62,7 +67,6 @@ for jtv in range(ntv):
     for ja in range(nb_algo):
         xcd_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/cd_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
-
 xch_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     for ja in range(nb_algo):
@@ -85,6 +89,64 @@ for jtv in range(ntv):
         xce_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ce_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 
+##### L ####
+xlo_u = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xlo_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+xlo_s = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xlo_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+##### UN10 ####
+xun_u = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xun_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xun_u[1,:,jtv,ja] = xun_u[1,:,jtv,ja] - xun_u[0,:,jtv,ja] ; # => UN10 - U
+
+xun_s = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xun_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xun_s[1,:,jtv,ja] = xun_s[1,:,jtv,ja] - xun_s[0,:,jtv,ja] ; # => UN10 - U
+
+##### u* ####
+xus_u = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xus_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+xus_s = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xus_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+##### Rib ####
+xri_u = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xri_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+xri_s = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xri_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+
+
+
+        
 
 xy_labs = (-1.1, 1.)
 
@@ -151,12 +213,12 @@ vU[:] = xcd_u[0,:,jtv,0]
 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_min, cx_max, dcx, istab=0 ):
+def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_min, cx_max, dcx, istab=0, cunit='' ):
     #
-    cstblt = 'Unstable'
+    cstblt = 'unstable'
     csgn   = '-'
     if istab==1:
-        cstblt = 'Stable'
+        cstblt = 'stable'
         csgn   = '+'
     #
     fig = plt.figure(num=1, figsize=(14.,10.), facecolor='w', edgecolor='k')
@@ -166,7 +228,7 @@ def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_
     for jtv in range(nvt):
         for ja in range(nba):
             ax1.plot( vu10, xCx[1,:,jtv,ja], label=valg_dn[ja]+r' $\Delta\Theta=$'+csgn+str(vstab[jtv])+'K', \
-                      linewidth=3.5-jtv*0.7, color=vcolor[ja], zorder=0.75 )
+                      linewidth=3.5-jtv*0.7, color=vcolor[ja], linestyle=vlines[ja], zorder=0.75 )
     vx_ticks = nmp.arange(w_min, w_max+dw, dw)
     plt.xticks( vx_ticks )
     locs, labels = plt.xticks() ; jl=0; newlabels = []
@@ -179,9 +241,9 @@ def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_
     vy_ticks = nmp.arange(cx_min, cx_max+dcx, dcx) ; plt.yticks( vy_ticks )
     ax1.set_ylim(cx_min, cx_max + dcx*0.8)
     #
-    ctit = r'$'+cvar_nm+'$ ('+cstblt+')'
+    ctit = r'$'+cvar_nm+'$ --'+cstblt+'--'
     plt.text(0.5, y_tit, ctit, horizontalalignment='center', transform = ax1.transAxes, bbox=dict(boxstyle="square", fc='w'), **font_ttl)
-    plt.ylabel(r'$10^{-3}\times '+cvar_nm+'$', **font_ylb)
+    plt.ylabel(r''+cunit, **font_ylb)
     plt.xlabel(r'$U_{10m}$ [m/s]',     **font_xlb)
     plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
     #
@@ -193,15 +255,29 @@ def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_
 
 if not l_multi_fig:
 
-    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_u, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_u_min, F_cd_u_max, dCd_u, istab=0 )
-    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_s, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_s_min, F_cd_s_max, dCd_u, istab=1 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_u, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_u_min, F_cd_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
+    iplt = plot_Cx( ntv, nb_algo, 'C_D', vU, xcd_s, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_s_min, F_cd_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
 
-    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_u_min, F_ch_u_max, dCd_u, istab=0 )
-    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_s_min, F_ch_s_max, dCd_u, istab=1 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_u_min, F_ch_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
+    iplt = plot_Cx( ntv, nb_algo, 'C_H', vU, xch_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_s_min, F_ch_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
 
-    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_u_min, F_ce_u_max, dCd_u, istab=0 )
-    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_s_min, F_ce_s_max, dCd_u, istab=1 )
+    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_u_min, F_ce_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
+    iplt = plot_Cx( ntv, nb_algo, 'C_E', vU, xce_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_s_min, F_ce_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
 
+
+    iplt = plot_Cx( ntv, nb_algo, 'L',   vU, xlo_u, vrt_s, valgo_DN, U_min, U_max, dU, -500.,   0., 50., istab=0, cunit='[m]' )
+    iplt = plot_Cx( ntv, nb_algo, 'L',   vU, xlo_s, vrt_s, valgo_DN, U_min, U_max, dU,    0., 500., 50., istab=1, cunit='[m]' )
+
+    iplt = plot_Cx( ntv, nb_algo, 'UN-U',   vU, xun_u, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=0, cunit='[m/s]' )
+    iplt = plot_Cx( ntv, nb_algo, 'UN-U',   vU, xun_s, vrt_s, valgo_DN, U_min, U_max, dU,   -2.,  0., 0.1, istab=1, cunit='[m/s]' )
+
+    iplt = plot_Cx( ntv, nb_algo, 'u*',   vU, xus_u, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=0, cunit='[m/s]' )
+    iplt = plot_Cx( ntv, nb_algo, 'u*',   vU, xus_s, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=1, cunit='[m/s]' )
+
+    iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, U_min, U_max, dU,   -10.,   0., 1, istab=0, cunit='[]' )
+    iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  10., 1, istab=1, cunit='[]' )
+
+    
 else:
     
     fig = plt.figure(num = 1, figsize=(12,14), facecolor='w', edgecolor='k')

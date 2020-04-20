@@ -43,6 +43,9 @@ MODULE mod_blk_andreas
 
    REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
    !REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
+
+   !INTEGER, PARAMETER :: iverbose = 1
+   INTEGER, PARAMETER :: iverbose = 0
    
    PUBLIC :: TURB_ANDREAS, psi_m_andreas, psi_h_andreas
    
@@ -162,17 +165,17 @@ CONTAINS
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
-      !DO j_itt = 1, 4
+         !DO j_itt = 1, 4
 
-         PRINT *, 'LOLO'
+         IF(iverbose==1) PRINT *, 'LOLO'
 
          u_star = U_STAR_ANDREAS( UN10 )
 
-         PRINT *, 'LOLO *** u* =', u_star, j_itt
-         PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
-         PRINT *, 'LOLO *** q_zu =', q_zu, j_itt
-         PRINT *, 'LOLO *** theta* =', t_star, j_itt
-         PRINT *, 'LOLO *** q* =', q_star, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, j_itt
+         IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
+         IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** theta* =', t_star, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** q* =', q_star, j_itt
 
          !! Stability parameter :
          ztmp0 = One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! 1/L
@@ -184,15 +187,17 @@ CONTAINS
          zeta_u = zu*ztmp0
          zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
 
-         PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
-         PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
-         PRINT *, 'LOLO *** Ub =', Ub, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** Ub =', Ub, j_itt
 
 
          !! Drag coefficient:
          ztmp0 = u_star/Ub
          Cd    = ztmp0*ztmp0
-         PRINT *, 'LOLO *** CD =', Cd, j_itt
+         Cd    = MAX( ztmp0*ztmp0, 0.2E-3_wp ) !lolo
+         
+         IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
 
          !! Roughness length:
          IF( j_itt > 1 ) THEN
@@ -203,11 +208,11 @@ CONTAINS
          
          !z0    = MAX( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )  , 1.E-6_wp ) 
          
-         !PRINT *, 'LOLO *** u*,, Ub =', u_star, Ub, j_itt
+         !IF(iverbose==1) PRINT *, 'LOLO *** u*,, Ub =', u_star, Ub, j_itt
          !z0 = MAX( z0_from_ustar( zu, u_star, Ub ) , 1.E-6_wp )
          !z0 = z0_from_ustar( zu, u_star, Ub )
-         PRINT *, 'LOLO *** z0 =', z0, j_itt
-         PRINT *, 'LOLO'
+         IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO'
          
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
@@ -218,7 +223,7 @@ CONTAINS
          !ztmp0   = MAX( psi_h_andreas(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
          ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
          !ztmp0 = psi_h_andreas(zeta_u/zu*zt)  ! lolo: zeta_u for scalars???
-         PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
 
@@ -232,23 +237,29 @@ CONTAINS
          ENDIF
 
          !! Update neutral-stability wind at zu:
+         !IF ( j_itt > 5 ) THEN                 
          UN10 = MAX( 0._wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
+         !ELSE
+         !   UN10 = Ub
+         !END IF
          !WHERE( One_on_L( t_zu, q_zu, u_star, t_star, q_star ) > 1. )
          !   !! Uber stable, will screw everything!
          !   UN10 = 0.75*Ub  ! just decreasing wind speed...
          !END WHERE
-         !PRINT *, 'LOLO *** 1/L =', One_on_L( t_zu, q_zu, u_star, t_star, q_star ), j_itt
-         PRINT *, 'LOLO *** UN10 =', UN10, j_itt
+         !IF(iverbose==1) PRINT *, 'LOLO *** 1/L =', One_on_L( t_zu, q_zu, u_star, t_star, q_star ), j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, j_itt
 
-         PRINT *, 'LOLO'
+         IF(iverbose==1) PRINT *, 'LOLO'
 
       END DO !DO j_itt = 1, nb_itt
 
 
       ! compute transfer coefficients at zu:
       ztmp0 = u_star/Ub
-      Cd   = ztmp0*ztmp0
 
+      Cd   = ztmp0*ztmp0
+      !Cd    = MAX( ztmp0*ztmp0, 0.0008_wp )
+      
       ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
       Ch   = ztmp0*t_star/ztmp1
@@ -287,8 +298,9 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: u_star_andreas !: friction velocity    [m/s]
       !
       INTEGER  ::     ji, jj ! dummy loop indices
-      REAL(wp) :: za, zt, zw ! local scalars
+      REAL(wp) :: za, zt, zw, zc ! local scalars
       !!----------------------------------------------------------------------------------
+      !zc = SQRT(0.0008_wp)
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -296,6 +308,7 @@ CONTAINS
             za = zw - 8.271_wp
             zt = za + SQRT( 0.12_wp*za*za + 0.181_wp )
             u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
+            !u_star_andreas(ji,jj) = MAX( zc*zw  ,  0.239_wp + 0.0433_wp * zt )   !  zc*zw==SQRT(0.0008)*U => prevents C_D to be < 0.0008
          END DO
       END DO
       !

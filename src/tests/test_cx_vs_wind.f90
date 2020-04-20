@@ -11,9 +11,9 @@ PROGRAM cx_vs_wind_test
    IMPLICIT NONE
    
    REAL(wp), PARAMETER :: &
-      &                zt =  2. ,  &
+      &                zt = 10. ,  & !LOLO !!!!
       &                zu = 10. ,  &
-      &             wind_max = 60.
+      &             wind_max = 50.
 
    !! Relative humidities to test:
    REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
@@ -31,13 +31,13 @@ PROGRAM cx_vs_wind_test
    !!
    CHARACTER(len=100) :: &
       &   cextra = '', &
-      &   cf_cd, cf_ce, cf_ch, cf_ac, cf_ublk, cf_us, cf_z0
+      &   cf_cd, cf_ce, cf_ch, cf_ac, cf_ublk, cf_us, cf_z0, cf_lo, cf_un, cf_ri
    
    REAL(wp) :: Dtv, dt
-
-   REAL(wp), DIMENSION(1,1) :: sst, sstk, qsat_sst, sst_v, slp, t10, w10, q10, U_bulk, &
-      &  z0, z0t, z0q, us, ts, qs, &
-      &  mCd, mCe, mCh, mzeta, mz0, mz0t, mz0q, mus, mts, mqs, &
+   
+   REAL(wp), DIMENSION(1,1) :: sst, sstk, qsat_sst, sst_v, slp, theta_zu, w10, q_zu, U_bulk, &
+      &  z0, z0t, z0q, us, ts, qs, lo, un, ri, &
+      &  mCd, mCe, mCh, mzeta, mz0, mz0t, mz0q, mus, mts, mqs, mlo, mun, mri, &
       &  Cd, Ce, Ch, dw0, dw, zeta, &
       &  ac, mac, mublk, tmp
    
@@ -58,7 +58,7 @@ PROGRAM cx_vs_wind_test
       &   t_ce,    &
       &   t_z0, t_z0t, t_z0q, &
       &   t_us, t_ts, t_qs, &
-      &   t_ac, t_ublk
+      &   t_ac, t_ublk, t_lo, t_un, t_ri
 
    IF ( command_argument_count() /= 2 ) THEN
       PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare3p0/coare3p6/ncar/ecmwf/andreas)> <SST (deg.C)>'
@@ -153,7 +153,10 @@ PROGRAM cx_vs_wind_test
          !WRITE(cf_z0q,'("dat/z0q_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          WRITE(cf_ac,'("dat/ac_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          WRITE(cf_ublk,'("dat/ublk_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
-         WRITE(cf_us,'("dat/us_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
+         WRITE(cf_us,'("dat/us_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_lo,'("dat/lo_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_un,'("dat/un_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_ri,'("dat/ri_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
          !WRITE(cf_ts,'("dat/ts_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          !WRITE(cf_qs,'("dat/qs_dtv_+",i4.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
       ELSE
@@ -167,7 +170,10 @@ PROGRAM cx_vs_wind_test
          !WRITE(cf_z0q,'("dat/z0q_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          WRITE(cf_ac,'("dat/ac_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          WRITE(cf_ublk,'("dat/ublk_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
-         WRITE(cf_us,'("dat/us_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
+         WRITE(cf_us,'("dat/us_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_lo,'("dat/lo_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_un,'("dat/un_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
+         WRITE(cf_ri,'("dat/ri_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') INT(100*Dtv), INT(sst), TRIM(calgo), TRIM(cextra)
          !WRITE(cf_ts,'("dat/ts_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
          !WRITE(cf_qs,'("dat/qs_dtv_",i5.4,"_sst_",i2.2,"_",a,a,".dat")') int(100*Dtv), int(sst), trim(calgo), trim(cextra)
       END IF
@@ -186,7 +192,7 @@ PROGRAM cx_vs_wind_test
          END IF
          !!
          mCd = 0. ;  mCe = 0. ;  mCh = 0. ; mzeta = 0. ; mz0 = 0. ; mz0t = 0. ; mz0q = 0.
-         mac = 0. ; mublk = 0.  ;  mus = 0. ;  mts = 0. ;  mqs = 0. ;
+         mac = 0. ; mublk = 0.  ;  mus = 0. ;  mts = 0. ;  mqs = 0. ; mlo = 0. ; mun = 0.; mri = 0.
          !!
          DO jh = 1, nrh
             !!
@@ -194,29 +200,34 @@ PROGRAM cx_vs_wind_test
 
             IF ( TRIM(calgo) == 'coare3p0' ) &
                CALL TURB_COARE3P0( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'coare3p6' ) &
                CALL TURB_COARE3P6( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
 
             IF ( TRIM(calgo) == 'ncar' ) &
                CALL TURB_NCAR( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'ecmwf' ) &
                CALL TURB_ECMWF( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'andreas' ) &
                CALL TURB_ANDREAS(  zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us )
-            
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
+
+            !! Bulk Richardson number at zu:
+            ri = Ri_bulk( zu, sstk, theta_zu, qsat_sst, q_zu, U_bulk )
             
             !! Recalculating eq. charnock parameter:
             tmp = us*us
-            ac = z0*grav/tmp - 0.11*grav*visc_air(t10)/(tmp*us)
+            ac = z0*grav/tmp - 0.11*grav*visc_air(theta_zu)/(tmp*us)
 
+            
+
+            
             !!
             mCd = mCd + Cd/nrh
             mCh = mCh + Ch/nrh
@@ -230,6 +241,10 @@ PROGRAM cx_vs_wind_test
             mus = mus + us/nrh
             mts = mts + ts/nrh
             mqs = mqs + qs/nrh
+            mlo = mlo + lo/nrh
+            mun = mun + un/nrh
+            mri = mri + ri/nrh
+            
             !!
             IF ( ldebug .and. (w10(1,1) == wdebug) ) &
                PRINT *, REAL(vrh(jh),4), REAL(XT_a(jdt,jh)-rt0,4), &
@@ -247,6 +262,9 @@ PROGRAM cx_vs_wind_test
          t_ac(jw) = mac(1,1)
          t_ublk(jw) = mublk(1,1)
          t_us(jw) = mus(1,1) ; t_ts(jw) = mts(1,1) ; t_qs(jw) = mqs(1,1)
+         t_lo(jw) = mlo(1,1)
+         t_un(jw) = mun(1,1)
+         t_ri(jw) = mri(1,1)
          !!
          !!
          !!
@@ -290,7 +308,7 @@ PROGRAM cx_vs_wind_test
       CLOSE(11)
       !!
       OPEN(unit = 11, file = cf_ac, status = 'unknown')
-      WRITE(11,'("#     Wind               u*")')
+      WRITE(11,'("#     Wind               charn")')
       DO jw = 1, n_w
          WRITE(11,'(1f16.8, " " ,1f16.8)') t_w10(jw), t_ac(jw)
       ENDDO
@@ -303,6 +321,28 @@ PROGRAM cx_vs_wind_test
       ENDDO
       CLOSE(11)
       !!
+      OPEN(unit = 11, file = cf_lo, status = 'unknown')
+      WRITE(11,'("#     Wind               L")')
+      DO jw = 1, n_w
+         WRITE(11,'(1f16.8, " " ,1f16.8)') t_w10(jw), t_lo(jw)
+      ENDDO
+      CLOSE(11)
+      !!
+      OPEN(unit = 11, file = cf_un, status = 'unknown')
+      WRITE(11,'("#     Wind               UN10")')
+      DO jw = 1, n_w
+         WRITE(11,'(1f16.8, " " ,1f16.8)') t_w10(jw), t_un(jw)
+      ENDDO
+      CLOSE(11)
+      !!
+      OPEN(unit = 11, file = cf_ri, status = 'unknown')
+      WRITE(11,'("#     Wind               Ri_bulk")')
+      DO jw = 1, n_w
+         WRITE(11,'(1f16.8, " " ,1f16.8)') t_w10(jw), t_ri(jw)
+      ENDDO
+      CLOSE(11)
+      !!
+
    END DO
    !!
    !!
@@ -347,23 +387,23 @@ PROGRAM cx_vs_wind_test
 
       IF ( trim(calgo) == 'coare3p0' ) &
          CALL TURB_COARE3P0(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
-         &               Cd, Ch, Ce, t10, q10, U_bulk)
+         &               Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( TRIM(calgo) == 'coare3p6' ) &
          CALL TURB_COARE3P6(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
-         &               Cd, Ch, Ce, t10, q10, U_bulk)
+         &               Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'ncar' ) &
          CALL TURB_NCAR(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
-         &             Cd, Ch, Ce, t10, q10, U_bulk)
+         &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'ecmwf' ) &
          CALL TURB_ECMWF(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
-         &             Cd, Ch, Ce, t10, q10, U_bulk)
+         &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'andreas' ) &
          CALL TURB_ANDREAS( zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
-         &             Cd, Ch, Ce, t10, q10, U_bulk)
+         &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
 
       !!
@@ -382,7 +422,7 @@ PROGRAM cx_vs_wind_test
    CALL FIND_COUPLES(sst+rt0, Dtv, 1, (/ 0.8_wp /), v_tq)
    !!
    PRINT *, 'Corresponds (for RH=80%) to t2, q2   =', REAL(v_tq(1,1)-rt0,4), REAL(1000.*v_tq(2,1),4)
-   PRINT *, 'Corresponds (for RH=80%) to t10, q10 =', REAL(t10-rt0,4), REAL(1000.*q10,4)
+   PRINT *, 'Corresponds (for RH=80%) to theta_zu, q_zu =', REAL(theta_zu-rt0,4), REAL(1000.*q_zu,4)
 
 
 
