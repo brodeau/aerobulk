@@ -92,27 +92,27 @@ for jtv in range(ntv):
 ##### L ####
 xlo_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xlo_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xlo_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xlo_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 ##### UN10 ####
 xun_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xun_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
         xun_u[1,:,jtv,ja] = xun_u[1,:,jtv,ja] - xun_u[0,:,jtv,ja] ; # => UN10 - U
 
 xun_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xun_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
         xun_s[1,:,jtv,ja] = xun_s[1,:,jtv,ja] - xun_s[0,:,jtv,ja] ; # => UN10 - U
@@ -120,28 +120,41 @@ for jtv in range(ntv):
 ##### u* ####
 xus_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xus_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xus_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xus_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 ##### Rib ####
 xri_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xri_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xri_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
-    vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
         xri_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+##### z0 ####
+xz0_u = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xz0_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/z0_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+
+xz0_s = nmp.zeros((2,nU,ntv,nb_algo))
+for jtv in range(ntv):
+    #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
+    for ja in range(nb_algo):
+        xz0_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/z0_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 
 
@@ -276,6 +289,9 @@ if not l_multi_fig:
 
     iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, U_min, U_max, dU,   -10.,   0., 1, istab=0, cunit='[]' )
     iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  10., 1, istab=1, cunit='[]' )
+
+    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1, 0.01, istab=0, cunit='[]' )
+    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1, 0.01, istab=1, cunit='[]' )
 
     
 else:

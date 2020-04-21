@@ -11,7 +11,7 @@ PROGRAM cx_vs_wind_test
    IMPLICIT NONE
    
    REAL(wp), PARAMETER :: &
-      &                zt = 10. ,  & !LOLO !!!!
+      &                zt =  2. ,  & !LOLO !!!!
       &                zu = 10. ,  &
       &             wind_max = 50.
 
@@ -102,7 +102,11 @@ PROGRAM cx_vs_wind_test
    END DO
 
 
-   PRINT *, ''; PRINT *, 'Wind max =', t_w10(n_w); PRINT *, ''
+   PRINT *, ''
+   PRINT *, '*** Height "zt" for theta and q =', zt
+   PRINT *, '*** Height "zu" for wind speed  =', zu
+   PRINT *, '*** Max value for Wind =', t_w10(n_w)
+   PRINT *, ''
 
 
 

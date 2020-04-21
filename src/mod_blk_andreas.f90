@@ -37,13 +37,15 @@ MODULE mod_blk_andreas
    !!====================================================================================
    USE mod_const                                         !: physical and othe constants
    USE mod_phymbl                                        !: thermodynamics
-
+   
    IMPLICIT NONE
    PRIVATE
 
-   REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
-   !REAL(wp), PARAMETER :: L_min    = 1._wp  ! Limits L to L_min when ultra stable (stable => L > 0)
-
+   !! Important (Brodeau fix):
+   REAL(wp), PARAMETER :: rCd_min = 0.2E-3_wp ! minimum value to tolarate for CD !
+   REAL(wp), PARAMETER :: rRi_max = 0.2_wp    ! Bulk Ri above which the algorithm fucks up! ... and CD (hence u*) forced to stick to rCd_min (sqrt(rCd_min)*U)
+   !                                          ! (increasing (>0) Ri means that surface layer increasingly stable and/or wind increasingly weak)
+   
    !INTEGER, PARAMETER :: iverbose = 1
    INTEGER, PARAMETER :: iverbose = 0
    
@@ -126,7 +128,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   UN10, UN10_old     ! Neutral wind speed at zu [m/s]
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   RiB       ! square root of Cd
       !!
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -134,8 +136,8 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       
       ALLOCATE( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj), z0(jpi,jpj), &
-         &        UN10(jpi,jpj), UN10_old(jpi,jpj), zeta_u(jpi,jpj), sqrtCd(jpi,jpj), &
-         &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj)  )
+         &        UN10(jpi,jpj), UN10_old(jpi,jpj), zeta_u(jpi,jpj), RiB(jpi,jpj), &
+         &       ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
       
       lreturn_cdn   = PRESENT(CdN)   
       lreturn_chn   = PRESENT(ChN)   
@@ -162,15 +164,28 @@ CONTAINS
       t_star = Ch/ztmp0*(t_zu - sst) ! theta*
       q_star = Ce/ztmp0*(q_zu - ssq) ! q*
 
+      ! Bulk Richardson number:
+      RiB(:,:) = Ri_bulk( zu, sst, t_zu, ssq, q_zu, Ub )
+      
 
       !! ITERATION BLOCK
       DO j_itt = 1, nb_itt
-         !DO j_itt = 1, 4
+      !DO j_itt = 1, 4
 
          IF(iverbose==1) PRINT *, 'LOLO'
 
-         u_star = U_STAR_ANDREAS( UN10 )
-
+         IF(iverbose==1) PRINT *, 'LOLO *** RiB =', RiB, j_itt
+         
+         WHERE ( RiB < rRi_max )
+            !! Normal condition case:
+            u_star = U_STAR_ANDREAS( UN10 )
+         ELSEWHERE
+            !! Extremely stable + weak wind !!!
+            !!  => for we force u* to be consistent with minimum value for CD:
+            !!  (otherwize algorithm becomes nonsense...)
+            u_star = SQRT(rCd_min) * Ub     ! Cd does not go below 0.0002 !
+         ENDWHERE
+         
          IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, j_itt
          IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
          IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, j_itt
@@ -178,94 +193,60 @@ CONTAINS
          IF(iverbose==1) PRINT *, 'LOLO *** q* =', q_star, j_itt
 
          !! Stability parameter :
-         ztmp0 = One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! 1/L
-         !! algorithm is not stable when very stable and wind very weak:
-         !ztmp0 = MIN( ztmp0 , 1._wp/L_min )  ! 1/L LOLO: needed WHY ????
-         ztmp0 = MIN( ztmp0 , 1.5 )
+         zeta_u = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! zu * 1/L
          
-         !ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
-         zeta_u = zu*ztmp0
-         zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
-
          IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
          IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** Ub =', Ub, j_itt
-
+         IF(iverbose==1) PRINT *, 'LOLO *** Ub =', Ub, j_itt         
 
          !! Drag coefficient:
          ztmp0 = u_star/Ub
-         Cd    = ztmp0*ztmp0
-         Cd    = MAX( ztmp0*ztmp0, 0.2E-3_wp ) !lolo
+         Cd    = MAX( ztmp0*ztmp0, rCd_min )
          
          IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
 
          !! Roughness length:
-         IF( j_itt > 1 ) THEN
-            z0 = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
-         ELSE
-            z0 = z0_from_Cd( zu, Cd )
-         END IF
-         
-         !z0    = MAX( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )  , 1.E-6_wp ) 
-         
-         !IF(iverbose==1) PRINT *, 'LOLO *** u*,, Ub =', u_star, Ub, j_itt
-         !z0 = MAX( z0_from_ustar( zu, u_star, Ub ) , 1.E-6_wp )
-         !z0 = z0_from_ustar( zu, u_star, Ub )
+         z0 = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
          IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, j_itt
          IF(iverbose==1) PRINT *, 'LOLO'
          
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
-         ztmp1 = z0tq_LKB( 1, ztmp0, z0 )    ! z0t
-         ztmp2 = z0tq_LKB( 2, ztmp0, z0 )    ! z0q
+         ztmp1 = z0tq_LKB( 1, ztmp0, z0 )     ! z0t
+         ztmp2 = z0tq_LKB( 2, ztmp0, z0 )     ! z0q
 
          !! Turbulent scales at zu :
-         !ztmp0   = MAX( psi_h_andreas(zeta_u) , psi_min )  ! lolo: zeta_u for scalars???
          ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
-         !ztmp0 = psi_h_andreas(zeta_u/zu*zt)  ! lolo: zeta_u for scalars???
          IF(iverbose==1) PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
-
+         
          IF( (.NOT. l_zt_equal_zu).AND.( j_itt > 1 ) ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zeta_u/zu*zt   ! zeta_t
-            ztmp0 = SIGN( MIN(ABS(ztmp0),zeta_abs_max), ztmp0 )  ! zeta_t
             ztmp0 = LOG(zt/zu) + psi_h_andreas(zeta_u) - psi_h_andreas(ztmp0)
             t_zu = t_zt - t_star/vkarmn*ztmp0
             q_zu = q_zt - q_star/vkarmn*ztmp0
+            RiB  = Ri_bulk( zu, sst, t_zu, ssq, q_zu, Ub ) !LOLO
          ENDIF
 
          !! Update neutral-stability wind at zu:
-         !IF ( j_itt > 5 ) THEN                 
-         UN10 = MAX( 0._wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
-         !ELSE
-         !   UN10 = Ub
-         !END IF
-         !WHERE( One_on_L( t_zu, q_zu, u_star, t_star, q_star ) > 1. )
-         !   !! Uber stable, will screw everything!
-         !   UN10 = 0.75*Ub  ! just decreasing wind speed...
-         !END WHERE
-         !IF(iverbose==1) PRINT *, 'LOLO *** 1/L =', One_on_L( t_zu, q_zu, u_star, t_star, q_star ), j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, j_itt
+         UN10 = MAX( 0.1_wp , UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
 
+         IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, j_itt
          IF(iverbose==1) PRINT *, 'LOLO'
 
       END DO !DO j_itt = 1, nb_itt
-
-
-      ! compute transfer coefficients at zu:
-      ztmp0 = u_star/Ub
-
-      Cd   = ztmp0*ztmp0
-      !Cd    = MAX( ztmp0*ztmp0, 0.0008_wp )
       
+      ! Compute transfer coefficients at zu:
+      ztmp0 = u_star/Ub
+      Cd    = MAX( ztmp0*ztmp0, rCd_min )
       ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
       Ch   = ztmp0*t_star/ztmp1
       Ce   = ztmp0*q_star/ztmp2
 
-
+      
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN     = vkarmn2*ztmp0*ztmp0
 
@@ -280,7 +261,7 @@ CONTAINS
       IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ub, u_star, psi_m_andreas(zeta_u) )
 
 
-      DEALLOCATE( u_star, t_star, q_star, z0, UN10, zeta_u, sqrtCd, ztmp0, ztmp1, ztmp2 ) !
+      DEALLOCATE( u_star, t_star, q_star, z0, UN10, zeta_u, RiB, ztmp0, ztmp1, ztmp2 ) !
 
    END SUBROUTINE turb_andreas
 
@@ -308,7 +289,6 @@ CONTAINS
             za = zw - 8.271_wp
             zt = za + SQRT( 0.12_wp*za*za + 0.181_wp )
             u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
-            !u_star_andreas(ji,jj) = MAX( zc*zw  ,  0.239_wp + 0.0433_wp * zt )   !  zc*zw==SQRT(0.0008)*U => prevents C_D to be < 0.0008
          END DO
       END DO
       !
