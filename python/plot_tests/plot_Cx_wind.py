@@ -1,21 +1,24 @@
 #!/usr/bin/env python
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 
+# AeroBulk, 2020, L. Brodeau
+#  (https://github.com/brodeau/aerobulk/)
+#
 # Post-diagnostic of test_cx_vs_wind.x
 
 import sys
-from os import getenv
+from os import getenv,mkdir,path
 import numpy as nmp
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-import clprn_tool as clt
+reload(sys)
+sys.setdefaultencoding('utf8')
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 l_multi_fig = False
-
 sst_ref = 15.
-
 
 AEROBULK_HOME = getenv('AEROBULK_HOME')
 if AEROBULK_HOME is None:
@@ -24,10 +27,18 @@ if AEROBULK_HOME is None:
 cdir_in = AEROBULK_HOME+'/dat'    
 print('\n *** Will look for data into '+AEROBULK_HOME+' !')
 
+# Directory where to save figures:
+fig_dir = AEROBULK_HOME+'/figures'
+if not path.isdir(fig_dir):
+    try:
+        mkdir(fig_dir)
+    except OSError:
+        print ("Creation of the directory %s failed" % fig_dir)
+    else:
+        print ("Successfully created the directory %s " % fig_dir)
 
-
-fig_frmt = 'png' ; lshow_xylabs = True
-#fig_frmt = 'svg' ; lshow_xylabs = False
+fig_ext = 'png' ; lshow_xylabs = True
+#fig_ext = 'svg' ; lshow_xylabs = False
 
 vtv_u = [ '-0050','-0300','-1000' ]
 vtv_s = [ '+0050','+0300','+1000' ]
@@ -52,13 +63,42 @@ vlines      = [   '-'    ,    '-'    ,    '-'    ,   '--'    ]
 nb_algo = len(valgo_nm)
 
 
+
+############################################################################
+def read_ascii_column(cfile, ivcol2read):
+    if not path.exists(cfile):
+        print('\n  ERROR: file '+cfile+' is missing !')
+        sys.exit(0)
+    f = open(cfile, 'r')
+    cread_lines = f.readlines()
+    f.close()
+    nbcol = len(ivcol2read)
+    jl = 0
+    for ll in cread_lines:
+        ls = ll.split()
+        if ls[0] != '#': jl = jl + 1
+    nbl = jl
+    Xout  = nmp.zeros((nbcol,nbl))
+    jl = -1
+    for ll in cread_lines:
+        ls = ll.split()
+        if ls[0] != '#':
+            jl = jl+1
+            jc = -1
+            for icol in ivcol2read:
+                jc = jc+1
+                Xout[jc,jl] = float(ls[icol])
+    return Xout
+############################################################################
+
+
 vrt_u = nmp.zeros(ntv) ; vrt_s = nmp.zeros(ntv)
 
 
 csst = str(int(sst_ref))
 
 cf_in = cdir_in+'/cd_dtv_-0500_sst_'+csst+'_'+valgo_nm[0]+'.dat'
-xdum = clt.read_ascii_column(cf_in, [0,1])
+xdum = read_ascii_column(cf_in, [0,1])
 print '\n\n\n'
 
 
@@ -68,34 +108,34 @@ xcd_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xcd_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/cd_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xcd_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/cd_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xcd_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xcd_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/cd_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xcd_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/cd_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xch_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     for ja in range(nb_algo):
-        xch_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ch_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xch_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ch_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xch_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     for ja in range(nb_algo):
-        xch_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ch_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xch_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ch_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 
 xce_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     for ja in range(nb_algo):
-        xce_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ce_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xce_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ce_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xce_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     for ja in range(nb_algo):
-        xce_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ce_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xce_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ce_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 
 ##### L ####
@@ -103,27 +143,27 @@ xlo_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xlo_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xlo_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/lo_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xlo_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xlo_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/lo_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xlo_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/lo_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 ##### UN10 ####
 xun_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xun_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xun_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/un_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
         xun_u[1,:,jtv,ja] = xun_u[1,:,jtv,ja] - xun_u[0,:,jtv,ja] ; # => UN10 - U
 
 xun_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xun_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/un_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xun_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/un_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
         xun_s[1,:,jtv,ja] = xun_s[1,:,jtv,ja] - xun_s[0,:,jtv,ja] ; # => UN10 - U
 
 ##### u* ####
@@ -131,39 +171,39 @@ xus_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xus_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xus_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/us_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xus_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xus_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/us_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xus_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/us_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 ##### Rib ####
 xri_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xri_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xri_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ri_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xri_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xri_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/ri_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xri_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/ri_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 ##### z0 ####
 xz0_u = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_u[jtv] = float(vtv_u[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xz0_u[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/z0_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xz0_u[:,:,jtv,ja] = read_ascii_column(cdir_in+'/z0_dtv_'+vtv_u[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 xz0_s = nmp.zeros((2,nU,ntv,nb_algo))
 for jtv in range(ntv):
     #vrt_s[jtv] = float(vtv_s[jtv])/100. # dTv as a float
     for ja in range(nb_algo):
-        xz0_s[:,:,jtv,ja] = clt.read_ascii_column(cdir_in+'/z0_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
+        xz0_s[:,:,jtv,ja] = read_ascii_column(cdir_in+'/z0_dtv_'+vtv_s[jtv]+'_sst_'+csst+'_'+valgo_nm[ja]+'.dat', [0,1])
 
 
 
@@ -269,7 +309,7 @@ def plot_Cx( nvt, nba, cvar_nm, vu10, xCx, vstab, valg_dn, w_min, w_max, dw, cx_
     plt.xlabel(r'$U_{10m}$ [m/s]',     **font_xlb)
     plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
     #
-    plt.savefig(cvar_nm+'_'+cstblt+'.'+fig_frmt, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
+    plt.savefig(fig_dir+'/'+cvar_nm+'_'+cstblt+'.'+fig_ext, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
     plt.close(1)
     return 0
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -427,5 +467,10 @@ else:
     plt.legend(bbox_to_anchor=(0.6, -0.22), ncol=3, shadow=False, fancybox=True)
 
 
-    plt.savefig(cf_fig+'.'+fig_frmt, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
+    plt.savefig(fig_dir+'/'+cf_fig+'.'+fig_ext, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
     plt.close(1)
+
+
+
+print('\n *** Check figures into '+fig_dir+'/ !!!\n')
+

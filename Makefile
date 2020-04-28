@@ -158,4 +158,5 @@ clean:
 
 menage:
 	rm -f *.svg *.png *.eps *.gp *.out *.nc *.dat
+	rm -rf figures
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp

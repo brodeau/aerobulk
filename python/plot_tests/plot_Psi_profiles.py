@@ -4,9 +4,10 @@
 # AeroBulk, 2020, L. Brodeau
 #  (https://github.com/brodeau/aerobulk/)
 #
+# Post-diagnostic of test_psi_stab.x
 
 import sys
-from os import path as path
+from os import getenv,mkdir,path
 import math
 import numpy as nmp
 from netCDF4 import Dataset
@@ -17,11 +18,27 @@ import matplotlib.dates as mdates
 
 reload(sys)
 sys.setdefaultencoding('utf8')
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+AEROBULK_HOME = getenv('AEROBULK_HOME')
+if AEROBULK_HOME is None:
+    print('The environment variable "AEROBULK_HOME" must be set!')
+    sys.exit(0)
+cdir_in = AEROBULK_HOME+'/dat'    
+print('\n *** Will look for data into '+AEROBULK_HOME+' !')
 
-dir_figs='.'
-size_fig=(8,8)
+# Directory where to save figures:
+fig_dir = AEROBULK_HOME+'/figures'
+if not path.isdir(fig_dir):
+    try:
+        mkdir(fig_dir)
+    except OSError:
+        print ("Creation of the directory %s failed" % fig_dir)
+    else:
+        print ("Successfully created the directory %s " % fig_dir)
+
 fig_ext='png'
+size_fig=(8,8)
 
 clr_red = '#AD0000'
 clr_sat = '#ffed00'
@@ -85,7 +102,7 @@ plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
 plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
 #
-plt.savefig('Comparaison_Psi_m.'+fig_ext, dpi=int(rDPI), transparent=False)
+plt.savefig(fig_dir+'/Comparaison_Psi_m.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)
 
 
@@ -102,5 +119,5 @@ plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
 plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
 #
-plt.savefig('Comparaison_Psi_h.'+fig_ext, dpi=int(rDPI), transparent=False)
+plt.savefig(fig_dir+'/Comparaison_Psi_h.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)
