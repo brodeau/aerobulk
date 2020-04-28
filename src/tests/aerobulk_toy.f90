@@ -1,6 +1,6 @@
 ! AeroBulk / 2015 / L. Brodeau
 
-PROGRAM TEST_AEROBULK
+PROGRAM AEROBULK_TOY
 
    USE mod_const
    USE mod_phymbl
@@ -494,8 +494,8 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) ''
 
    WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1000.*vQu_sane, 4), '[g/kg]'
-   PRINT *, 'LOLO: test_aerobulk.f90 => gamma_moist =', rgamma
-   PRINT *, 'LOLO: test_aerobulk.f90 => t_zu =', t_zu
+   PRINT *, 'LOLO: aerobulk_toy.f90 => gamma_moist =', rgamma
+   PRINT *, 'LOLO: aerobulk_toy.f90 => t_zu =', t_zu
    PRINT *, ''
 
    WRITE(6,*) ''
@@ -567,8 +567,7 @@ CONTAINS
       WRITE(id,*) ''
    END SUBROUTINE prtcol
 
-END PROGRAM TEST_AEROBULK
-
+END PROGRAM AEROBULK_TOY
 
 
 SUBROUTINE usage_test( icontinue )
@@ -577,7 +576,7 @@ SUBROUTINE usage_test( icontinue )
    PRINT *,''
    IF (icontinue>=1) THEN
       PRINT *,''
-      PRINT *,'                 ======   A e r o B u l k   ====='
+      PRINT *,'  ======   A e r o B u l k  c o m m a n d  l i n e  T o y   ====='
       PRINT *,''
       PRINT *,'                      (L. Brodeau, 2015-2019)'
       PRINT *,''

@@ -339,8 +339,8 @@ if not l_multi_fig:
     iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, U_min, U_max, dU,   -10.,   0., 1, istab=0, cunit='[]' )
     iplt = plot_Cx( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  10., 1, istab=1, cunit='[]' )
 
-    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1, 0.01, istab=0, cunit='[]' )
-    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1, 0.01, istab=1, cunit='[]' )
+    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.005, 0.001, istab=0, cunit='[]' )
+    iplt = plot_Cx( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1,   0.01, istab=1, cunit='[]' )
 
     
 else:

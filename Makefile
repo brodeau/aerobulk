@@ -3,7 +3,7 @@
 
 include make.macro
 
-All: lib/libaerobulk.a bin/test_aerobulk.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x  bin/test_aerobulk_oce+ice.x 
+All: lib/libaerobulk.a bin/aerobulk_toy.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x  bin/test_aerobulk_oce+ice.x 
 
 test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_ice_series.x bin/test_phymbl.x bin/test_cx_vs_wind.x bin/test_ice.x \
       bin/test_aerobulk_cdnf_series.x bin/test_psi_stab.x
@@ -75,9 +75,9 @@ lib/libaerobulk_cxx.a: $(LIB_OBJ) $(LIB_OBJ_CXX)
 	ranlib lib/libaerobulk_cxx.a
 	@echo ""
 
-bin/test_aerobulk.x: src/tests/test_aerobulk.f90 lib/libaerobulk.a
+bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/tests/test_aerobulk.f90 -o bin/test_aerobulk.x $(LIB)
+	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
 
 bin/example_call_aerobulk.x: src/example_call_aerobulk.f90 lib/libaerobulk.a #
 	@mkdir -p bin

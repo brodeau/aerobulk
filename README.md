@@ -18,21 +18,21 @@ The following figure provides a schematic view on the way turbulent fluxes are c
 
 ![Aerobulk Approach](https://brodeau.github.io/images/projects/fig_bulk_model_ftp.svg)
 
+&nbsp;
 
-In AeroBulk, 4 algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
+In AeroBulk, 5 *state of the art* bulk algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
-*   COARE v3.0 ([Fairall _et al._ 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
-*   COARE v3.6 (Fairall et al., 2018 + [Edson _et al._ 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
+*   COARE v3.0 ([Fairall *et al.*, 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
+*   COARE v3.6 (Fairall *et al.*, 2018 + [Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
+*   ANDREAS ([Andreas *et al.*, 2015](https://dx.doi.org/10.1002/qj.2424))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
 In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature is the bulk SST (usually measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. The NCAR algorithm is supposed to be used with the bulk SST and does not feature a cool-skin/warm layer scheme.
 
 Beside bulk algorithms, AeroBulk also provides a variety of functions to accurately estimate relevant atmospheric variable such as density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, Obukhov length, wind gustiness, etc...
 
-The focus in AeroBulk is readability, efficiency, and portability towards either modern GCMs (Fortran 90, set of modules and a library).
-
-
+The focus in AeroBulk is readability, efficiency, and portability towards modern ocean & atmosphere GCMs (Fortran 90, set of modules and a library).
 
 &nbsp;
 
@@ -44,13 +44,13 @@ The focus in AeroBulk is readability, efficiency, and portability towards either
 
 # **> Giving AeroBulk a first try in interactive "toy mode"**
 
-Check that ```bin/test_aerobulk.x``` has been compiled and execute it:
+Check that ```bin/aerobulk_toy.x``` has been compiled and execute it:
 
-     ./bin/test_aerobulk.x
+     ./bin/aerobulk_toy.x
 
-You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```test_aerobulk.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
+You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```aerobulk_toy.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
 
- List of command line options for ```test_aerobulk.x```:
+ List of command line options for ```aerobulk_toy.x```:
 
     -p   => Ask for sea-level pressure, otherwise assume 1010 hPa
     
@@ -80,29 +80,30 @@ Example of an output obtained with the following setup:
 <!-- $$  SST = 22^{\circ}C \\ \theta_z = 20^{\circ}C $$ -->
 
      ==============================================================================================
-       Algorithm:         coare3p0   |   coare3p6    |    ncar     |    ecmwf
+        Algorithm:      coare3p0  |  coare3p6  |    ncar    |    ecmwf   | andreas
      ==============================================================================================
-           C_D     =      1.195414       1.077550       1.203832       1.286208      [10^-3]
-           C_E     =      1.334589       1.372951       1.361890       1.314309      [10^-3]
-           C_H     =      1.334589       1.372951       1.277672       1.263574      [10^-3]
+           C_D     =    1.1954       1.0775       1.2038       1.2862       1.0167      [10^-3]
+           C_E     =    1.3345       1.3729       1.3618       1.3143       1.1565      [10^-3]
+           C_H     =    1.3345       1.3729       1.2776       1.2635       1.1103      [10^-3]
     
-           z_0     =     4.4093682E-05  2.1928567E-05  4.4988010E-05  6.9883550E-05  [m]
-           u*      =     0.1757807      0.1667222      0.1734814      0.1819254      [m/s]
-           L       =     -20.38346      -16.91987      -20.49400      -24.02985      [m]
-           Ri_bulk =    -3.7870664E-02 -3.7953738E-02 -3.9068658E-02 -3.7979994E-02  [-]
+           z_0     =   4.40936E-05  2.19285E-05  4.49880E-05  6.98835E-05  1.56119E-05  [m]
+           u*      =   0.17578      0.16672      0.17348      0.18192       0.1594      [m/s]
+           L       =   -20.383      -16.919      -20.494      -24.029      -18.558      [m]
+           Ri_bulk =  -3.78706E-02 -3.79537E-02 -3.90686E-02 -3.79799E-02 -3.87826E-02  [-]
     
-       == Neutral-stability: ==
-           UN10    =      5.419222       5.431102       5.339627       5.399212      [m/s]
-           C_D_N   =      1.052128       0.942347       1.055562       1.135340      [10^-3]
-           C_E_N   =      1.107706       1.111940       1.124134       1.106443      [10^-3]
-           C_H_N   =      1.107706       1.111940       1.062404       1.068018      [10^-3]
+                      *** Neutral stability: **
+           UN10    =    5.4192       5.4311       5.3396       5.3992       5.3289      [m/s]
+           C_D_N   =    1.0521      0.94234       1.0555       1.1353       0.8950      [10^-3]
+           C_E_N   =    1.1077       1.1119       1.1241       1.1064       0.9600      [10^-3]
+           C_H_N   =    1.1077       1.1119       1.0624       1.0680       0.9260      [10^-3]
     
-     Equ. Charn p. =     1.1003609E-02  4.2371023E-03  1.1547875E-02  1.8003255E-02
+     Equ. Charn p. =   1.10033E-02  4.23674E-03  1.15475E-02  1.80029E-02  2.02298E-03
     
-      Wind stress  =      36.19867       32.59680       35.84993       38.86012      [mN/m^2]
-      Evaporation  =      3.105902       3.192532       3.121510       3.053830      [mm/day]
-         QL        =     -88.03146      -90.48684      -88.47384      -86.55556      [W/m^2]
-         QH        =     -17.83335      -18.33073      -16.73051      -16.80536      [W/m^2]
+      Wind stress  =    36.198       32.596       35.849       38.860       30.275      [mN/m^2]
+      Evaporation  =    3.1059       3.1925       3.1215       3.0538       2.6270      [mm/day]
+         QL        =   -88.031      -90.486      -88.473      -86.555      -74.459      [W/m^2]
+         QH        =   -17.833      -18.330      -16.730      -16.805      -14.441      [W/m^2]
+
 
 &nbsp;
 
