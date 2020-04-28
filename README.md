@@ -33,6 +33,15 @@ Beside bulk algorithms, AeroBulk also provides a variety of functions to accurat
 The focus in AeroBulk is readability, efficiency, and portability towards either modern GCMs (Fortran 90, set of modules and a library).
 
 
+
+
+![Aerobulk Approach](https://brodeau.github.io/images/projects/Comparaison_Psi.svg)
+
+*Example of a set of figures generated with one of AeroBulk diagnostic scripts: comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
+
+ 
+
+
 # **> Giving AeroBulk a first try in interactive "toy mode"**
 
 Check that ```bin/test_aerobulk.x``` has been compiled and execute it:
@@ -44,18 +53,18 @@ You will be guided and interactively prompted for different sea-surface and ABL 
  List of command line options for ```test_aerobulk.x```:
 
     -p   => Ask for sea-level pressure, otherwise assume 1010 hPa
-
+    
     -r   => Ask for relative humidity rather than specific humidity
-
+    
     -S   => Use the Cool Skin Warm Layer parameterization to compute
             and use the skin temperature instead of the bulk SST
             only in COARE and ECMWF
-
+    
     -N   => Force neutral stability in surface atmospheric layer
             -> will not ask for air temp. at zt, instead will only
             ask for relative humidity at zt and will force the air
             temperature at zt that yields a neutral-stability!
-
+    
     -h   => Show this message
 
 
@@ -76,20 +85,20 @@ Example of an output obtained with the following setup:
            C_D     =      1.195414       1.077550       1.203832       1.286208      [10^-3]
            C_E     =      1.334589       1.372951       1.361890       1.314309      [10^-3]
            C_H     =      1.334589       1.372951       1.277672       1.263574      [10^-3]
-
+    
            z_0     =     4.4093682E-05  2.1928567E-05  4.4988010E-05  6.9883550E-05  [m]
            u*      =     0.1757807      0.1667222      0.1734814      0.1819254      [m/s]
            L       =     -20.38346      -16.91987      -20.49400      -24.02985      [m]
            Ri_bulk =    -3.7870664E-02 -3.7953738E-02 -3.9068658E-02 -3.7979994E-02  [-]
-
+    
        == Neutral-stability: ==
            UN10    =      5.419222       5.431102       5.339627       5.399212      [m/s]
            C_D_N   =      1.052128       0.942347       1.055562       1.135340      [10^-3]
            C_E_N   =      1.107706       1.111940       1.124134       1.106443      [10^-3]
            C_H_N   =      1.107706       1.111940       1.062404       1.068018      [10^-3]
-
+    
      Equ. Charn p. =     1.1003609E-02  4.2371023E-03  1.1547875E-02  1.8003255E-02
-
+    
       Wind stress  =      36.19867       32.59680       35.84993       38.86012      [mN/m^2]
       Evaporation  =      3.105902       3.192532       3.121510       3.053830      [mm/day]
          QL        =     -88.03146      -90.48684      -88.47384      -86.55556      [W/m^2]
@@ -256,7 +265,7 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
                   USE mod_const
                   USE mod_phymbl
                   ...
-
+    
                   SSQ(:,:) = 0.98*q_sat(SST, SLP)
                   ...
               END PROGRAM TEST_PHYMBL

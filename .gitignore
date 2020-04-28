@@ -17,6 +17,7 @@ dat
 mod
 obj
 lib
+figures
 *.pyc
 *.png
 *.dat

@@ -24,7 +24,7 @@ AEROBULK_HOME = getenv('AEROBULK_HOME')
 if AEROBULK_HOME is None:
     print('The environment variable "AEROBULK_HOME" must be set!')
     sys.exit(0)
-cdir_in = AEROBULK_HOME+'/dat'    
+cdir_in = AEROBULK_HOME+'/dat'
 print('\n *** Will look for data into '+AEROBULK_HOME+' !')
 
 # Directory where to save figures:
@@ -93,8 +93,9 @@ font_axes = { 'fontname':'Arial',     'fontweight':'normal', 'fontsize':16 }
 fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
 ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
 #
+plt.plot(vzeta, 0.*vzeta, color='k', linestyle='-', linewidth=1.5, label=None, zorder=5)
 for ja in range(nb_algos):
-    plt.plot(vzeta, XPSI_M[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
+    plt.plot(vzeta, XPSI_M[:,ja], color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
 ax1.set_ylim(-30.,5.)
 ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
 plt.ylabel(r'$\Psi_m(\zeta)$', **font_axes)
@@ -110,6 +111,7 @@ plt.close(1)
 fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
 ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
 #
+plt.plot(vzeta, 0.*vzeta, color='k', linestyle='-', linewidth=1.5, label=None, zorder=5)
 for ja in range(nb_algos):
     plt.plot(vzeta, XPSI_H[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
 ax1.set_ylim(-30.,5.)
