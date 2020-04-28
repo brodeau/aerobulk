@@ -15,7 +15,7 @@ PROGRAM cx_vs_wind_test
       &                zu = 10. ,  &
       &             wind_max = 50.
 
-   !! Relative humidities to test:
+   !! Realistic relative humidity range to test:
    REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
 
    LOGICAL,  PARAMETER :: ldebug = .FALSE.
@@ -61,7 +61,7 @@ PROGRAM cx_vs_wind_test
       &   t_ac, t_ublk, t_lo, t_un, t_ri
 
    IF ( command_argument_count() /= 2 ) THEN
-      PRINT *, 'USAGE: cx_vs_wind_test.x <algo (coare3p0/coare3p6/ncar/ecmwf/andreas)> <SST (deg.C)>'
+      PRINT *, 'USAGE: test_cx_vs_wind.x <algo (coare3p0/coare3p6/ncar/ecmwf/andreas)> <SST (deg.C)>'
       STOP
    END IF
    

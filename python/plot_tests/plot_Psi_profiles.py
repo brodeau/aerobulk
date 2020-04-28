@@ -7,22 +7,13 @@
 
 import sys
 from os import path as path
-#from string import replace
 import math
 import numpy as nmp
-#import scipy.signal as signal
 from netCDF4 import Dataset
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-#from string import find
-#import warnings
-#warnings.filterwarnings("ignore")
-#import time
-
-#import barakuda_plot as bp
-#import barakuda_tool as bt
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -79,33 +70,37 @@ params = { 'font.family': 'Open Sans',
            'ytick.labelsize': 14,
            'axes.labelsize':  16}
 mpl.rcParams.update(params)
-font_inf = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':18 }
+font_axes = { 'fontname':'Arial',     'fontweight':'normal', 'fontsize':16 }
 
 
 fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
 ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
+#
 for ja in range(nb_algos):
     plt.plot(vzeta, XPSI_M[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
 ax1.set_ylim(-30.,5.)
 ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
-plt.ylabel(r'$\Psi_m(\zeta)$')
-plt.xlabel(r'$\zeta$')
+plt.ylabel(r'$\Psi_m(\zeta)$', **font_axes)
+plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
 plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
-#ax1.annotate(cvar_lnm+' ('+ctest+')', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
+#
 plt.savefig('Comparaison_Psi_m.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)
 
+
+
 fig = plt.figure(num=1, figsize=size_fig, facecolor='w', edgecolor='k')
 ax1 = plt.axes([0.11, 0.09, 0.86, 0.88])
+#
 for ja in range(nb_algos):
     plt.plot(vzeta, XPSI_H[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], linewidth=l_width[ja], label=L_ALGOS[ja], zorder=10+ja)
 ax1.set_ylim(-30.,5.)
 ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
-plt.ylabel(r'$\Psi_h(\zeta)$')
-plt.xlabel(r'$\zeta$')
+plt.ylabel(r'$\Psi_h(\zeta)$', **font_axes)
+plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
 plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
-#ax1.annotate(cvar_lnm+' ('+ctest+')', xy=(0.3, 0.97), xycoords='axes fraction',  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
+#
 plt.savefig('Comparaison_Psi_h.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)

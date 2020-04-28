@@ -4,6 +4,7 @@
 # Post-diagnostic of test_cx_vs_wind.x
 
 import sys
+from os import getenv
 import numpy as nmp
 import matplotlib as mpl
 mpl.use('Agg')
@@ -15,7 +16,15 @@ l_multi_fig = False
 
 sst_ref = 15.
 
-cdir_in = '../../dat'
+
+AEROBULK_HOME = getenv('AEROBULK_HOME')
+if AEROBULK_HOME is None:
+    print('The environment variable "AEROBULK_HOME" must be set!')
+    sys.exit(0)
+cdir_in = AEROBULK_HOME+'/dat'    
+print('\n *** Will look for data into '+AEROBULK_HOME+' !')
+
+
 
 fig_frmt = 'png' ; lshow_xylabs = True
 #fig_frmt = 'svg' ; lshow_xylabs = False
