@@ -34,12 +34,12 @@ The focus in AeroBulk is readability, efficiency, and portability towards either
 
 
 
+&nbsp;
 
 ![Aerobulk Approach](https://brodeau.github.io/images/projects/Comparaison_Psi.svg)
-
 *Example of a set of figures generated with one of AeroBulk diagnostic scripts: comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
 
- 
+&nbsp;
 
 
 # **> Giving AeroBulk a first try in interactive "toy mode"**
@@ -104,6 +104,7 @@ Example of an output obtained with the following setup:
          QL        =     -88.03146      -90.48684      -88.47384      -86.55556      [W/m^2]
          QH        =     -17.83335      -18.33073      -16.73051      -16.80536      [W/m^2]
 
+&nbsp;
 
 # **> Computing turbulent fluxes with AeroBulk**
 
@@ -151,7 +152,7 @@ Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameter
            &                    Qe, Qh, Tau_x, Tau_y,                                   &
            &                    Niter=10, rad_sw=Rsw, rad_lw=Rlw )
 
-
+&nbsp;
 
 # **> Computing transfer coefficients with AeroBulk**
 
@@ -253,7 +254,7 @@ Now the same but using the cool-skin warm-layer parameterization:
 Here, Ts is the bulk SST as input and will become the skin temperature as output! qs is irrelevant as input and is the saturation specific humidity at temperature Ts as output!
 
 
-
+&nbsp;
 
 # **> Computing atmospheric state variables with AeroBulk**
 
@@ -273,9 +274,7 @@ Example for computing SSQ of Eq.(1) out of the SST and the SLP:
 
 
 
-
-
-
+&nbsp;
 
 **> Acknowledging AeroBulk**
 
