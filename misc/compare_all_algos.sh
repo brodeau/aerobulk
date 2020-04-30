@@ -9,6 +9,9 @@ cd ${AEROBULK_HOME}/
 # First generating all the data with a SST of ${SST} C:
 echo
 echo " Will compute tests with 'test_cx_vs_wind.x' based on a SST of ${SST} deg.C!"
+
+mkdir -p ${AEROBULK_HOME}/dat
+
 for calgo in "coare3p6" "ncar" "ecmwf" "andreas"; do
     fdone="test_${calgo}_${SST}.done"
     if [ ! -f ${fdone} ]; then

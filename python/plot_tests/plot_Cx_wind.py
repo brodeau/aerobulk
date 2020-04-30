@@ -207,36 +207,18 @@ for jtv in range(ntv):
 
 
 
+# x/y-axis range and increment:
 
-        
+vu_rng   = [ 0., 34., 1. ]
 
-xy_labs = (-1.1, 1.)
+cd_u_rng = [0.8, 3. , 0.2]
+cd_s_rng = [0.0, 2.5, 0.5]
 
-dCd_u = 0.2 ; dCd_s = 0.5
-dCe = 0.2
+ch_u_rng = [0.8, 1.8, 0.2]
+ch_s_rng = [0.0, 1.4, 0.2]
 
-F_cd_u_min = 0.8
-F_cd_u_max = 3.
-F_cd_s_min = 0.
-F_cd_s_max = 2.5
-
-F_ch_u_min = 0.8
-F_ch_u_max = 1.8
-F_ch_s_min = 0.
-F_ch_s_max = 1.4
-
-F_ce_u_min = 0.8
-F_ce_u_max = 1.8
-F_ce_s_min = 0.
-F_ce_s_max = 1.6
-
-
-
-dF = 0.25
-
-U_min = 0.
-U_max = 34.
-dU = 1.
+ce_u_rng = [0.8, 1.8, 0.2]
+ce_s_rng = [0.0, 1.6, 0.2]
 
 
 DPI_FIG = 100
@@ -275,7 +257,7 @@ vU[:] = xcd_u[0,:,jtv,0]
 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def plot_var_u( nvt, nba, cvar_nm, vu10, xF, vstab, valg_dn, w_min, w_max, dw, cx_min, cx_max, dcx, istab=0, cunit='' ):
+def plot_var_u( nvt, nba, cvar_nm, vu10, xF, vstab, valg_dn, x_rng=None, y_rng=None, istab=0, cunit='' ):
     #
     cstblt = 'unstable'
     csgn   = '-'
@@ -284,28 +266,24 @@ def plot_var_u( nvt, nba, cvar_nm, vu10, xF, vstab, valg_dn, w_min, w_max, dw, c
         csgn   = '+'
     #
     fig = plt.figure(num=1, figsize=(14.,10.), facecolor='w', edgecolor='k')
-    ax1 = plt.axes([0.07, 0.08, 0.9, 0.9])    
+    ax1 = plt.axes([0.08, 0.08, 0.9, 0.9])    
     ax1.grid(color='k', linestyle='-', linewidth=0.2, zorder=0.1)
     ax1.annotate(cstblt, xy=(0.4, 1.06), xycoords='axes fraction', **font_ttl)
     for jtv in range(nvt):
         for ja in range(nba):
             ax1.plot( vu10, xF[1,:,jtv,ja], label=valg_dn[ja]+r' $\Delta\Theta=$'+csgn+str(vstab[jtv])+'K', \
                       linewidth=3.5-jtv*0.7, color=vcolor[ja], linestyle=vlines[ja], zorder=0.75 )
-    vx_ticks = nmp.arange(w_min, w_max+dw, dw)
-    plt.xticks( vx_ticks )
-    locs, labels = plt.xticks() ; jl=0; newlabels = []
-    for ll in locs:
-        if not jl % 2 == 0: clab = ''
-        else: clab = str(int(locs[jl]))
-        newlabels.append(clab); jl=jl+1
-    plt.xticks(locs,newlabels)
-    ax1.set_xlim(U_min, U_max)
-    vy_ticks = nmp.arange(cx_min, cx_max+dcx, dcx) ; plt.yticks( vy_ticks )
-    ax1.set_ylim(cx_min, cx_max + dcx*0.8)
+    #
+    if nmp.shape(x_rng) == (3,):
+        vx_ticks = nmp.arange(x_rng[0], x_rng[1]+x_rng[2], x_rng[2])
+        ax1.set_xlim(x_rng[0], x_rng[1])
+    if nmp.shape(y_rng) == (3,):
+        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2]) ; plt.yticks( vy_ticks )
+        ax1.set_ylim(y_rng[0], y_rng[1])
     #
     ctit = r'$'+cvar_nm+'$ --'+cstblt+'--'
     plt.text(0.5, y_tit, ctit, horizontalalignment='center', transform = ax1.transAxes, bbox=dict(boxstyle="square", fc='w'), **font_ttl)
-    plt.ylabel(r''+cunit, **font_ylb)
+    if not cunit=='': plt.ylabel(r''+cunit, **font_ylb)
     plt.xlabel(r'$U_{10m}$ [m/s]',     **font_xlb)
     plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
     #
@@ -314,52 +292,14 @@ def plot_var_u( nvt, nba, cvar_nm, vu10, xF, vstab, valg_dn, w_min, w_max, dw, c
     return 0
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-iplt = plot_var_u( ntv, nb_algo, 'C_D', vU, xcd_u, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_u_min, F_cd_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
-iplt = plot_var_u( ntv, nb_algo, 'C_D', vU, xcd_s, vrt_s, valgo_DN, U_min, U_max, dU, F_cd_s_min, F_cd_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
-
-iplt = plot_var_u( ntv, nb_algo, 'C_H', vU, xch_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_u_min, F_ch_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
-iplt = plot_var_u( ntv, nb_algo, 'C_H', vU, xch_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ch_s_min, F_ch_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
-
-iplt = plot_var_u( ntv, nb_algo, 'C_E', vU, xce_u, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_u_min, F_ce_u_max, dCd_u, istab=0, cunit='$10^{-3}$' )
-iplt = plot_var_u( ntv, nb_algo, 'C_E', vU, xce_s, vrt_s, valgo_DN, U_min, U_max, dU, F_ce_s_min, F_ce_s_max, dCd_u, istab=1, cunit='$10^{-3}$' )
-
-
-iplt = plot_var_u( ntv, nb_algo, 'L',   vU, xlo_u, vrt_s, valgo_DN, U_min, U_max, dU, -500.,   0., 50., istab=0, cunit='[m]' )
-iplt = plot_var_u( ntv, nb_algo, 'L',   vU, xlo_s, vrt_s, valgo_DN, U_min, U_max, dU,    0., 500., 50., istab=1, cunit='[m]' )
-
-#iplt = plot_var_u( ntv, nb_algo, 'UN-U',   vU, xun_u, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=0, cunit='[m/s]' )
-#iplt = plot_var_u( ntv, nb_algo, 'UN-U',   vU, xun_s, vrt_s, valgo_DN, U_min, U_max, dU,   -2.,  0., 0.1, istab=1, cunit='[m/s]' )
-
-iplt = plot_var_u( ntv, nb_algo, 'u*',   vU, xus_u, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=0, cunit='[m/s]' )
-iplt = plot_var_u( ntv, nb_algo, 'u*',   vU, xus_s, vrt_s, valgo_DN, U_min, U_max, dU,    0.,  2., 0.1, istab=1, cunit='[m/s]' )
-
-iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, U_min, U_max, dU,   -10.,   0., 1, istab=0, cunit='[]' )
-iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  10., 1, istab=1, cunit='[]' )
-
-iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.005, 0.001, istab=0, cunit='[]' )
-iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, U_min, U_max, dU,     0.,  0.1,   0.01, istab=1, cunit='[]' )
-
-
-
-
-
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def plot_scat( nba, cvar_nm, xF1, xF2, valg_dn, f1_rng=None, f2_rng=None, istab=0, cxunit='', cyunit='' ):
+def plot_scat( nba, cvar_nm, xF1, xF2, valg_dn, x_rng=None, y_rng=None, istab=0, cxunit='', cyunit='' ):
     #
     cstblt = 'unstable'
     csgn   = '-'
     if istab==1:
         cstblt = 'stable'
         csgn   = '+'
-    #
-    print 'lolo: shape of xF1 =', nmp.shape(xF1)
-    print 'lolo: shape of xF2 =', nmp.shape(xF2)
-    #
-    #print '\nlolo: X variable for first algo:'
-    #print xF1[1,:,:,0]
-    #sys.exit(0)
     #
     fig = plt.figure(num=1, figsize=(14.,10.), facecolor='w', edgecolor='k')
     ax1 = plt.axes([0.07, 0.08, 0.9, 0.9])    
@@ -368,34 +308,20 @@ def plot_scat( nba, cvar_nm, xF1, xF2, valg_dn, f1_rng=None, f2_rng=None, istab=
     #
     for ja in range(nba):
         plt.scatter( xF1[1,:,:,ja], xF2[1,:,:,ja], marker='.', label=valg_dn[ja] )
-    #for jtv in range(nvt):
-    #    for ja in range(nba):
-    #        ax1.plot( xF1, xF2[1,:,jtv,ja], label=valg_dn[ja]+r' $\Delta\Theta=$'+csgn+str(vstab[jtv])+'K', \
-    #                  linewidth=3.5-jtv*0.7, color=vcolor[ja], linestyle=vlines[ja], zorder=0.75 )
-    #vx_ticks = nmp.arange(w_min, w_max+dw, dw)
-    #plt.xticks( vx_ticks )
-    #locs, labels = plt.xticks() ; jl=0; newlabels = []
-    #for ll in locs:
-    #    if not jl % 2 == 0: clab = ''
-    #    else: clab = str(int(locs[jl]))
-    #    newlabels.append(clab); jl=jl+1
-    #plt.xticks(locs,newlabels)
-
-    #print 'shape( f1_rng) = ', nmp.shape( f1_rng)
     
-    if nmp.shape(f1_rng) == (3,):
-        vx_ticks = nmp.arange(f1_rng[0], f1_rng[1]+f1_rng[2], f1_rng[2]) ; plt.xticks( vx_ticks )
-        ax1.set_xlim(f1_rng[0], f1_rng[1])
+    if nmp.shape(x_rng) == (3,):
+        vx_ticks = nmp.arange(x_rng[0], x_rng[1]+x_rng[2], x_rng[2]) ; plt.xticks( vx_ticks )
+        ax1.set_xlim(x_rng[0], x_rng[1])
     #
-    if nmp.shape(f2_rng) == (3,):
-        vy_ticks = nmp.arange(f2_rng[0], f2_rng[1]+f2_rng[2], f2_rng[2]) ; plt.yticks( vy_ticks )
-        ax1.set_ylim(f2_rng[0], f2_rng[1])
+    if nmp.shape(y_rng) == (3,):
+        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2]) ; plt.yticks( vy_ticks )
+        ax1.set_ylim(y_rng[0], y_rng[1])
     #
     ctit = r'$'+cvar_nm+'$ --'+cstblt+'--'
     plt.text(0.5, y_tit, ctit, horizontalalignment='center', transform = ax1.transAxes, bbox=dict(boxstyle="square", fc='w'), **font_ttl)
     plt.ylabel(r''+cyunit, **font_ylb)
     plt.xlabel(r''+cxunit, **font_xlb)
-    plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
+    plt.legend(bbox_to_anchor=(0.7, 0.16), ncol=1, shadow=False, fancybox=True)
     #
     plt.savefig(fig_dir+'/'+cvar_nm+'_'+cstblt+'.'+fig_ext, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
     plt.close(1)
@@ -403,9 +329,43 @@ def plot_scat( nba, cvar_nm, xF1, xF2, valg_dn, f1_rng=None, f2_rng=None, istab=
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+
+
+
+
+
+# Wind speed is x-axis in following plots:
+
+iplt = plot_var_u( ntv, nb_algo, 'C_D', vU, xcd_u, vrt_u, valgo_DN, x_rng=vu_rng, y_rng=cd_u_rng, istab=0, cunit='$10^{-3}$' )
+iplt = plot_var_u( ntv, nb_algo, 'C_D', vU, xcd_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=cd_s_rng, istab=1, cunit='$10^{-3}$' )
+
+iplt = plot_var_u( ntv, nb_algo, 'C_H', vU, xch_u, vrt_u, valgo_DN, x_rng=vu_rng, y_rng=ch_u_rng, istab=0, cunit='$10^{-3}$' )
+iplt = plot_var_u( ntv, nb_algo, 'C_H', vU, xch_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=ch_s_rng, istab=1, cunit='$10^{-3}$' )
+
+iplt = plot_var_u( ntv, nb_algo, 'C_E', vU, xce_u, vrt_u, valgo_DN, x_rng=vu_rng, y_rng=ce_u_rng, istab=0, cunit='$10^{-3}$' )
+iplt = plot_var_u( ntv, nb_algo, 'C_E', vU, xce_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=ce_s_rng, istab=1, cunit='$10^{-3}$' )
+
+iplt = plot_var_u( ntv, nb_algo, 'L',   vU, xlo_u, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[-500.,   0., 50.], istab=0, cunit='[m]' )
+iplt = plot_var_u( ntv, nb_algo, 'L',   vU, xlo_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[   0., 500., 50.], istab=1, cunit='[m]' )
+
+iplt = plot_var_u( ntv, nb_algo, 'u*',  vU, xus_u, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 2., 0.1], istab=0, cunit='[m/s]' )
+iplt = plot_var_u( ntv, nb_algo, 'u*',  vU, xus_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 2., 0.1], istab=1, cunit='[m/s]' )
+
+iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[-10.,  0., 1], istab=0, cunit='' )
+iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[  0., 10., 1], istab=1, cunit='' )
+
+iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 0.005, 0.001], istab=0, cunit='[m]' )
+iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 0.1,   0.01 ], istab=1, cunit='[m]' )
+
+
+
+
+
+### x-axis is now neutral-stability wind speed:
+
 # u*(UN10)    (must be more or less identical for stable and unstable !!!, but good to keep boths for debugging purposes...)
-iplt = plot_scat( nb_algo, 'u*(UN10)', xun_u, xus_u, valgo_DN, f1_rng=[0,30,1], f2_rng=[0,1.5,0.1], istab=0, cxunit='$U_{N10}$ [m/s]', cyunit='u* [m/s]' )
-iplt = plot_scat( nb_algo, 'u*(UN10)', xun_s, xus_s, valgo_DN, f1_rng=[0,30,1], f2_rng=[0,1.5,0.1], istab=1, cxunit='$U_{N10}$ [m/s]', cyunit='u* [m/s]' )
+iplt = plot_scat( nb_algo, 'u*(UN10)', xun_u, xus_u, valgo_DN, x_rng=[0,30,1], y_rng=[0,1.5,0.1], istab=0, cxunit='$U_{N10}$ [m/s]', cyunit='u* [m/s]' )
+iplt = plot_scat( nb_algo, 'u*(UN10)', xun_s, xus_s, valgo_DN, x_rng=[0,30,1], y_rng=[0,1.5,0.1], istab=1, cxunit='$U_{N10}$ [m/s]', cyunit='u* [m/s]' )
 
 
 
@@ -413,7 +373,7 @@ iplt = plot_scat( nb_algo, 'u*(UN10)', xun_s, xus_s, valgo_DN, f1_rng=[0,30,1], 
 
 
 
-# x-axis is now neutral-stability wind speed:
+
 
 
 
