@@ -37,6 +37,11 @@ MODULE mod_blk_ice_lu12
    !!       Routine turb_ice_lu12 maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
+   !!  Lüpkes, C., Gryanik, V. M., Hartmann, J., and Andreas, E. L. ( 2012), A parametrization, based on sea ice morphology,
+   !!  of the neutral atmospheric drag coefficients for weather prediction and climate models, J. Geophys. Res., 117, D13112,
+   !!  doi:10.1029/2012JD017630.
+   !!
+   !!
    !!            Author: Laurent Brodeau, January 2020
    !!
    !!====================================================================================

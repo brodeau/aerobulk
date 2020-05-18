@@ -154,9 +154,9 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 
 clean:
-	rm -rf obj mod bin lib src/*.o src/ice/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat *.done
+	rm -rf obj mod bin lib src/*.o src/ice/*.o *~ \#* dat *.svg *.png *.eps *.gp *.out *.nc *.dat *.done *.err
 
-menage:
+distclean: clean
 	rm -f *.svg *.png *.eps *.gp *.out *.nc *.dat
 	rm -rf figures
 #/*.x  *.log *~ out  mod/* lib/* *.nc tmp.* \#* *.info  config.dat *.tmp

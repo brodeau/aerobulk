@@ -28,6 +28,11 @@ MODULE mod_blk_ice_lg15
    !!       Computes turbulent components of surface fluxes over sea-ice
    !!       Following Lupkes & Gryanik, 2015
    !!
+   !!
+   !!  Lüpkes, C., and Gryanik, V. M. ( 2015), A stability‐dependent parametrization
+   !!  of transfer coefficients for momentum and heat over polar sea ice to be used in climate models,
+   !!  J. Geophys. Res. Atmos., 120, 552– 581, doi:10.1002/2014JD022418.
+   !!
    !!              => case when 100 % sea-ice
    !!
    !!       Routine turb_ice_lg15 maintained and developed in AeroBulk

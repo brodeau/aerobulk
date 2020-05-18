@@ -11,6 +11,9 @@ MODULE mod_blk_ice_an05
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
    !!
+   !!   Andreas, E.L., Jordan, R.E. & Makshtas, A.P. Parameterizing turbulent exchange over sea ice: the ice station weddell results.
+   !!   Boundary-Layer Meteorology 114, 439–460 (2005). https://doi.org/10.1007/s10546-004-1414-7
+   !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
    !!   * the "effective" bulk wind speed at zu: Ub (including gustiness contribution in unstable conditions)

@@ -24,73 +24,84 @@ MODULE mod_const
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
 
+   !! General constants:
+   REAL(wp), PARAMETER, PUBLIC :: grav  = 9.8      !: acceleration of gravity    [m.s^-2]
+   REAL(wp), PARAMETER, PUBLIC :: rpi   = 3.141592653589793_wp
+   REAL(wp), PARAMETER, PUBLIC :: twoPi = 2.*rpi
+   REAL(wp), PARAMETER, PUBLIC :: to_rad = rpi/180.
+
+   
+   !! Earth constants:
+   REAL(wp), PARAMETER, PUBLIC :: R_earth = 6.37E6 ! Earth radius (m)
+   REAL(wp), PARAMETER, PUBLIC ::rtilt_earth = 23.5
+   REAL(wp), PARAMETER, PUBLIC ::Sol0 = 1366.         !: Solar constant W/m^2
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: roce_alb0  = 0.066   !: Default sea surface albedo over ocean when nothing better is available
+   !!                                                      !: NEMO: 0.066 / ECMWF: 0.055
+   REAL(wp), PARAMETER, PUBLIC :: rice_alb0  = 0.8     !: BAD!!! must use that of the sea-ice model when possible !!!
 
 
-   REAL(wp), PARAMETER, PUBLIC :: &
-      &   rpi  = 3.141592653589793, &
-      &   rt0  = 273.15,    &      !: freezing point of fresh water [K]
-      &   rtt0 = 273.16,    &      !: riple point of temperature    [K]
-      &  grav  = 9.8,       &      !: acceleration of gravity    [m.s^-2]
-      &  Patm  = 101000.,   &
-                                !!
-      & rho0_a = 1.2  ,     &  !: Approx. of density of air                     [kg/m^3]
-      & rCp0_a  = 1015.0 ,  &  !: Specic heat of moist air                      [J/K/kg]
-      & rCp_dry = 1005.0 ,  &  !: Specic heat of dry air, constant pressure      [J/K/kg]
-      & rCp_vap = 1860.0 ,  &  !: Specic heat of water vapor, constant pressure  [J/K/kg]
-                                !!
-      &  R_dry = 287.05,    &  !: Specific gas constant for dry air              [J/K/kg]
-      &  R_vap = 461.495,   &  !: Specific gas constant for water vapor          [J/K/kg]
-                                !!
-      & rCp0_w  = 4190. ,    &  !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
-      & rho0_w = 1025.  ,    &  !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
-      &  rnu0_w = 1.e-6,      &  !: kinetic viscosity of water                      [m^2/s]
-      &  rk0_w  = 0.6,        &  !: thermal conductivity of water (at 20C)          [W/m/K]
-                                !!
-      &  reps0 = R_dry/R_vap,  &   !: ratio of gas constant for dry air and water vapor => ~ 0.622
-                                !!
-      &  rctv0 = R_vap/R_dry - 1. , &   !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
-                                !!
-      &  rnu0_air  = 1.5E-5,   &   !: kinematic viscosity of air    [m^2/s]
-                                !!
-      &  rLevap = 2.46e+6_wp, &   !: Latent heat of vaporization for sea-water in   [J/kg]
-      &  rLsub  = 2.834e+6_wp,&   !: Latent heat of sublimation for ice at 0 deg.C  [J/kg]
-      &  vkarmn = 0.4,        &   !: Von Karman's constant
-      &  vkarmn2 = 0.4*0.4,   &   !: Von Karman's constant
-      &  Pi    = 3.141592654, &
-      &  twoPi = 2.*Pi,       &
-      &  emiss_w = 0.97,      &   !: emissivity of sea water
-      &  emiss_i = 0.996,     &   !:       "   for ice and snow => but Rees 1993 says it can be way lower in winter on fresh snow... 0.72 ...
-      &  stefan = 5.67E-8,    &   !: Stefan Boltzman constant
-                                !!
-      &  roce_alb0  = 0.066,  &   !: Default sea surface albedo over ocean when nothing better is available
-      !!                         !: NEMO: 0.066 / ECMWF: 0.055
-      &  rice_alb0  = 0.8  ,  &   !: BAD!!! must use that of the sea-ice model when possible !!!
-      &  Tswf  = 273.,  &        !: BAD!!! because sea-ice not used yet!!!
-                                !&  Tswf  = 271.4          !: freezing point of sea-water (K)
-      &  to_rad = Pi/180., &
-      &  R_earth = 6.37E6,        & ! Earth radius (m)
-      &  rtilt_earth = 23.5, &
-      &  Sol0 = 1366.  , &       !: Solar constant W/m^2
-      &  rdct_qsat_salt = 0.98   !: factor to apply to q_sat(SST) to account for salt
+   !! Physics constants:
+   REAL(wp), PARAMETER, PUBLIC ::emiss_w = 0.97   !: emissivity of sea water
+   REAL(wp), PARAMETER, PUBLIC ::emiss_i = 0.996  !:   "   for ice and snow => but Rees 1993 suggests can be lower in winter on fresh snow... 0.72 ...
+   REAL(wp), PARAMETER, PUBLIC ::stefan = 5.67E-8 !: Stefan Boltzman constant
 
-   REAL(wp), PARAMETER, PUBLIC :: radrw    = rho0_a/rho0_w !: Density ratio
-   REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
+   !! Thermodynamics / Water:
+   REAL(wp), PARAMETER, PUBLIC :: rt0  = 273.15      !: freezing point of fresh water [K]
+   REAL(wp), PARAMETER, PUBLIC :: rtt0 = 273.16      !: triple point                  [K]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: rCp0_w  = 4190.    !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rho0_w = 1025.     !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
+   REAL(wp), PARAMETER, PUBLIC :: rnu0_w = 1.e-6     !: kinetic viscosity of water                      [m^2/s]
+   REAL(wp), PARAMETER, PUBLIC :: rk0_w  = 0.6       !: thermal conductivity of water (at 20C)          [W/m/K]
 
+   
+   !! Thermodynamics:
+   REAL(wp), PARAMETER, PUBLIC :: rCp0_a  = 1015.0   !: Specic heat of moist air                      [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rCp_dry = 1005.0   !: Specic heat of dry air, constant pressure      [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rCp_vap = 1860.0   !: Specic heat of water vapor, constant pressure  [J/K/kg]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: R_dry = 287.05     !: Specific gas constant for dry air              [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: R_vap = 461.495    !: Specific gas constant for water vapor          [J/K/kg]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: reps0 = R_dry/R_vap      !: ratio of gas constant for dry air and water vapor => ~ 0.622
+   REAL(wp), PARAMETER, PUBLIC :: rctv0 = R_vap/R_dry - 1. !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: rnu0_air  = 1.5E-5   !: kinematic viscosity of air    [m^2/s]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: rLevap = 2.46e+6_wp   !: Latent heat of vaporization for sea-water in   [J/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rLsub  = 2.834e+6_wp  !: Latent heat of sublimation for ice at 0 deg.C  [J/kg]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: Tswf  = 273.         !: BAD!!! because sea-ice not used yet!!!
+
+   
+   !! Some defaults:
+   REAL(wp), PARAMETER, PUBLIC :: Patm  = 101000. !: atmospheric pressure               [Pa]
+   REAL(wp), PARAMETER, PUBLIC :: rho0_a = 1.2    !: Approx. of density of air          [kg/m^3]
+
+   
+   !! Bulk model:
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn = 0.4           !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn2 = 0.4*0.4      !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: rdct_qsat_salt = 0.98  !: factor to apply to q_sat(SST) to account for salt in estimation of sat. spec. hum.
+
+   
+   !! Cool-skin warm-layer:
    REAL(wp), PARAMETER, PUBLIC :: rcst_cs = -16._wp*9.80665_wp*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) !: for cool-skin parameteri$
    !                              => see eq.(14) in Fairall et al. 1996   (eq.(6) of Zeng aand Beljaars is WRONG! (typo?)
+   REAL(wp), PARAMETER, PUBLIC :: radrw    = rho0_a/rho0_w !: Density ratio
+   REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
 
    !! Sea-ice stuff:
    REAL(wp), PARAMETER, PUBLIC :: rCd_ice = 1.4e-3_wp   !: transfer coefficient over ice
-
    REAL(wp), PARAMETER, PUBLIC :: to_mm_p_day = 24._wp*3600._wp  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
-
    REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 0.2_wp !: minimum scalar wind speed accepted over sea-ice...
    !REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 0.5_wp !: minimum scalar wind speed accepted over sea-ice...
-   
 
 
 
+   !! Calendar:
    INTEGER, DIMENSION(12), PARAMETER, PUBLIC :: &
       &   tdmn = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /), &
       &   tdml = (/ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
@@ -112,7 +123,6 @@ MODULE mod_const
    !&    RV = 1000.*R/RMV, &
    !&    rCp_dry = 3.5*RD, &
    !&    rLevap=2.5008E+6, &
-   !&    rctv0 = RV/RD-1.0
 
 
 
