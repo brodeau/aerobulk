@@ -43,8 +43,9 @@ MODULE mod_blk_andreas
 
    !! Important (Brodeau fix):
    REAL(wp), PARAMETER :: rCd_min = 0.2E-3_wp ! minimum value to tolarate for CD !
-   REAL(wp), PARAMETER :: rRi_max = 0.2_wp    ! Bulk Ri above which the algorithm fucks up! ... and CD (hence u*) forced to stick to rCd_min (sqrt(rCd_min)*U)
+   REAL(wp), PARAMETER :: rRi_max = 0.15_wp   ! Bulk Ri above which the algorithm fucks up! ... and CD (hence u*) forced to stick to rCd_min (sqrt(rCd_min)*U)
    !                                          ! (increasing (>0) Ri means that surface layer increasingly stable and/or wind increasingly weak)
+   REAL(wp), PARAMETER :: rCs_min = 0.35E-3_wp ! minimum value to tolarate for CE and CH !
    
    !INTEGER, PARAMETER :: iverbose = 1
    INTEGER, PARAMETER :: iverbose = 0
@@ -183,8 +184,12 @@ CONTAINS
             !! Extremely stable + weak wind !!!
             !!  => for we force u* to be consistent with minimum value for CD:
             !!  (otherwize algorithm becomes nonsense...)
-            u_star = SQRT(rCd_min) * Ub     ! Cd does not go below 0.0002 !
+            u_star = SQRT(rCd_min) * Ub     ! Cd does not go below rCd_min !
          ENDWHERE
+         
+         !u_star = MAX( U_STAR_ANDREAS(UN10) , SQRT(rCd_min)*Ub )
+
+
          
          IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, j_itt
          IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
@@ -201,7 +206,8 @@ CONTAINS
 
          !! Drag coefficient:
          ztmp0 = u_star/Ub
-         Cd    = MAX( ztmp0*ztmp0, rCd_min )
+         !Cd    = MAX( ztmp0*ztmp0, rCd_min )
+         Cd = ztmp0*ztmp0
          
          IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
 
@@ -238,14 +244,16 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
       
-      ! Compute transfer coefficients at zu:
+      ! Compute transfer coefficients at zu:      
       ztmp0 = u_star/Ub
-      Cd    = MAX( ztmp0*ztmp0, rCd_min )
+      
+      !Cd    = MAX( ztmp0*ztmp0, rCd_min )
+      Cd = ztmp0*ztmp0   ! the earlier use of rCd_min on u* should make use of rCd_min here unnecessary!
+      
       ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
-      Ch   = ztmp0*t_star/ztmp1
-      Ce   = ztmp0*q_star/ztmp2
-
+      Ch   = MAX( ztmp0*t_star/ztmp1 , rCs_min )
+      Ce   = MAX( ztmp0*q_star/ztmp2 , rCs_min )
       
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN     = vkarmn2*ztmp0*ztmp0
