@@ -225,7 +225,7 @@ CONTAINS
       IF( lreturn_cdn )   CdN     = sqrtCdn10*sqrtCdn10
       IF( lreturn_chn )   ChN     = CH_N10_NCAR( sqrtCdn10 , 0.5_wp+sign(0.5_wp,zeta_u) )
       IF( lreturn_cen )   CeN     = CE_N10_NCAR( sqrtCdn10 )
-      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, sqrtCdn10*sqrtCdn10 )
+      IF( lreturn_z0 )    xz0     = MIN( z0_from_Cd( zu, sqrtCdn10*sqrtCdn10 ) , z0_sea_max )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*Ub
       IF( lreturn_L )     xL      = zu/zeta_u
       IF( lreturn_UN10 )  xUN10   = UN10_from_CD( zu, Ub, Cd, ppsi=psi_m_ncar(zeta_u) )

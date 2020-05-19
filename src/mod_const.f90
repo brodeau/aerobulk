@@ -81,10 +81,10 @@ MODULE mod_const
 
    
    !! Bulk model:
-   REAL(wp), PARAMETER, PUBLIC :: vkarmn = 0.4           !: Von Karman's constant
-   REAL(wp), PARAMETER, PUBLIC :: vkarmn2 = 0.4*0.4      !: Von Karman's constant
-   REAL(wp), PARAMETER, PUBLIC :: rdct_qsat_salt = 0.98  !: factor to apply to q_sat(SST) to account for salt in estimation of sat. spec. hum.
-
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn = 0.4_wp          !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn2 = 0.4_wp*0.4_wp  !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: rdct_qsat_salt = 0.98_wp !: factor to apply to q_sat(SST) to account for salt in estimation of sat. spec. hum.
+   REAL(wp), PARAMETER, PUBLIC :: z0_sea_max = 0.0025_wp   !: maximum realistic value for roughness length of sea-surface... [m]
    
    !! Cool-skin warm-layer:
    REAL(wp), PARAMETER, PUBLIC :: rcst_cs = -16._wp*9.80665_wp*rho0_w*rCp0_w*rnu0_w*rnu0_w*rnu0_w/(rk0_w*rk0_w) !: for cool-skin parameteri$

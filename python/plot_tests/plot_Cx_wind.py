@@ -355,7 +355,7 @@ iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_u, vrt_s, valgo_DN, x_rng=vu_
 iplt = plot_var_u( ntv, nb_algo, 'Ri_B',   vU, xri_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[  0., 10., 1], istab=1, cunit='' )
 
 iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_u, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 0.005, 0.001], istab=0, cunit='[m]' )
-iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 0.1,   0.01 ], istab=1, cunit='[m]' )
+iplt = plot_var_u( ntv, nb_algo, 'z_0',   vU, xz0_s, vrt_s, valgo_DN, x_rng=vu_rng, y_rng=[0., 0.005, 0.001], istab=1, cunit='[m]' )
 
 
 

@@ -212,7 +212,7 @@ CONTAINS
          IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
 
          !! Roughness length:
-         z0 = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
+         z0 = MIN( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) ) , z0_sea_max )
          IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, j_itt
          IF(iverbose==1) PRINT *, 'LOLO'
          
