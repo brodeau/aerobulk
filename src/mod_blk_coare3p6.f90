@@ -216,8 +216,7 @@ CONTAINS
       IF( PRESENT(xL) )      lreturn_L     = .TRUE.
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
-      l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
+      l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
 
       !! Initializations for cool skin and warm layer:
