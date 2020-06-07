@@ -140,7 +140,7 @@ CONTAINS
       Ub = MAX( 0.5_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
       !! Neutral coefficients at 10m:
-      ztmp0 = cd_n10_ncar( Ub )
+      ztmp0 = CD_N10_NCAR( Ub )
       sqrtCdN10 = SQRT( ztmp0 )
 
       !! Initializing transf. coeff. with their first guess neutral equivalents :
@@ -258,7 +258,7 @@ CONTAINS
                &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
-            CD_N10_NCAR(ji,jj) = MAX(CD_N10_NCAR(ji,jj), 1.E-6_wp)
+            CD_N10_NCAR(ji,jj) = MAX( CD_N10_NCAR(ji,jj), 0.1E-3_wp )
             !
          END DO
       END DO
@@ -283,7 +283,7 @@ CONTAINS
          STOP
       END IF
       !
-      ch_n10_ncar = 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )   ! Eq. (9) & (12) Large & Yeager, 2008
+      ch_n10_ncar = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , 0.1E-3_wp )   ! Eq. (9) & (12) Large & Yeager, 2008
       !
    END FUNCTION CH_N10_NCAR
 
@@ -295,7 +295,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
       !!----------------------------------------------------------------------------------
-      ce_n10_ncar = 1.e-3_wp * ( 34.6_wp * psqrtcdn10 )
+      ce_n10_ncar = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , 0.1E-3_wp )
       !
    END FUNCTION CE_N10_NCAR
 
@@ -371,7 +371,7 @@ CONTAINS
             zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
             !
             psi_h_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable            
+               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
             !
          END DO
       END DO
