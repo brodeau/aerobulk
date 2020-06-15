@@ -162,7 +162,7 @@ for cv_in in list_vari:
         ida_tim.units     = cunt_time
         ida_lat.units     = cunt_lat
         ida_lon.units     = cunt_lon
-        f_atm.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
+        f_atm.About = 'prepare_PAPA_forcing_STATION-ASF.py of AeroBulk for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
         # Filling variables:
         ida_lat[:,:] = vlat[0]
         ida_lon[:,:] = vlon[0]
@@ -183,7 +183,7 @@ for cv_in in list_vari:
         ido_tim.units     = cunt_time
         ido_lat.units     = cunt_lat
         ido_lon.units     = cunt_lon
-        f_oce.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
+        f_oce.About = 'prepare_PAPA_forcing_STATION-ASF.py of AeroBulk for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
         # Filling variables:
         ido_lat[:,:] = vlat[0]
         ido_lon[:,:] = vlon[0]
@@ -282,7 +282,7 @@ ida_tim = f_atm.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True)
 ida_tim.units     = cunt_time
 ida_lat.units     = cunt_lat
 ida_lon.units     = cunt_lon
-f_atm.About = 'Created by L. Brodeau for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
+f_atm.About = ' for NEMO/STATION-ASF test-case. Gaps in time-series are filled by means of linear interpolation.'        
 # Filling variables:
 ida_lat[:,:] = vlat[0]
 ida_lon[:,:] = vlon[0]
