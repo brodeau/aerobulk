@@ -1,8 +1,10 @@
 #!/usr/bin/env python                                                                                                   
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-                                              
 
+import sys
 from os import path
 import cdsapi
+from netCDF4 import Dataset
 
 yyyy = 2018
 
@@ -12,9 +14,9 @@ for jm in range(12):
 
     cm = '%2.2i'%(jm+1)
 
-    cf_out = 'ERA5_arctic_surface_'+str(yyyy)+cm+'.nc'
+    cf_f0 = 'ERA5_arctic_surface_'+str(yyyy)+cm+'.nc'
 
-    if not path.exists(cf_out):
+    if not path.exists(cf_f0):
     
         print('\nDoing month '+cm+' !')
     
@@ -58,9 +60,26 @@ for jm in range(12):
                     180,
                 ],
             },
-            cf_out )
+            cf_f0 )
     
     else:
         print('\nAlready done month '+cm+' !')
 
     print('')
+
+
+
+
+    # Gonna fix this crap!
+    
+    id_f0 = Dataset(cf_f0)
+
+    # 1/ populate variables:
+    list_var = id_f0.variables.keys()
+    print(' *** list_var =', list_var)
+
+
+    id_f0.close()
+
+
+    sys.exit(0)
