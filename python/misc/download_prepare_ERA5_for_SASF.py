@@ -46,7 +46,7 @@ if len(lvdl) != nbfld:
     print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!') ; sys.exit(0)
 
 # Coordinates of 10deg-wide box to download:
-dw = 10. ; # degrees
+dw = 5. ; # degrees
 irng_lon = [ int(round(long_to_m180_p180(plon-dw),0)) , int(round(long_to_m180_p180(plon+dw),0)) ]
 irng_lat = [ int(round(max(plat-dw,-90.),0))          , int(round(min(plat+dw, 90.),0))          ]
 
@@ -67,9 +67,10 @@ for jm in range(12):
 
     cm = '%2.2i'%(jm+1)
 
-    cf_f0 = 'ERA5_arctic_surface_'+str(irng_lat[1])+'-'+str(irng_lat[0])+'_'+str(irng_lon[0])+'-'+str(irng_lon[1])+'_'+str(yyyy)+cm+'.nc'
-
-    if not path.exists(cf_f0):
+    cf_fi = 'ERA5_arctic_surface_'+str(irng_lat[1])+'-'+str(irng_lat[0])+'_'+str(irng_lon[0])+'-'+str(irng_lon[1])+'_'+str(yyyy)+cm+'.nc'
+    cf_fo = 'ERA5_arctic_surface_'+str(plat)+'N_'+str(plon)+'E_1h_'+str(yyyy)+cm+'.nc'
+    
+    if not path.exists(cf_fi):
     
         print('\nDoing month '+cm+' !')
     
@@ -113,7 +114,7 @@ for jm in range(12):
                     irng_lon[1],
                 ],
             },
-            cf_f0 )
+            cf_fi )
     
     else:
         print('\nAlready done month '+cm+' !')
@@ -125,7 +126,7 @@ for jm in range(12):
 
     # Gonna fix this crap!
     
-    id_fi = Dataset(cf_f0)
+    id_fi = Dataset(cf_fi)
 
     # 1/ populate variables and check it's what's expected:
     list_var = id_fi.variables.keys()
@@ -153,9 +154,8 @@ for jm in range(12):
 
     # Creating output file for ocean:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    cf_out = 'test.nc'
     ni = 3 ; nj = 3
-    id_fo = Dataset(cf_out, 'w', format='NETCDF4')
+    id_fo = Dataset(cf_fo, 'w', format='NETCDF4')
 
     # Dimensions:
     id_fo.createDimension('x'   , ni  )
