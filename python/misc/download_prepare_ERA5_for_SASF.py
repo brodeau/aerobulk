@@ -30,6 +30,8 @@ list_flx = ['ssrd',       'strd',     'tp']
 list_fnu = ['W m**-2', 'W m**-2',  'mm s**-1' ]
 fact_flx = [ 1./rdt,    1./rdt ,   1000./rdt ] ; # tp in 'm' ...
 
+list_temp_to_degC = [ 'sst' , 'skt' ] ; # For some reasons SAS part of NEMO expects SSTs in deg. Celsius...
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def long_to_m180_p180(xx):
@@ -174,10 +176,11 @@ for jm in range(12):
         ido_var.append(id_fo.createVariable(cvar, 'f4', (cv_tim,'y','x',), zlib=True))
         if cvar in list_flx:
             idx = list_flx.index(cvar)
-            print ' ********* idx for field '+cvar+' is:', idx
             ido_var[iv].units     = list_fnu[idx]
+        elif cvar in list_temp_to_degC:
+            ido_var[iv].units     = 'degC'        
         else:
-            ido_var[iv].units     = id_fi.variables[cvar].units
+            ido_var[iv].units = id_fi.variables[cvar].units
         ido_var[iv].long_name = id_fi.variables[cvar].long_name
         iv = iv + 1
     
@@ -195,16 +198,15 @@ for jm in range(12):
             # Flux conversion ???
             if cvar in list_flx:
                 idx = list_flx.index(cvar)
-                print ' ********* idx for field '+cvar+' is:', idx, fact_flx[idx]
                 ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] * fact_flx[idx]
+            if cvar in list_temp_to_degC:
+                ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] - 273.15
+
             #
             iv = iv + 1
 
+
+    id_fo.About = "Input file for 'STATION_ASF' NEMO test-case, generated with 'download_prepare_ERA5_for_SASF.py' of AeroBulk (https://github.com/brodeau/aerobulk)."
             
     id_fi.close()
     id_fo.close()
-
-
-    
-
-    sys.exit(0)
