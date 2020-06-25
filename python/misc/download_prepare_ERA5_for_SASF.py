@@ -24,6 +24,12 @@ cv_lon = 'nav_lon'
 cv_lat = 'nav_lat'
 cv_tim = 'time_counter'
 
+# List of flux variables to convert to right unit (divide by rdt):
+rdt = 3600.
+list_flx = ['ssrd',       'strd',     'tp']
+list_fnu = ['W m**-2', 'W m**-2',  'mm s**-1' ]
+fact_flx = [ 1./rdt,    1./rdt ,   1000./rdt ] ; # tp in 'm' ...
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def long_to_m180_p180(xx):
@@ -166,7 +172,12 @@ for jm in range(12):
     iv = 0
     for cvar in list_var_expected:        
         ido_var.append(id_fo.createVariable(cvar, 'f4', (cv_tim,'y','x',), zlib=True))
-        ido_var[iv].units     = id_fi.variables[cvar].units
+        if cvar in list_flx:
+            idx = list_flx.index(cvar)
+            print ' ********* idx for field '+cvar+' is:', idx
+            ido_var[iv].units     = list_fnu[idx]
+        else:
+            ido_var[iv].units     = id_fi.variables[cvar].units
         ido_var[iv].long_name = id_fi.variables[cvar].long_name
         iv = iv + 1
     
@@ -180,6 +191,13 @@ for jm in range(12):
         iv = 0
         for cvar in list_var_expected:
             ido_var[iv][jt,:,:] = id_fi.variables[cvar][jt,jp,ip]
+            #
+            # Flux conversion ???
+            if cvar in list_flx:
+                idx = list_flx.index(cvar)
+                print ' ********* idx for field '+cvar+' is:', idx, fact_flx[idx]
+                ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] * fact_flx[idx]
+            #
             iv = iv + 1
 
             
