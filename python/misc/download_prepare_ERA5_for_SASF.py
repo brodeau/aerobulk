@@ -5,8 +5,55 @@ import sys
 from os import path
 import cdsapi
 from netCDF4 import Dataset
+from math import copysign
+import numpy as nmp
 
+# Coordinates (point) we want to extract for STATION ASF:
+
+plon = 36.75 ; plat = 81. ; # East of Svalbard
+
+list_crd_expected = ['longitude', 'latitude', 'time']
+# Their name in the downloaded file:
+list_var_expected = ['u10', 'v10', 'd2m', 'fal', 't2m', 'istl1', 'msl', 'siconc', 'sst', 'skt', 'ssrd', 'strd', 'tp']
+# Their name in the cdsapi request:
+lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', 'forecast_albedo', '2m_temperature', 'ice_temperature_layer_1', 'mean_sea_level_pressure','sea_ice_cover', 'sea_surface_temperature', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation' ]
 yyyy = 2018
+
+# In output file:
+cv_lon = 'nav_lon'
+cv_lat = 'nav_lat'
+cv_tim = 'time_counter'
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def long_to_m180_p180(xx):
+    ## Forces longitude to be in the -180:180 frame...
+    ## xx: longitude
+    xx   = xx % 360.
+    rlon = copysign(1.,180.-xx)*min(xx, abs(xx-360.)) ; 
+    return rlon
+
+
+
+nbfld = len(list_var_expected)
+if len(lvdl) != nbfld:
+    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!') ; sys.exit(0)
+
+# Coordinates of 10deg-wide box to download:
+dw = 10. ; # degrees
+irng_lon = [ int(round(long_to_m180_p180(plon-dw),0)) , int(round(long_to_m180_p180(plon+dw),0)) ]
+irng_lat = [ int(round(max(plat-dw,-90.),0))          , int(round(min(plat+dw, 90.),0))          ]
+
+plon = long_to_m180_p180(plon)
+
+print(' * Longitude =', plon, ' =>', irng_lon[:])
+print(' * Latitude  =', plat, ' =>', irng_lat[:])
+print('')
+
+
+
+
+# Downloading, month after month...
 
 c = cdsapi.Client()
 
@@ -14,7 +61,7 @@ for jm in range(12):
 
     cm = '%2.2i'%(jm+1)
 
-    cf_f0 = 'ERA5_arctic_surface_'+str(yyyy)+cm+'.nc'
+    cf_f0 = 'ERA5_arctic_surface_'+str(irng_lat[1])+'-'+str(irng_lat[0])+'_'+str(irng_lon[0])+'-'+str(irng_lon[1])+'_'+str(yyyy)+cm+'.nc'
 
     if not path.exists(cf_f0):
     
@@ -26,7 +73,7 @@ for jm in range(12):
                 'product_type': 'reanalysis',
                 'format': 'netcdf',
                 'variable': [
-                    '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', 'forecast_albedo', '2m_temperature', 'ice_temperature_layer_1', 'mean_sea_level_pressure','sea_ice_cover', 'sea_surface_temperature', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation',
+                    lvdl[0], lvdl[1], lvdl[2], lvdl[3], lvdl[4], lvdl[5], lvdl[6], lvdl[7], lvdl[8], lvdl[9], lvdl[10], lvdl[11], lvdl[12],
                 ],
                 'year': str(yyyy),
                 'month': [
@@ -56,8 +103,8 @@ for jm in range(12):
                     '21:00', '22:00', '23:00',
                 ],
                 'area': [
-                    85, -180, 75,
-                    180,
+                    irng_lat[1], irng_lon[0], irng_lat[0],
+                    irng_lon[1],
                 ],
             },
             cf_f0 )
@@ -72,14 +119,74 @@ for jm in range(12):
 
     # Gonna fix this crap!
     
-    id_f0 = Dataset(cf_f0)
+    id_fi = Dataset(cf_f0)
 
-    # 1/ populate variables:
-    list_var = id_f0.variables.keys()
+    # 1/ populate variables and check it's what's expected:
+    list_var = id_fi.variables.keys()
     print(' *** list_var =', list_var)
+    if list_var[:3] != list_crd_expected:
+        print(' ERROR this is not the list of coordinates we expected...') ; sys.exit(0)
+    if list_var[3:] != list_var_expected:
+        print(' ERROR this is not the list of variables we expected...') ; sys.exit(0)
+
+    Ni = id_fi.dimensions['longitude'].size
+    Nj = id_fi.dimensions['latitude'].size
+    #if not id_fi.dimensions['time'].isunlimited(): print 'PROBLEM: the time dimension is not UNLIMITED! Bad!'; sys.exit(0)
+    Nt = id_fi.dimensions['time'].size ; # Not unlimited in downloaded files...
+    print ' *** Input file: Ni, Nj, Nt = ', Ni, Nj, Nt, '\n'
+        
+    vlon  = id_fi.variables['longitude'][:] ; cunt_lon = id_fi.variables['longitude'].units ; clnm_lon = id_fi.variables['longitude'].long_name
+    vlat  = id_fi.variables['latitude'][:]  ; cunt_lat = id_fi.variables['latitude'].units  ; clnm_lat = id_fi.variables['latitude'].long_name
+    vtime = id_fi.variables['time'][:]      ; cunt_tim = id_fi.variables['time'].units      ; clnm_tim = id_fi.variables['time'].long_name
+
+    ip = nmp.argmin(nmp.abs(vlon-plon))
+    jp = nmp.argmin(nmp.abs(vlat-plat))
+
+    print(' *** ip, jp =', ip, jp)
 
 
-    id_f0.close()
+    # Creating output file for ocean:
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    cf_out = 'test.nc'
+    ni = 3 ; nj = 3
+    id_fo = Dataset(cf_out, 'w', format='NETCDF4')
 
+    # Dimensions:
+    id_fo.createDimension('x'   , ni  )
+    id_fo.createDimension('y'   , nj  )
+    id_fo.createDimension(cv_tim, None)
+
+    # Variables
+    ido_lon = id_fo.createVariable(cv_lon, 'f4', ('y','x',), zlib=True) ; ido_lon.units = cunt_lon ; ido_lon.long_name = clnm_lon
+    ido_lat = id_fo.createVariable(cv_lat, 'f4', ('y','x',), zlib=True) ; ido_lat.units = cunt_lat ; ido_lat.long_name = clnm_lat
+    ido_tim = id_fo.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True) ; ido_tim.units = cunt_tim ; ido_tim.long_name = clnm_tim
+    
+    # Creating fields in output file:
+    ido_var = []
+    iv = 0
+    for cvar in list_var_expected:        
+        ido_var.append(id_fo.createVariable(cvar, 'f4', (cv_tim,'y','x',), zlib=True))
+        ido_var[iv].units     = id_fi.variables[cvar].units
+        ido_var[iv].long_name = id_fi.variables[cvar].long_name
+        iv = iv + 1
+    
+    # Filling coordinates:
+    ido_lon[:,:] = vlon[ip]
+    ido_lat[:,:] = vlat[jp]
+
+    # Filling fields
+    for jt in range(Nt):
+        ido_tim[jt] = vtime[jt]
+        iv = 0
+        for cvar in list_var_expected:
+            ido_var[iv][jt,:,:] = id_fi.variables[cvar][jt,jp,ip]
+            iv = iv + 1
+
+            
+    id_fi.close()
+    id_fo.close()
+
+
+    
 
     sys.exit(0)
