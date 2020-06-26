@@ -10,14 +10,14 @@ import numpy as nmp
 
 # Coordinates (point) we want to extract for STATION ASF:
 
-#plon = 36.75 ; plat = 81. ; # East of Svalbard
-plon = -65.1  ; plat = 73.2 ; # Center of Baffin Bay
+plon = 36.75 ; plat = 81. ; # East of Svalbard
+#plon = -65.1  ; plat = 73.2 ; # Center of Baffin Bay
 
 list_crd_expected = ['longitude', 'latitude', 'time']
 # Their name in the downloaded file:
-list_var_expected = ['u10', 'v10', 'd2m', 'fal', 't2m', 'istl1', 'msl', 'siconc', 'sst', 'skt', 'ssrd', 'strd', 'tp']
+list_var_expected = ['u10', 'v10', 'd2m', 'fal', 't2m', 'istl1', 'msl', 'siconc', 'sst', 'skt', 'ssrd', 'strd', 'tp', 'sf' ]
 # Their name in the cdsapi request:
-lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', 'forecast_albedo', '2m_temperature', 'ice_temperature_layer_1', 'mean_sea_level_pressure','sea_ice_cover', 'sea_surface_temperature', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation' ]
+lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', 'forecast_albedo', '2m_temperature', 'ice_temperature_layer_1', 'mean_sea_level_pressure','sea_ice_cover', 'sea_surface_temperature', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
 yyyy = 2018
 
 # In output file:
@@ -27,9 +27,9 @@ cv_tim = 'time_counter'
 
 # List of flux variables to convert to right unit (divide by rdt):
 rdt = 3600.
-list_flx = ['ssrd',       'strd',     'tp']
-list_fnu = ['W m**-2', 'W m**-2',  'mm s**-1' ]
-fact_flx = [ 1./rdt,    1./rdt ,   1000./rdt ] ; # tp in 'm' ...
+list_flx = ['ssrd',       'strd',     'tp'   ,     'sf'     ]
+list_fnu = ['W m**-2', 'W m**-2',  'mm s**-1',  'mm s**-1'  ]
+fact_flx = [ 1./rdt,    1./rdt  ,  1000./rdt ,  1000./rdt   ] ; # tp and sf in 'm' ...
 
 list_temp_to_degC = [ 'sst' , 'skt' ] ; # For some reasons SAS part of NEMO expects SSTs in deg. Celsius...
 
@@ -46,7 +46,7 @@ def long_to_m180_p180(xx):
 
 nbfld = len(list_var_expected)
 if len(lvdl) != nbfld:
-    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!') ; sys.exit(0)
+    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!', len(lvdl), nbfld) ; sys.exit(0)
 
 # Coordinates of 10deg-wide box to download:
 dw = 5. ; # degrees
@@ -83,7 +83,7 @@ for jm in range(12):
                 'product_type': 'reanalysis',
                 'format': 'netcdf',
                 'variable': [
-                    lvdl[0], lvdl[1], lvdl[2], lvdl[3], lvdl[4], lvdl[5], lvdl[6], lvdl[7], lvdl[8], lvdl[9], lvdl[10], lvdl[11], lvdl[12],
+                     lvdl[0], lvdl[1], lvdl[2], lvdl[3], lvdl[4], lvdl[5], lvdl[6], lvdl[7], lvdl[8], lvdl[9], lvdl[10], lvdl[11], lvdl[12], lvdl[13],
                 ],
                 'year': str(yyyy),
                 'month': [
