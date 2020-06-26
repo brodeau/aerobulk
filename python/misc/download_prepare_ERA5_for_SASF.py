@@ -1,5 +1,10 @@
 #!/usr/bin/env python                                                                                                   
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-                                              
+#
+# LOLO: add an empty array for SSH in output netcdf file !!!
+##      + same for ssu and ssv !
+##      + add constant salinity sss of say 34 PSU
+##
 
 import sys
 from os import path
@@ -32,6 +37,12 @@ list_fnu = ['W m**-2', 'W m**-2',  'mm s**-1',  'mm s**-1'  ]
 fact_flx = [ 1./rdt,    1./rdt  ,  1000./rdt ,  1000./rdt   ] ; # tp and sf in 'm' ...
 
 list_temp_to_degC = [ 'sst' , 'skt' ] ; # For some reasons SAS part of NEMO expects SSTs in deg. Celsius...
+
+# Extra fields (for the SAS part) to add and their value (constant along time records...):
+list_extra = [ 'sss', 'ssh', 'ssu', 'ssv' ]
+rval_extra = [  34. ,   0. ,   0. ,   0.  ]
+cunt_extra = [  ''  ,  'm' , 'm s**-1', 'm s**-1' ]
+clnm_extra = [ 'Sea surface salinity', 'Sea surface height', 'Zonal surface current', 'Meridional surface current' ]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -71,7 +82,7 @@ for jm in range(12):
     cm = '%2.2i'%(jm+1)
 
     cf_fi = 'ERA5_arctic_surface_'+str(irng_lat[1])+'-'+str(irng_lat[0])+'_'+str(irng_lon[0])+'-'+str(irng_lon[1])+'_'+str(yyyy)+cm+'.nc'
-    cf_fo = 'ERA5_arctic_surface_'+str(plat)+'N_'+str(plon)+'E_1h_'+str(yyyy)+cm+'.nc'
+    cf_fo = 'ERA5_arctic_surface_'+str(plat)+'N_'+str(plon)+'E_1h_y'+str(yyyy)+'m'+cm+'.nc'
     
     if not path.exists(cf_fi):
     
@@ -184,7 +195,14 @@ for jm in range(12):
             ido_var[iv].units = id_fi.variables[cvar].units
         ido_var[iv].long_name = id_fi.variables[cvar].long_name
         iv = iv + 1
-    
+
+    # Creating extra fields:
+    for cvar in list_extra:
+        ido_var.append(id_fo.createVariable(cvar, 'f4', (cv_tim,'y','x',), zlib=True))
+        ido_var[iv].units = cunt_extra[iv-nbfld]
+        ido_var[iv].long_name = clnm_extra[iv-nbfld]
+        iv = iv + 1
+        
     # Filling coordinates:
     ido_lon[:,:] = vlon[ip]
     ido_lat[:,:] = vlat[jp]
@@ -202,10 +220,13 @@ for jm in range(12):
                 ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] * fact_flx[idx]
             if cvar in list_temp_to_degC:
                 ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] - 273.15
-
             #
             iv = iv + 1
+        for cvar in list_extra:
+            ido_var[iv][jt,:,:] = rval_extra[iv-nbfld]
+            iv = iv + 1
 
+            
 
     id_fo.About = "Input file for 'STATION_ASF' NEMO test-case, generated with 'download_prepare_ERA5_for_SASF.py' of AeroBulk (https://github.com/brodeau/aerobulk)."
             
