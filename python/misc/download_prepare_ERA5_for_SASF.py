@@ -10,7 +10,8 @@ import numpy as nmp
 
 # Coordinates (point) we want to extract for STATION ASF:
 
-plon = 36.75 ; plat = 81. ; # East of Svalbard
+#plon = 36.75 ; plat = 81. ; # East of Svalbard
+plon = -65.1  ; plat = 73.2 ; # Center of Baffin Bay
 
 list_crd_expected = ['longitude', 'latitude', 'time']
 # Their name in the downloaded file:
