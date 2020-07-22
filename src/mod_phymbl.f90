@@ -30,6 +30,20 @@ MODULE mod_phymbl
    IMPLICIT NONE
    PRIVATE
 
+   REAL(wp), PARAMETER :: &
+      !! Constants for Goff formula in the presence of ice:
+      &      rAg_i = -9.09718_wp, &
+      &      rBg_i = -3.56654_wp, &
+      &      rCg_i = 0.876793_wp, &
+      &      rDg_i = LOG10(6.1071_wp)
+
+   REAL(wp), PARAMETER :: rc_louis  = 5._wp
+   REAL(wp), PARAMETER :: rc2_louis = rc_louis * rc_louis
+   REAL(wp), PARAMETER :: ram_louis = 2. * rc_louis
+   REAL(wp), PARAMETER :: rah_louis = 3. * rc_louis
+
+   REAL(wp), PARAMETER :: repsilon = 1.e-6_wp
+
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
@@ -49,6 +63,9 @@ MODULE mod_phymbl
    INTERFACE e_sat_ice
       MODULE PROCEDURE e_sat_ice_vctr, e_sat_ice_sclr
    END INTERFACE e_sat_ice
+   INTERFACE de_sat_dt_ice
+      MODULE PROCEDURE de_sat_dt_ice_vctr, de_sat_dt_ice_sclr
+   END INTERFACE de_sat_dt_ice
 
    INTERFACE Ri_bulk
       MODULE PROCEDURE Ri_bulk_vctr, Ri_bulk_sclr
@@ -58,6 +75,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE q_sat_vctr, q_sat_sclr
    END INTERFACE q_sat
 
+   INTERFACE dq_sat_dt_ice
+      MODULE PROCEDURE dq_sat_dt_ice_vctr, dq_sat_dt_ice_sclr
+   END INTERFACE dq_sat_dt_ice
+   
    INTERFACE L_vap
       MODULE PROCEDURE L_vap_vctr, L_vap_sclr
    END INTERFACE L_vap
@@ -100,8 +121,10 @@ MODULE mod_phymbl
    PUBLIC One_on_L
    PUBLIC Ri_bulk
    PUBLIC q_sat
+   PUBLIC dq_sat_dt_ice
    PUBLIC e_sat
    PUBLIC e_sat_ice
+   PUBLIC de_sat_dt_ice
    PUBLIC e_air
    PUBLIC rh_air
    PUBLIC rho_air_adv
@@ -123,16 +146,9 @@ MODULE mod_phymbl
    PUBLIC z0tq_LKB
 
 
-   REAL(wp), PARAMETER :: repsilon = 1.e-6
-
-   REAL(wp), PARAMETER :: rc_louis  = 5._wp
-   REAL(wp), PARAMETER :: rc2_louis = rc_louis * rc_louis
-   REAL(wp), PARAMETER :: ram_louis = 2. * rc_louis
-   REAL(wp), PARAMETER :: rah_louis = 3. * rc_louis
-
 CONTAINS
 
-   !===============================================================================================
+
    FUNCTION virt_temp_sclr( pta, pqa )
       !!------------------------------------------------------------------------
       !!
@@ -167,7 +183,7 @@ CONTAINS
    !===============================================================================================
 
 
-   FUNCTION rho_air_vctr( ptak, pqa, pslp )
+   FUNCTION rho_air_vctr( ptak, pqa, ppa )
       !!-------------------------------------------------------------------------------
       !!                           ***  FUNCTION rho_air_vctr  ***
       !!
@@ -177,13 +193,13 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak      ! air temperature             [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa       ! air specific humidity   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pslp      ! pressure in                [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ppa      ! pressure in                [Pa]
       REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air_vctr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
-      rho_air_vctr = MAX( pslp / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
+      rho_air_vctr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_vctr
 
-   FUNCTION rho_air_sclr( ptak, pqa, pslp )
+   FUNCTION rho_air_sclr( ptak, pqa, ppa )
       !!-------------------------------------------------------------------------------
       !!                           ***  FUNCTION rho_air_sclr  ***
       !!
@@ -193,10 +209,10 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: ptak           ! air temperature             [K]
       REAL(wp), INTENT(in) :: pqa            ! air specific humidity   [kg/kg]
-      REAL(wp), INTENT(in) :: pslp           ! pressure in                [Pa]
+      REAL(wp), INTENT(in) :: ppa           ! pressure in                [Pa]
       REAL(wp)             :: rho_air_sclr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
-      rho_air_sclr = MAX( pslp / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
+      rho_air_sclr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_sclr
 
 
@@ -404,7 +420,7 @@ CONTAINS
       zdthv = virt_temp_sclr( ptha, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
       !
       !! ztv: estimate of the ABSOLUTE virtual temp. within the layer
-      IF ( l_ptqa_l_prvd ) THEN
+      IF( l_ptqa_l_prvd ) THEN
          ztv = virt_temp_sclr( pta_layer, pqa_layer )
       ELSE
          zqa = 0.5_wp*( pqa  + pssq )                             ! ~ mean q within the layer...
@@ -434,7 +450,7 @@ CONTAINS
       IF( PRESENT(pta_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       DO jj = 1, jpj
          DO ji = 1, jpi
-            IF ( l_ptqa_l_prvd ) THEN
+            IF( l_ptqa_l_prvd ) THEN
                Ri_bulk_vctr(ji,jj) = Ri_bulk_sclr( pz, psst(ji,jj), ptha(ji,jj), pssq(ji,jj), pqa(ji,jj), pub(ji,jj), &
                   &                                pta_layer=pta_layer(ji,jj ),  pqa_layer=pqa_layer(ji,jj ) )
             ELSE
@@ -462,7 +478,7 @@ CONTAINS
       REAL(wp) ::   zta, ztmp   ! local scalar
       !!----------------------------------------------------------------------------------
       zta = MAX( ptak , 180._wp )   ! air temp., prevents fpe0 errors dute to unrealistically low values over masked regions...
-      ztmp = rt0 / zta
+      ztmp = rt0 / zta   !LOLO: rt0 or rtt0 ???? (273.15 vs 273.16 )
       !
       ! Vapour pressure at saturation [Pa] : WMO, (Goff, 1957)
       e_sat_sclr = 100.*( 10.**( 10.79574*(1. - ztmp) - 5.028*LOG10(zta/rt0)        &
@@ -483,103 +499,156 @@ CONTAINS
    END FUNCTION e_sat_vctr
    !===============================================================================================
 
-
-
-   !FUNCTION e_sat_buck(rT, slp)
-   !   !!**************************************************
-   !   !!  rT:     air temperature          [K]
-   !   !! slp:     atmospheric pressure     [Pa]
-   !   !! e_sat:  water vapor at saturation [Pa]
-   !   !!
-   !   !! Based on Buck' formula for saturation vapor pressure
-   !   !! from Buck (1981), J. App. Meteor., 1527-1532.
-   !   !!
-   !   !! This version follows the saturation specific humidity computation in
-   !   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
-   !   !! latent heat flux compared to the calculation with Teten's
-   !   !!
-   !   !!**************************************************
-   !   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
-   !      &                                        slp          !: atmospheric pressure          [Pa]
-   !   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-   !   ALLOCATE ( ztmp(jpi,jpj) )
-   !   !! Achtung: originaly given with temperature in deg.C and pressure in
-   !   !!          millibars! 1 mb = 100 Pa !!!
-   !   ztmp(:,:) = rT(:,:) - rt0
-   !   !! Buck 1981:
-   !   !! Buck, A. L., New equations for computing vapor pressure and enhancement
-   !   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
-   !   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
-   !   !! Official COARE 3.0 code:
-   !   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
-   !   !! Kara et al. 2000:
-   !   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
-   !   DEALLOCATE ( ztmp )
-   !END FUNCTION e_sat_buck
-
-
-
-
-
-
-
-
-
-   FUNCTION e_air(q_air, slp)
-
-      !!--------------------------------------------------------------------
-      !!                  **** Function e_air ****
+   !===============================================================================================
+   FUNCTION e_sat_ice_sclr(ptak)
+      !!---------------------------------------------------------------------------------
+      !! Same as "e_sat" but over ice rather than water!
+      !!---------------------------------------------------------------------------------
+      REAL(wp)             :: e_sat_ice_sclr !: vapour pressure at saturation in presence of ice [Pa]
+      REAL(wp), INTENT(in) :: ptak
       !!
-      !! Gives vapour pressure of air from pressure and specific humidity
+      REAL(wp) :: zta, zle, ztmp
+      !!---------------------------------------------------------------------------------
+      zta = MAX( ptak , 180._wp )   ! air temp., prevents fpe0 errors dute to unrealistically low values over masked regions...
+      ztmp = rtt0/zta
       !!
-      !!--------------------------------------------------------------------
-
-      REAL(wp), DIMENSION(jpi,jpj)             ::    e_air      !: vapour pressure at saturation  [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::          &
-         &                 q_air,   &  ! specific humidity of air      [kg/kg]
-         &                 slp        ! atmospheric pressure          [Pa]
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ee, e_old
-      REAL :: diff
-
-      ALLOCATE ( ee(jpi,jpj), e_old(jpi,jpj) )
-
-      diff  = 1.
-      e_old = q_air*slp/reps0
-
-      DO WHILE ( diff > repsilon )
-         ee = q_air/reps0*(slp - (1. - reps0)*e_old)
-         diff  = SUM( abs( ee - e_old) )
-         e_old = ee
+      zle  = rAg_i*(ztmp - 1._wp) + rBg_i*LOG10(ztmp) + rCg_i*(1._wp - zta/rtt0) + rDg_i
+      !!
+      e_sat_ice_sclr = 100._wp * 10._wp**zle
+   END FUNCTION e_sat_ice_sclr
+   !!
+   FUNCTION e_sat_ice_vctr(ptak)
+      !! Same as "e_sat" but over ice rather than water!
+      REAL(wp), DIMENSION(jpi,jpj) :: e_sat_ice_vctr !: vapour pressure at saturation in presence of ice [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            e_sat_ice_vctr(ji,jj) = e_sat_ice_sclr( ptak(ji,jj) )
+         END DO
       END DO
+   END FUNCTION e_sat_ice_vctr
+   !!
+   FUNCTION de_sat_dt_ice_sclr(ptak)
+      !!---------------------------------------------------------------------------------
+      !! d [ e_sat_ice ] / dT   (derivative / temperature)
+      !! Analytical exact formulation: double checked!!!
+      !!  => DOUBLE-check possible / finite-difference version with "./bin/test_phymbl.x"
+      !!---------------------------------------------------------------------------------
+      REAL(wp)             :: de_sat_dt_ice_sclr !:  [Pa/K]
+      REAL(wp), INTENT(in) :: ptak
+      !!
+      REAL(wp) :: zta, zde
+      !!---------------------------------------------------------------------------------
+      zta = MAX( ptak , 180._wp )   ! air temp., prevents fpe0 errors dute to unrealistically low values over masked regions...
+      !!
+      zde = -(rAg_i*rtt0)/(zta*zta) - rBg_i/(zta*LOG(10._wp)) - rCg_i/rtt0
+      !!
+      de_sat_dt_ice_sclr = LOG(10._wp) * zde * e_sat_ice_sclr(zta)
+   END FUNCTION de_sat_dt_ice_sclr
+   !!
+   FUNCTION de_sat_dt_ice_vctr(ptak)
+      !! Same as "e_sat" but over ice rather than water!
+      REAL(wp), DIMENSION(jpi,jpj) :: de_sat_dt_ice_vctr !: vapour pressure at saturation in presence of ice [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            de_sat_dt_ice_vctr(ji,jj) = de_sat_dt_ice_sclr( ptak(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION de_sat_dt_ice_vctr
 
-      e_air = ee
-
-      DEALLOCATE ( ee, e_old )
-
-   END FUNCTION e_air
 
 
+   !===============================================================================================
+
+   !===============================================================================================
+   FUNCTION q_sat_sclr( pta, ppa,  l_ice )
+      !!---------------------------------------------------------------------------------
+      !!                           ***  FUNCTION q_sat_sclr  ***
+      !!
+      !! ** Purpose : Conputes specific humidity of air at saturation
+      !!
+      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: q_sat_sclr
+      REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
+      REAL(wp) :: ze_s
+      LOGICAL  :: lice
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF( PRESENT(l_ice) ) lice = l_ice
+      IF( lice ) THEN
+         ze_s = e_sat_ice( pta )
+      ELSE
+         ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
+      END IF
+      q_sat_sclr = reps0*ze_s/(ppa - (1._wp - reps0)*ze_s)
+   END FUNCTION q_sat_sclr
+   !!
+   FUNCTION q_sat_vctr( pta, ppa,  l_ice )
+      REAL(wp), DIMENSION(jpi,jpj) :: q_sat_vctr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
+      LOGICAL  :: lice
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      lice = .FALSE.
+      IF( PRESENT(l_ice) ) lice = l_ice
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            q_sat_vctr(ji,jj) = q_sat_sclr( pta(ji,jj) , ppa(ji,jj), l_ice=lice )
+         END DO
+      END DO
+   END FUNCTION q_sat_vctr
+   !===============================================================================================
 
 
-   FUNCTION rh_air(q_air, t_air, slp)
+   !===============================================================================================
+   FUNCTION dq_sat_dt_ice_sclr( pta, ppa )
+      !!---------------------------------------------------------------------------------
+      !!     ***  FUNCTION dq_sat_dt_ice_sclr  ***
+      !!    => d [ q_sat_ice(T) ] / dT
+      !! Analytical exact formulation: double checked!!!
+      !!  => DOUBLE-check possible / finite-difference version with "./bin/test_phymbl.x"
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: dq_sat_dt_ice_sclr
+      REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      REAL(wp) :: ze_s, zde_s_dt, ztmp
+      !!----------------------------------------------------------------------------------      
+      ze_s     =  e_sat_ice_sclr( pta ) ! Vapour pressure at saturation  in presence of ice (Goff)
+      zde_s_dt = de_sat_dt_ice(   pta )
+      !
+      ztmp = (reps0 - 1._wp)*ze_s + ppa
+      !
+      dq_sat_dt_ice_sclr = reps0*ppa*zde_s_dt / ( ztmp*ztmp )
+      !
+   END FUNCTION dq_sat_dt_ice_sclr
+   !!
+   FUNCTION dq_sat_dt_ice_vctr( pta, ppa )
+      REAL(wp), DIMENSION(jpi,jpj) :: dq_sat_dt_ice_vctr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta  !: absolute temperature of air [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
+      INTEGER  :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            dq_sat_dt_ice_vctr(ji,jj) = dq_sat_dt_ice_sclr( pta(ji,jj) , ppa(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION dq_sat_dt_ice_vctr
+   !===============================================================================================
 
-      !! Relative humidity of air
-
-      REAL(wp), DIMENSION(jpi,jpj)             :: rh_air  !: relative humidity [] (fraction!!!, not percent!)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: &
-         &                 q_air,   &     !: specific humidity of air      [kg/kg]
-         &                 t_air,   &     !: air temperature               [K]
-         &                 slp           !: atmospheric pressure          [Pa]
-
-      rh_air = e_sat(t_air)
-      rh_air = e_air(q_air,slp) / rh_air
-
-   END FUNCTION rh_air
-
-
-   FUNCTION q_air_rh(prha, ptak, pslp)
+   
+   !===============================================================================================
+   FUNCTION q_air_rh(prha, ptak, ppa)
       !!----------------------------------------------------------------------------------
       !! Specific humidity of air out of Relative Humidity
       !!
@@ -588,7 +657,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: q_air_rh
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: prha        !: relative humidity      [fraction, not %!!!]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak        !: air temperature        [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp        !: atmospheric pressure   [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa        !: atmospheric pressure   [Pa]
       !
       INTEGER  ::   ji, jj      ! dummy loop indices
       REAL(wp) ::   ze      ! local scalar
@@ -597,7 +666,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             ze = prha(ji,jj)*e_sat_sclr(ptak(ji,jj))
-            q_air_rh(ji,jj) = ze*reps0/(pslp(ji,jj) - (1. - reps0)*ze)
+            q_air_rh(ji,jj) = ze*reps0/(ppa(ji,jj) - (1. - reps0)*ze)
          END DO
       END DO
       !
@@ -645,80 +714,8 @@ CONTAINS
    END FUNCTION rho_air_adv
 
 
-   !===============================================================================================
-   FUNCTION q_sat_sclr( pta, ppa,  l_ice )
-      !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION q_sat_sclr  ***
-      !!
-      !! ** Purpose : Conputes specific humidity of air at saturation
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp) :: q_sat_sclr
-      REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
-      REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
-      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
-      REAL(wp) :: ze_s
-      LOGICAL  :: lice
-      !!----------------------------------------------------------------------------------
-      lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
-      IF ( lice ) THEN
-         ze_s = e_sat_ice( pta )
-      ELSE
-         ze_s = e_sat( pta ) ! Vapour pressure at saturation (Goff) :
-      END IF
-      q_sat_sclr = reps0*ze_s/(ppa - (1._wp - reps0)*ze_s)
-   END FUNCTION q_sat_sclr
-   !!
-   FUNCTION q_sat_vctr( pta, ppa,  l_ice )
-      REAL(wp), DIMENSION(jpi,jpj) :: q_sat_vctr
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta  !: absolute temperature of air [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
-      LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
-      LOGICAL  :: lice
-      INTEGER  :: ji, jj
-      !!----------------------------------------------------------------------------------
-      lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            q_sat_vctr(ji,jj) = q_sat_sclr( pta(ji,jj) , ppa(ji,jj), l_ice=lice )
-         END DO
-      END DO
-   END FUNCTION q_sat_vctr
-   !===============================================================================================
 
 
-   FUNCTION e_sat_ice_sclr(ptak)
-      !!---------------------------------------------------------------------------------
-      !! Same as "e_sat" but over ice rather than water!
-      !!---------------------------------------------------------------------------------
-      REAL(wp)             :: e_sat_ice_sclr !: vapour pressure at saturation in presence of ice [Pa]
-      REAL(wp), INTENT(in) :: ptak
-      !!
-      REAL(wp) :: zle, ztmp
-      !!---------------------------------------------------------------------------------
-      ztmp = 273.16_wp/ptak
-      !!
-      zle  = -9.09718_wp*(ztmp - 1._wp)  - 3.56654_wp*LOG10(ztmp)      &
-         &   + 0.876793_wp*(1._wp - ptak/273.16_wp) + LOG10(6.1071_wp)
-      !!
-      e_sat_ice_sclr = 100._wp * 10._wp**zle
-   END FUNCTION e_sat_ice_sclr
-   !!
-   FUNCTION e_sat_ice_vctr(ptak)
-      !! Same as "e_sat" but over ice rather than water!
-      REAL(wp), DIMENSION(jpi,jpj) :: e_sat_ice_vctr !: vapour pressure at saturation in presence of ice [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak
-      INTEGER  :: ji, jj
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            e_sat_ice_vctr(ji,jj) = e_sat_ice_sclr( ptak(ji,jj) )
-         END DO
-      END DO
-   END FUNCTION e_sat_ice_vctr
 
 
 
@@ -756,7 +753,7 @@ CONTAINS
 
 
 
-   SUBROUTINE UPDATE_QNSOL_TAU( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, pslp, prlw, &
+   SUBROUTINE UPDATE_QNSOL_TAU( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, ppa, prlw, &
       &                         pQns, pTau,  &
       &                         Qlat)
       !!----------------------------------------------------------------------------------
@@ -774,7 +771,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqst ! q*
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: ppa ! sea-level atmospheric pressure [Pa]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: prlw ! downwelling longwave radiative flux [W/m^2]
       !
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQns ! non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw" [W/m^2]]
@@ -787,7 +784,6 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
-
             zdt = pTa(ji,jj) - pTs(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
             zdq = pqa(ji,jj) - pqs(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
             zz0 = pust(ji,jj)/pUb(ji,jj)
@@ -796,14 +792,14 @@ CONTAINS
             zCe = zz0*pqst(ji,jj)/zdq
 
             CALL BULK_FORMULA( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
-               &              pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj), &
+               &              pwnd(ji,jj), pUb(ji,jj), ppa(ji,jj), &
                &              pTau(ji,jj), zQsen, zQlat )
 
             zQlw = qlw_net_sclr( prlw(ji,jj), pTs(ji,jj) ) ! Net longwave flux
 
             pQns(ji,jj) = zQlat + zQsen + zQlw
 
-            IF ( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
+            IF( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
          END DO
       END DO
    END SUBROUTINE UPDATE_QNSOL_TAU
@@ -811,7 +807,7 @@ CONTAINS
 
    SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, &
       &                          pCd, pCh, pCe,           &
-      &                          pwnd, pUb, pslp,         &
+      &                          pwnd, pUb, ppa,         &
       &                          pTau, pQsen, pQlat,      &
       &                          pEvap, prhoa, l_ice      )
       !!----------------------------------------------------------------------------------
@@ -825,7 +821,7 @@ CONTAINS
       REAL(wp), INTENT(in)  :: pCe
       REAL(wp), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
       REAL(wp), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
-      REAL(wp), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), INTENT(in)  :: ppa ! sea-level atmospheric pressure [Pa]
       !!
       REAL(wp), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
       REAL(wp), INTENT(out) :: pQsen !  [W/m^2]
@@ -840,7 +836,7 @@ CONTAINS
       LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
+      IF( PRESENT(l_ice) ) lice = l_ice
 
       !! Need ztaa, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pTa")
       ztaa = pTa ! first guess...
@@ -848,8 +844,8 @@ CONTAINS
          zgamma = gamma_moist( 0.5*(ztaa+pTs) , pqa )  !LOLO: why not "0.5*(pqs+pqa)" rather then "pqa" ???
          ztaa = pTa - zgamma*pzu   ! Absolute temp. is slightly colder...
       END DO
-      zrho = rho_air(ztaa, pqa, pslp)
-      zrho = rho_air(ztaa, pqa, pslp-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
+      zrho = rho_air(ztaa, pqa, ppa)
+      zrho = rho_air(ztaa, pqa, ppa-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
 
       zUrho = pUb*MAX(zrho, 1._wp)     ! rho*U10
 
@@ -858,21 +854,21 @@ CONTAINS
       zevap = zUrho * pCe * (pqa - pqs)
       pQsen = zUrho * pCh * (pTa - pTs) * cp_air(pqa)
 
-      IF ( lice) THEN
+      IF( lice) THEN
          pQlat =      rLsub * zevap
-         IF ( PRESENT(pEvap) ) pEvap = MAX( -zevap , 0._wp )
+         IF( PRESENT(pEvap) ) pEvap = MAX( -zevap , 0._wp )
       ELSE
          pQlat = L_vap(pTs) * zevap
-         IF ( PRESENT(pEvap) ) pEvap = -zevap
+         IF( PRESENT(pEvap) ) pEvap = -zevap
       END IF
 
-      IF ( PRESENT(prhoa) ) prhoa = zrho
+      IF( PRESENT(prhoa) ) prhoa = zrho
 
    END SUBROUTINE BULK_FORMULA_SCLR
    !!
    SUBROUTINE BULK_FORMULA_VCTR( pzu, pTs, pqs, pTa, pqa, &
       &                          pCd, pCh, pCe,           &
-      &                          pwnd, pUb, pslp,         &
+      &                          pwnd, pUb, ppa,         &
       &                          pTau, pQsen, pQlat,      &
       &                          pEvap, prhoa, l_ice )
       !!----------------------------------------------------------------------------------
@@ -886,7 +882,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCe
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: ppa ! sea-level atmospheric pressure [Pa]
       !!
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
@@ -901,14 +897,14 @@ CONTAINS
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
+      IF( PRESENT(l_ice) ) lice = l_ice
 
       DO jj = 1, jpj
          DO ji = 1, jpi
 
             CALL BULK_FORMULA_SCLR( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), &
                &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
-               &                    pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj),                &
+               &                    pwnd(ji,jj), pUb(ji,jj), ppa(ji,jj),                &
                &                    pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),             &
                &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
 
@@ -963,8 +959,8 @@ CONTAINS
       LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
-      IF ( lice ) THEN
+      IF( PRESENT(l_ice) ) lice = l_ice
+      IF( lice ) THEN
          zemiss = emiss_i
       ELSE
          zemiss = emiss_w
@@ -982,7 +978,7 @@ CONTAINS
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
-      IF ( PRESENT(l_ice) ) lice = l_ice
+      IF( PRESENT(l_ice) ) lice = l_ice
       DO jj = 1, jpj
          DO ji = 1, jpi
             qlw_net_vctr(ji,jj) = qlw_net_sclr( pdwlw(ji,jj) , pts(ji,jj), l_ice=lice )
@@ -1001,7 +997,7 @@ CONTAINS
       !! If pCd is the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
       !!----------------------------------------------------------------------------------
-      IF ( PRESENT(ppsi) ) THEN
+      IF( PRESENT(ppsi) ) THEN
          !! Cd provided is the actual Cd (not the neutral-stability CdN) :
          z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd(:,:)) + ppsi(:,:) ) ) !LB: ok, double-checked!
       ELSE
@@ -1033,7 +1029,7 @@ CONTAINS
       !! If we want to return the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If we want to return the stability-corrected Cd (i.e. in stable or unstable conditions) then pssi must be provided
       !!----------------------------------------------------------------------------------
-      IF ( PRESENT(ppsi) ) THEN
+      IF( PRESENT(ppsi) ) THEN
          !! The Cd we return is the actual Cd (not the neutral-stability CdN) :
          Cd_from_z0 = 1._wp / ( LOG( pzu / pz0(:,:) ) - ppsi(:,:) )
       ELSE
@@ -1327,6 +1323,55 @@ CONTAINS
    END FUNCTION z0tq_LKB
 
 
+
+   FUNCTION e_air(pqa, ppa)
+      !!--------------------------------------------------------------------
+      !!                  **** Function e_air ****
+      !!
+      !! Gives vapour pressure of air from pressure and specific humidity
+      !!
+      !!--------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: e_air    !: vapour pressure at saturation  [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa      ! specific humidity of air       [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa     ! atmospheric pressure            [Pa]
+      !!
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ee, e_old
+      REAL(wp) :: zdiff
+      ALLOCATE ( ee(jpi,jpj), e_old(jpi,jpj) )
+      !
+      zdiff  = 1._wp
+      e_old = pqa*ppa/reps0
+      !
+      DO WHILE ( zdiff > repsilon )
+         ee = pqa/reps0*(ppa - (1. - reps0)*e_old)
+         zdiff  = SUM( ABS( ee - e_old) )
+         e_old = ee
+      END DO
+      e_air = ee
+      !
+      DEALLOCATE ( ee, e_old )
+   END FUNCTION e_air
+
+   FUNCTION rh_air(pqa, pta, ppa)
+      !!--------------------------------------------------------------------
+      !!                  **** Function e_air ****
+      !!
+      !! Gives relative humidity of air of air from spec. hum., temperature and pressure
+      !!
+      !!--------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: rh_air  !: relative humidity [] (fraction!!!, not percent!)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa     !: specific humidity of air      [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta     !: air temperature               [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa     !: atmospheric pressure          [Pa]
+      !
+      rh_air = e_sat(pta)
+      rh_air = e_air(pqa, ppa) / rh_air
+      !
+   END FUNCTION rh_air
+
+
+
+
    !   FUNCTION f_m_louis_sclr( pzu, pt_zu, pq_zu, pwnd, pTs, pqs, pCdn, pz0 )
    !      !!----------------------------------------------------------------------------------
    !      !!  Stability correction function for MOMENTUM
@@ -1356,8 +1401,51 @@ CONTAINS
    !      !
    !   END FUNCTION f_m_louis_sclr
 
-
 END MODULE mod_phymbl
+
+
+   !FUNCTION e_sat_buck(rT, slp)
+   !   !!**************************************************
+   !   !!  rT:     air temperature          [K]
+   !   !! slp:     atmospheric pressure     [Pa]
+   !   !! e_sat:  water vapor at saturation [Pa]
+   !   !!
+   !   !! Based on Buck' formula for saturation vapor pressure
+   !   !! from Buck (1981), J. App. Meteor., 1527-1532.
+   !   !!
+   !   !! This version follows the saturation specific humidity computation in
+   !   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
+   !   !! latent heat flux compared to the calculation with Teten's
+   !   !!
+   !   !!**************************************************
+   !   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
+   !      &                                        slp          !: atmospheric pressure          [Pa]
+   !   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
+   !   ALLOCATE ( ztmp(jpi,jpj) )
+   !   !! Achtung: originaly given with temperature in deg.C and pressure in
+   !   !!          millibars! 1 mb = 100 Pa !!!
+   !   ztmp(:,:) = rT(:,:) - rt0
+   !   !! Buck 1981:
+   !   !! Buck, A. L., New equations for computing vapor pressure and enhancement
+   !   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
+   !   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
+   !   !! Official COARE 3.0 code:
+   !   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
+   !   !! Kara et al. 2000:
+   !   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
+   !   DEALLOCATE ( ztmp )
+   !END FUNCTION e_sat_buck
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -15,8 +15,11 @@ PROGRAM TEST_PHYMBL
    CHARACTER(len=2) :: cdT
 
    REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat_ice, &
-      &                        vsst_k, vrho, vt10, vq10, vrh
+      &                            vsst_k, vrho, vt10, vq10, vrh
 
+   REAL(wp), DIMENSION(1,ntemp) :: ves_ice, vdes_dt_ice, vdes_dt_ice_fd    ! e_sat(T) and d[e_sat(T)]/dT over ice...
+   REAL(wp), DIMENSION(1,ntemp) :: vqs_ice, vdqs_dt_ice, vdqs_dt_ice_fd    ! q_sat(T) and d[q_sat(T)]/dT over ice...
+   
    REAL(wp), PARAMETER :: &
       &   t_min =  -5. , &
       &   t_max =  35.
@@ -118,7 +121,50 @@ PROGRAM TEST_PHYMBL
    !PRINT *, trim(cfout1), ' and ', trim(cfout2), ' written!'
    PRINT *, TRIM(cfout1), ' written!'
    PRINT *, ''
+
+
+   !! e_sat_ice and derivative over ice
+   !! **********************************
+   ves_ice(:,:)      =   e_sat_ice( vsst_k )
+   vdes_dt_ice(:,:)  =   de_sat_dt_ice( vsst_k )
+
+   !! Finite difference version to control:
+   DO jt = 2, ntemp-1
+      vdes_dt_ice_fd(1,jt) = (ves_ice(1,jt+1) - ves_ice(1,jt-1)) / ( vsst_k(1,jt+1) - vsst_k(1,jt-1) )
+   END DO
    
+   cfout1 = 'e_sat_ice_and_derivative.dat'   
+   OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)
+   WRITE(11,*) '#    SST    e_sat_ice   d[e_sat_ice]/dT  FD:d[e_sat_ice]/dT'
+   DO jt = 1, ntemp
+      WRITE(11,*) REAL(vsst(1,jt),4),   REAL(ves_ice(1,jt),4), REAL(vdes_dt_ice(1,jt),4), REAL(vdes_dt_ice_fd(1,jt),4)
+   END DO
+   CLOSE(11)   
+   PRINT *, ''
+   PRINT *, TRIM(cfout1), ' written!'
+   PRINT *, ''
 
+   
+   !! e_sat_ice and derivative over ice
+   !! **********************************
+   vqs_ice(:,:)      =   q_sat(         vsst_k, vmsl, l_ice=.TRUE. )
+   vdqs_dt_ice(:,:)  =   dq_sat_dt_ice( vsst_k, vmsl )
 
+   !! Finite difference version to control:
+   DO jt = 2, ntemp-1
+      vdqs_dt_ice_fd(1,jt) = (vqs_ice(1,jt+1) - vqs_ice(1,jt-1)) / ( vsst_k(1,jt+1) - vsst_k(1,jt-1) )
+   END DO
+     
+   cfout1 = 'q_sat_ice_and_derivative_'//cslp//'Pa.dat'   
+   OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)
+   WRITE(11,*) '#    SST    q_sat_ice   d[q_sat_ice]/dT  FD:d[q_sat_ice]/dT'
+   DO jt = 1, ntemp
+      WRITE(11,*) REAL(vsst(1,jt),4),   REAL(vqs_ice(1,jt),4), REAL(vdqs_dt_ice(1,jt),4), REAL(vdqs_dt_ice_fd(1,jt),4)
+   END DO
+   CLOSE(11)   
+   PRINT *, ''
+   PRINT *, TRIM(cfout1), ' written!'
+   PRINT *, ''
+
+   
 END PROGRAM TEST_PHYMBL
