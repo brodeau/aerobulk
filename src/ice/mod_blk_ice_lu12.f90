@@ -34,14 +34,12 @@
 MODULE mod_blk_ice_lu12
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
-   !!       Routine turb_ice_lu12 maintained and developed in AeroBulk
-   !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!  Lüpkes, C., Gryanik, V. M., Hartmann, J., and Andreas, E. L. ( 2012), A parametrization, based on sea ice morphology,
    !!  of the neutral atmospheric drag coefficients for weather prediction and climate models, J. Geophys. Res., 117, D13112,
    !!  doi:10.1029/2012JD017630.
    !!
-   !!       => Sespite the fact that the sea-ice concentration (frice) must be provided,
+   !!       => Despite the fact that the sea-ice concentration (frice) must be provided,
    !!          only transfer coefficients, and air temp. + hum. height adjustement
    !!          over ice are returned/performed.
    !!        ==> 'frice' is only here to estimate the form drag caused by sea-ice...
@@ -60,11 +58,10 @@ MODULE mod_blk_ice_lu12
    IMPLICIT NONE
    PRIVATE
 
+   PUBLIC :: turb_ice_lu12
+
    REAL(wp), PARAMETER :: rz0_i_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
    REAL(wp), PARAMETER :: rz0_i_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m] (LG15)   
-   REAL(wp), PARAMETER :: rz0_w_s_0 = 3.27E-4      ! fixed roughness length over water (paragraph below Eq.36)
-
-   PUBLIC :: turb_ice_lu12
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -75,10 +72,12 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lu12  ***
       !!
-      !! ** Purpose :   Computestransfert coefficients of turbulent surface
-      !!                fluxes according
-      !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
-      !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
+      !! ** Purpose :   Computes turbulent transfert coefficients of surface
+      !!                fluxes according to:
+      !!                Lüpkes, C., Gryanik, V. M., Hartmann, J., and Andreas, E. L. ( 2012),
+      !!                A parametrization, based on sea ice morphology, of the neutral
+      !!                atmospheric drag coefficients for weather prediction and climate models,
+      !!                J. Geophys. Res., 117, D13112, doi:10.1029/2012JD017630.
       !!
       !! INPUT :
       !! -------
@@ -90,11 +89,6 @@ CONTAINS
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!    * frice : sea-ice concentration        (fraction)
-      !!
-      !! OPTIONAL INPUT:
-      !! ----------------
-      !!    * hf    : mean freeboard of floes    [m]
-      !!    * Di    : cross wind dimension of the floe (aka effective edge length for form drag)   [m]
       !!
       !! OUTPUT :
       !! --------
@@ -125,16 +119,12 @@ CONTAINS
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: frice ! sea-ice concentration        (fraction)
-      !!
-      !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: hf    ! mean freeboard of floes    [m]
-      !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: Di    ! cross wind dimension of the floe (aka effective edge length for form drag)   [m]
-      !!
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i  ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i  ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu     ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
@@ -144,17 +134,15 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu, z0_w, z0_i
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu, z0_i
       !!
-      LOGICAL :: l_known_hf=.FALSE., l_known_Di=.FALSE.
-      LOGICAL :: lreturn_cdfrm=.FALSE., lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
-         &       lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE.
+      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lu12@mod_blk_ice_lu12.f90'
       !!----------------------------------------------------------------------------------
-      !l_known_hf    = PRESENT(hf)
-      !l_known_Di    = PRESENT(Di)
-      !lreturn_cdfrm = PRESENT(CdN_frm)
+      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj), z0_i(jpi,jpj) )
+
       lreturn_cdn   = PRESENT(CdN)
       lreturn_chn   = PRESENT(ChN)
       lreturn_cen   = PRESENT(CeN)
@@ -162,10 +150,6 @@ CONTAINS
       lreturn_ustar = PRESENT(xu_star)
       lreturn_L     = PRESENT(xL)
       lreturn_UN10  = PRESENT(xUN10)
-
-
-      !u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-      ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj) , z0_w(jpi,jpj), z0_i(jpi,jpj) )
 
       !! Scalar wind speed cannot be below 0.2 m/s
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
@@ -177,8 +161,6 @@ CONTAINS
       !! Air-Ice & Air-Sea differences (and we don't want them to be 0!)
       dt_zu = t_zu_i - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu_i - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-
-
 
       !! To estimate CDN10_skin:
       !!  we use the method that comes in LG15, i.e. by starting from a default roughness length z0 for skin drag:
@@ -225,7 +207,7 @@ CONTAINS
          &                          Cd_i/SQRT(Cd_i)*dt_zu, Cd_i/SQRT(Cd_i)*dq_zu)
       IF( lreturn_UN10 )  xUN10   = SQRT(Cd_i)*Ubzu/vkarmn * LOG( 10._wp / z0_from_Cd( zu, Cd_i ) )
 
-      DEALLOCATE ( dt_zu, dq_zu, z0_w )
+      DEALLOCATE ( dt_zu, dq_zu, z0_i )
 
    END SUBROUTINE turb_ice_lu12
 

@@ -26,14 +26,12 @@
 MODULE mod_blk_ice_lg15
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
-   !!       Following Lupkes & Gryanik, 2015
-   !!
    !!
    !!  Lüpkes, C., and Gryanik, V. M. ( 2015), A stability‐dependent parametrization
    !!  of transfer coefficients for momentum and heat over polar sea ice to be used in climate models,
    !!  J. Geophys. Res. Atmos., 120, 552– 581, doi:10.1002/2014JD022418.
    !!
-   !!       => Sespite the fact that the sea-ice concentration (frice) must be provided,
+   !!       => Despite the fact that the sea-ice concentration (frice) must be provided,
    !!          only transfer coefficients, and air temp. + hum. height adjustement
    !!          over ice are returned/performed.
    !!        ==> 'frice' is only here to estimate the form drag caused by sea-ice...
@@ -51,6 +49,8 @@ MODULE mod_blk_ice_lg15
    IMPLICIT NONE
    PRIVATE
 
+   PUBLIC :: turb_ice_lg15
+
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
@@ -61,7 +61,6 @@ MODULE mod_blk_ice_lg15
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
    LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
-   PUBLIC :: turb_ice_lg15
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -72,10 +71,15 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lg15  ***
       !!
-      !! ** Purpose :   Computestransfert coefficients of turbulent surface
-      !!                fluxes according
-      !!                If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
-      !!                Returns the effective bulk wind speed at zu to be used in the bulk formulas
+      !! ** Purpose :   Computes turbulent transfert coefficients of surface
+      !!                fluxes according to:
+      !!            Lüpkes, C., and Gryanik, V. M. ( 2015), A stability‐dependent
+      !!            parametrization of transfer coefficients for momentum and heat
+      !!            over polar sea ice to be used in climate models,
+      !!            J. Geophys. Res. Atmos., 120, 552– 581, doi:10.1002/2014JD022418.
+      !!
+      !!           If relevant (zt /= zu), adjust temperature and humidity from height zt to zu
+      !!           Returns the effective bulk wind speed at zu to be used in the bulk formulas
       !!
       !! INPUT :
       !! -------
@@ -131,17 +135,17 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xu_star  ! u*, friction velocity
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zCdN_s, zChN_s, zCdN_f, zChN_f
       !!
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zCd, zCh, zCdN_s, zChN_s, zCdN_f, zChN_f
-      
-      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
-         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE.
+      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
       !!----------------------------------------------------------------------------------
@@ -149,8 +153,7 @@ CONTAINS
       ALLOCATE ( dt_zu(jpi,jpj),  dq_zu(jpi,jpj) )
       ALLOCATE ( zz0_s(jpi,jpj),  zz0_f(jpi,jpj),    RiB(jpi,jpj), &
          &      zCdN_s(jpi,jpj), zChN_s(jpi,jpj), zCdN_f(jpi,jpj), zChN_f(jpi,jpj) )
-      ALLOCATE (  zCd(jpi,jpj) ,    zCh(jpi,jpj) )
-      
+
       lreturn_cdn   = PRESENT(CdN)
       lreturn_chn   = PRESENT(ChN)
       lreturn_cen   = PRESENT(CeN)
@@ -173,9 +176,9 @@ CONTAINS
       dq_zu = q_zu_i - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
       !! Very crude first guess:
-      Cd_i(:,:) = rCd_ice
-      Ch_i(:,:) = rCd_ice
-      Ce_i(:,:) = rCd_ice
+      Cd_i(:,:) = 1.4e-3_wp
+      Ch_i(:,:) = 1.4e-3_wp
+      Ce_i(:,:) = 1.4e-3_wp
       
       !! For skin drag :
       zz0_s(:,:)  = rz0_i_s_0        !LOLO/RFI! ! Room for improvement. We use the same z0_skin everywhere (= rz0_i_s_0)...
@@ -193,8 +196,8 @@ CONTAINS
       END IF
 
       !! Some other first guess values, needed to compute wind at zt:
-      zCd(:,:) = zCdN_s(:,:) + zCdN_f(:,:)
-      zCh(:,:) = zChN_s(:,:) + zChN_f(:,:)
+      Cd_i(:,:) = zCdN_s(:,:) + zCdN_f(:,:)
+      Ch_i(:,:) = zChN_s(:,:) + zChN_f(:,:)
       RiB(:,:) = Ri_bulk( zt, Ts_i(:,:), t_zt(:,:), qs_i(:,:), q_zt(:,:), Ubzu(:,:) )  ! over ice (index=1)
 
 
@@ -217,7 +220,7 @@ CONTAINS
             xtmp2(:,:) = zz0_s(:,:) + zz0_f(:,:)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2(:,:) = MAX( Ubzu(:,:) + (SQRT(zCd(:,:))*Ubzu)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:))*Ubzu == u* !)
+            xtmp2(:,:) = MAX( Ubzu(:,:) + (SQRT(Cd_i(:,:))*Ubzu)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(Cd_i(:,:))*Ubzu == u* !)
             xtmp2(:,:) = MIN( xtmp2(:,:) , Ubzu(:,:) )
             IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
          ELSE
@@ -228,18 +231,18 @@ CONTAINS
 
 
          ! Momentum and Heat transfer coefficients WITHOUT FORM DRAG / (Eq.6) and (Eq.10):
-         zCd(:,:) = zCdN_s(:,:) * f_m_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) ) ! (Eq.6)
-         zCh(:,:) = zChN_s(:,:) * f_h_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
+         Cd_i(:,:) = zCdN_s(:,:) * f_m_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) ) ! (Eq.6)
+         Ch_i(:,:) = zChN_s(:,:) * f_h_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) ) ! (Eq.10) / LOLO: why "zCdN_s" (xtmp1) and not "zChn" ???
          IF(l_dbg_print) PRINT *, 'LOLO: f_m_louis_s =', f_m_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) )
          IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_s =', f_h_louis( zu, RiB(:,:), zCdN_s(:,:), zz0_s(:,:) )
-         IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(zCd(:,:),4)
+         IF(l_dbg_print) PRINT *, 'LOLO: Cd / skin only / ice   =', REAL(Cd_i(:,:),4)
 
          
          IF ( l_add_form_drag ) THEN
             !! Form-drag-related NEUTRAL momentum and Heat transfer coefficients:
             !!   MIZ:
-            zCd(:,:) = zCd(:,:) + zCdN_f(:,:) * f_m_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) ) ! (Eq.6)
-            zCh(:,:) = zCh(:,:) + zChN_f(:,:) * f_h_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) ) ! (Eq.10) / LOLO: why "zCdN_f" and not "zChn" ???
+            Cd_i(:,:) = Cd_i(:,:) + zCdN_f(:,:) * f_m_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) ) ! (Eq.6)
+            Ch_i(:,:) = Ch_i(:,:) + zChN_f(:,:) * f_h_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) ) ! (Eq.10) / LOLO: why "zCdN_f" and not "zChn" ???
             IF(l_dbg_print) PRINT *, 'LOLO: f_m_louis_f =', f_m_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) )
             IF(l_dbg_print) PRINT *, 'LOLO: f_h_louis_f =', f_h_louis( zu, RiB(:,:), zCdN_f(:,:), zz0_f(:,:) )
 
@@ -247,7 +250,7 @@ CONTAINS
 
          END IF
 
-         IF(l_dbg_print) PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(zCd(:,:),4), REAL(zCh(:,:),4)
+         IF(l_dbg_print) PRINT *, 'LOLO: Cd, Ch / TOTAL / ice   =', REAL(Cd_i(:,:),4), REAL(Ch_i(:,:),4)
 
 
          !! Adjusting temperature and humidity from zt to zu:
@@ -258,15 +261,14 @@ CONTAINS
             xtmp2(:,:) = zz0_s(:,:) + zz0_f(:,:)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2 = 1._wp/SQRT(zCd(:,:))
+            xtmp2 = 1._wp/SQRT(Cd_i(:,:))
 
-            t_zu_i(:,:) = t_zt - (zCh(:,:) * dt_zu(:,:) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
-            q_zu_i(:,:) = q_zt - (zCh(:,:) * dq_zu(:,:) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
+            t_zu_i(:,:) = t_zt - (Ch_i(:,:) * dt_zu(:,:) * xtmp2) / vkarmn * xtmp1   ! t_star = Ch * dt_zu / SQRT(Cd)
+            q_zu_i(:,:) = q_zt - (Ch_i(:,:) * dq_zu(:,:) * xtmp2) / vkarmn * xtmp1   ! q_star = Ce * dq_zu / SQRT(Cd)
             q_zu_i(:,:) = MAX(0._wp, q_zu_i(:,:))
 
             dt_zu(:,:) = t_zu_i(:,:) - Ts_i
             dq_zu(:,:) = q_zu_i(:,:) - qs_i
-
 
             dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
             dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
@@ -275,17 +277,12 @@ CONTAINS
          IF(l_dbg_print) PRINT *, ''!LOLO
 
       END DO !DO j_itt = 1, nb_itt
-      IF(l_dbg_print) PRINT *, ''!LOLO
 
+      Ce_i(:,:)   =  Ch_i(:,:)
 
       IF( lreturn_cdn )   CdN = zCdN_s(:,:)+zCdN_f(:,:)
       IF( lreturn_chn )   ChN = zChN_s(:,:)+zChN_f(:,:)
       IF( lreturn_cen )   CeN = zChN_s(:,:)+zChN_f(:,:)
-
-      !! Result is over ice only:
-      Cd_i(:,:)   =   zCd(:,:)
-      Ch_i(:,:)   =   zCh(:,:)
-      Ce_i(:,:)   =  Ch_i(:,:)
 
       IF( lreturn_z0 ) xz0   = z0_from_Cd( zu, zCdN_s(:,:)+zCdN_f(:,:) )
 
@@ -295,7 +292,7 @@ CONTAINS
          xtmp1 = SQRT(Cd_i)
          xL    = 1./One_on_L( t_zu_i, q_zu_i, xtmp1*Ubzu, Ch_i*dt_zu(:,:)/xtmp1, Ce_i*dq_zu(:,:)/xtmp1 )
       END IF
-      
+
       IF( lreturn_UN10 ) THEN
          xtmp1 = zCdN_s(:,:) + zCdN_f(:,:)  ! => CdN
          xUN10 = SQRT(Cd_i) * Ubzu/vkarmn * LOG( 10._wp / z0_from_Cd(zu, xtmp1) )
@@ -304,10 +301,8 @@ CONTAINS
       DEALLOCATE ( xtmp1, xtmp2 )
       DEALLOCATE ( dt_zu, dq_zu )
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
-      DEALLOCATE ( zCd, zCh )
 
    END SUBROUTINE turb_ice_lg15
 
    !!======================================================================
-
 END MODULE mod_blk_ice_lg15
