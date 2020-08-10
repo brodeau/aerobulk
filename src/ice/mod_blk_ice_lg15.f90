@@ -48,8 +48,6 @@ MODULE mod_blk_ice_lg15
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lg15
-
    REAL(wp), PARAMETER ::   ralpha_0  = 0.2_wp     ! (Eq.12) (ECHAM6 value)
 
    !! To be namelist parameters in NEMO:
@@ -60,6 +58,7 @@ MODULE mod_blk_ice_lg15
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
    LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
+   PUBLIC :: turb_ice_lg15
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -189,8 +188,7 @@ CONTAINS
       lreturn_L     = PRESENT(xL)
       lreturn_UN10  = PRESENT(xUN10)
 
-      l_zt_equal_zu = .FALSE.
-      IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE. ! testing "zu == zt" is risky with double precision
+      l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
 
       !! Scalar wind speed cannot be below 0.2 m/s
       Ub = MAX( U_zu, wspd_thrshld_ice )

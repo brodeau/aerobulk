@@ -35,9 +35,9 @@ MODULE mod_blk_andreas
    !!            Author: Laurent Brodeau, 2020
    !!
    !!====================================================================================
-   USE mod_const                                         !: physical and othe constants
-   USE mod_phymbl                                        !: thermodynamics
-   
+   USE mod_const       !: physical and other constants
+   USE mod_phymbl      !: misc. physical functions
+
    IMPLICIT NONE
    PRIVATE
 
@@ -51,7 +51,7 @@ MODULE mod_blk_andreas
    INTEGER, PARAMETER :: iverbose = 0
    
    PUBLIC :: TURB_ANDREAS, psi_m_andreas, psi_h_andreas
-   
+
    !!----------------------------------------------------------------------
 CONTAINS
 

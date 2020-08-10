@@ -25,8 +25,8 @@ MODULE mod_blk_ncar
    !!            Author: Laurent Brodeau, 2016
    !!
    !!====================================================================================
-   USE mod_const       !: physical and othe constants
-   USE mod_phymbl      !: thermodynamics
+   USE mod_const       !: physical and other constants
+   USE mod_phymbl      !: misc. physical functions
 
    IMPLICIT NONE
    PRIVATE
