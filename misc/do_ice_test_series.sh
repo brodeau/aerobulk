@@ -37,3 +37,8 @@ EOF
 10
 2
 EOF
+
+
+python3 ./python/plot_tests/plot_ice_bulk_comp.py .
+
+

@@ -41,32 +41,38 @@ MODULE mod_blk_ice_lu12
    !!  of the neutral atmospheric drag coefficients for weather prediction and climate models, J. Geophys. Res., 117, D13112,
    !!  doi:10.1029/2012JD017630.
    !!
+   !!       => Sespite the fact that the sea-ice concentration (frice) must be provided,
+   !!          only transfer coefficients, and air temp. + hum. height adjustement
+   !!          over ice are returned/performed.
+   !!        ==> 'frice' is only here to estimate the form drag caused by sea-ice...
+   !!
+   !!       Routine turb_ice_lu12 maintained and developed in AeroBulk
+   !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, January 2020
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
    USE mod_phymbl      !: misc. physical functions
-   USE mod_blk_ncar, ONLY: CD_N10_NCAR  !: in order to have a decent estimate of z0 over water
+   !USE mod_blk_ncar, ONLY: CD_N10_NCAR  !: in order to have a decent estimate of z0 over water
    USE mod_cdn_form_ice
 
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: turb_ice_lu12
-
    REAL(wp), PARAMETER :: rz0_i_s_0  = 0.69e-3_wp  ! Eq.(43) of Lupkes & Gryanik (2015) [m] => to estimate CdN10 for skin drag!
    REAL(wp), PARAMETER :: rz0_i_f_0  = 4.54e-4_wp  ! bottom p.562 MIZ [m] (LG15)   
    REAL(wp), PARAMETER :: rz0_w_s_0 = 3.27E-4      ! fixed roughness length over water (paragraph below Eq.36)
 
+   PUBLIC :: turb_ice_lu12
 
    !!----------------------------------------------------------------------
 CONTAINS
 
    SUBROUTINE turb_ice_lu12( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
                                 !&                      hf, Di,                                          &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,             &
-      &                      CdN_frm, CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
+      &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ubzu,            &
+      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lu12  ***
       !!
@@ -94,16 +100,15 @@ CONTAINS
       !!
       !! OUTPUT :
       !! --------
-      !!    *  Cd     : drag coefficient
-      !!    *  Ch     : sensible heat coefficient
-      !!    *  Ce     : evaporation coefficient
-      !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
-      !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ub     : bulk wind speed at zu that we used                    [m/s]
+      !!    *  Cd_i   : drag coefficient over sea-ice
+      !!    *  Ch_i   : sensible heat coefficient over sea-ice
+      !!    *  Ce_i   : sublimation coefficient over sea-ice
+      !!    *  t_zu_i   : pot. air temperature adjusted at wind height zu       [K]
+      !!    *  q_zu_i   : specific humidity of air        //                    [kg/kg]
+      !!    *  Ubzu     : bulk wind speed at zu that we used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * CdN_frm : sea-ice-related neutral FORM drag coefficient caused by floe egges etc...
       !!    * CdN      : neutral-stability drag coefficient
       !!    * ChN      : neutral-stability sensible heat coefficient
       !!    * CeN      : neutral-stability evaporation coefficient
@@ -127,14 +132,13 @@ CONTAINS
       !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: hf    ! mean freeboard of floes    [m]
       !REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: Di    ! cross wind dimension of the floe (aka effective edge length for form drag)   [m]
       !!
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd    ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch    ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce    ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu  ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu  ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i  ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i  ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu ! bulk wind speed at zu                     [m/s]
       !!
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN_frm  ! form dra
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
@@ -153,7 +157,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !l_known_hf    = PRESENT(hf)
       !l_known_Di    = PRESENT(Di)
-      lreturn_cdfrm = PRESENT(CdN_frm)
+      !lreturn_cdfrm = PRESENT(CdN_frm)
       lreturn_cdn   = PRESENT(CdN)
       lreturn_chn   = PRESENT(ChN)
       lreturn_cen   = PRESENT(CeN)
@@ -167,62 +171,62 @@ CONTAINS
       ALLOCATE ( dt_zu(jpi,jpj), dq_zu(jpi,jpj) , z0_w(jpi,jpj), z0_i(jpi,jpj) )
 
       !! Scalar wind speed cannot be below 0.2 m/s
-      Ub = MAX( U_zu, wspd_thrshld_ice )
+      Ubzu = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 0.1e-6_wp )   !               "
+      t_zu_i = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
+      q_zu_i = MAX( q_zt , 0.1e-6_wp )   !               "
 
       !! Air-Ice differences (and we don't want it to be 0!)
-      dt_zu = t_zu - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-      dq_zu = q_zu - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      dt_zu = t_zu_i - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
+      dq_zu = q_zu_i - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 
 
 
       !! To estimate CDN10_skin:
       !!  we use the method that comes in LG15, i.e. by starting from a default roughness length z0 for skin drag:
 
-      Ce(:,:) = rz0_i_s_0 !! temporary array to contain roughness length for skin drag !
+      Ce_i(:,:) = rz0_i_s_0 !! temporary array to contain roughness length for skin drag !
 
 
       !! Method #1:
-      !Cd(:,:) = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU13( frice(:,:) )
+      !Cd_i(:,:) = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU13( frice(:,:) )
       !IF( lreturn_cdfrm ) CdN_frm = CdN10_f_LU13( frice(:,:) )
       !PRINT *, 'LOLO: estimate of Cd_f_i method #1 =>', CdN10_f_LU13( frice(:,:) ); PRINT *, ''
 
       !! Method #2:
       !! We need an estimate of z0 over water:
-      !z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ub) )
+      !z0_w(:,:) = z0_from_Cd( zu, CD_N10_NCAR(Ubzu) )
       !!PRINT *, 'LOLO: estimate of z0_w =>', z0_w
-      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) )
+      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU12( frice(:,:), z0_w(:,:) )
       !IF( lreturn_cdfrm ) CdN_frm =  CdN10_f_LU12( frice(:,:), z0_w(:,:) )
       !!          N10 skin drag                     N10 form drag
 
       !! Method #3:
-      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) ) + CdN10_f_LU12_eq36( frice(:,:) )
+      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) ) + CdN10_f_LU12_eq36( frice(:,:) )
       !IF( lreturn_cdfrm ) CdN_frm = CdN10_f_LU12_eq36( frice(:,:) )
       !PRINT *, 'LOLO: estimate of Cd_f_i method #2 =>', CdN10_f_LU12( frice(:,:), z0_w(:,:) )
 
       !! Method #4:
       !! using eq.21 of LG15 instead:
       z0_i(:,:) = rz0_i_f_0
-      !Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) / frice(:,:)
-      Cd(:,:)   = Cd_from_z0( zu, Ce(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
-      IF( lreturn_cdfrm ) CdN_frm = CdN_f_LG15( zu, frice(:,:), z0_i(:,:) )
+      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) / frice(:,:)
+      Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
+      !IF( lreturn_cdfrm ) CdN_frm = CdN_f_LG15( zu, frice(:,:), z0_i(:,:) )
 
 
-      Ch(:,:) = Cd(:,:)
-      Ce(:,:) = Cd(:,:)
+      Ch_i(:,:) = Cd_i(:,:)
+      Ce_i(:,:) = Cd_i(:,:)
 
-      IF( lreturn_cdn )   CdN = Cd(:,:)
-      IF( lreturn_chn )   ChN = Ch(:,:)
-      IF( lreturn_cen )   CeN = Ce(:,:)
+      IF( lreturn_cdn )   CdN = Cd_i(:,:)
+      IF( lreturn_chn )   ChN = Ch_i(:,:)
+      IF( lreturn_cen )   CeN = Ce_i(:,:)
 
-      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd )
-      IF( lreturn_ustar ) xu_star = SQRT(Cd)*Ub
-      IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, SQRT(Cd)*Ub, &
-         &                          Cd/SQRT(Cd)*dt_zu, Cd/SQRT(Cd)*dq_zu)
-      IF( lreturn_UN10 )  xUN10   = SQRT(Cd)*Ub/vkarmn * LOG( 10._wp / z0_from_Cd( zu, Cd ) )
+      IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd_i )
+      IF( lreturn_ustar ) xu_star = SQRT(Cd_i)*Ubzu
+      IF( lreturn_L )     xL      = 1./One_on_L(t_zu_i, q_zu_i, SQRT(Cd_i)*Ubzu, &
+         &                          Cd_i/SQRT(Cd_i)*dt_zu, Cd_i/SQRT(Cd_i)*dq_zu)
+      IF( lreturn_UN10 )  xUN10   = SQRT(Cd_i)*Ubzu/vkarmn * LOG( 10._wp / z0_from_Cd( zu, Cd_i ) )
 
       DEALLOCATE ( dt_zu, dq_zu, z0_w )
 
