@@ -69,9 +69,8 @@ MODULE mod_blk_ice_lu12
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_lu12( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
-                                !&                      hf, Di,                                          &
-      &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ubzu,            &
+   SUBROUTINE turb_ice_lu12( zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
+      &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ubzu,      &
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ice_lu12  ***
@@ -83,7 +82,6 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  Ts_i  : surface temperature of sea-ice                         [K]
@@ -103,15 +101,15 @@ CONTAINS
       !!    *  Cd_i   : drag coefficient over sea-ice
       !!    *  Ch_i   : sensible heat coefficient over sea-ice
       !!    *  Ce_i   : sublimation coefficient over sea-ice
-      !!    *  t_zu_i   : pot. air temperature adjusted at wind height zu       [K]
-      !!    *  q_zu_i   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ubzu     : bulk wind speed at zu that we used                    [m/s]
+      !!    *  t_zu_i : pot. air temp. adjusted at zu over sea-ice             [K]
+      !!    *  q_zu_i : spec. hum. of air adjusted at zu over sea-ice          [kg/kg]
+      !!    *  Ubzu  : bulk wind speed at zu that was used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * CdN      : neutral-stability drag coefficient
-      !!    * ChN      : neutral-stability sensible heat coefficient
-      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * CdN     : neutral-stability drag coefficient
+      !!    * ChN     : neutral-stability sensible heat coefficient
+      !!    * CeN     : neutral-stability evaporation coefficient
       !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
       !!    * xu_star : return u* the friction velocity                    [m/s]
       !!    * xL      : return the Obukhov length                          [m]
@@ -119,7 +117,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, January 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in )                     :: kt    ! current time step
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
@@ -138,7 +135,7 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i  ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i  ! spec. humidity adjusted at zu           [kg/kg]
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu ! bulk wind speed at zu                     [m/s]
-      !!
+      !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
@@ -177,7 +174,7 @@ CONTAINS
       t_zu_i = MAX( t_zt ,   100._wp )   ! who knows what's given on masked-continental regions...
       q_zu_i = MAX( q_zt , 0.1e-6_wp )   !               "
 
-      !! Air-Ice differences (and we don't want it to be 0!)
+      !! Air-Ice & Air-Sea differences (and we don't want them to be 0!)
       dt_zu = t_zu_i - Ts_i ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
       dq_zu = q_zu_i - qs_i ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
 

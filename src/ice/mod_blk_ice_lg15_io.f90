@@ -23,7 +23,7 @@
 !
 !
 !
-MODULE mod_blk_ice_lg15
+MODULE mod_blk_ice_lg15_io
    !!====================================================================================
    !!       Computes turbulent components of surface fluxes over sea-ice
    !!       Following Lupkes & Gryanik, 2015
@@ -38,7 +38,7 @@ MODULE mod_blk_ice_lg15
    !!          over ice are returned/performed.
    !!        ==> 'frice' is only here to estimate the form drag caused by sea-ice...
    !!
-   !!       Routine turb_ice_lg15 maintained and developed in AeroBulk
+   !!       Routine turb_ice_lg15_io maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
    !!            Author: Laurent Brodeau, January 2020
@@ -61,17 +61,17 @@ MODULE mod_blk_ice_lg15
    LOGICAL,  PARAMETER :: l_use_pond_info = .FALSE.
    LOGICAL,  PARAMETER :: l_dbg_print     = .FALSE.
 
-   PUBLIC :: turb_ice_lg15
+   PUBLIC :: turb_ice_lg15_io
 
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_lg15( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
-      &                      Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ubzu,            &
-      &                      Ts_w, qs_w, CdN_frm, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
-      &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
+   SUBROUTINE turb_ice_lg15_io( zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu, frice, &
+      &                         Cd_i, Ch_i, Ce_i, t_zu_i, q_zu_i, Ubzu,            &
+      &                         Ts_w, qs_w, CdN_frm, Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w,    &
+      &                         CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
-      !!                      ***  ROUTINE  turb_ice_lg15  ***
+      !!                      ***  ROUTINE  turb_ice_lg15_io  ***
       !!
       !! ** Purpose :   Computestransfert coefficients of turbulent surface
       !!                fluxes according
@@ -80,7 +80,6 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  Ts_i  : surface temperature of sea-ice                         [K]
@@ -122,7 +121,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, January 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in )                     :: kt    ! current time step
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
@@ -167,7 +165,7 @@ CONTAINS
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       LOGICAL :: lreturn_o_water=.FALSE.
       !!
-      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
+      CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15_io@mod_blk_ice_lg15_io.f90'
       !!----------------------------------------------------------------------------------
       ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
       ALLOCATE ( dt_zu(jpi,jpj,2), dq_zu(jpi,jpj,2), zt_zu(jpi,jpj,2), zq_zu(jpi,jpj,2) )
@@ -178,7 +176,7 @@ CONTAINS
       lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
 
       IF( ( lreturn_o_water ) .AND. (.NOT.(PRESENT(Ts_w)) .OR. .NOT.(PRESENT(qs_w))) ) THEN
-         PRINT *, ' ERROR: turb_ice_lg15@mod_blk_ice_lg15 => you must specify "Ts_w" and "qs_w" as input'
+         PRINT *, ' ERROR: turb_ice_lg15_io@mod_blk_ice_lg15_io => you must specify "Ts_w" and "qs_w" as input'
          STOP
       END IF
 
@@ -401,7 +399,7 @@ CONTAINS
       DEALLOCATE ( zz0_s, zz0_f, RiB, zCdN_s, zChN_s, zCdN_f, zChN_f )
       DEALLOCATE ( zCd, zCh )
 
-   END SUBROUTINE turb_ice_lg15
+   END SUBROUTINE turb_ice_lg15_io
 
    !!======================================================================
 
@@ -412,4 +410,4 @@ CONTAINS
 !      mix_val_msh(:,:) = pfri(:,:) * pfld(:,:,1) + (1._wp - pfri(:,:)) * pfld(:,:,2)
 !   END FUNCTION mix_val_msh
 
-END MODULE mod_blk_ice_lg15
+END MODULE mod_blk_ice_lg15_io

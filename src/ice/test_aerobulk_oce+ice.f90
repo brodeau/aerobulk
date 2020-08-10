@@ -7,7 +7,7 @@ PROGRAM TEST_AEROBULK_ICE
    USE mod_blk_ecmwf    ! we need a bulk algo over water for bulk-ice algos that do not deal with leads...
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
-   USE mod_blk_ice_lg15
+   USE mod_blk_ice_lg15_io
 
    IMPLICIT NONE
 
@@ -335,19 +335,19 @@ PROGRAM TEST_AEROBULK_ICE
       SELECT CASE(ialgo)
 
       CASE(1)
-         CALL TURB_ICE_NEMO( 1, zt, zu, sit, theta_zt, siq, q_zt, W10,   &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_NEMO( zt, zu, sit, theta_zt, siq, q_zt, W10,   &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(2)
-         CALL TURB_ICE_AN05( 1, zt, zu, sit, theta_zt, siq, q_zt, W10,   &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_AN05( zt, zu, sit, theta_zt, siq, q_zt, W10,   &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,         &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(3)
-         CALL TURB_ICE_LG15(1, zt, zu, sit, theta_zt, siq, q_zt, W10, frci,  &
-            &                  Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
-            &                  xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_LG15_IO( zt, zu, sit, theta_zt, siq, q_zt, W10, frci,  &
+            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
+            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
          
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP

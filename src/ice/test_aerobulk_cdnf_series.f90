@@ -32,7 +32,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jt0, jt, jarg, ialgo, jq, n0, info
+   INTEGER :: jt0, jt, jarg, ialgo, n0, info
 
    INTEGER :: nx, ny, Nt, ians
 
@@ -52,7 +52,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    !REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SST, SKT, SLP, W10, SIC, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: dummy, W10, SIC
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zUN10
+   !REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zUN10
 
    !REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zt, rho_zu
 
@@ -62,7 +62,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
 
    REAL(wp) :: zu
 
-   CHARACTER(len=3) :: czt, czu
+   CHARACTER(len=3) :: czu
 
 
 

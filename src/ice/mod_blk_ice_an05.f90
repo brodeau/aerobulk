@@ -37,7 +37,7 @@ MODULE mod_blk_ice_an05
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_an05( kt, zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu,         &
+   SUBROUTINE turb_ice_an05( zt, zu, Ts_i, t_zt, qs_i, q_zt, U_zu,         &
       &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                       &
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
@@ -50,7 +50,6 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
       !!    *  Ts_i  : surface temperature of sea-ice                         [K]
@@ -80,7 +79,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, January 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in )                     :: kt    ! current time step
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
       REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]

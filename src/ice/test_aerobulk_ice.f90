@@ -295,28 +295,28 @@ PROGRAM TEST_AEROBULK_ICE
       SELECT CASE(ialgo)
 
       CASE(1)
-         CALL TURB_ICE_NEMO( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,              &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_NEMO( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+            &                CdN=zCdN, ChN=zChN, CeN=zCeN,              &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(2)
-         CALL TURB_ICE_AN05( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,              &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_AN05( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
+            &                CdN=zCdN, ChN=zChN, CeN=zCeN,              &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(3)
-         CALL TURB_ICE_LU12( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,               &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_LU12( zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
+            &                CdN=zCdN, ChN=zChN, CeN=zCeN,               &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
          
       CASE(4)
-         CALL TURB_ICE_LG15( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
-            &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
-            &                   CdN=zCdN, ChN=zChN, CeN=zCeN,               &
-            &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         CALL TURB_ICE_LG15( zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
+            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
+            &                CdN=zCdN, ChN=zChN, CeN=zCeN,               &
+            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
          
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP

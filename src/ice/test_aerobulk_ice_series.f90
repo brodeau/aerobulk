@@ -318,22 +318,22 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
       SELECT CASE ( TRIM(calgo) )
 
       CASE ( 'nemo' )
-         CALL turb_ice_nemo( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),            &
+         CALL turb_ice_nemo( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),            &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
       CASE ( 'an05' )
-         CALL turb_ice_an05( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),             &
+         CALL turb_ice_an05( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),             &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),     &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
       CASE ( 'lu12' )
-         CALL turb_ice_lu12( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
+         CALL turb_ice_lu12( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          
       CASE ( 'lg15' )
-         CALL turb_ice_lg15( jt, zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
+         CALL turb_ice_lg15( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
             &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
             &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
          

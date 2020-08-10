@@ -35,7 +35,7 @@ LIB_SRC = src/mod_const.f90 \
 	  src/ice/mod_blk_ice_nemo.f90 \
 	  src/ice/mod_blk_ice_an05.f90 \
 	  src/ice/mod_blk_ice_lu12.f90 \
-	  src/ice/mod_blk_ice_lg15.f90 \
+	  src/ice/mod_blk_ice_lg15.f90 src/ice/mod_blk_ice_lg15_io.f90 \
 	  src/ice/mod_blk_ice_best.f90
 
 
