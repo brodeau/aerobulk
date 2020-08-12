@@ -295,7 +295,7 @@ for jm in range(12):
     id_fi = Dataset(cf_fi)
 
     # 1/ populate variables and check it's what's expected:
-    list_var = id_fi.variables.keys()
+    list_var = list(id_fi.variables.keys())
     print(' *** list_var =', list_var)
     if list_var[:3] != list_crd_expected:
         print(' ERROR this is not the list of coordinates we expected...') ; sys.exit(0)
