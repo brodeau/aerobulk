@@ -9,7 +9,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    USE mod_phymbl
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
-   
+
    USE mod_blk_ice_nemo
    USE mod_blk_ice_an05
    USE mod_blk_ice_lg15
@@ -150,6 +150,10 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    ALLOCATE ( Cd_i(nx,ny,Nt), Ce_i(nx,ny,Nt), Ch_i(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &       RiB_zt(nx,ny,Nt), RiB_zu(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
 
+   t_zu = 0. ; theta_zu = 0. ; q_zu = 0. ; rho_zt = 0. ; rho_zu = 0. ; dummy = 0. 
+   Cd_i = 0. ; Ce_i = 0. ; Ch_i = 0. ; QH = 0. ; QL = 0. ; Qsw = 0. ; Qlw = 0. ; QNS = 0.
+   RiB_zt = 0. ; RiB_zu = 0. ; TAU = 0. ; SBLM = 0.
+   
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
@@ -181,8 +185,8 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
       q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
    END DO
 
-   CALL GETVAR_1D(cf_data, 'radsw',  rad_sw  )
-   CALL GETVAR_1D(cf_data, 'radlw',  rad_lw  )
+   CALL GETVAR_1D(cf_data, 'ssrd',  rad_sw  )
+   CALL GETVAR_1D(cf_data, 'strd',  rad_lw  )
 
 
    WRITE(6,*) ''
@@ -232,7 +236,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    !! Some initializations:
 
    ialgo = 0
-   zz0 = 0.   
+   zz0 = 0.
    zus = 0.
    zL  = 0.
    zUN10 = 0.
@@ -249,7 +253,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
    jt0 = 1
    IF( ldebug .AND. (jt>0) ) jt0 = jtdbg
-   
+
    !! Time loop:
    DO jt = jt0, Nt
 
@@ -268,7 +272,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
       IF (lverbose) THEN
          WRITE(6,*) csep
          WRITE(6,*) ''
-         WRITE(6,*) '           ---- BEFORE BULK ALGO ----'
+         WRITE(6,*) '           ---- BEFORE BULK ALGO ('//TRIM(calgo)//') ----'
          WRITE(6,*) ''
       END IF
 
@@ -315,83 +319,93 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
       Qsw(:,:,jt) = (1._wp - rice_alb0)*rad_sw(:,:,jt)
 
 
-      SELECT CASE ( TRIM(calgo) )
+      !! Only computing if there is sea-ice !!
+      IF( SIC(1,1,jt) > 0.01_wp ) THEN
 
-      CASE ( 'nemo' )
-         CALL turb_ice_nemo( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),            &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
-      CASE ( 'an05' )
-         CALL turb_ice_an05( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),             &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),     &
-            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
-      CASE ( 'lu12' )
-         CALL turb_ice_lu12( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
-            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
-      CASE ( 'lg15' )
-         CALL turb_ice_lg15( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
-            &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
-            &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
-      CASE DEFAULT
-         PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
-         STOP
-      END SELECT
-      
-      
-      !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
-      t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
-      DO jq = 1, 4
-         rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
-         t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
-      END DO
+         SELECT CASE ( TRIM(calgo) )
 
-      !! Bulk Richardson Number for layer "sea-level -- zu":
-      RiB_zu(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), SIQ(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
+         CASE ( 'nemo' )
+            CALL turb_ice_nemo( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),            &
+               &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+               &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-      !! Turbulent heat fluxes:
-      CALL BULK_FORMULA( zu, SIT(:,:,jt), SIQ(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
-         &              Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
-         &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
-         &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
+         CASE ( 'an05' )
+            CALL turb_ice_an05( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt),             &
+               &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),     &
+               &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-      !! Longwave radiative heat fluxes:
-      Qlw(:,:,jt) = qlw_net( rad_lw(:,:,jt), SIT(:,:,jt), l_ice=.TRUE. )
+         CASE ( 'lu12' )
+            CALL turb_ice_lu12( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
+               &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
+               &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
-      !! Non-solar heat flux:
-      QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt)
+         CASE ( 'lg15' )
+            CALL turb_ice_lg15( zt, zu, SIT(:,:,jt), theta_zt(:,:,jt), SIQ(:,:), q_zt(:,:,jt), W10(:,:,jt), SIC(:,:,jt), &
+               &                Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),      &
+               &                CdN=zCdN(:,:,jt), xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+         CASE DEFAULT
+            PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
+            STOP
+         END SELECT
 
 
-      IF (lverbose) THEN
+         !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
+         t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
+         DO jq = 1, 4
+            rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
+            t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
+         END DO
+
+         !! Bulk Richardson Number for layer "sea-level -- zu":
+         RiB_zu(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), SIQ(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
+
+         !! Turbulent heat fluxes:
+         CALL BULK_FORMULA( zu, SIT(:,:,jt), SIQ(:,:), theta_zu(:,:,jt), q_zu(:,:,jt), &
+            &              Cd_i(:,:,jt), Ch_i(:,:,jt), Ce_i(:,:,jt), W10(:,:,jt), Ublk(:,:,jt), SLP(:,:,jt), &
+            &              TAU(:,:,jt), QH(:,:,jt), QL(:,:,jt),  &
+            &              pEvap=SBLM(:,:,jt), prhoa=rho_zu(:,:,jt), l_ice=.TRUE. )
+
+         !! Longwave radiative heat fluxes:
+         Qlw(:,:,jt) = qlw_net( rad_lw(:,:,jt), SIT(:,:,jt), l_ice=.TRUE. )
+
+         !! Non-solar heat flux:
+         QNS(:,:,jt) = QH(:,:,jt) + QL(:,:,jt) + Qlw(:,:,jt)
+
+
+         IF (lverbose) THEN
+            WRITE(6,*) ''
+            WRITE(6,*) '           ---- AFTER BULK ALGO ('//TRIM(calgo)//') ----'
+            WRITE(6,*) ''
+         END IF
+         info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
+         info = DISP_DEBUG(lverbose, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
+         info = DISP_DEBUG(lverbose, 'q_zu',                        q_zu(:,:,jt)*1000.,    '[g/kg]'  )
+         info = DISP_DEBUG(lverbose, 'Ublk',                        Ublk(:,:,jt),          '[m/s]'   )
+         info = DISP_DEBUG(lverbose, 'RiB_zu',                      RiB_zu(:,:,jt),       '[]'       )
+
+         !! Sanity check:
+         IF( ABS(RiB_zu(1,1,jt)) > 100._wp ) THEN
+            PRINT *, 'Fucked up Richardson number!!!, is everything okay???', RiB_zu(1,1,jt)
+            STOP
+         END IF
+         IF( (ABS(rho_zu(1,1,jt)) > 1.7_wp).OR.(ABS(rho_zu(1,1,jt)) < 0.9_wp) ) THEN
+            PRINT *, 'We fucked up, density at zu is irrealistic!!!'
+            STOP
+         END IF
+
+         IF (lverbose) THEN
+            WRITE(6,*) ''
+            WRITE(6,*) csep
+         END IF
+
+      ELSE
+
          WRITE(6,*) ''
-         WRITE(6,*) '           ---- AFTER BULK ALGO ----'
+         WRITE(6,*) ' *** DOING NOTHING! NO SEA-ICE present for this time step !!!'
          WRITE(6,*) ''
-      END IF
-      info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czu), rho_zu(:,:,jt),     '[kg/m^3]' )
-      info = DISP_DEBUG(lverbose, 'theta_zu',                    theta_zu(:,:,jt)-rt0, '[deg.C]'  )
 
-
-      IF (lverbose) THEN
-         WRITE(6,*) ''
-         WRITE(6,*) csep
       END IF
-
-      !! Sanity check:
-      !IF( ldebug ) THEN
-      IF( ABS(RiB_zu(1,1,jt)) > 40._wp ) THEN
-         PRINT *, 'Fucked up Richardson number!!!, is everything okay???'
-         STOP
-      END IF
-      IF( (ABS(rho_zu(1,1,jt)) > 1.7_wp).OR.(ABS(rho_zu(1,1,jt)) < 0.9_wp) ) THEN
-         PRINT *, 'We fucked up, density at zu is irrealistic!!!'
-         STOP
-      END IF
-      !END IF
-
 
    END DO !DO jt = 1, Nt
 
@@ -400,7 +414,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
 
 
-   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'aerobulk_test_ice_series_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), ct_clnd=TRIM(clndr_t), &
       &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',   cun02='W/m^2', cln02='Latent Heat Flux',       &
@@ -421,7 +435,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
       &           vdt17=REAL(1000.*zCdN(1,1,:),4), cv_dt17='CdN', cun17='',    cln17='Neutral-stability drag coefficient',  &
       &           vdt18=REAL(SIC(1,1,:),4),        cv_dt18='A',   cun18='',    cln18='Sea-ice concentration'  &
       &           )
-   
+
    WRITE(6,*) ''; WRITE(6,*) ''
    CLOSE(6)
 

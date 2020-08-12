@@ -28,8 +28,8 @@ clr_gre = '#548F64'
 clr_sat = '#ffed00'
 clr_mod = '#008ab8'
 
-rDPI=100.
-#rDPI=150.
+#rDPI=100.
+rDPI=200.
 #DPI=300.
 
 L_ALGOS = [ 'nemo'     ,     'an05'   ,        'lu12'        ,        'lg15'            ]
@@ -67,7 +67,7 @@ def chck4f(cf):
 
 cf_in = []
 for ja in range(nb_algos):
-    cfi = cdir_data+'/lolo_'+L_ALGOS[ja]+'.nc'
+    cfi = cdir_data+'/aerobulk_test_ice_series_'+L_ALGOS[ja]+'.nc'
     chck4f(cfi)
     cf_in.append(cfi)
 print('Files we are goin to use:')
