@@ -18,8 +18,8 @@ import clprn_tool as clt
 
 
 dir_figs='.'
-#size_fig=(13,7)
-size_fig=(13,10)
+size_fig=(13,8)
+size_fig0=(12,10)
 fig_ext='png'
 
 clr_red = '#AD0000'
@@ -28,9 +28,7 @@ clr_gre = '#548F64'
 clr_sat = '#ffed00'
 clr_mod = '#008ab8'
 
-#rDPI=100.
-rDPI=200.
-#DPI=300.
+rDPI=100.
 
 L_ALGOS = [ 'nemo'     ,     'an05'   ,        'lu12'        ,        'lg15'            ]
 l_color = [   '0.1'    ,   clr_gre    ,       clr_blu        ,        clr_red           ] ; # colors to differentiate algos on the plot
@@ -74,8 +72,6 @@ print('Files we are goin to use:')
 for ja in range(nb_algos): print(cf_in[ja])
 #-----------------------------------------------------------------
 
-
-
 # Getting time array from the first file:
 id_in = Dataset(cf_in[0])
 vt = id_in.variables['time'][:]
@@ -92,14 +88,25 @@ ii=Nt/300
 ib=max(ii-ii%10,1)
 xticks_d=int(30*ib)
 
-font_inf = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':14 }
+rat = 100./float(rDPI)
+params = { 'font.family':'Open Sans',
+           'font.size':       int(15.*rat),
+           'legend.fontsize': int(15.*rat),
+           'xtick.labelsize': int(15.*rat),
+           'ytick.labelsize': int(15.*rat),
+           'axes.labelsize':  int(16.*rat)
+}
+mpl.rcParams.update(params)
+font_inf = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':18.*rat }
+font_x   = { 'fontname':'Open Sans', 'fontweight':'normal', 'fontsize':15.*rat }
+
+
+# Now we compare output variables from bulk algorithms between them:
 
 nb_var = len(L_VNEM)
 
 xF  = nmp.zeros((Nt,nb_algos))
 xFa = nmp.zeros((Nt,nb_algos))
-
-
 
 
 for jv in range(nb_var):
@@ -114,12 +121,11 @@ for jv in range(nb_var):
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     fig = plt.figure(num = jv, figsize=size_fig, facecolor='w', edgecolor='k')
-    ax1 = plt.axes([0.07, 0.15, 0.9, 0.83])
-    
+    ax1 = plt.axes([0.08, 0.25, 0.9, 0.7])
     ax1.set_xticks(vtime[::xticks_d])
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
-    plt.xticks(rotation='60')
-    
+    plt.xticks(rotation='60', **font_x)
+
     for ja in range(nb_algos):
         plt.plot(vtime, xF[:,ja], '-', color=l_color[ja], linestyle=l_style[ja], \
                  linewidth=l_width[ja], label=l_lgnm[ja], zorder=10+ja)
@@ -131,7 +137,7 @@ for jv in range(nb_var):
         plt.yscale('symlog', linthreshy=0.015)
     
     ax1.grid(color='k', linestyle='-', linewidth=0.3)
-    plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
+    plt.legend(loc='best', ncol=1, shadow=True, fancybox=True)
     ax1.annotate(cvar_lnm+' over sea-ice', xy=(0.3, 0.97), xycoords='axes fraction',  \
                  bbox={'facecolor':'w', 'alpha':1., 'pad':10}, zorder=50, **font_inf)
     plt.savefig(L_VARO[jv]+'.'+fig_ext, dpi=int(rDPI), transparent=False)
@@ -146,18 +152,17 @@ for jv in range(nb_var):
         if nmp.sum(nmp.abs(xFa[:,:])) == 0.0:
             print('     Well! Seems that for variable '+L_VARO[jv]+', choice of algo has no impact a all!')
             print('          ==> skipping anomaly plot...')
-        
+
         else:
 
             yrng = clt.symetric_range( nmp.min(xFa) , nmp.max(xFa) )
 
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             fig = plt.figure(num = 10+jv, figsize=size_fig, facecolor='w', edgecolor='k')
-            ax1 = plt.axes([0.07, 0.22, 0.9, 0.75])
-
+            ax1 = plt.axes([0.08, 0.25, 0.9, 0.7])
             ax1.set_xticks(vtime[::xticks_d])
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M:%S'))
-            plt.xticks(rotation='60')
+            plt.xticks(rotation='60', **font_x)
 
             for ja in range(nb_algos):
                 plt.plot(vtime, xFa[:,ja], '-', color=l_color[ja], linewidth=l_width[ja], \

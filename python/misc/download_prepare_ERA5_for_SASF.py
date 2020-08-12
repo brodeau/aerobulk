@@ -1,4 +1,4 @@
-#!/usr/bin/env python                                                                                                   
+#!/usr/bin/env python3                                                                                                   
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-                                              
 #
 # LOLO: add an empty array for SSH in output netcdf file !!!
@@ -13,17 +13,32 @@ from netCDF4 import Dataset
 from math import copysign
 import numpy as nmp
 
+yyyy = 2018
+
 # Coordinates (point) we want to extract for STATION ASF:
 
-plon = 36.75 ; plat = 81. ; # East of Svalbard
+plon = -13.  ; plat = 85. ; # North-East of Greenland...
+#plon = 36.75 ; plat = 81. ; # East of Svalbard
 #plon = -65.1  ; plat = 73.2 ; # Center of Baffin Bay
 
 list_crd_expected = ['longitude', 'latitude', 'time']
 # Their name in the downloaded file:
-list_var_expected = ['u10', 'v10', 'd2m', 'fal', 't2m', 'istl1', 'msl', 'siconc', 'sst', 'skt', 'ssrd', 'strd', 'tp', 'sf' ]
+### dumping 'fal','forecast_albedo' since it's proportional to ice fraction...
+list_var_expected = ['u10', 'v10', 'd2m', 't2m', 'istl1', \
+                     'msl', 'sst', 'skt', \
+                     'ssrd', 'strd', 'tp', 'sf' ]
+
 # Their name in the cdsapi request:
-lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', 'forecast_albedo', '2m_temperature', 'ice_temperature_layer_1', 'mean_sea_level_pressure','sea_ice_cover', 'sea_surface_temperature', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
-yyyy = 2018
+lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', '2m_temperature', 'ice_temperature_layer_1', \
+         'mean_sea_level_pressure', 'sea_surface_temperature', 'skin_temperature', \
+         'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
+
+# Daily fields:
+list_var_daily_expected =     ['siconc' ]
+lvdl_daily              = [ 'sea_ice_cover' ]
+
+
+
 
 # In output file:
 cv_lon = 'nav_lon'
@@ -54,11 +69,6 @@ def long_to_m180_p180(xx):
     return rlon
 
 
-
-nbfld = len(list_var_expected)
-if len(lvdl) != nbfld:
-    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!', len(lvdl), nbfld) ; sys.exit(0)
-
 # Coordinates of 10deg-wide box to download:
 dw = 5. ; # degrees
 irng_lon = [ int(round(long_to_m180_p180(plon-dw),0)) , int(round(long_to_m180_p180(plon+dw),0)) ]
@@ -73,7 +83,152 @@ print('')
 
 
 
-# Downloading, month after month...
+
+
+
+
+
+
+
+
+
+
+
+
+# Downloading daily fields, month after month...
+
+nbfld_daily = len(list_var_daily_expected)
+if len(lvdl_daily) != nbfld_daily:
+    print(' ERROR: download list "lvdl_daily" not the same size as "list_var_daily_expected"!!!', len(lvdl_daily), nbfld_daily) ; sys.exit(0)
+
+
+
+c = cdsapi.Client()
+
+for jm in range(12):
+
+    cm = '%2.2i'%(jm+1)
+
+    cf_fi_d = 'ERA5_arctic_surface_'+str(irng_lat[1])+'-'+str(irng_lat[0])+'_'+str(irng_lon[0])+'-'+str(irng_lon[1])+'_'+str(yyyy)+cm+'_daily.nc'
+    cf_fo_d = 'ERA5_arctic_surface_'+str(plat)+'N_'+str(plon)+'E_1d_y'+str(yyyy)+'m'+cm+'.nc'
+    
+    if not path.exists(cf_fi_d):
+    
+        print('\nDoing month '+cm+' !')
+    
+        c.retrieve(
+            'reanalysis-era5-single-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'netcdf',
+                'variable': [ lvdl_daily[0], ],
+                'year': str(yyyy),
+                'month': [ cm, ],
+                'day': [
+                    '01', '02', '03',
+                    '04', '05', '06',
+                    '07', '08', '09',
+                    '10', '11', '12',
+                    '13', '14', '15',
+                    '16', '17', '18',
+                    '19', '20', '21',
+                    '22', '23', '24',
+                    '25', '26', '27',
+                    '28', '29', '30',
+                    '31',
+                ],
+                'time': [ '12:00' ],
+                'area': [
+                    irng_lat[1], irng_lon[0], irng_lat[0],
+                    irng_lon[1],
+                ],
+            },
+            cf_fi_d )
+        
+        if cm == '01':
+            c.retrieve(
+                'reanalysis-era5-single-levels',
+                {
+                    'product_type': 'reanalysis',
+                    'format': 'netcdf',
+                    'variable': [ lvdl_daily[0], ],
+                    'year': str(yyyy-1),
+                    'month': [ '12', ],
+                    'day': [ '31', ],
+                    'time': [ '12:00' ],
+                    'area': [
+                        irng_lat[1], irng_lon[0], irng_lat[0],
+                        irng_lon[1],
+                    ],
+                },
+                cf_fi_d+'.before' )            
+            
+        if cm == '12':
+            c.retrieve(
+                'reanalysis-era5-single-levels',
+                {
+                    'product_type': 'reanalysis',
+                    'format': 'netcdf',
+                    'variable': [ lvdl_daily[0], ],
+                    'year': str(yyyy+1),
+                    'month': [ '01', ],
+                    'day': [ '31', ],
+                    'time': [ '12:00' ],
+                    'area': [
+                        irng_lat[1], irng_lon[0], irng_lat[0],
+                        irng_lon[1],
+                    ],
+                },
+                cf_fi_d+'.after' )
+            
+        
+    else:
+        print('\nAlready done month '+cm+' !')
+
+    
+    print('')
+
+    # Gonna fix this crap!
+
+    list_fi_check = [ cf_fi_d ]
+    if cm == '01': list_fi_check = [ cf_fi_d+'.before', cf_fi_d ]
+    if cm == '12': list_fi_check = [ cf_fi_d, cf_fi_d+'.after' ]
+    
+    for ff in list_fi_check:
+        print('\n Checking file '+ff+' !')
+        id_fi = Dataset(ff)
+        # 1/ populate variables and check it's what's expected:
+        list_var = list(id_fi.variables.keys())
+        print(' *** list_var          =', list_var)    
+        if list_var[:3] != list_crd_expected:
+            print(' ERROR this is not the list of coordinates we expected...') ; sys.exit(0)
+        if list_var[3:] != list_var_daily_expected:
+            print(' ERROR this is not the list of variables we expected...') ; sys.exit(0)
+    
+        Ni = id_fi.dimensions['longitude'].size
+        Nj = id_fi.dimensions['latitude'].size
+        #if not id_fi.dimensions['time'].isunlimited(): print 'PROBLEM: the time dimension is not UNLIMITED! Bad!'; sys.exit(0)
+        Nt = id_fi.dimensions['time'].size ; # Not unlimited in downloaded files...
+        print(' *** Input file: Ni, Nj, Nt = ', Ni, Nj, Nt, '\n')
+        id_fi.close()
+
+
+
+
+
+
+
+
+# Downloading hourly fields, month after month...
+
+nbfld = len(list_var_expected)
+if len(lvdl) != nbfld:
+    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!', len(lvdl), nbfld)
+    print(lvdl,'\n')
+    print(list_var_expected,'\n')
+    sys.exit(0)
+
+
 
 c = cdsapi.Client()
 
@@ -94,7 +249,7 @@ for jm in range(12):
                 'product_type': 'reanalysis',
                 'format': 'netcdf',
                 'variable': [
-                     lvdl[0], lvdl[1], lvdl[2], lvdl[3], lvdl[4], lvdl[5], lvdl[6], lvdl[7], lvdl[8], lvdl[9], lvdl[10], lvdl[11], lvdl[12], lvdl[13],
+                     lvdl[0], lvdl[1], lvdl[2], lvdl[3], lvdl[4], lvdl[5], lvdl[6], lvdl[7], lvdl[8], lvdl[9], lvdl[10], lvdl[11],
                 ],
                 'year': str(yyyy),
                 'month': [
@@ -135,9 +290,6 @@ for jm in range(12):
 
     print('')
 
-
-
-
     # Gonna fix this crap!
     
     id_fi = Dataset(cf_fi)
@@ -154,7 +306,7 @@ for jm in range(12):
     Nj = id_fi.dimensions['latitude'].size
     #if not id_fi.dimensions['time'].isunlimited(): print 'PROBLEM: the time dimension is not UNLIMITED! Bad!'; sys.exit(0)
     Nt = id_fi.dimensions['time'].size ; # Not unlimited in downloaded files...
-    print ' *** Input file: Ni, Nj, Nt = ', Ni, Nj, Nt, '\n'
+    print(' *** Input file: Ni, Nj, Nt = ', Ni, Nj, Nt, '\n')
         
     vlon  = id_fi.variables['longitude'][:] ; cunt_lon = id_fi.variables['longitude'].units ; clnm_lon = id_fi.variables['longitude'].long_name
     vlat  = id_fi.variables['latitude'][:]  ; cunt_lat = id_fi.variables['latitude'].units  ; clnm_lat = id_fi.variables['latitude'].long_name
