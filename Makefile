@@ -1,4 +1,4 @@
-# AeroBulk / 2015 / L. Brodeau (brodeau@gmail.com), S. Falahat (sd.falahat@gmail.com)
+# AeroBulk / 2015 / L. Brodeau
 # https://github.com/brodeau/aerobulk/
 
 include make.macro
