@@ -82,10 +82,10 @@ CONTAINS
 
 
 
-   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                           &
-      &                      Qsw, rad_lw, slp, pdT_cs,                                & ! optionals for cool-skin (and warm-layer)
-      &                      pdT_wl, pHz_wl,                                          & ! optionals for warm-layer only
+   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,    &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                                 &
+      &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
+      &                      pdT_wl, pHz_wl,                                             & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
@@ -147,10 +147,10 @@ CONTAINS
       !!    * CdN      : neutral-stability drag coefficient
       !!    * ChN      : neutral-stability sensible heat coefficient
       !!    * CeN      : neutral-stability evaporation coefficient
-      !!    * xz0     : return the aerodynamic roughness length (integration constant for wind stress) [m]
-      !!    * xu_star : return u* the friction velocity                    [m/s]
-      !!    * xL      : return the Obukhov length                          [m]
-      !!    * xUN10   : neutral wind speed at 10m                          [m/s]
+      !!    * xz0      : return the aerodynamic roughness length (integration constant for wind stress) [m]
+      !!    * xu_star  : return u* the friction velocity                    [m/s]
+      !!    * xL       : return the Obukhov length                          [m]
+      !!    * xUN10    : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------

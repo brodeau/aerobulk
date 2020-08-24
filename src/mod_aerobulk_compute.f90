@@ -5,8 +5,7 @@ MODULE mod_aerobulk_compute
    USE mod_const        !: physical constants
    USE mod_phymbl       !: thermodynamics functions
    
-   USE mod_blk_coare3p0 !: COARE v3.0 algorithm
-   !USE mod_blk_coare3p6 !: COARE v3.5 algorithm
+   USE mod_blk_coare3p6 !: COARE v3.5 algorithm
    USE mod_blk_ncar     !: Large & Yeager algorithm
    USE mod_blk_ecmwf    !: following ECMWF doc...
 
@@ -33,7 +32,7 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!    *  calgo: what bulk algorithm to use => 'coare3p0'/'coare3p6'/'ncar'/'ecmwf'
+      !!    *  calgo: what bulk algorithm to use => 'coare3p6'/'ncar'/'ecmwf'
       !!    *  zt   : height for temperature and spec. hum. of air           [m]
       !!    *  zu   : height for wind (10m = traditional anemometric height  [m]
       !!    *  sst  : bulk SST                                               [K]
@@ -80,8 +79,9 @@ CONTAINS
          &  zTzt,               & !: potential temperature at zt meters
          &  pTzu, zQzu,         & !: potential temperature and specific humidity at zu meters
          &  zTs, zqs,           & !:
-         &  zTaum,             & !: wind stress module
-         &   zUblk                !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
+         &  zTaum,              & !: wind stress module
+         &  zUblk,              & !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
+         &  ztmp                  !: temporary array
 
       LOGICAL :: l_use_skin
       !!------------------------------------------------------------------------------
@@ -91,8 +91,9 @@ CONTAINS
 
       ALLOCATE ( zmask(jpi,jpj), zWzu(jpi,jpj), zSSQ(jpi,jpj), &
          &     zCd(jpi,jpj), zCh(jpi,jpj), zCe(jpi,jpj),       &
-         &     zTzt(jpi,jpj), pTzu(jpi,jpj), zQzu(jpi,jpj), &
-         &     zUblk(jpi,jpj), zTs(jpi,jpj), zqs(jpi,jpj), zTaum(jpi,jpj)  )
+         &     zTzt(jpi,jpj), pTzu(jpi,jpj), zQzu(jpi,jpj),    &
+         &     zUblk(jpi,jpj), zTs(jpi,jpj), zqs(jpi,jpj),     &
+         &     zTaum(jpi,jpj), ztmp(jpi,jpj)  )
 
       ! Masked region ?
       IF( PRESENT(mask) ) THEN
@@ -104,7 +105,7 @@ CONTAINS
 
       ! Cool skin ?
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
-         IF((TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf')) THEN
+         IF((TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf')) THEN
             l_use_skin = .TRUE.
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
@@ -135,32 +136,20 @@ CONTAINS
       zqs = zSSQ
 
 
+      ztmp(:,:) = 0._wp   ! longitude fixed to 0, (for COAREx when using cool-skin/warm-layer)
+      
+
       SELECT CASE(TRIM(calgo))
          !!
-      CASE('coare3p0')
-         PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
-         STOP
-         !IF( l_use_skin ) THEN
-         !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, . &
-         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
-         !      &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
-         !ELSE
-         !   CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu,  &
-         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
-         !END IF
-         !!
       CASE('coare3p6')
-         PRINT *, ' STOP!!! / Fix me (mod_aerobulk_compute.f90)'
-         STOP
-         !IF( l_use_skin ) THEN
-         !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
-         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk,           &
-         !      &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp )
-         !ELSE
-         !   CALL TURB_COARE3P6 ( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE., &
-         !      &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
-         !END IF
-         !!
+         IF( l_use_skin ) THEN
+            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
+               &              zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
+               &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
+         ELSE
+            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
+         END IF
          !!
       CASE('ncar')
          CALL TURB_NCAR( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, &
@@ -169,7 +158,7 @@ CONTAINS
          !!
       CASE('ecmwf')
          IF( l_use_skin ) THEN
-            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, l_use_skin, l_use_skin, &
+            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE.,  &
                &              zCd, zCh, zCe, pTzu, zQzu, zUblk,      &
                &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
          ELSE

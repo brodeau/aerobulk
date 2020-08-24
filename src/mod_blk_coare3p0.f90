@@ -76,7 +76,7 @@ CONTAINS
 
 
    SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                              &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                                 &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -135,7 +135,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ub  : bulk wind speed at zu                                 [m/s]
+      !!    *  Ub     : bulk wind speed at zu that we used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
