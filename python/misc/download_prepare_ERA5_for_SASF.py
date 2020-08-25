@@ -27,18 +27,15 @@ list_crd_expected = ['longitude', 'latitude', 'time']
 # Their name in the downloaded file:
 ### dumping 'fal','forecast_albedo' since it's proportional to ice fraction...
 list_var_expected = ['u10', 'v10', 'd2m', 't2m', 'istl1', \
-                     'msl', 'sst', 'skt', \
-                     'ssrd', 'strd', 'tp', 'sf' ]
+                     'msl', 'skt','ssrd', 'strd', 'tp', 'sf' ]
 
 # Their name in the cdsapi request:
-lvdl = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', '2m_temperature', 'ice_temperature_layer_1', \
-         'mean_sea_level_pressure', 'sea_surface_temperature', 'skin_temperature', \
-         'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
+lvdl_h = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', '2m_temperature', 'ice_temperature_layer_1', \
+         'mean_sea_level_pressure', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
 
 # Daily fields:
-list_var_daily_expected =     ['siconc' ]
-lvdl_daily              = [ 'sea_ice_cover' ]
-
+list_var_daily_expected = [    'siconc'    ,        'sst'              ];#, ] 
+lvdl_d                  = [ 'sea_ice_cover', 'sea_surface_temperature' ];#, ] 
 
 
 
@@ -56,10 +53,10 @@ fact_flx = [ 1./rdt,    1./rdt  ,  1000./rdt ,  1000./rdt   ] ; # tp and sf in '
 list_temp_to_degC = [ 'sst' , 'skt' ] ; # For some reasons SAS part of NEMO expects SSTs in deg. Celsius...
 
 # Extra fields (for the SAS part) to add and their value (constant along time records...):
-list_extra = [ 'sss', 'ssh', 'ssu', 'ssv' ]
-rval_extra = [  34. ,   0. ,   0. ,   0.  ]
-cunt_extra = [  ''  ,  'm' , 'm s**-1', 'm s**-1' ]
-clnm_extra = [ 'Sea surface salinity', 'Sea surface height', 'Zonal surface current', 'Meridional surface current' ]
+list_extra = [ 'sss'                 , 'ssh'               ,  'ssu'                 , 'ssv'                       ,    'ialb'        ]
+rval_extra = [  34.                  ,   0.                ,     0.                 ,   0.                        ,      0.55        ]
+cunt_extra = [  ''                   ,  'm'                ,    'm s**-1'           , 'm s**-1'                   ,       ''         ]
+clnm_extra = [ 'Sea surface salinity', 'Sea surface height', 'Zonal surface current', 'Meridional surface current', 'Sea-ice albedo' ]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -92,25 +89,31 @@ cinfo_coord  = str(plat)+'N_'+str(plon)+'E'
 
 # Monthly stuff:
 nbfld_daily = len(list_var_daily_expected)
-if len(lvdl_daily) != nbfld_daily:
-    print(' ERROR: download list "lvdl_daily" not the same size as "list_var_daily_expected"!!!', len(lvdl_daily), nbfld_daily) ; sys.exit(0)
+if len(lvdl_d) != nbfld_daily:
+    print(' ERROR: download list "lvdl_d" not the same size as "list_var_daily_expected"!!!', len(lvdl_d), nbfld_daily) ; sys.exit(0)
 
 # Hourly stuff:
 nbfld = len(list_var_expected)
-if len(lvdl) != nbfld:
-    print(' ERROR: download list "lvdl" not the same size as "list_var_expected"!!!', len(lvdl), nbfld)
-    print(lvdl,'\n')
+if len(lvdl_h) != nbfld:
+    print(' ERROR: download list "lvdl_h" not the same size as "list_var_expected"!!!', len(lvdl_h), nbfld)
+    print(lvdl_h,'\n')
     print(list_var_expected,'\n')
     sys.exit(0)
 
 nbfld_tot = nbfld
 if l_interp_daily: nbfld_tot = nbfld + nbfld_daily
 
-    
 
-Nt_tot_daily = 0
+
     
 c = cdsapi.Client()
+
+
+#################
+# Daily fields #
+#################
+
+Nt_tot_daily = 0
 
 for jm in range(12):
 
@@ -131,7 +134,7 @@ for jm in range(12):
             {
                 'product_type': 'reanalysis',
                 'format': 'netcdf',
-                'variable': [ lvdl_daily[0], ],
+                'variable': lvdl_d,
                 'year': str(yyyy),
                 'month': [ cm, ],
                 'day': [
@@ -150,7 +153,7 @@ for jm in range(12):
                 'time': [ '12:00' ],
                 'area': [
                     irng_lat[1], irng_lon[0], irng_lat[0],
-                    irng_lon[1],
+                    irng_lon[1], # 
                 ],
             },
             cf_fi_d )
@@ -161,7 +164,7 @@ for jm in range(12):
                 {
                     'product_type': 'reanalysis',
                     'format': 'netcdf',
-                    'variable': [ lvdl_daily[0], ],
+                    'variable': lvdl_d,
                     'year': str(yyyy-1),
                     'month': [ '12', ],
                     'day': [ '31', ],
@@ -179,7 +182,7 @@ for jm in range(12):
                 {
                     'product_type': 'reanalysis',
                     'format': 'netcdf',
-                    'variable': [ lvdl_daily[0], ],
+                    'variable': lvdl_d,
                     'year': str(yyyy+1),
                     'month': [ '01', ],
                     'day': [ '31', ],
@@ -298,7 +301,7 @@ print('\n\n')
 ## ===> so vtime_d[:] and xdata_d[:,:] is what needs to be interpolated later !
 
 
-
+#sys.exit(0)
 
 
 
@@ -318,23 +321,17 @@ for jm in range(12):
     cf_fo = 'ERA5_arctic_surface_'+cinfo_coord+'_1h_y'+str(yyyy)+'m'+cm+'.nc'
     
     if not path.exists(cf_fi):
-    
+        
         print('\nDoing month '+cm+' !')
-    
+        
         c.retrieve(
             'reanalysis-era5-single-levels',
             {
                 'product_type': 'reanalysis',
                 'format': 'netcdf',
-                'variable': [
-                    lvdl[0], lvdl[1], lvdl[2], lvdl[3],
-                    lvdl[4], lvdl[5], lvdl[6], lvdl[7],
-                    lvdl[8], lvdl[9], lvdl[10], lvdl[11],
-                ],
+                'variable': lvdl_h,
                 'year': str(yyyy),
-                'month': [
-                    cm,
-                ],
+                'month': [ cm, ],
                 'day': [
                     '01', '02', '03',
                     '04', '05', '06',
@@ -411,7 +408,7 @@ for jm in range(12):
     id_fo.createDimension(cv_tim, None)
 
     # Variables
-    ido_lon = id_fo.createVariable(cv_lon, 'f4', ('y','x',), zlib=True) ; ido_lon.units = cunt_lon ; ido_lon.long_name = clnm_lon
+    ido_lon = id_fo.createVariable(cv_lon, 'f4', ('y','x',), zlib=True) ; ido_lon.units = cunt_lon ; ido_lon.long_name = clnm_lon # 
     ido_lat = id_fo.createVariable(cv_lat, 'f4', ('y','x',), zlib=True) ; ido_lat.units = cunt_lat ; ido_lat.long_name = clnm_lat
     ido_tim = id_fo.createVariable(cv_tim, 'f4', (cv_tim,) , zlib=True) ; ido_tim.units = cunt_tim ; ido_tim.long_name = clnm_tim
     
