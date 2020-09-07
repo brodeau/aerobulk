@@ -5,7 +5,6 @@
 import sys
 import numpy as nmp
 from netCDF4 import Dataset
-import string
 from os.path import exists,basename
 
 import aerobulk_physf as abp
@@ -25,8 +24,8 @@ elif iconv == 2:
     cv_d2='d2m'
     cv_p0='msl'
     cv_q2='q2m'
-    cv_lon = 'longitude'
-    cv_lat = 'latitude'
+    cv_lon = 'lon'
+    cv_lat = 'lat'
 
 rmiss = -9999.
 
@@ -35,47 +34,44 @@ def __chck4f__(cf, script_name=''):
     cmesg = 'ERROR: File '+cf+' does not exist !!!'
     if script_name != '': cmesg = 'ERROR in script '+script_name+': File '+cf+' does not exist !!!'
     if not exists(cf):
-        print cmesg ; sys.exit(0)
+        print(cmesg) ; sys.exit(0)
     else:
-        print ' *** will open file '+cf
+        print(' *** will open file '+cf)
 
 
 
     
     
 if not len(sys.argv) in [2,3]:
-    print 'Usage: '+sys.argv[0]+' <IN_FILE_D2.nc> (<lsm_file.nc>)'
+    print('Usage: '+sys.argv[0]+' <IN_FILE_D2.nc> (<lsm_file.nc>)')
     sys.exit(0)
 
 cf_d2   = sys.argv[1]
-cf_p0 = string.replace(cf_d2, cv_d2, cv_p0)
+cf_p0 = str.replace(cf_d2, cv_d2, cv_p0)
 
-#cdir_out='.'
 l_mask = False
 if len(sys.argv) == 3:
-    #cdir_out = sys.argv[2]
-    #cf_q2 = cdir_out+'/'+cf_q2
     l_mask = True
     cf_lsm = sys.argv[2]
 
 
-cf_q2 = basename(string.replace(cf_d2, cv_d2, cv_q2))
+cf_q2 = basename(str.replace(cf_d2, cv_d2, cv_q2))
 
 __chck4f__(cf_d2)
 __chck4f__(cf_p0)
 if l_mask:
     __chck4f__(cf_lsm)
-    cf_q2 = basename(string.replace(cf_q2, '.nc', '_masked.nc'))
+    cf_q2 = basename(str.replace(cf_q2, '.nc', '_masked.nc'))
 
-print '\n *** Will generate file '+cf_q2+' !\n'
+print('\n *** Will generate file '+cf_q2+' !\n')
 
 
 if l_mask:
-    print ' *** Opening land-sea mask file... '+cf_lsm
+    print(' *** Opening land-sea mask file... '+cf_lsm)
     f_lsm_in = Dataset(cf_lsm)
     xmask = f_lsm_in.variables['lsm'][:,:]
     f_lsm_in.close()
-    print ' *** Land-sea mask read!\n'
+    print(' *** Land-sea mask read!\n')
     idx_land = nmp.where(xmask < 0.5)
     del xmask
 
@@ -87,19 +83,19 @@ f_d2_in = Dataset(cf_d2)
 vlon     = f_d2_in.variables[cv_lon][:]
 cunt_lon = f_d2_in.variables[cv_lon].units
 clnm_lon = f_d2_in.variables[cv_lon].long_name
-print 'LONGITUDE: ', cunt_lon, clnm_lon
+print('LONGITUDE: ', cunt_lon, clnm_lon)
 
 # Extracting the longitude 1D array:
 vlat     = f_d2_in.variables[cv_lat][:]
 cunt_lat = f_d2_in.variables[cv_lat].units
 clnm_lat = f_d2_in.variables[cv_lat].long_name
-print 'LATITUDE: ', cunt_lat, clnm_lat
+print('LATITUDE: ', cunt_lat, clnm_lat)
 
 # Extracting time 1D array:
 vtime     = f_d2_in.variables['time'][:]
 cunt_time = f_d2_in.variables['time'].units
-ccal_time = f_d2_in.variables['time'].calendar
-print 'TIME: ', cunt_time, '\n'
+#ccal_time = f_d2_in.variables['time'].calendar
+print('TIME: ', cunt_time, '\n')
 f_d2_in.close()
 
 
@@ -108,11 +104,11 @@ f_d2_in.close()
 
 Nt = len(vtime)
 #Nt=4
-print 'Nt = ', Nt
+print('Nt = ', Nt)
 
 for jt in range(Nt):
 
-    print ' *** jt = ', jt
+    print(' *** jt = ', jt)
     
         
     # D2M
@@ -138,10 +134,10 @@ for jt in range(Nt):
     if jt == 0:
         dim_d2 = xd2.shape ; dim_p0 = xp0.shape
         if dim_d2 != dim_p0:
-            print 'Shape problem!!!'; print dim_d2 , dim_p0
-        print '\n'
+            print('Shape problem!!!'); print(dim_d2 , dim_p0)
+        print('\n')
         [ nj, ni ] = dim_d2
-        print 'ni, nj, nt = ', ni, nj, Nt
+        print('ni, nj, nt = ', ni, nj, Nt)
         xq2 = nmp.zeros(nj*ni) ; xq2.shape = dim_d2
     
     
@@ -174,7 +170,7 @@ for jt in range(Nt):
 
         # Attributes
         id_tim.units    = cunt_time
-        id_tim.calendar = ccal_time
+        #id_tim.calendar = ccal_time
     
         id_lat.units         = cunt_lat
         id_lat.long_name     = clnm_lat
@@ -200,4 +196,4 @@ for jt in range(Nt):
     
     if jt == Nt-1: f_out.close()    
         
-print 'Bye!'
+print('Bye!')
