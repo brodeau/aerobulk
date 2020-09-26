@@ -538,10 +538,10 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) ''
    WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
-   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]'
-   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]'
-   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , ' [W/m^2]'
-   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , ' [W/m^2]'
+   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]', ' ( RMS =', VARIANCE(vTau), ')'
+   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]', ' ( RMS =', VARIANCE(vEvap), ')'
+   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , ' [W/m^2] ', ' ( RMS =', VARIANCE(vQL), ')'
+   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , ' [W/m^2] ', ' ( RMS =', VARIANCE(vQH), ')'
    WRITE(6,*) ''
    IF ( l_use_coolsk ) THEN
       WRITE(6,*) '              Cool-skin related:'
@@ -607,3 +607,5 @@ SUBROUTINE usage_test( icontinue )
    !!
 END SUBROUTINE usage_test
 !!
+
+   

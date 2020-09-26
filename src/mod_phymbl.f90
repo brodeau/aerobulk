@@ -144,6 +144,7 @@ MODULE mod_phymbl
    PUBLIC UN10_from_CD
    PUBLIC Re_rough_tq_LKB
    PUBLIC z0tq_LKB
+   PUBLIC variance
 
 
 CONTAINS
@@ -1401,6 +1402,25 @@ CONTAINS
    !      !
    !   END FUNCTION f_m_louis_sclr
 
+
+
+FUNCTION VARIANCE( pvc )
+   REAL(4)                            :: VARIANCE
+   REAL(wp), DIMENSION(:), INTENT(in) :: pvc
+   !!
+   INTEGER :: Nn
+   REAL(wp) :: zmean
+   !!
+   Nn = SIZE(pvc)
+   !!
+   zmean = SUM(pvc)/Nn
+   !!
+   VARIANCE = REAL( SQRT( SUM( (pvc(:) - zmean) * (pvc(:) - zmean) ) / Nn ) , 4)
+   !!
+END FUNCTION VARIANCE
+
+
+   
 END MODULE mod_phymbl
 
 
