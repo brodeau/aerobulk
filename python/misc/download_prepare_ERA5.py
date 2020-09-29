@@ -2,13 +2,13 @@
 #
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 #
-# LOLO: add an empty array for SSH in output netcdf file !!!
-##      + same for ssu and ssv !
-##      + add constant salinity sss of say 34 PSU
 ##
+# Download ERA5 on the horizontal domain of your choice at 1h or 3h frequency...
+#   Surface atmospheric variables required for atmospheric forcing of an OGCM...
+#
 ## L. Brodeau, 2020
 ##
-
+#
 import sys
 from os import path
 import cdsapi
@@ -16,7 +16,8 @@ from netCDF4 import Dataset
 from math import copysign
 import numpy as nmp
 
-dir_out = '/mnt/meom/workdir/brodeau/FATM/ERA5'
+
+dir_out = '/mnt/meom/workdir/brodeau/FATM/ERA5' ; # where to save...
 
 cfrq="1h"
 #cfrq="3h" ! => achtung for the multiplication for fluxes, this cannot be trusted!!!
@@ -104,6 +105,7 @@ if narg == 3:
     lvdl              = [ cvsc ]
     print('   ===> gonna treat: ', list_var_expected[0], lvdl[0], '\n')
 
+    
 # In output file:
 cv_lon = 'lon'
 cv_lat = 'lat'
