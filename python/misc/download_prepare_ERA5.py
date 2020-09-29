@@ -261,7 +261,7 @@ for jv in range(nbfld):
                 idx = list_flx.index(cvec)
                 ido_var[jt,:,:] = ido_var[jt,:,:] * fact_flx[idx]
                 #
-        id_fo.About = "Input file for TROPICOX NEMO conf, generated with 'download_prepare_ERA5_y_for_TROPICOX.py' of 'nemo_conf_manger'."
+        id_fo.About = "Generated with 'download_prepare_ERA5.py' of AeroBulk (https://github.com/brodeau/aerobulk)."
 
         id_fo.close()
         id_fi.close()
