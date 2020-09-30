@@ -14,11 +14,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
+   
    !
    USE mod_blk_ecmwf
    !USE mod_skin_ecmwf, ONLY: Hz_wl !: problem: Hz_wl already exists from mod_skin_coare ...
 
-
+   USE mod_blk_andreas
+   
    IMPLICIT NONE
 
    !INTEGER :: DISP_DEBUG
@@ -208,12 +210,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    ians=-1
    DO WHILE ( (ians<0).OR.(ians>nb_algos) )
-      WRITE(6,*) 'Which algo to use? "ncar" => 0 , "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3 :'
+      WRITE(6,*) 'Which algo to use? "ncar" => 0 , "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3, "andreas" => 4 :'
       READ(*,*) ians
       IF ( ians == 0 ) calgo = 'ncar     '
       IF ( ians == 1 ) calgo = 'coare3p0 '
       IF ( ians == 2 ) calgo = 'ecmwf    '
       IF ( ians == 3 ) calgo = 'coare3p6 '
+      IF ( ians == 4 ) calgo = 'andreas  '
    END DO
    WRITE(6,*) '  ==> your choice: ', TRIM(calgo)
    WRITE(6,*) ''
@@ -379,6 +382,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
             &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),     & ! for cool-skin !
             &             pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt),        &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+
+      CASE ( 'andreas' )
+         CALL TURB_ANDREAS(    zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
+            &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
+            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+         
 
       CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
