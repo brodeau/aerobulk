@@ -79,7 +79,7 @@ else:
     print('\n UNKNOWN frequency!!! => '+cfrq+'\n')
     sys.exit(0)
     
-    
+
 
 def usage():
     print('\nUsage: '+sys.argv[0]+' <year> (<variable to treat>)')
