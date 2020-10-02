@@ -32,7 +32,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
 
-   CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t
+   CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t
 
    CHARACTER(len=80) :: csep='#################################################################################'
 
@@ -76,10 +76,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=3) :: czt, czu
 
-   LOGICAL :: &
-      &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
-      &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
-      &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
+   !LOGICAL :: &
+   !   &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
+   !   &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
+   !   &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
    !                                       !: (Cool Skin Warm Layer parameterization)
    !                                       !:  => only in COARE and ECMWF
 
@@ -109,15 +109,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       CASE('-f')
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
+         
+      CASE('-n')
+         jarg = jarg + 1
+         CALL get_command_ARGUMENT(jarg,cn_exp)
 
-      CASE('-r')
-         l_use_rh = .TRUE.
-
-      CASE('-d')
-         l_use_dp = .TRUE.
-
-      CASE('-S')
-         l_use_cswl = .TRUE.
+      !CASE('-r')
+      !   l_use_rh = .TRUE.
+         !
+      !CASE('-d')
+         !l_use_dp = .TRUE.
+         !
+      !CASE('-S')
+      !   l_use_cswl = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -128,11 +132,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    END DO
 
 
-   IF ( trim(cf_data) == '0' ) CALL usage_test()
+   IF ( TRIM(cf_data) == '0' ) CALL usage_test()
+   IF ( TRIM(cn_exp)  == '0' ) CALL usage_test()
 
 
    WRITE(6,*) ''
    WRITE(6,*) ' *** Input file is ',TRIM(cf_data)
+   WRITE(6,*) ''
+   WRITE(6,*) ' *** Name of experiment is ',TRIM(cn_exp)
    WRITE(6,*) ''
    WRITE(6,*) '  *** Epsilon            = Rd/Rv       (~0.622) =>', reps0
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
@@ -187,20 +194,20 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    PRINT *, ' *** Digested time unit is: ', tut_time_unit
 
 
-   CALL GETVAR_1D(cf_data, 'sst',    SST  )
+   CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
    SST  = SST + rt0
 
-   CALL GETVAR_1D(cf_data, 'slp',    SLP  )
-   SLP = SLP * 100.
+   CALL GETVAR_1D(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
 
    CALL GETVAR_1D(cf_data, 'wndspd', W10  )
 
-   CALL GETVAR_1D(cf_data, 't_air',  t_zt )
+   CALL GETVAR_1D(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
    t_zt = t_zt + rt0
 
    CALL GETVAR_1D(cf_data, 'rh_air', dummy)
    dummy = MIN(99.999 , dummy)
    DO jt = 1, Nt
+      PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
       q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
    END DO
 
@@ -260,12 +267,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    d_idate%minute = 0
    d_idate%second = 0
 
-   dT(:,:,:)    = 0.  ! skin = SST for first time step
+   dT(:,:,:)   = 0.  ! skin = SST for first time step
    dTcs(:,:,:) = 0.
    dTwl(:,:,:) = 0.
-   zHwl(:,:,:)  = 0.
-   zQac(:,:,:)  = 0.
-   zTac(:,:,:)  = 0.
+   zHwl(:,:,:) = 0.
+   zQac(:,:,:) = 0.
+   zTac(:,:,:) = 0.
 
 
 
@@ -291,10 +298,21 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) ''
       END IF
 
-      info = DISP_DEBUG(lverbose, 'scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
+      info = DISP_DEBUG(lverbose, 'atmospheric pressure', SLP(:,:,jt), '[Pa]' )
+
+      info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
+
+      info = DISP_DEBUG(lverbose, 'Specific humidity of air at '//TRIM(czt), q_zt(:,:,jt),       '[kg/kg]')
+
+      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt      
+      info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
+      tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
+      info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
 
       info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
 
+      info = DISP_DEBUG(lverbose, 'scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
+      
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
 
@@ -306,13 +324,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       ssq = rdct_qsat_salt*q_sat(SST(:,:,jt), SLP(:,:,jt))
       info = DISP_DEBUG(lverbose, 'SSQ = 0.98*q_sat(SST)', 1000.*ssq, '[g/kg]')
 
-      info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
-
-      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
-      info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
-
-      tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
-      info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
       info = DISP_DEBUG(lverbose, 'Pot. temp. diff. air/sea at '//TRIM(czt),    theta_zt(:,:,jt) - SST(:,:,jt), '[deg.C]')
       info = DISP_DEBUG(lverbose, 'Virt. pot. temp. diff. air/sea at '//TRIM(czt),    tmp - virt_temp(SST(:,:,jt), ssq), '[deg.C]')
 
@@ -442,7 +453,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    IF     ( TRIM(calgo) == 'coare3p6' ) THEN
 
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', 'time', &
          &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
          &           ct_unit=TRIM(cunit_t), &
          &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
@@ -461,7 +472,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    ELSE
 
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'lolo_'//TRIM(calgo)//'.nc', 'time', &
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', 'time', &
          &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
          &           ct_unit=TRIM(cunit_t), &
          &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
@@ -509,12 +520,14 @@ SUBROUTINE usage_test()
    PRINT *,''
    PRINT *,' -f <netcdf_file>  => file containing data'
    PRINT *,''
-   PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+   PRINT *,' -n <name>         => name/label for the experiment'
    PRINT *,''
-   PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
-   PRINT *,'         and use the skin temperature instead of the bulk SST'
-   PRINT *,'         only in COARE and ECMWF'
-   PRINT *,''
+   !PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+   !PRINT *,''
+   !PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
+   !PRINT *,'         and use the skin temperature instead of the bulk SST'
+   !PRINT *,'         only in COARE and ECMWF'
+   !PRINT *,''
    PRINT *,' -h   => Show this message'
    PRINT *,''
    STOP
