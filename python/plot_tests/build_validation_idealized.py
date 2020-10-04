@@ -109,11 +109,6 @@ for jv in range(nb_var):
 
 
 rtol = 2.2  ; # tolerance in terms of number of times the SD !
-        
-
-#for jt in range(Nt):
-#    print(' *** xMn = ', xMn[jt,0],xSD[jt,0])
-
 
 
 # Testing if the tolerance of "rtol" standard deviation is good:
@@ -174,18 +169,46 @@ for jv in range(nb_var):
     plt.close(jv)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#    def symetric_range( pmin, pmax ):
-#        # Returns a symetric f-range that makes sense for the anomaly of "f" we're looking at...
-#        from math import floor, copysign, log, ceil
-#        zmax = max( abs(pmax) , abs(pmin) )
-#        romagn = floor(log(zmax, 10)) ; # order of magnitude of the anomaly  we're dealing with
-#        rmlt = 10.**(int(romagn)) / 2.
-#        frng = copysign( ceil(abs(zmax)/rmlt)*rmlt , zmax)
-#        return frng
 
+
+
+# Saving the validation reference result:
+
+idf_i = Dataset(cf_in[0]) 
+idf_o = Dataset('VALIDATION_IDEALIZED.nc', 'w')
+
+# copy global attributes all at once via dictionary
+idf_o.setncatts(idf_i.__dict__)
+
+# copy dimensions
+for name, dimension in idf_i.dimensions.items():
+    idf_o.createDimension(
+        name, (len(dimension) if not dimension.isunlimited() else None))
     
+for name, variable in idf_i.variables.items():
+    #print('name, variable =', name, variable)
+
+    if name == 'time':
+        x = idf_o.createVariable(name, variable.datatype, variable.dimensions)
+        idf_o[name].setncatts(idf_i[name].__dict__)
+        x[:] = vtime[:]
+        
+    if name in l_var:
+        
+        jv = l_var.index(name)
+        print('\n YES! =>', name, jv, '\n')
+
+        x1 = idf_o.createVariable(name+'_mean', variable.datatype, variable.dimensions)
+        idf_o[name+'_mean'].setncatts(idf_i[name].__dict__)
+        
+        x2 = idf_o.createVariable(name+'_tol', variable.datatype, variable.dimensions)
+        idf_o[name+'_tol'].setncatts(idf_i[name].__dict__)
 
 
+        
+        x1[:] = xMn[:,jv]
+        x2[:] = xSD[:,jv]
 
-
+idf_o.close()        
+idf_i.close()
 
