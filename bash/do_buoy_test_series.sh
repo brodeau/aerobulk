@@ -9,12 +9,22 @@ if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/aerobulk"    
 fforcing="idealized_forcing_test_STATION_ASF_1h.nc4" ; zu=10 ; zt=2  ; clabel="IDEALIZED"
 
 
-for calgo in "ecmwf" "coare3p6"; do
+for calgo in "ecmwf" "coare3p6" "coare3p0" "ncar" "andreas" ; do
 
-    if   [ "${calgo}" = "ecmwf" ]; then
+# "ncar" => 0 , "coare3p0" => 1 , "ecmwf" => 2 , "coare3p6" => 3, "andreas" => 4
+    
+    if   [ "${calgo}" = "ncar" ]; then
+        id=0
+    elif [ "${calgo}" = "coare3p0" ]; then
+        id=1
+    elif [ "${calgo}" = "ecmwf" ]; then
         id=2
     elif [ "${calgo}" = "coare3p6" ]; then
         id=3
+    elif [ "${calgo}" = "andreas" ]; then
+        id=4
+    else
+        echo "UNKNOWN ALGO: ${calgo} !"; exit
     fi
 
     fout="out_test_aerobulk_buoy_${calgo}.out"

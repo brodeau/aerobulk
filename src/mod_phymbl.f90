@@ -144,7 +144,7 @@ MODULE mod_phymbl
    PUBLIC UN10_from_CD
    PUBLIC Re_rough_tq_LKB
    PUBLIC z0tq_LKB
-   PUBLIC variance
+   PUBLIC vmean, variance
 
 
 CONTAINS
@@ -1418,6 +1418,20 @@ FUNCTION VARIANCE( pvc )
    VARIANCE = REAL( SQRT( SUM( (pvc(:) - zmean) * (pvc(:) - zmean) ) / Nn ) , 4)
    !!
 END FUNCTION VARIANCE
+
+
+FUNCTION VMEAN( pvc )
+   REAL(4)                            :: VMEAN
+   REAL(wp), DIMENSION(:), INTENT(in) :: pvc
+   !!
+   INTEGER :: Nn
+   REAL(wp) :: zmean
+   !!
+   Nn = SIZE(pvc)
+   !!
+   VMEAN = SUM(pvc)/Nn
+   !!
+END FUNCTION VMEAN
 
 
    
