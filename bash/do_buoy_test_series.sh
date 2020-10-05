@@ -5,8 +5,8 @@ if [ `hostname` = "lacroix" ]; then DSTOR="/data1/laurent/STATION_ASF/aerobulk" 
 if [ `hostname` = "merlat"  ]; then DSTOR="/MEDIA/data/STATION_ASF/aerobulk"    ; fi
 
 
-#fforcing="Station_PAPA_50N-145W_2012-2012.nc4" ; zu=14 ; zt=14      ; clabel="PAPA_50N-145W"
-fforcing="idealized_forcing_test_STATION_ASF_1h.nc4" ; zu=10 ; zt=2  ; clabel="IDEALIZED"
+fforcing="Station_PAPA_50N-145W_2012-2012.nc4" ; zu=14 ; zt=14      ; clabel="PAPA_50N-145W"
+#fforcing="idealized_forcing_test_STATION_ASF_1h.nc4" ; zu=10 ; zt=2  ; clabel="IDEALIZED"
 
 
 for calgo in "ecmwf" "coare3p6" "coare3p0" "ncar" "andreas" ; do
