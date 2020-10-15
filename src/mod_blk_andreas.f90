@@ -46,11 +46,10 @@ MODULE mod_blk_andreas
    PRIVATE
 
    !! Important (Brodeau fix):
-   REAL(wp), PARAMETER :: rCd_min = 0.2E-3_wp ! minimum value to tolarate for CD !
-   REAL(wp), PARAMETER :: rRi_max = 0.15_wp   ! Bulk Ri above which the algorithm fucks up! ... and CD (hence u*) forced to stick to rCd_min (sqrt(rCd_min)*U)
+   REAL(wp), PARAMETER :: rRi_max = 0.15_wp   ! Bulk Ri above which the algorithm fucks up!
    !                                          ! (increasing (>0) Ri means that surface layer increasingly stable and/or wind increasingly weak)
-   REAL(wp), PARAMETER :: rCs_min = 0.35E-3_wp ! minimum value to tolarate for CE and CH !
-   
+   REAL(wp), PARAMETER :: rCs_min = 0.35E-3_wp ! minimum value to tolarate for CE and CH ! Must be larger than "Cx_min" !!!
+
    !INTEGER, PARAMETER :: iverbose = 1
    INTEGER, PARAMETER :: iverbose = 0
    
@@ -185,10 +184,9 @@ CONTAINS
             !! Extremely stable + weak wind !!!
             !!  => for we force u* to be consistent with minimum value for CD:
             !!  (otherwize algorithm becomes nonsense...)
-            u_star = SQRT(rCd_min) * Ubzu     ! Cd does not go below rCd_min !
+            u_star = SQRT(Cx_min) * Ubzu     ! Cd does not go below Cx_min !
          ENDWHERE
          
-         !u_star = MAX( U_STAR_ANDREAS(UN10) , SQRT(rCd_min)*Ubzu )
 
 
          
@@ -207,8 +205,8 @@ CONTAINS
 
          !! Drag coefficient:
          ztmp0 = u_star/Ubzu
-         !Cd    = MAX( ztmp0*ztmp0, rCd_min )
-         Cd = ztmp0*ztmp0
+
+         Cd = MAX( ztmp0*ztmp0 , Cx_min )
          
          IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
 
@@ -248,8 +246,7 @@ CONTAINS
       ! Compute transfer coefficients at zu:
       ztmp0 = u_star/Ubzu
 
-      !Cd    = MAX( ztmp0*ztmp0, rCd_min )
-      Cd = ztmp0*ztmp0   ! the earlier use of rCd_min on u* should make use of rCd_min here unnecessary!
+      Cd = MAX( ztmp0*ztmp0 , Cx_min )   ! the earlier use of Cx_min on u* should make use of Cx_min here unnecessary!
 
       ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
@@ -257,7 +254,7 @@ CONTAINS
       Ce   = MAX( ztmp0*q_star/ztmp2 , rCs_min )
       
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN     = vkarmn2*ztmp0*ztmp0
+      IF( lreturn_cdn )   CdN     = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
 
       IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = z0 * u_star / visc_air(t_zu)  ! Re_r
       IF( lreturn_chn )   ChN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 1, ztmp1, z0 ))

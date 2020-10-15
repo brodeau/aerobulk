@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
-
+#
 # AeroBulk, 2020, L. Brodeau
 #  (https://github.com/brodeau/aerobulk/)
 #
@@ -12,9 +12,6 @@ import numpy as nmp
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-
-reload(sys)
-sys.setdefaultencoding('utf8')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 l_multi_fig = False
@@ -99,7 +96,7 @@ csst = str(int(sst_ref))
 
 cf_in = cdir_in+'/cd_dtv_-0500_sst_'+csst+'_'+valgo_nm[0]+'.dat'
 xdum = read_ascii_column(cf_in, [0,1])
-print '\n\n\n'
+print('\n\n\n')
 
 
 nU = len(xdum[0,:])

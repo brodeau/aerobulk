@@ -197,7 +197,7 @@ CONTAINS
 
          !! C_D
          ztmp1  = 1._wp + zsqrt_CdN/vkarmn*(LOG(zu/10._wp) - ztmp2)   ! L&Y 2004 Eq. (10a) (ztmp2 == psi_m(zeta_u))
-         Cd     = zCdN / ( ztmp1*ztmp1 )
+         Cd     = MAX( zCdN / ( ztmp1*ztmp1 ), Cx_min )
 
          !! C_H and C_E
          zsqrt_Cd = SQRT( Cd )
@@ -208,13 +208,13 @@ CONTAINS
          zChN  = 1.e-3_wp * zsqrt_CdN*(18._wp*ztmp1 + 32.7_wp*(1._wp - ztmp1))  ! L&Y 2004 eq. (6c-6d)
          zCeN  = 1.e-3_wp * (34.6_wp * zsqrt_CdN)                             ! L&Y 2004 eq. (6b)
 
-         Ch    = zChN*ztmp2 / ( 1._wp + zChN*ztmp0 )  ! L&Y 2004 eq. (10b)
-         Ce    = zCeN*ztmp2 / ( 1._wp + zCeN*ztmp0 )  ! L&Y 2004 eq. (10c)
+         Ch    = MAX( zChN*ztmp2 / ( 1._wp + zChN*ztmp0 ) , Cx_min ) ! L&Y 2004 eq. (10b)
+         Ce    = MAX( zCeN*ztmp2 / ( 1._wp + zCeN*ztmp0 ) , Cx_min ) ! L&Y 2004 eq. (10c)
 
       END DO !DO j_itt = 1, nb_itt
 
       IF( lreturn_cdn )   CdN     = zsqrt_CdN*zsqrt_CdN
-      IF( lreturn_chn )   ChN     = ch_n10_ncar( zsqrt_CdN , 0.5_wp+sign(0.5_wp,zeta_u) )
+      IF( lreturn_chn )   ChN     = ch_n10_ncar( zsqrt_CdN , 0.5_wp+SIGN(0.5_wp,zeta_u) )
       IF( lreturn_cen )   CeN     = ce_n10_ncar( zsqrt_CdN )
       IF( lreturn_z0 )    xz0     = MIN( z0_from_Cd( zu, zsqrt_CdN*zsqrt_CdN ) , z0_sea_max )
       IF( lreturn_ustar ) xu_star = SQRT( Cd )*Ubzu
@@ -256,7 +256,7 @@ CONTAINS
                &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
                &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
             !
-            cd_n10_ncar(ji,jj) = MAX( cd_n10_ncar(ji,jj), 0.1E-3_wp )
+            cd_n10_ncar(ji,jj) = MAX( cd_n10_ncar(ji,jj), Cx_min )
             !
          END DO
       END DO
@@ -280,7 +280,7 @@ CONTAINS
          STOP
       END IF
       !
-      ch_n10_ncar = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , 0.1E-3_wp )   ! Eq. (9) & (12) Large & Yeager, 2008
+      ch_n10_ncar = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , Cx_min )   ! Eq. (9) & (12) Large & Yeager, 2008
       !
    END FUNCTION ch_n10_ncar
 
@@ -292,7 +292,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)             :: ce_n10_ncar
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
       !!----------------------------------------------------------------------------------
-      ce_n10_ncar = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , 0.1E-3_wp )
+      ce_n10_ncar = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , Cx_min )
       !
    END FUNCTION ce_n10_ncar
 

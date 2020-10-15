@@ -264,7 +264,7 @@ CONTAINS
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
-      Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
+      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )   ! first guess of Cd
 
       ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
 
@@ -398,16 +398,15 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
 
-      Cd = vkarmn2/(func_m*func_m)
-      Ch = vkarmn2/(func_m*func_h)
-      ztmp2 = log(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
-      Ce = vkarmn2/(func_m*ztmp2)
-
-
+      Cd = MAX( vkarmn2/(func_m*func_m) , Cx_min )
+      Ch = MAX( vkarmn2/(func_m*func_h) , Cx_min )
+      ztmp2 = LOG(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
+      Ce = MAX( vkarmn2/(func_m*ztmp2)  , Cx_min )
+      
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
-      IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0t)
-      IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0q)
+      IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
+      IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+      IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0q) , Cx_min )
 
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star

@@ -468,7 +468,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
          &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer', &
          &           vdt13=REAL( zQac(1,1,:),4), cv_dt13='Qnt_ac',cun13='J/m2',  cln13='Accumulated absorbed heat in WL', &
-         &           vdt14=REAL( zTac(1,1,:),4), cv_dt14='Tau_ac',cun14='N.s/m2',cln14='Accumulated absorbed momentum in WL' )
+         &           vdt14=REAL( zTac(1,1,:),4), cv_dt14='Tau_ac',cun14='N.s/m2',cln14='Accumulated absorbed momentum in WL', &
+         &           vdt15=REAL(   Cd(1,1,:),4), cv_dt15='Cd',    cun15='',      cln15='Drag coefficient', &
+         &           vdt16=REAL(   Ce(1,1,:),4), cv_dt16='Ce',    cun16='',      cln16='Evap. coefficient', &
+         &           vdt17=REAL(   Ch(1,1,:),4), cv_dt17='Ch',    cun17='',      cln17='Sens. heat. coefficient'        )
 
    ELSE
 
@@ -485,7 +488,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          &           vdt09=REAL(  W10(1,1,:),4), cv_dt09='Wind',  cun09='m/s',   cln09='Module of Wind Speed',   &
          &           vdt10=REAL(  TAU(1,1,:),4), cv_dt10='Tau',   cun10='N/m^2', cln10='Module of Wind Stress',  &
          &           vdt11=REAL(   dT(1,1,:),4), cv_dt11='dT',    cun11='deg.C', cln11='SST - Ts',               &
-         &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer'  )
+         &           vdt12=REAL( zHwl(1,1,:),4), cv_dt12='H_wl',  cun12='m',     cln12='Estimated depth of warm-layer', &
+         &           vdt13=REAL(   Cd(1,1,:),4), cv_dt13='Cd',    cun13='',      cln13='Drag coefficient', &
+         &           vdt14=REAL(   Ce(1,1,:),4), cv_dt14='Ce',    cun14='',      cln14='Evap. coefficient', &
+         &           vdt15=REAL(   Ch(1,1,:),4), cv_dt15='Ch',    cun15='',      cln15='Sens. heat. coefficient'        )
+
 
    END IF
 

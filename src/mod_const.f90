@@ -92,6 +92,8 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: radrw    = rho0_a/rho0_w !: Density ratio
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
+   REAL(wp), PARAMETER, PUBLIC :: Cx_min = 0.1E-3_wp ! smallest value allowed for bulk transfer coefficients (usually in stable conditions with now wind)
+   
 
    !! Sea-ice stuff:
    REAL(wp), PARAMETER, PUBLIC :: rCd_ice = 1.4e-3_wp   !: transfer coefficient over ice

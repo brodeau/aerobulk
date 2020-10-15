@@ -257,7 +257,7 @@ CONTAINS
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
-      Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
+      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )    ! first guess of Cd
 
       ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
 
@@ -374,15 +374,15 @@ CONTAINS
 
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/Ubzu
-      Cd   = ztmp0*ztmp0
-      Ch   = ztmp0*t_star/dt_zu
-      Ce   = ztmp0*q_star/dq_zu
+      Cd   = MAX( ztmp0*ztmp0        , Cx_min )
+      Ch   = MAX( ztmp0*t_star/dt_zu , Cx_min )
+      Ce   = MAX( ztmp0*q_star/dq_zu , Cx_min )
 
 
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
-      IF( lreturn_cdn )   CdN = vkarmn2*ztmp0*ztmp0
-      IF( lreturn_chn )   ChN = vkarmn2*ztmp0/LOG(zu/z0t)
-      IF( lreturn_cen )   CeN = vkarmn2*ztmp0/LOG(zu/z0t)
+      IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
+      IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+      IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
       
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
