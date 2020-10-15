@@ -5,7 +5,7 @@ include make.macro
 
 All: lib/libaerobulk.a bin/aerobulk_toy.x bin/example_call_aerobulk.x bin/test_aerobulk_ice.x  bin/test_aerobulk_oce+ice.x 
 
-test: bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_ice_series.x bin/test_phymbl.x bin/test_cx_vs_wind.x bin/test_ice.x \
+test: All bin/test_aerobulk_buoy_series_skin.x bin/test_aerobulk_ice_series.x bin/test_phymbl.x bin/test_cx_vs_wind.x bin/test_ice.x \
       bin/test_aerobulk_cdnf_series.x bin/test_psi_stab.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
