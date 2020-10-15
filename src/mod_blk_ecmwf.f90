@@ -272,11 +272,9 @@ CONTAINS
 
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
-      func_m = ztmp0*ztmp2 ! temporary array !!
-      func_h = (1._wp-ztmp1) * (func_m/(1._wp+ztmp2/(-zu/(zi0*0.004_wp*Beta0**3)))) & !  BRN < 0 ! temporary array !!! func_h == zeta_u
-         &  +     ztmp1   * (func_m*(1._wp + 27._wp/9._wp*ztmp2/func_m))              !  BRN > 0
-      !#LB: should make sure that the "func_m" of "27./9.*ztmp2/func_m" is "ztmp0*ztmp2" and not "ztmp0==vkarmn*vkarmn/LOG(zt/z0t)/Cd" !
-
+      func_h = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
+         &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
+      
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
 
