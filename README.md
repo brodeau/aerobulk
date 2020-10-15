@@ -4,12 +4,12 @@
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
-**AeroBulk** is a library and a collection of tools (Fortran 90) that gather state-of-the-art parameterizations and functions needed to estimate turbulent air-sea fluxes in the most accurate way, based on **aerodynamic bulk formulae**.
+**AeroBulk** is a FORTRAN90-based library and suite of tools that feature the most accurate parameterizations available to estimate turbulent air-sea fluxes by means of the traditional **aerodynamic bulk formulae**.
 
 These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and
-sensible heat flux, are estimated by means of sea surface temperature, and
-near-surface atmospheric surface state: (relative) wind speed, air temperature
-and humidity.
+sensible heat flux, are estimated using the sea surface temperature (bulk or
+skin), and the near-surface atmospheric surface state: wind speed, air
+temperature and humidity.
 
 ![Bulk Formula](https://brodeau.github.io/images/projects/bulk.svg)
 
