@@ -104,7 +104,7 @@ CONTAINS
       INTEGER :: j_itt
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zCdN, zCeN, zChn        ! 10m neutral latent/sensible coefficient
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zCdN, zCeN, zChN        ! 10m neutral latent/sensible coefficient
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zsqrt_Cd, zsqrt_CdN   ! square root of Cd_n10
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zeta_u        ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2

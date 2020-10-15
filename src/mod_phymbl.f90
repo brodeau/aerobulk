@@ -1041,14 +1041,6 @@ CONTAINS
    END FUNCTION Cd_from_z0
 
 
-
-
-
-
-
-
-
-
    FUNCTION f_m_louis_sclr( pzu, pRib, pCdn, pz0 )
       !!----------------------------------------------------------------------------------
       !!  Stability correction function for MOMENTUM
