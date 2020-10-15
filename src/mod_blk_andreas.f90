@@ -245,7 +245,7 @@ CONTAINS
 
       END DO !DO j_itt = 1, nb_itt
 
-      ! Compute transfer coefficients at zu:      
+      ! Compute transfer coefficients at zu:
       ztmp0 = u_star/Ubzu
 
       !Cd    = MAX( ztmp0*ztmp0, rCd_min )
@@ -322,15 +322,15 @@ CONTAINS
       REAL(wp), PARAMETER :: zsr3 = SQRT(3._wp)
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zbbm, zpsi_stab,  zstab   ! local scalars
+      REAL(wp) :: zta, zx2, zx, zpsi_unst, zbbm, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and big!)
+            zta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and big!)
             !
             !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
-            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
+            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
             zpsi_unst = 2._wp*LOG(ABS( (1._wp + zx )*0.5_wp ))   &
@@ -338,7 +338,7 @@ CONTAINS
                &          - 2._wp*ATAN(zx) + rpi*0.5_wp
             !
             !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(12) Grachev et al 2007]:
-            zx   = ABS(1._wp + zzeta)**z1o3
+            zx   = ABS(1._wp + zta)**z1o3
             zbbm = ABS( (1._wp - zbm)/zbm )**z1o3 ! B_m
             !
             zpsi_stab = -3.*zam/zbm*(zx - 1._wp) + zam*zbbm/(2.*zbm) * ( &
@@ -347,10 +347,10 @@ CONTAINS
                & + 2.*zsr3*( ATAN( (2.*zx - zbbm)/(zsr3*zbbm) ) - ATAN( (2._wp - zbbm)/(zsr3*zbbm) ) ) )
             !
             !
-            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_m_andreas(ji,jj) =       zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            psi_m_andreas(ji,jj) =       zstab  * zpsi_stab &  ! (zta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
             !
          END DO
       END DO
@@ -378,29 +378,29 @@ CONTAINS
       REAL(wp), PARAMETER :: zbbh = SQRT(5._wp) ! B_h (just below Eq.(13)
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zzeta, zz, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
+      REAL(wp) :: zta, zz, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and large!)
+            zta = MIN( pzeta(ji,jj) , 15._wp ) !! Very stable conditions (L positif and large!)
             !
             !! *** Unstable: Paulson (1970): #LOLO: DOUBLE CHECK IT IS PAULSON!!!!!
-            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
+            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
             !
             !! *** Stable: Grachev et al 2007 (SHEBA) [Eq.(13) Grachev et al 2007]:
-            zz = 2.*zzeta + zch
-            zpsi_stab = - 0.5*zbh*LOG(ABS(1._wp + zch*zzeta + zzeta*zzeta)) &
+            zz = 2.*zta + zch
+            zpsi_stab = - 0.5*zbh*LOG(ABS(1._wp + zch*zta + zta*zta)) &
                &        +  (-zah/zbbh + 0.5*zbh*zch/zbbh)  &
                &          *( LOG(ABS((zz  - zbbh)/(zz  + zbbh))) &
                &           - LOG(ABS((zch - zbbh)/(zch + zbbh)))    )
             !
-            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_h_andreas(ji,jj) =            zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &                   + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            psi_h_andreas(ji,jj) =            zstab  * zpsi_stab &  ! (zta > 0) Stable
+               &                   + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
             !
          END DO
       END DO

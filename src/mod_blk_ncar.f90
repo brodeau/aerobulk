@@ -311,25 +311,25 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zzeta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
+      REAL(wp) :: zta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zzeta = pzeta(ji,jj)
+            zta = pzeta(ji,jj)
             !
-            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 - 16z)^0.5
+            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
             zpsi_unst = 2._wp*LOG( (1._wp + zx )*0.5_wp )   &
                &            + LOG( (1._wp + zx2)*0.5_wp )   &
                &          - 2._wp*ATAN(zx) + rpi*0.5_wp
             !
-            zpsi_stab = -5._wp*zzeta
+            zpsi_stab = -5._wp*zta
             !
-            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_m_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            psi_m_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
             !
          END DO
       END DO
@@ -350,24 +350,24 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zzeta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
+      REAL(wp) :: zta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = pzeta(ji,jj)
+            zta = pzeta(ji,jj)
             !
-            zx2 = SQRT( ABS(1._wp - 16._wp*zzeta) )  ! (1 -16z)^0.5
+            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
             zx2 = MAX( zx2 , 1._wp )
             zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
             !
-            zpsi_stab = -5._wp*zzeta
+            zpsi_stab = -5._wp*zta
             !
-            zstab = 0.5_wp + SIGN(0.5_wp, zzeta) ! zzeta > 0 => zstab = 1
+            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_h_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zzeta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zzeta < 0) Unstable
+            psi_h_ncar(ji,jj) =          zstab  * zpsi_stab &  ! (zta > 0) Stable
+               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
             !
          END DO
       END DO

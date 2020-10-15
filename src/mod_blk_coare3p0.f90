@@ -17,7 +17,7 @@ MODULE mod_blk_coare3p0
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: Ub (including gustiness contribution in unstable conditions)
+   !!   * the "effective" bulk wind speed at zu: Ubzu (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!       Routine turb_coare3p0 maintained and developed in AeroBulk
@@ -76,7 +76,7 @@ CONTAINS
 
 
    SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ub,                                 &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                                 &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -135,7 +135,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ub     : bulk wind speed at zu that we used                    [m/s]
+      !!    *  Ubzu     : bulk wind speed at zu that we used                    [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -164,7 +164,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ub    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ubzu    ! bulk wind speed at zu                     [m/s]
       !
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
@@ -245,11 +245,11 @@ CONTAINS
 
       znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      Ub = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+      Ubzu = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
 
       ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
       ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
-      u_star = 0.035_wp*Ub*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+      u_star = 0.035_wp*Ubzu*ztmp1/ztmp0       ! (u* = 0.035*Un10)
 
       z0     = charn_coare3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
       z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
@@ -259,9 +259,9 @@ CONTAINS
 
       Cd     = (vkarmn/ztmp0)**2    ! first guess of Cd
 
-      ztmp0 = vkarmn*vkarmn/LOG(zt/z0t)/Cd
+      ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
 
-      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ub ) ! Bulk Richardson Number (BRN)
+      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ubzu ) ! Bulk Richardson Number (BRN)
 
       !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
@@ -271,7 +271,7 @@ CONTAINS
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
-      u_star = MAX ( Ub*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+      u_star = MAX ( Ubzu*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
       t_star = dt_zu*ztmp0
       q_star = dq_zu*ztmp0
 
@@ -301,8 +301,8 @@ CONTAINS
          !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
          ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
          !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
-         Ub = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
-         ! => 0.2 prevents Ub to be 0 in stable case when U_zu=0.
+         Ubzu = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
+         ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
 
          !! Stability parameters:
          zeta_u = zu*ztmp0
@@ -321,7 +321,7 @@ CONTAINS
          z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp    ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
-         z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 ) ! Scalar roughness for both theta and q (eq.28) #LOLO: some use 1.15 not 1.1 !!!
+         z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 ) ! Scalar roughness for both theta and q (eq.28) #LB: some use 1.15 not 1.1 !!!
          z0t   = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
          !! Turbulent scales at zu :
@@ -330,7 +330,7 @@ CONTAINS
 
          t_star = dt_zu*ztmp1
          q_star = dq_zu*ztmp1
-         u_star = MAX( Ub*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+         u_star = MAX( Ubzu*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
@@ -342,7 +342,7 @@ CONTAINS
          IF( l_use_cs ) THEN
             !! Cool-skin contribution
 
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ub, slp, rad_lw, &
+            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
                &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
 
             CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2 )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
@@ -354,7 +354,7 @@ CONTAINS
 
          IF( l_use_wl ) THEN
             !! Warm-layer contribution
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ub, slp, rad_lw, &
+            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
             CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
@@ -373,7 +373,7 @@ CONTAINS
       END DO !DO j_itt = 1, nb_itt
 
       ! compute transfer coefficients at zu :
-      ztmp0 = u_star/Ub
+      ztmp0 = u_star/Ubzu
       Cd   = ztmp0*ztmp0
       Ch   = ztmp0*t_star/dt_zu
       Ce   = ztmp0*q_star/dq_zu
@@ -419,7 +419,6 @@ CONTAINS
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) :: zw, zgt10, zgt18
       !!-------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -435,7 +434,6 @@ CONTAINS
             !
          END DO
       END DO
-      !
    END FUNCTION charn_coare3p0
 
 
@@ -456,31 +454,31 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zzeta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = pzeta(ji,jj)
+            zta = pzeta(ji,jj)
             !
-            zphi_m = ABS(1. - 15.*zzeta)**.25    !!Kansas unstable
+            zphi_m = ABS(1. - 15.*zta)**.25    !!Kansas unstable
             !
             zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
                & - 2.*ATAN(zphi_m) + 0.5*rpi
             !
-            zphi_c = ABS(1. - 10.15*zzeta)**.3333                   !!Convective
+            zphi_c = ABS(1. - 10.15*zta)**.3333                   !!Convective
             !
             zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
                &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
             !
-            zf = zzeta*zzeta
+            zf = zta*zta
             zf = zf/(1. + zf)
-            zc = MIN(50._wp, 0.35_wp*zzeta)
-            zstab = 0.5 + SIGN(0.5_wp, zzeta)
+            zc = MIN(50._wp, 0.35_wp*zta)
+            zstab = 0.5 + SIGN(0.5_wp, zta)
             !
-            psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zzeta < 0)
-               &                -   zstab     * ( 1. + 1.*zzeta     &                ! (zzeta > 0)
-               &                         + 0.6667*(zzeta - 14.28)/EXP(zc) + 8.525 )   !     "
+            psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
+               &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
+               &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )  !     "
          END DO
       END DO
    END FUNCTION psi_m_coare
@@ -506,30 +504,30 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zzeta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
-            zzeta = pzeta(ji,jj)
+            zta = pzeta(ji,jj)
             !
-            zphi_h = (ABS(1. - 15.*zzeta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
+            zphi_h = (ABS(1. - 15.*zta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
             !
             zpsi_k = 2.*LOG((1. + zphi_h)/2.)
             !
-            zphi_c = (ABS(1. - 34.15*zzeta))**.3333   !! Convective
+            zphi_c = (ABS(1. - 34.15*zta))**.3333   !! Convective
             !
             zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
                &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
             !
-            zf = zzeta*zzeta
+            zf = zta*zta
             zf = zf/(1. + zf)
-            zc = MIN(50._wp,0.35_wp*zzeta)
-            zstab = 0.5 + SIGN(0.5_wp, zzeta)
+            zc = MIN(50._wp,0.35_wp*zta)
+            zstab = 0.5 + SIGN(0.5_wp, zta)
             !
             psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-               &                -   zstab     * ( (ABS(1. + 2.*zzeta/3.))**1.5     &
-               &                           + .6667*(zzeta - 14.28)/EXP(zc) + 8.525 )
+               &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
+               &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
          END DO
       END DO
    END FUNCTION psi_h_coare

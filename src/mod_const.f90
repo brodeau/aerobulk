@@ -81,8 +81,8 @@ MODULE mod_const
 
    
    !! Bulk model:
-   REAL(wp), PARAMETER, PUBLIC :: vkarmn = 0.4_wp          !: Von Karman's constant
-   REAL(wp), PARAMETER, PUBLIC :: vkarmn2 = 0.4_wp*0.4_wp  !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn  = 0.4_wp         !: Von Karman's constant
+   REAL(wp), PARAMETER, PUBLIC :: vkarmn2 = 0.4_wp*0.4_wp  !: Von Karman's constant ^2
    REAL(wp), PARAMETER, PUBLIC :: rdct_qsat_salt = 0.98_wp !: factor to apply to q_sat(SST) to account for salt in estimation of sat. spec. hum.
    REAL(wp), PARAMETER, PUBLIC :: z0_sea_max = 0.0025_wp   !: maximum realistic value for roughness length of sea-surface... [m]
    
