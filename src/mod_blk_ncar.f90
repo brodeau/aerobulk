@@ -101,7 +101,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zCdN, zCeN, zChN        ! 10m neutral latent/sensible coefficient
@@ -155,7 +155,7 @@ CONTAINS
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
          !
          ztmp1 = t_zu - sst   ! Updating air/sea differences
          ztmp2 = q_zu - ssq
@@ -211,7 +211,7 @@ CONTAINS
          Ch    = MAX( zChN*ztmp2 / ( 1._wp + zChN*ztmp0 ) , Cx_min ) ! L&Y 2004 eq. (10b)
          Ce    = MAX( zCeN*ztmp2 / ( 1._wp + zCeN*ztmp0 ) , Cx_min ) ! L&Y 2004 eq. (10c)
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
 
       IF( lreturn_cdn )   CdN     = zsqrt_CdN*zsqrt_CdN
       IF( lreturn_chn )   ChN     = ch_n10_ncar( zsqrt_CdN , 0.5_wp+SIGN(0.5_wp,zeta_u) )

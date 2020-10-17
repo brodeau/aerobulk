@@ -17,7 +17,7 @@ MODULE mod_const
    INTEGER,  PARAMETER            :: jpk = 1, nit000 = 1
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
-   INTEGER,                  SAVE :: nb_itt=5  !: number of itteration in the bulk algorithm
+   INTEGER,                  SAVE :: nb_iter=5  !: number of itteration in the bulk algorithm
 
    LOGICAL, SAVE :: l_first_call=.true. , l_last_call=.false.
 

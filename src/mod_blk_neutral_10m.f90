@@ -60,7 +60,7 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   ChN10       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
 
-      INTEGER :: j_itt
+      INTEGER :: jit
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, &
@@ -83,7 +83,7 @@ CONTAINS
 
 
          !! ITERATION BLOCK
-         DO j_itt = 1, nb_itt
+         DO jit = 1, nb_iter
 
             !! Need to know u*
             !! --------------

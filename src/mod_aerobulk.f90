@@ -68,7 +68,7 @@ CONTAINS
       END IF
 
       PRINT *, '    *** jpi and jpj set to ', jpi, jpj
-      PRINT *, '    *** nb_itt is set to ', nb_itt
+      PRINT *, '    *** nb_iter is set to ', nb_iter
       PRINT *, '****************************************************'
       PRINT *, ''
 
@@ -131,7 +131,7 @@ CONTAINS
 
       INTEGER, INTENT(in), OPTIONAL :: Niter
 
-      IF ( PRESENT(Niter) ) nb_itt = Niter  ! Updating number of itterations (define in mod_const)
+      IF ( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       IF ( l_first_call ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
 

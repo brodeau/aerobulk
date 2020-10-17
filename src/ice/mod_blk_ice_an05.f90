@@ -101,7 +101,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !!
-      INTEGER :: j_itt
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -158,7 +158,7 @@ CONTAINS
       u_star = 0.035_wp*Ub*LOG( 10._wp/z0 )/LOG( zu/z0 )
       z0 = rough_leng_m( u_star , znu_a )
 
-      DO j_itt = 1, 2
+      DO jit = 1, 2
          u_star = MAX ( Ub*vkarmn/(LOG(zu) - LOG(z0)) , 1.E-9 )
          z0 = rough_leng_m( u_star , znu_a )
       END DO
@@ -170,7 +170,7 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
 
          !!Inverse of Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
@@ -203,7 +203,7 @@ CONTAINS
             dq_zu = q_zu - qs_i ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
 
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/Ub

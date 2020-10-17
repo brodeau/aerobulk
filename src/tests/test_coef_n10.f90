@@ -57,7 +57,7 @@ PROGRAM TEST_COEF_N10
 
    jpi = lx ; jpj = ly
 
-   nb_itt = 50  ! 50 itterations in bulk algorithm...
+   nb_iter = 50  ! 50 itterations in bulk algorithm...
 
    jarg = 0
 

@@ -69,7 +69,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    TYPE(t_unit_t0) :: tut_time_unit
    TYPE(date)      :: d_idate
 
-   nb_itt = 8 ! 8 itterations in bulk algorithm...
+   nb_iter = 8 ! 8 itterations in bulk algorithm...
 
    !OPEN(6, FORM='formatted', RECL=512)
 

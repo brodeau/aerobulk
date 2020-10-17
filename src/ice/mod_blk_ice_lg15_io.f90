@@ -153,7 +153,7 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!
-      INTEGER :: j_itt
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
@@ -244,9 +244,9 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
 
-         IF(l_dbg_print) PRINT *, 'LOLO: LOOP #', INT(j_itt,1)
+         IF(l_dbg_print) PRINT *, 'LOLO: LOOP #', INT(jit,1)
          IF(l_dbg_print) PRINT *, 'LOLO: theta_zu, Ts_i, Ubzu =', REAL(zt_zu(:,:,1),4), REAL(Ts_i(:,:),4), REAL(Ubzu(:,:),4)
          IF(l_dbg_print) PRINT *, 'LOLO:     q_zu =', REAL(zq_zu(:,:,1),4)
          IF(l_dbg_print) PRINT *, 'LOLO:  CdN_s, zCdN_f   =', REAL(zCdN_s(:,:,1),4), REAL(zCdN_f(:,:,1),4)
@@ -347,7 +347,7 @@ CONTAINS
 
          IF(l_dbg_print) PRINT *, ''!LOLO
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
       IF(l_dbg_print) PRINT *, ''!LOLO
 
 

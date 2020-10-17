@@ -58,7 +58,8 @@ PROGRAM AEROBULK_TOY
 
    jpi = lx ; jpj = ly
 
-   nb_itt = 20  ! 20 itterations in bulk algorithm...
+   nb_iter = 20  ! 20 itterations in bulk algorithm...
+
 
    OPEN(6, FORM='formatted', RECL=512)
 

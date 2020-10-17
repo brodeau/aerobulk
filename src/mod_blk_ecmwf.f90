@@ -186,7 +186,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -308,7 +308,7 @@ CONTAINS
       func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
 
          !! Bulk Richardson Number at z=zu (Eq. 3.25)
          ztmp0 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ubzu ) ! Bulk Richardson Number (BRN)
@@ -396,7 +396,7 @@ CONTAINS
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          ENDIF
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
 
       Cd = MAX( vkarmn2/(func_m*func_m) , Cx_min )
       Ch = MAX( vkarmn2/(func_m*func_h) , Cx_min )

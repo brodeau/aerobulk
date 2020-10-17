@@ -30,7 +30,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   !INTEGER, PARAMETER :: nb_itt_wl = 2 !!LOLO
+   !INTEGER, PARAMETER :: nb_iter_wl = 2 !!LOLO
 
    CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t
 
@@ -87,7 +87,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    TYPE(t_unit_t0) :: tut_time_unit
    TYPE(date)      :: d_idate
 
-   nb_itt = 20 ! 20 itterations in bulk algorithm...
+   nb_iter = 20 ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
 

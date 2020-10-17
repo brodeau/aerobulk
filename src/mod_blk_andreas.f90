@@ -122,7 +122,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL      ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10   ! Neutral wind at zu
       !!
-      INTEGER :: j_itt, ja
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   u_star, t_star, q_star
@@ -171,11 +171,11 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
 
          IF(iverbose==1) PRINT *, 'LOLO'
 
-         IF(iverbose==1) PRINT *, 'LOLO *** RiB =', RiB, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** RiB =', RiB, jit
          
          WHERE ( RiB < rRi_max )
             !! Normal condition case:
@@ -190,29 +190,29 @@ CONTAINS
 
 
          
-         IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, j_itt
-         IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, j_itt
-         IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** theta* =', t_star, j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** q* =', q_star, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, jit
+         IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, jit
+         IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** theta* =', t_star, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** q* =', q_star, jit
 
          !! Stability parameter :
          zeta_u = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! zu * 1/L
          
-         IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, j_itt
-         IF(iverbose==1) PRINT *, 'LOLO *** Ubzu =', Ubzu, j_itt         
+         IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** Ubzu =', Ubzu, jit         
 
          !! Drag coefficient:
          ztmp0 = u_star/Ubzu
 
          Cd = MAX( ztmp0*ztmp0 , Cx_min )
          
-         IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, jit
 
          !! Roughness length:
          z0 = MIN( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) ) , z0_sea_max )
-         IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, jit
          IF(iverbose==1) PRINT *, 'LOLO'
          
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
@@ -222,11 +222,11 @@ CONTAINS
 
          !! Turbulent scales at zu :
          ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
-         IF(iverbose==1) PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, jit
          t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
          q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
 
-         IF( (.NOT. l_zt_equal_zu).AND.( j_itt > 1 ) ) THEN
+         IF( (.NOT. l_zt_equal_zu).AND.( jit > 1 ) ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zeta_u/zu*zt   ! zeta_t
             ztmp0 = LOG(zt/zu) + psi_h_andreas(zeta_u) - psi_h_andreas(ztmp0)
@@ -238,10 +238,10 @@ CONTAINS
          !! Update neutral-stability wind at zu:
          UN10 = MAX( 0.1_wp , UN10_from_ustar( zu, Ubzu, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
 
-         IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, j_itt
+         IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, jit
          IF(iverbose==1) PRINT *, 'LOLO'
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
 
       ! Compute transfer coefficients at zu:
       ztmp0 = u_star/Ubzu

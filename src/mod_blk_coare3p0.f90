@@ -184,7 +184,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: j_itt
+      INTEGER :: jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -290,7 +290,7 @@ CONTAINS
       ENDIF
 
       !! ITERATION BLOCK
-      DO j_itt = 1, nb_itt
+      DO jit = 1, nb_iter
 
          !!Inverse of Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
@@ -357,7 +357,7 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_itt,j_itt) )
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_iter,jit) )
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)
@@ -370,7 +370,7 @@ CONTAINS
             dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          ENDIF
 
-      END DO !DO j_itt = 1, nb_itt
+      END DO !DO jit = 1, nb_iter
 
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/Ubzu

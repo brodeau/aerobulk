@@ -40,12 +40,12 @@ MODULE mod_cswl_ecmwf
    !                                       !: 0.3 to respect a warming of +3 K in calm
    !                                       !: condition for the insolation peak of +1000W/m^2
    
-   INTEGER, PARAMETER :: nb_itt_wl = 10    !: number of sub-itterations for solving the differential equation in warm-layer part
-   !                                       !:  => use "nb_itt_wl = 1" for No itteration! => way cheaper !!!
+   INTEGER, PARAMETER :: nb_iter_wl = 10    !: number of sub-itterations for solving the differential equation in warm-layer part
+   !                                       !:  => use "nb_iter_wl = 1" for No itteration! => way cheaper !!!
    !                                       !:    => assumes balance between the last 2 terms of Eq.11 (lhs of eq.11 = 0)
    !                                       !:    => in that case no need for sub-itterations !
    !                                       !:    => ACCEPTABLE IN MOST CONDITIONS ! (UNLESS: sunny + very calm/low-wind conditions)
-   !                                       !:  => Otherwize use "nb_itt_wl = 10"
+   !                                       !:  => Otherwize use "nb_iter_wl = 10"
    !
    !!----------------------------------------------------------------------
 CONTAINS
@@ -153,7 +153,7 @@ CONTAINS
 
       ! 2.2 Warm layer; formulation C (Xubin Zeng)
       !!--------------------------------------------
-      nbi = MAX( 1 , nb_itt_wl)
+      nbi = MAX( 1 , nb_iter_wl)
 
       IF( nbi > 1 ) THEN
          !! Itterating for warm-layer solution

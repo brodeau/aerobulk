@@ -71,13 +71,13 @@ PROGRAM cx_vs_wind_test
 
 
 
-   !! We want a large nb_itt !
-   nb_itt = 20
+   !! We want a large nb_iter !
+   nb_iter = 20
    jpi = 1
    jpj = 1
 
    
-   !nb_itt = 1
+   !nb_iter = 1
 
    nrh = size(vrh)
 
@@ -358,10 +358,10 @@ PROGRAM cx_vs_wind_test
    !!
 
 
-   IF ( nb_itt < 20 ) THEN
-      PRINT *, 'ACHTUNG!!!! nb_itt was:', nb_itt
+   IF ( nb_iter < 20 ) THEN
+      PRINT *, 'ACHTUNG!!!! nb_iter was:', nb_iter
    ELSE
-      PRINT *, ' Number of itterations used:', nb_itt
+      PRINT *, ' Number of itterations used:', nb_iter
    END IF
 
 
