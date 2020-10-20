@@ -48,7 +48,7 @@ Check that ```bin/aerobulk_toy.x``` has been compiled and execute it:
 
      ./bin/aerobulk_toy.x
 
-You will be guided and interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```aerobulk_toy.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
+You will be interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```aerobulk_toy.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
 
  List of command line options for ```aerobulk_toy.x```:
 
