@@ -8,7 +8,7 @@ PROGRAM TEST_COEF_N10
    USE mod_blk_neutral_10m
 
    IMPLICIT NONE
-   
+
    INTEGER, PARAMETER :: nb_algos = 4
 
    CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', 'ncar', 'ecmwf' /)
@@ -51,7 +51,7 @@ PROGRAM TEST_COEF_N10
       &   n_w    = 1201
 
    REAL, DIMENSION(n_w,1) :: &
-      &   t_w10, t_cdn10, t_cen10, t_chn10
+      &   t_w10, t_cdn10, t_cen10, t_chn10, t_z0
 
    OPEN(6, FORM='formatted', RECL=512)
 
@@ -123,43 +123,34 @@ PROGRAM TEST_COEF_N10
 
 
 
-   WRITE(6,*) 'Give neutral wind speed at 10m (m/s):'
-   READ(*,*) U_N10
-   WRITE(6,*) ''
+   !WRITE(6,*) 'Give neutral wind speed at 10m (m/s):'
+   !READ(*,*) U_N10
+   !WRITE(6,*) ''
 
 
-   DO ialgo = 1, nb_algos
-
-      calgob = trim(vca(ialgo))
-
-      zz0 = 0.
-      zus = 0.
-
-      CALL TURB_NEUTRAL_10M(calgob, U_N10, CdN10, ChN10, Cen10) !,    xz0=zz0, xu_star=zus)
-
-      vCdn10(ialgo) = REAL(1000.*Cdn10(1,1) ,4)
-      vChn10(ialgo) = REAL(1000.*Chn10(1,1) ,4)
-      vCen10(ialgo) = REAL(1000.*Cen10(1,1) ,4)
+   !DO ialgo = 1, nb_algos!
+   !   calgob = trim(vca(ialgo))
+   !   zz0 = 0.
+   !   zus = 0.
+   !   CALL TURB_NEUTRAL_10M(calgob, U_N10, CdN10, ChN10, Cen10) !,    xz0=zz0, xu_star=zus)
+   !   vCdn10(ialgo) = REAL(1000.*Cdn10(1,1) ,4)
+   !   vChn10(ialgo) = REAL(1000.*Chn10(1,1) ,4)
+   !   vCen10(ialgo) = REAL(1000.*Cen10(1,1) ,4)
+   !END DO
 
 
-   END DO
-
-
-   WRITE(6,*) ''; WRITE(6,*) ''
-
-   WRITE(6,*) ''
-   WRITE(6,*) '   *** Bulk Transfer Coefficients:'
-   WRITE(6,*) '======================================================================================'
-   WRITE(6,*) ' Algorithm:     ',TRIM(vca(1)) ,'    |    ',TRIM(vca(2)),'       |    ',TRIM(vca(3)),'       |    ',TRIM(vca(4))
-   WRITE(6,*) '====================================================================================='
+   !WRITE(6,*) ''; WRITE(6,*) ''
+   !WRITE(6,*) ''
+   !WRITE(6,*) '   *** Bulk Transfer Coefficients:'
+   !WRITE(6,*) '======================================================================================'
+   !WRITE(6,*) ' Algorithm:     ',TRIM(vca(1)) ,'    |    ',TRIM(vca(2)),'       |    ',TRIM(vca(3)),'       |    ',TRIM(vca(4))
+   !WRITE(6,*) '====================================================================================='
    !          '  C_D_N10   =      1.032523      0.9227015       1.063966       1.109307     [10^-3]
-   WRITE(6,*) '  C_D_N10   =   ', vCdn10        , '[10^-3]'
-   WRITE(6,*) '  C_E_N10   =   ', vCen10        , '[10^-3]'
-   WRITE(6,*) '  C_H_N10   =   ', vChn10        , '[10^-3]'
-   WRITE(6,*) ''
-   WRITE(6,*) ''
-
-
+   !WRITE(6,*) '  C_D_N10   =   ', vCdn10        , '[10^-3]'
+   !WRITE(6,*) '  C_E_N10   =   ', vCen10        , '[10^-3]'
+   !WRITE(6,*) '  C_H_N10   =   ', vChn10        , '[10^-3]'
+   !WRITE(6,*) ''
+   !WRITE(6,*) ''
 
    !! For all wind speeds:
 
@@ -169,27 +160,25 @@ PROGRAM TEST_COEF_N10
 
    DO ialgo = 1, nb_algos
 
-      calgob = trim(vca(ialgo))
+      calgob = TRIM(vca(ialgo))
 
-      CALL TURB_NEUTRAL_10M(calgob, t_w10, t_CdN10, t_ChN10, t_Cen10)
-
-
+      CALL TURB_NEUTRAL_10M(calgob, t_w10, t_CdN10, t_ChN10, t_Cen10, t_z0)
 
 
       cf_out = 'dat/Neutral_coeff_U10N_'//TRIM(calgob)//'.dat'
 
-      OPEN(unit = 11, file = trim(cf_out), status = 'unknown')
-      WRITE(11,'("#     Wind (U_N10)       Cd_N10             Ce_N10")')
+      OPEN(unit = 11, file = TRIM(cf_out), status = 'unknown')
+      !                 0.00000000       1.57248293       1.89781282       1.80325771       0.00041612
+      WRITE(11,'("#   N10 Wind (m/s)       Cd_N10           Ce_N10           Ch_N10           z0 (mm)")')
       DO jw = 1, n_w
-         WRITE(11,'(1f16.8, " " ,1f16.8, " " ,1f16.8)') t_w10(jw,1), 1000.*t_cdn10(jw,1), 1000.*t_cen10(jw,1)
+         WRITE(11,'(1f16.8, " " ,1f16.8, " " ,1f16.8, " " ,1f16.8, " " ,1f16.8)') &
+            &   t_w10(jw,1), 1000.*t_cdn10(jw,1), 1000.*t_cen10(jw,1), 1000.*t_chn10(jw,1), 1000.*t_z0(jw,1)
       ENDDO
       CLOSE(11)
 
 
-      WRITE(6,*) ''
       WRITE(6,*) '  *** Just created file ', trim(cf_out)
-
-
+      WRITE(6,*) ''
 
    END DO
 

@@ -12,6 +12,7 @@ MODULE mod_blk_neutral_10m
    !!====================================================================================
 
    USE mod_const   !: physical and othe constants
+   USE mod_phymbl,       ONLY: z0_from_Cd
    USE mod_blk_ncar,     ONLY: CD_N10_NCAR, CH_N10_NCAR, CE_N10_NCAR
    USE mod_blk_coare3p0, ONLY: charn_coare3p0
    USE mod_blk_coare3p6, ONLY: charn_coare3p6
@@ -28,7 +29,7 @@ MODULE mod_blk_neutral_10m
 
 CONTAINS
    
-   SUBROUTINE turb_neutral_10m( calgo, U_N10, CdN10, ChN10, CeN10)
+   SUBROUTINE turb_neutral_10m( calgo, U_N10, CdN10, ChN10, CeN10, pz0 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_neutral_10m  ***
       !!
@@ -59,17 +60,18 @@ CONTAINS
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   CdN10       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   ChN10       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   pz0          ! roughness length [m]
 
       INTEGER :: jit
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
          &  u_star, &
-         &  z0, z0t, z0q
+         &  z0t, z0q
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, Ub
 
       ALLOCATE ( u_star(jpi,jpj), &
-         &     z0(jpi,jpj), z0t(jpi,jpj), z0q(jpi,jpj), Ub(jpi,jpj),         &
+         &     z0t(jpi,jpj), z0q(jpi,jpj), Ub(jpi,jpj),         &
          &     ztmp0(jpi,jpj), ztmp1(jpi,jpj) )
       
 
@@ -77,7 +79,7 @@ CONTAINS
 
 
       IF ( (TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf') ) THEN
-
+         
          !! First guess of CdN10
          CdN10 = 8.575E-5*Ub + 0.657E-3  ! from my curves
 
@@ -106,15 +108,15 @@ CONTAINS
             END IF
             
             !! Roughness lengthes z0, momentum: z0t (z0q = z0t) :
-            z0   = ztmp0*u_star*u_star/grav + 0.11*rnu0_air/u_star ! Roughness length (eq.6)
+            pz0   = ztmp0*u_star*u_star/grav + 0.11*rnu0_air/u_star ! Roughness length (eq.6)
 
 
             !! Compute drag coefficient at 10m
             !! -------------------------------
 
-            ztmp0 = LOG(zu/z0)
+            ztmp0 = LOG(zu/pz0)
 
-            CdN10 = vkarmn*vkarmn / ( ztmp0*ztmp0 )
+            CdN10 = vkarmn2 / ( ztmp0*ztmp0 )
 
             !IF ( (jpi==1).AND.(jpj==1) ) PRINT *, '   *** CdN10 =', CdN10*1000.
             IF ( (jpi==1).AND.(jpj==1) ) PRINT *, ''
@@ -125,7 +127,7 @@ CONTAINS
          IF ( TRIM(calgo) == 'coare3p0' ) THEN
 
             ! Re_r: roughness Reynolds number:
-            ztmp1 = z0*u_star/rnu0_air
+            ztmp1 = pz0*u_star/rnu0_air
 
             !! Scalar roughness length z0t:
             z0t = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1**(-0.6_wp) )     ! Scalar roughness for Theta and q (Fairall al 2003, eq.28)
@@ -136,7 +138,7 @@ CONTAINS
          IF ( TRIM(calgo) == 'coare3p6' ) THEN
 
             ! Re_r: roughness Reynolds number:
-            ztmp1 = z0*u_star/rnu0_air
+            ztmp1 = pz0*u_star/rnu0_air
 
             !! Scalar roughness length z0t:
             !! Chris Fairall, Jim Edscon, private communication, March 2016 / COARE 3.5 :
@@ -159,14 +161,16 @@ CONTAINS
          PRINT *, ' *** Algo = ',trim(calgo)
          
          ztmp1 = LOG(zu/z0t)
-         ChN10 = vkarmn*vkarmn / ( ztmp0*ztmp1 )     ! (ztmp0 = LOG(zu/z0))
+         ChN10 = vkarmn2 / ( ztmp0*ztmp1 )     ! (ztmp0 = LOG(zu/z0))
 
          ztmp1 = LOG(zu/z0q)
-         CeN10 = vkarmn*vkarmn / ( ztmp0*ztmp1 )     ! (ztmp0 = LOG(zu/z0))
+         CeN10 = vkarmn2 / ( ztmp0*ztmp1 )     ! (ztmp0 = LOG(zu/z0))
 
 
 
       ELSEIF ( TRIM(calgo) == 'ncar' ) THEN
+
+         PRINT *, ' *** Algo = ',TRIM(calgo)
          
          Ub = MAX(U_N10, 0.5_wp)
 
@@ -176,6 +180,8 @@ CONTAINS
          
          ChN10 = CH_N10_NCAR( ztmp0 , Ub*0. ) ! 0 => UNSTABLE CASE !!!      L&Y 2004 eq. (6c-6d)
          CeN10 = CE_N10_NCAR( ztmp0 )
+
+         pz0    = z0_from_Cd( 10._wp , CdN10 )
          
       ELSE
          
@@ -185,7 +191,7 @@ CONTAINS
 
       END IF
       
-      DEALLOCATE ( u_star, z0, z0t, Ub, ztmp0, ztmp1 )
+      DEALLOCATE ( u_star, z0t, z0q, Ub, ztmp0, ztmp1 )
       
    END SUBROUTINE turb_neutral_10m
 
