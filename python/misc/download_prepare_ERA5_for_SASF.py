@@ -19,7 +19,7 @@ l_interp_daily = True
 
 # Coordinates (point) we want to extract for STATION ASF:
 
-plon = -13.  ; plat = 85. ; # North-East of Greenland...
+plon = -36.  ; plat = 84. ; # North Greenland...
 #plon = 36.75 ; plat = 81. ; # East of Svalbard
 #plon = -65.1  ; plat = 73.2 ; # Center of Baffin Bay
 
@@ -30,8 +30,9 @@ list_var_expected = ['u10', 'v10', 'd2m', 't2m', 'istl1', \
                      'msl', 'skt','ssrd', 'strd', 'tp', 'sf' ]
 
 # Their name in the cdsapi request:
-lvdl_h = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', '2m_temperature', 'ice_temperature_layer_1', \
-         'mean_sea_level_pressure', 'skin_temperature', 'surface_solar_radiation_downwards', 'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
+lvdl_h = [ '10m_u_component_of_wind', '10m_v_component_of_wind', '2m_dewpoint_temperature', '2m_temperature', \
+           'ice_temperature_layer_1', 'mean_sea_level_pressure', 'skin_temperature', 'surface_solar_radiation_downwards', \
+           'surface_thermal_radiation_downwards', 'total_precipitation', 'snowfall' ]
 
 # Daily fields:
 list_var_daily_expected = [    'siconc'    ,        'sst'              ];#, ] 
@@ -201,7 +202,7 @@ for jm in range(12):
     
     print('')
 
-    # Gonna fix this crap!
+    # Gonna fix this crap! #lulu
 
     list_fi_check = [ cf_fi_d ]
     if cm == '01': list_fi_check = [ cf_fi_d+'.before', cf_fi_d ]
@@ -428,10 +429,13 @@ for jm in range(12):
         iv = iv + 1
 
     # Dayly fields that will be interpolated in here:
-    if l_interp_daily:
+    if l_interp_daily: #lulu
         for cvar in list_var_daily_expected:
             ido_var.append(id_fo.createVariable(cvar, 'f4', (cv_tim,'y','x',), zlib=True))
-            ido_var[iv].units = 'boo'
+            if cvar in list_temp_to_degC:
+                ido_var[iv].units = 'degC'
+            else:
+                ido_var[iv].units = 'boo'
             ido_var[iv].long_name = 'boo'
             iv = iv + 1
         
@@ -480,6 +484,7 @@ for jm in range(12):
                 # Linear interpolation !!!
                 rslope = (xdata_d[ivd,jr2] - xdata_d[ivd,jr1])/(vtime_d[jr2] - vtime_d[jr1])
                 ido_var[iv][jt,:,:] = xdata_d[ivd,jr1] +  rslope*(rt - vtime_d[jr1])
+                if cvar in list_temp_to_degC: ido_var[iv][jt,:,:] = ido_var[iv][jt,:,:] - 273.15
                 iv = iv + 1 ; ivd = ivd + 1
                 
         for cvar in list_extra:

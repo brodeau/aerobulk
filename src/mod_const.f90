@@ -42,8 +42,8 @@ MODULE mod_const
 
 
    !! Physics constants:
-   REAL(wp), PARAMETER, PUBLIC ::emiss_w = 0.97   !: emissivity of sea water
-   REAL(wp), PARAMETER, PUBLIC ::emiss_i = 0.996  !:   "   for ice and snow => but Rees 1993 suggests can be lower in winter on fresh snow... 0.72 ...
+   REAL(wp), PARAMETER, PUBLIC ::emiss_w = 0.98_wp     !: Long-wave (thermal) emissivity of sea-water []
+   REAL(wp), PARAMETER, PUBLIC ::emiss_i = 0.996       !:  "   for ice and snow => but Rees 1993 suggests can be lower in winter on fresh snow... 0.72 ...
    REAL(wp), PARAMETER, PUBLIC ::stefan = 5.67E-8 !: Stefan Boltzman constant
 
    !! Thermodynamics / Water:
