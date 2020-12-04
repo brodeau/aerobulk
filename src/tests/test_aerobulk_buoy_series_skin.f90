@@ -2,6 +2,11 @@
 
 !! https://www.pmel.noaa.gov/ocs/flux-documentation
 
+!! TO DO :
+
+!! Must be able to directly read 3x3 input fields as 1x1 !
+!!   => just like I did for "test_aerobulk_ice_series.f90" thanks to new "GETVAR_1D_R8_3x3_to_1x1" in io_ezcdf !!! 
+
 
 PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
