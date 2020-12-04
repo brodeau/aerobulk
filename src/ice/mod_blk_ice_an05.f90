@@ -104,7 +104,6 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: u_star, t_star, q_star
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2      ! temporary stuff
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: z0, dt_zu, dq_zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: u_star, t_star, q_star

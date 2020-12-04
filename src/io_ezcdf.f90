@@ -87,7 +87,8 @@ MODULE io_ezcdf
       &    test_xyz,         &
       &    time_to_date,     &
       &    to_epoch_time_scalar, to_epoch_time_vect, &
-      &    coordinates_from_var_attr
+      &    coordinates_from_var_attr, &
+      &    GETVAR_1D_R8_3x3_to_1x1
    !!===========================
 
 
@@ -439,6 +440,42 @@ CONTAINS
       IF (ierr2 == NF90_NOERR) X = X + rao
       CALL sherr( NF90_CLOSE(id_f),                         crtn,cf_in,cv_in)
    END SUBROUTINE GETVAR_1D_R8_1x1
+
+
+   SUBROUTINE GETVAR_1D_R8_3x3_to_1x1(cf_in, cv_in, X)
+      !!-----------------------------------------------------------------------
+      !! This routine extract a variable 1D from a netcdf file
+      !!
+      !! INPUT :
+      !! -------
+      !!          * cf_in      : name of the input file             (character l=100)
+      !!          * cv_in      : name of the variable               (character l=20)
+      !!
+      !! OUTPUT :
+      !! --------
+      !!          * X         : fake 3D array contening a 1D vector (field of shape 1 x 1 x Nx)  (double)
+      !!
+      !!------------------------------------------------------------------------
+      !! The field in netcdf is 2D(3x3) + T, yet here X must be 2D(1x1)
+      INTEGER                             :: id_f, id_v
+      CHARACTER(len=*),       INTENT(in)  :: cf_in, cv_in
+      REAL(8), DIMENSION (:,:,:), INTENT(out) :: X
+      INTEGER :: n1, n2, nx, ierr1, ierr2
+      REAL(4) :: rsf, rao
+      CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_1D_R8_3x3_to_1x1'
+      n1 = SIZE(X,1)
+      n2 = SIZE(X,2)
+      IF ( (n1/=1).OR.(n2/=1) ) CALL print_err(crtn, ' PROBLEM #1 => 1st and 2nd dimmension /= 3 !!!')
+      nx = SIZE(X,3)
+      CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),     crtn,cf_in,cv_in)
+      CALL sherr( NF90_INQ_VARID(id_f, TRIM(cv_in), id_v),  crtn,cf_in,cv_in)
+      ierr1 = NF90_GET_ATT(id_f, id_v, 'scale_factor', rsf)
+      ierr2 = NF90_GET_ATT(id_f, id_v, 'add_offset',   rao)
+      CALL sherr( NF90_GET_VAR(id_f, id_v, X, start=(/2,2,1/), count=(/1,1,nx/)), crtn,cf_in,cv_in) !lolo: 2,2,1 for star !!! the middle !!
+      IF (ierr1 == NF90_NOERR) X = rsf*X
+      IF (ierr2 == NF90_NOERR) X = X + rao
+      CALL sherr( NF90_CLOSE(id_f),                         crtn,cf_in,cv_in)
+   END SUBROUTINE GETVAR_1D_R8_3x3_to_1x1
 
 
 

@@ -167,9 +167,9 @@ CONTAINS
 
       Ce_i(:,:) = rz0_i_s_0 !! temporary array to contain roughness length for skin drag !
 
-
+      
       !! Method #1:
-      !Cd_i(:,:) = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU13( frice(:,:) )
+      Cd_i(:,:) = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU13( frice(:,:) )
       !IF( lreturn_cdfrm ) CdN_frm = CdN10_f_LU13( frice(:,:) )
       !PRINT *, 'LOLO: estimate of Cd_f_i method #1 =>', CdN10_f_LU13( frice(:,:) ); PRINT *, ''
 
@@ -188,9 +188,8 @@ CONTAINS
 
       !! Method #4:
       !! using eq.21 of LG15 instead:
-      z0_i(:,:) = rz0_i_f_0
-      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) / frice(:,:)
-      Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
+      !z0_i(:,:) = rz0_i_f_0
+      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
       !IF( lreturn_cdfrm ) CdN_frm = CdN_f_LG15( zu, frice(:,:), z0_i(:,:) )
 
 

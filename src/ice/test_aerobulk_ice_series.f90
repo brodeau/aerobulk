@@ -27,6 +27,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    INTEGER, PARAMETER :: nb_algos = 4
 
    CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
+   CHARACTER(len=80 ) :: cv_time
 
    CHARACTER(len=80) :: csep='#################################################################################'
 
@@ -35,6 +36,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    INTEGER :: jt0, jt, jarg, ialgo, jq, n0, info
 
    INTEGER :: nx, ny, Nt, ians
+
 
    CHARACTER(len=10) :: calgo
 
@@ -49,14 +51,13 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime, vlon
 
    !! Input (or deduced from input) variables:
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SST, SKT, SLP, W10, SIC, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: SIT, SST, SLP, W10, SIC, t_zt, theta_zt, q_zt, rad_sw, rad_lw, dummy
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ublk, zz0, zus, zL, zUN10, zCdN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: t_zu, theta_zu, q_zu, rho_zt, rho_zu
 
    REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, SIQ, SSQ, rgamma, Cp_ma, tmp
-
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd_i, Ce_i, Ch_i, QH, QL, Qsw, QNS, Qlw, RiB_zt, RiB_zu, TAU, SBLM
 
@@ -65,6 +66,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    CHARACTER(len=3) :: czt, czu
 
    LOGICAL :: &
+      &     l_3x3_ts      = .FALSE. ,   &  !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
       &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
       &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
@@ -97,14 +99,17 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
 
-      CASE('-r')
-         l_use_rh = .TRUE.
+         !CASE('-r')
+         !   l_use_rh = .TRUE.
 
-      CASE('-d')
-         l_use_dp = .TRUE.
+      CASE('-3')
+         l_3x3_ts = .TRUE.
 
-      CASE('-S')
-         l_use_cswl = .TRUE.
+         !CASE('-d')
+         !   l_use_dp = .TRUE.
+
+         !CASE('-S')
+         !   l_use_cswl = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -128,65 +133,121 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    WRITE(6,*) ''
 
 
+
+
+
+
+
+
    !! Getting dimmension of the case and allocating arrays:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   CALL DIMS(cf_data, 'istl1', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
-   IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
-      WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0, Nt
-      STOP
-   END IF
+
+   !lulu
+   cv_time = 'time'
+   IF( l_3x3_ts ) cv_time = 'time_counter'
+
+
+   CALL DIMS(cf_data, cv_time, Nt,  nx, ny, n0 ) ! Getting dimmensions from field sst...
+   PRINT *, ' *** Number of time records to treat: ', Nt
+
+
+
+   nx = 1
+   ny = 1
+   !CALL DIMS(cf_data, 'istl1', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
+   !IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
+   !   WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0, Nt
+   !   STOP
+   !END IF
 
    jpi = nx ; jpj = ny
 
    WRITE(6,*) ''
-   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
+   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', INT2( (/nx,ny,Nt/) )
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt), zCdN(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
-   ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SKT(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
+   ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), SIC(nx,ny,Nt) )
    ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zt(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
    ALLOCATE ( xlon(nx,ny), SIQ(nx,ny), SSQ(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
    ALLOCATE ( Cd_i(nx,ny,Nt), Ce_i(nx,ny,Nt), Ch_i(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &       RiB_zt(nx,ny,Nt), RiB_zu(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
 
-   t_zu = 0. ; theta_zu = 0. ; q_zu = 0. ; rho_zt = 0. ; rho_zu = 0. ; dummy = 0. 
+   t_zu = 0. ; theta_zu = 0. ; q_zu = 0. ; rho_zt = 0. ; rho_zu = 0. ; dummy = 0.
    Cd_i = 0. ; Ce_i = 0. ; Ch_i = 0. ; QH = 0. ; QL = 0. ; Qsw = 0. ; Qlw = 0. ; QNS = 0.
    RiB_zt = 0. ; RiB_zu = 0. ; TAU = 0. ; SBLM = 0.
-   
+
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
 
-   CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
-   CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t,  clndr=clndr_t)
+   CALL GETVAR_1D(cf_data, cv_time,  vtime ) ; ! (hours since ...)
+   CALL GET_VAR_INFO(cf_data, cv_time, cunit_t, clnm_t,  clndr=clndr_t)
    PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
    tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
-   PRINT *, ' *** Digested time unit is: ', tut_time_unit
+   PRINT *, ' *** Digested time unit is: '
+   PRINT *, tut_time_unit
+   PRINT *, ''
 
-   CALL GETVAR_1D(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
 
-   CALL GETVAR_1D(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
 
-   CALL GETVAR_1D(cf_data, 'sst',    SST  )  ; ! sst is in K !
 
-   CALL GETVAR_1D(cf_data, 'skt',    SKT  )  ; ! skt is in K !
+   IF( .NOT. l_3x3_ts ) THEN
 
-   CALL GETVAR_1D(cf_data, 'msl',    SLP  )
+      !! "1D + t" AeroBulk convention:
+      !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      CALL GETVAR_1D(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
 
-   CALL GETVAR_1D(cf_data, 'u10', W10  )
-   CALL GETVAR_1D(cf_data, 'v10', dummy  )
-   W10 = SQRT ( W10*W10 + dummy*dummy )
+      CALL GETVAR_1D(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
 
-   CALL GETVAR_1D(cf_data, 't2m',  t_zt )
+      CALL GETVAR_1D(cf_data, 'sst',    SST  )  ; ! sst is in K !
 
-   CALL GETVAR_1D(cf_data, 'd2m',  dummy )
-   DO jt = 1, Nt
-      q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
-   END DO
+      CALL GETVAR_1D(cf_data, 'msl',    SLP  )
 
-   CALL GETVAR_1D(cf_data, 'ssrd',  rad_sw  )
-   CALL GETVAR_1D(cf_data, 'strd',  rad_lw  )
+      CALL GETVAR_1D(cf_data, 'u10', W10  )
+      CALL GETVAR_1D(cf_data, 'v10', dummy  )
+      W10 = SQRT ( W10*W10 + dummy*dummy )
+
+      CALL GETVAR_1D(cf_data, 't2m',  t_zt )
+
+      CALL GETVAR_1D(cf_data, 'd2m',  dummy )
+      DO jt = 1, Nt
+         q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+      END DO
+
+      CALL GETVAR_1D(cf_data, 'ssrd',  rad_sw  )
+      CALL GETVAR_1D(cf_data, 'strd',  rad_lw  )
+
+
+   ELSE
+
+      !! "2D (3x3) + t" NEMO convention:
+      !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  )  ; ! sst is in K !
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'msl',    SLP  )
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'u10', W10  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'v10', dummy  )
+      W10 = SQRT ( W10*W10 + dummy*dummy )
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+      DO jt = 1, Nt
+         q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+      END DO
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'ssrd',  rad_sw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
+
+   END IF !IF( .NOT. l_3x3_ts )
 
 
    WRITE(6,*) ''
@@ -292,7 +353,6 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
       info = DISP_DEBUG(lverbose, 'SIT', SIT(:,:,jt)-rt0, '[degC]')
       info = DISP_DEBUG(lverbose, 'SST', SST(:,:,jt)-rt0, '[degC]')
-      info = DISP_DEBUG(lverbose, 'SKT', SKT(:,:,jt)-rt0, '[degC]')
 
       SIQ = q_sat( SIT(:,:,jt), SLP(:,:,jt), l_ice=.TRUE. )
       info = DISP_DEBUG(lverbose, 'SIQ over ice = ', 1000.*SIQ, '[g/kg]')
@@ -467,10 +527,12 @@ SUBROUTINE usage_test()
    PRINT *,''
    PRINT *,' -f <netcdf_file>  => file containing data'
    PRINT *,''
-   PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+   PRINT *,' -3   => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
    PRINT *,''
-   PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
-   PRINT *,'         and use the skin temperature instead of the SIT'
+   !PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+   !PRINT *,''
+   !PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
+   !PRINT *,'         and use the skin temperature instead of the SIT'
    PRINT *,'         only in COARE and ECMWF'
    PRINT *,''
    PRINT *,' -h   => Show this message'
