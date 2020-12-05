@@ -26,7 +26,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=800) :: cf_data='0', cunit_t, clnm_t, clndr_t
+   CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t, clndr_t
    CHARACTER(len=80 ) :: cv_time
 
    CHARACTER(len=80) :: csep='#################################################################################'
@@ -68,7 +68,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    LOGICAL :: &
       &   l_3x3_ts = .FALSE., &   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
-      &   l_hum_rh = .FALSE.      !: humidity in NetCDF file is Relative Humidity [%]
+      &   l_hum_rh = .FALSE., &   !: humidity in NetCDF file is Relative Humidity [%]
+      &   l_wndspd = .FALSE.      !: wind speed read instead of deduced from "u" and "v"
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -96,11 +97,18 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
 
+      CASE('-n')
+         jarg = jarg + 1
+         CALL get_command_ARGUMENT(jarg,cn_exp)
+
       CASE('-3')
          l_3x3_ts = .TRUE.
 
       CASE('-r')
          l_hum_rh = .TRUE.
+
+      CASE('-w')         
+         l_wndspd = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -112,6 +120,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
    IF ( TRIM(cf_data) == '0' ) CALL usage_test()
+   IF ( TRIM(cn_exp)  == '0' ) CALL usage_test()
 
 
    WRITE(6,*) ''
@@ -182,6 +191,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       W10 = SQRT ( W10*W10 + dummy*dummy )
 
       CALL GETVAR_1D(cf_data, 't2m',  t_zt )
+      CALL TO_KELVIN_3D(t_zt, cname=TRIM('t2m') )
 
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
@@ -221,6 +231,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       W10 = SQRT ( W10*W10 + dummy*dummy )
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
+      CALL TO_KELVIN_3D(t_zt, cname=TRIM('t2m') )
 
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
@@ -244,6 +255,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
 
    END IF !IF( .NOT. l_3x3_ts )
+
+   CALL TO_KELVIN_3D(SST, cname=TRIM('sst')   )
+   CALL TO_KELVIN_3D(SIT, cname=TRIM('istl1') )
 
 
    WRITE(6,*) ''
@@ -468,7 +482,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
 
-   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'aerobulk_test_ice_series_'//TRIM(calgo)//'.nc', 'time', &
+   CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), 'aerobulk_test_ice_series_'//TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', 'time', &
       &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
       &           ct_unit=TRIM(cunit_t), ct_clnd=TRIM(clndr_t), &
       &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',   cun02='W/m^2', cln02='Latent Heat Flux',       &

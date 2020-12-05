@@ -57,12 +57,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    INTEGER(4)        :: ihh, imm, isecday_utc
 
-   CHARACTER(len=19), DIMENSION(:), ALLOCATABLE :: ctime
-   CHARACTER(len=8),  DIMENSION(:), ALLOCATABLE :: cdate
-   CHARACTER(len=4),  DIMENSION(:), ALLOCATABLE :: clock
-   CHARACTER(len=2),  DIMENSION(:), ALLOCATABLE :: chh, cmn ! hours and minutes
    CHARACTER(len=16), DIMENSION(:), ALLOCATABLE :: cldate ! human!
-   INTEGER(8),        DIMENSION(:), ALLOCATABLE :: idate
    REAL(8),           DIMENSION(:), ALLOCATABLE :: vtime, vlon
 
    !! Input (or deduced from input) variables:
@@ -78,7 +73,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
 
-   REAL(wp) :: zt, zu, rlon
+   REAL(wp) :: zt, zu, rlon, ztmp
 
    CHARACTER(len=3) :: czt, czu
 
@@ -166,7 +161,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', INT2( (/nx,ny,Nt/) )
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
-   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt) )
+   ALLOCATE (   cldate(Nt), vtime(Nt) )
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
@@ -204,10 +199,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       END DO
       DEALLOCATE( vlon )
 
-      !! SST must be in [K]
-      CALL GETVAR_1D(cf_data, cv_sst,    SST  ) ; ! in [deg.C]
-      SST  = SST + rt0
-
+      CALL GETVAR_1D(cf_data, cv_sst,    SST  )
+      
       CALL GETVAR_1D(cf_data, cv_patm,    SLP  ) ; ! must be in [Pa]
 
       IF ( l_wndspd ) THEN
@@ -219,8 +212,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       END IF
          
       CALL GETVAR_1D(cf_data, cv_t_air,  t_zt ) ; ! must be in [deg.C]
-      t_zt = t_zt + rt0
-
+      CALL TO_KELVIN_3D(t_zt, cname=TRIM(cv_t_air) )
+      
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
          CALL GETVAR_1D(cf_data, cv_rh_air, dummy)
@@ -255,9 +248,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       rlon = xlon(1,1)
       DEALLOCATE( X3 )
 
-      !! SST must be in [K]
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_sst,    SST  )
-      sst = sst + rt0
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_patm,    SLP  ) ; ! must be in [Pa]
 
@@ -273,6 +264,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       W10 = SQRT ( W10*W10 + dummy*dummy )
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_t_air,  t_zt )
+      CALL TO_KELVIN_3D(t_zt, cname=TRIM(cv_t_air) )
 
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
@@ -297,7 +289,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    END IF !IF( .NOT. l_3x3_ts )
 
+   
+   CALL TO_KELVIN_3D(SST, cname=TRIM(cv_sst) )
 
+
+   
    PRINT *, ' *** Longitude of station: ', rlon
 
    WRITE(6,*) ''
@@ -545,7 +541,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    IF     ( TRIM(calgo) == 'coare3p6' ) THEN
 
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', 'time', &
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', cv_time, &
          &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
          &           ct_unit=TRIM(cunit_t), &
          &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &
@@ -567,7 +563,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    ELSE
 
-      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', 'time', &
+      CALL PT_SERIES(vtime(:), REAL(rho_zu(1,1,:),4), TRIM(cn_exp)//'_'//TRIM(calgo)//'.nc', cv_time, &
          &           'rho_a', 'kg/m^3', 'Density of air at '//TRIM(czu), -9999._4, &
          &           ct_unit=TRIM(cunit_t), &
          &           vdt02=REAL(   QL(1,1,:),4), cv_dt02='Qlat',  cun02='W/m^2', cln02='Latent Heat Flux',       &

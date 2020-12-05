@@ -145,6 +145,7 @@ MODULE mod_phymbl
    PUBLIC Re_rough_tq_LKB
    PUBLIC z0tq_LKB
    PUBLIC vmean, variance
+   PUBLIC to_kelvin_3d
 
 
 CONTAINS
@@ -1425,6 +1426,29 @@ FUNCTION VMEAN( pvc )
    !!
 END FUNCTION VMEAN
 
+
+SUBROUTINE TO_KELVIN_3D( pt, cname )
+   REAL(wp), DIMENSION(:,:,:), INTENT(inout) :: pt
+   CHARACTER(len=*), OPTIONAL, INTENT(in)    :: cname
+   INTEGER :: nt   
+   REAL(wp) :: zm
+   CHARACTER(len=32) :: cvar='...'
+   !
+   IF(PRESENT(cname)) cvar=trim(cname)
+   !
+   nt = SIZE( pt )
+   !
+   zm = SUM(pt)/REAL(nt)
+   IF( (zm < 50._wp).AND.(zm > -80._wp) ) THEN
+      PRINT *, ' *** Variable ', TRIM(cvar), ' is in [deg.C] => converting to [K] !!!'
+      pt  = pt + rt0
+   ELSEIF ( (zm > 200._wp).AND.(zm < 320._wp) ) THEN
+      PRINT *, ' *** Variable ', TRIM(cvar), ' is already in [K], doing nothing...'
+   ELSE
+      PRINT *, ' *** PROBLEM: cannot figure out unit of variable ', TRIM(cvar), ' !!!'
+      STOP
+   END IF
+END SUBROUTINE TO_KELVIN_3D
 
    
 END MODULE mod_phymbl
