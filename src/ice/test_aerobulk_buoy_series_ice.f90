@@ -3,7 +3,7 @@
 !! https://www.pmel.noaa.gov/ocs/flux-documentation
 
 
-PROGRAM TEST_AEROBULK_ICE_SERIES
+PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    USE mod_const
    USE mod_phymbl
@@ -66,8 +66,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
    CHARACTER(len=3) :: czt, czu
 
-   LOGICAL :: &
-      &     l_3x3_ts      = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
+   LOGICAL :: l_3x3_ts  = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -199,7 +198,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  )  ; ! sst is in K !
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'msl',    SLP  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'msl',    SLP  ) ; ! must be in [Pa]
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'u10', W10  )
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'v10', dummy  )
@@ -482,7 +481,7 @@ CONTAINS
       END IF
    END FUNCTION DISP_DEBUG
 
-END PROGRAM TEST_AEROBULK_ICE_SERIES
+END PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
 

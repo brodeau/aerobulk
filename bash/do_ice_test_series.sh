@@ -19,28 +19,28 @@ F_IN="${HOME}/DEV/NEMO/NEMOGCM_trunk/tests/STATION_ASF/input_data/ERA5_NorthGree
 
 
 # NEMO default...
-./bin/test_aerobulk_ice_series.x -f ${F_IN} -3 <<EOF
+./bin/test_aerobulk_buoy_series_ice.x -f ${F_IN} -3 <<EOF
 1
 10
 2
 EOF
 
 # Andreas et al (2005)
-./bin/test_aerobulk_ice_series.x -f ${F_IN} -3 <<EOF
+./bin/test_aerobulk_buoy_series_ice.x -f ${F_IN} -3 <<EOF
 2
 10
 2
 EOF
 
 # Lupkes et al (2012)
-./bin/test_aerobulk_ice_series.x -f ${F_IN} -3 <<EOF
+./bin/test_aerobulk_buoy_series_ice.x -f ${F_IN} -3 <<EOF
 3
 10
 2
 EOF
 
 # Lupkes & Gryanik (2015)
-./bin/test_aerobulk_ice_series.x -f ${F_IN} -3 <<EOF
+./bin/test_aerobulk_buoy_series_ice.x -f ${F_IN} -3 <<EOF
 4
 10
 2

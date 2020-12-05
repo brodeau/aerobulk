@@ -2,13 +2,8 @@
 
 !! https://www.pmel.noaa.gov/ocs/flux-documentation
 
-!! TO DO :
 
-!! Must be able to directly read 3x3 input fields as 1x1 !
-!!   => just like I did for "test_aerobulk_ice_series.f90" thanks to new "GETVAR_1D_R8_3x3_to_1x1" in io_ezcdf !!!
-
-
-PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
+PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    USE mod_const
    USE mod_phymbl
@@ -40,7 +35,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t, clndr_t
 
    CHARACTER(len=80 ) :: cv_time
-   
+
    CHARACTER(len=80) :: csep='#################################################################################'
 
    INTEGER, PARAMETER ::   &
@@ -76,7 +71,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Ts, t_zu, theta_zu, q_zu, qs, rho_zu, dTcs, dTwl, dT, zHwl, zQac, zTac
 
-   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, tmp
+   REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xlon, ssq, rgamma, Cp_ma, xtmp, X3
 
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
@@ -85,7 +80,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=3) :: czt, czu
 
-   LOGICAL :: l_3x3_ts  = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
+   LOGICAL :: &
+      &   l_3x3_ts = .FALSE., &   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
+      &   l_hum_rh = .FALSE.      !: humidity in NetCDF file is Relative Humidity [%]
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -113,8 +110,15 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
 
+      CASE('-n')
+         jarg = jarg + 1
+         CALL get_command_ARGUMENT(jarg,cn_exp)
+
       CASE('-3')
          l_3x3_ts = .TRUE.
+
+      CASE('-r')
+         l_hum_rh = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -161,7 +165,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
       &        dummy(nx,ny,Nt), dT(nx,ny,Nt), dTcs(nx,ny,Nt), dTwl(nx,ny,Nt), zHwl(nx,ny,Nt), zQac(nx,ny,Nt), zTac(nx,ny,Nt) )
-   ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), tmp(nx,ny) )
+   ALLOCATE (  xlon(nx,ny), ssq(nx,ny), rgamma(nx,ny), Cp_ma(nx,ny), xtmp(nx,ny) )
    ALLOCATE (  Cd(nx,ny,Nt), Ce(nx,ny,Nt), Ch(nx,ny,Nt), QH(nx,ny,Nt), QL(nx,ny,Nt), Qsw(nx,ny,Nt), Qlw(nx,ny,Nt), QNS(nx,ny,Nt), &
       &        EVAP(nx,ny,Nt), RiB(nx,ny,Nt), TAU(nx,ny,Nt) )
 
@@ -180,7 +184,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
 
    IF( .NOT. l_3x3_ts ) THEN
-      
+
       !! "1D + t" AeroBulk convention:
       !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -192,7 +196,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       END DO
       DEALLOCATE( vlon )
 
-      CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
+      !! SST must be in [K]
+      CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! in [deg.C]
       SST  = SST + rt0
 
       CALL GETVAR_1D(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
@@ -202,12 +207,21 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       CALL GETVAR_1D(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
       t_zt = t_zt + rt0
 
-      CALL GETVAR_1D(cf_data, 'rh_air', dummy)
-      dummy = MIN(99.999 , dummy)
-      DO jt = 1, Nt
-         PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
-         q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
-      END DO
+      IF ( l_hum_rh ) THEN
+         !! Relative humidity is read:
+         CALL GETVAR_1D(cf_data, 'rh_air', dummy)
+         dummy = MIN(99.999 , dummy)
+         DO jt = 1, Nt
+            !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+         END DO
+      ELSE
+         !! Dew-point is read:
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+         DO jt = 1, Nt
+            q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+         END DO
+      END IF
 
       CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
       CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
@@ -216,36 +230,53 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       !! "2D (3x3) + t" NEMO convention:
       !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      
+
       !CALL GETVAR_1D_R8_3x3_to_1x1
-      
-      CALL GETVAR_2D( ifi, ivi, cf_data, 'nav_lon', 1, 0, 1, xlon )
+
+      ALLOCATE( X3(3,3) )
+      CALL GETVAR_2D( ifi, ivi, cf_data, 'nav_lon', 1, 0, 0, X3 )
+      xlon(:,:) = X3(2,2)
       rlon = xlon(1,1)
-      
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
-      SST  = SST + rt0
+      DEALLOCATE( X3 )
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
+      !! SST must be in [K]
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  )
+      sst = sst + rt0
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'wndspd', W10  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'msl',    SLP  ) ; ! must be in [Pa]
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
-      t_zt = t_zt + rt0
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'u10', W10  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'v10', dummy  )
+      W10 = SQRT ( W10*W10 + dummy*dummy )
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
-      dummy = MIN(99.999 , dummy)
-      DO jt = 1, Nt
-         PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
-         q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
-      END DO
-
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rad_sw',  rad_sw  )
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rad_lw',  rad_lw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
 
 
+      IF ( l_hum_rh ) THEN
+         !! Relative humidity is read:
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
+         dummy = MIN(99.999 , dummy)
+         DO jt = 1, Nt
+            !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+         END DO
+      ELSE
+         !! Dew-point is read:
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+         DO jt = 1, Nt
+            q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+         END DO
+      END IF
 
 
-      
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'ssrd',  rad_sw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
+
+
+
+
+
    END IF
 
 
@@ -337,6 +368,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          WRITE(6,*) ''
       END IF
 
+      info = DISP_DEBUG(lverbose, 'SST', SST(:,:,jt)-rt0, '[degC]')
+      
       info = DISP_DEBUG(lverbose, 'atmospheric pressure', SLP(:,:,jt), '[Pa]' )
 
       info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
@@ -345,8 +378,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
-      tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
-      info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
+      xtmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
+      info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          xtmp     - rt0, '[deg.C]')
 
       info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
 
@@ -358,13 +391,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
 
-      info = DISP_DEBUG(lverbose, 'SST', SST(:,:,jt)-rt0, '[degC]')
-
       ssq = rdct_qsat_salt*q_sat(SST(:,:,jt), SLP(:,:,jt))
       info = DISP_DEBUG(lverbose, 'SSQ = 0.98*q_sat(SST)', 1000.*ssq, '[g/kg]')
 
       info = DISP_DEBUG(lverbose, 'Pot. temp. diff. air/sea at '//TRIM(czt),    theta_zt(:,:,jt) - SST(:,:,jt), '[deg.C]')
-      info = DISP_DEBUG(lverbose, 'Virt. pot. temp. diff. air/sea at '//TRIM(czt),    tmp - virt_temp(SST(:,:,jt), ssq), '[deg.C]')
+      info = DISP_DEBUG(lverbose, 'Virt. pot. temp. diff. air/sea at '//TRIM(czt),    xtmp - virt_temp(SST(:,:,jt), ssq), '[deg.C]')
 
       !! We know enough to estimate the bulk Richardson number:
       info = DISP_DEBUG(lverbose, 'Initial Bulk Richardson number', Ri_bulk( zt, SST(:,:,jt), theta_zt(:,:,jt), ssq, q_zt(:,:,jt), W10(:,:,jt) ), '[--]')
@@ -555,7 +586,7 @@ CONTAINS
       END IF
    END FUNCTION DISP_DEBUG
 
-END PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
+END PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
 
 
@@ -563,14 +594,17 @@ SUBROUTINE usage_test()
    !!
    PRINT *,''
    PRINT *,'   List of command line options:'
+   PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
    PRINT *,''
-   PRINT *,' -f <netcdf_file>  => file containing data'
+   PRINT *,' -f <file>  => NetCDF file containing input data'
    PRINT *,''
-   PRINT *,' -3   => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
+   PRINT *,' -n <name>  => name/label for the experiment'
    PRINT *,''
-   PRINT *,' -n <name>         => name/label for the experiment'
+   PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
    PRINT *,''
-   PRINT *,' -h   => Show this message'
+   PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
+   PRINT *,''
+   PRINT *,' -h         => Show this message'
    PRINT *,''
    STOP
    !!

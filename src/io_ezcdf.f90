@@ -128,7 +128,7 @@ CONTAINS
 
 
 
-   SUBROUTINE DIMS(cf_in, cv_in, lx, ly, lz, lt)
+   SUBROUTINE DIMS(cf_in, cv_in, ni, nj, lz, Nt)
 
       !!-----------------------------------------------------------------------
       !!
@@ -139,7 +139,7 @@ CONTAINS
       !! if the length returns '-1' that means that the dimension does not exist
       !!
       !! example : if the variable has only 1 dimension, of length 132,
-      !!           DIMS will return lx=132, ly=-1, lz=-1, lt=-1
+      !!           DIMS will return ni=132, nj=-1, lz=-1, Nt=-1
       !!
       !!
       !! INPUT :
@@ -149,21 +149,21 @@ CONTAINS
       !!
       !! OUTPUT :
       !! --------
-      !!          * lx      : first dimension                     (integer)
-      !!          * ly      : second dimension  (-1 if none)      (integer)
+      !!          * ni      : first dimension                     (integer)
+      !!          * nj      : second dimension  (-1 if none)      (integer)
       !!          * lz      : third dimension   (-1 if none)      (integer)
-      !!          * lt      : number of records (-1 if none)      (integer)
+      !!          * Nt      : number of records (-1 if none)      (integer)
       !!
       !!------------------------------------------------------------------------
       INTEGER                         :: id_f, id_v
       CHARACTER(len=*),   INTENT(in)  :: cf_in, cv_in
-      INTEGER,            INTENT(out) :: lx, ly, lz, lt
+      INTEGER,            INTENT(out) :: ni, nj, lz, Nt
 
       INTEGER, DIMENSION(:), ALLOCATABLE :: id_dim, nlen
       INTEGER :: jdim, id_unlim_dim
       CHARACTER(len=80), PARAMETER :: crtn = 'DIMS'
 
-      lx = -1 ; ly = -1 ; lz = -1 ; lt = -1
+      ni = -1 ; nj = -1 ; lz = -1 ; Nt = -1
 
       CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),  crtn,cf_in,cv_in)
 
@@ -202,25 +202,25 @@ CONTAINS
       SELECT CASE(nd)
 
       CASE(1)
-         !! Purely 1D
-         lx = nlen(1)
+         !! Purenj 1D
+         ni = nlen(1)
 
       CASE(2)
          IF ( id_dim(2) == id_unlim_dim ) THEN
             !! 1D with time records
-            lx = nlen(1) ; lt = nlen(2)
+            ni = nlen(1) ; Nt = nlen(2)
          ELSE
             !! 2D with no time records
-            lx = nlen(1) ; ly = nlen(2)
+            ni = nlen(1) ; nj = nlen(2)
          END IF
 
       CASE(3)
          IF ( id_dim(3) == id_unlim_dim ) THEN
             !! 2D with time records
-            lx = nlen(1) ; ly = nlen(2) ; lt = nlen(3)
+            ni = nlen(1) ; nj = nlen(2) ; Nt = nlen(3)
          ELSE
             !! 3D with no time records
-            lx = nlen(1) ; ly = nlen(2) ; lz = nlen(3)
+            ni = nlen(1) ; nj = nlen(2) ; lz = nlen(3)
          END IF
 
       CASE(4)
@@ -228,11 +228,11 @@ CONTAINS
             WRITE(6,*) 'ERROR: file ',trim(cf_in),' doesnt have an unlimited dimension (time record)!'
          END IF
 
-         lx = nlen(1) ; ly = nlen(2)
+         ni = nlen(1) ; nj = nlen(2)
          IF ( id_dim(3) == id_unlim_dim ) THEN
-            lz = nlen(4) ; lt = nlen(3)   ! time record (unlimited dim) comes as 3rd dim and lz as 4th
+            lz = nlen(4) ; Nt = nlen(3)   ! time record (unlimited dim) comes as 3rd dim and lz as 4th
          ELSE
-            lz = nlen(3) ; lt = nlen(4)   ! time record (unlimited dim) comes as last dim and lz as 3rd
+            lz = nlen(3) ; Nt = nlen(4)   ! time record (unlimited dim) comes as last dim and lz as 3rd
          END IF
 
       CASE DEFAULT
@@ -429,7 +429,7 @@ CONTAINS
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_1D_R8_1x1'
       n1 = SIZE(X,1)
       n2 = SIZE(X,2)
-      IF ( (n1/=1).OR.(n2/=1) ) CALL print_err(crtn, ' PROBLEM #1 => 1st and 2nd dimmension /= 1 !!!')
+      IF ( (n1/=1).OR.(n2/=1) ) CALL print_err(crtn, ' PROBLEM #1 => 1st and 2nd dimmension /= 1 !!!', ivect=(/n1,n2/))
       nx = SIZE(X,3)
       CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),     crtn,cf_in,cv_in)
       CALL sherr( NF90_INQ_VARID(id_f, TRIM(cv_in), id_v),  crtn,cf_in,cv_in)
@@ -483,7 +483,7 @@ CONTAINS
 
 
 
-   SUBROUTINE GETVAR_2D_R4(idx_f, idx_v, cf_in, cv_in, lt, kz, kt, X, jt1, jt2, lz)
+   SUBROUTINE GETVAR_2D_R4(idx_f, idx_v, cf_in, cv_in, Nt, kz, jt, X, jt1, jt2, lz)
       !!-----------------------------------------------------------------------------
       !! This routine extract a 2D field from a netcdf file
       !! at a given time
@@ -494,10 +494,10 @@ CONTAINS
       !!          * idx_v    : ID of current variable              (integer)
       !!          * cf_in      : name of the input file              (character)
       !!          * cv_in      : name of the variable                (character)
-      !!          * lt        : time dimension of the variable     (integer)
+      !!          * Nt        : number of time records     (integer)
       !!          * kz        : level to extract                    (integer)
       !!                      0 => input file does not have levels ( 1 would work anyway...)
-      !!          * kt        : time snapshot to extract            (integer)
+      !!          * jt        : time snapshot to extract            (integer)
       !!                      0 => input file does not have a time snapshot
       !! OUTPUT :
       !! --------
@@ -511,37 +511,37 @@ CONTAINS
       !!------------------------------------------------------------------------
       INTEGER,                   INTENT(inout) :: idx_f, idx_v
       CHARACTER(len=*),          INTENT(in)    :: cf_in, cv_in
-      INTEGER,                   INTENT(in)    :: lt, kz, kt
+      INTEGER,                   INTENT(in)    :: Nt, kz, jt
       REAL(4),  DIMENSION (:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,   INTENT(in)    :: jt1, jt2, lz
 
-      INTEGER :: lx, ly, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
+      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
       REAL(4) :: rsf, rao
       LOGICAL :: l_okay
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_2D_R4'
 
-      lx = size(X,1)
-      ly = size(X,2)
+      ni = size(X,1)
+      nj = size(X,2)
 
       jlev = kz ! so we can modify jlev without affecting kz...
 
       CALL DIMS(cf_in, cv_in, n1, n2, n3, n4)
-      IF ( (lx /= n1).OR.(ly /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
+      IF ( (ni /= n1).OR.(nj /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in), ivect=(/n1,n2,ni,nj/))
 
-      its = 1 ; ite = lt
+      its = 1 ; ite = Nt
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
 
       IF ( present(lz) ) kz_stop = lz
 
-      IF ( (kt == its).OR.(kt == 0) ) THEN   ! Opening file and defining variable :
+      IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
          PRINT *, ''
          PRINT *, ' --- GETVAR_2D: opening file '//TRIM(cf_in)//' for '//TRIM(cv_in)//' !'
          CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, idx_f),  crtn,cf_in,cv_in)
          CALL sherr( NF90_INQ_VARID(idx_f, cv_in, idx_v),  crtn,cf_in,cv_in)
       END IF
 
-      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugly at each time...
+      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugnj at each time...
       ierr2 = NF90_GET_ATT(idx_f, idx_v, 'add_offset',   rao)
 
       IF ( (idx_f==0).AND.(idx_v==0) ) CALL print_err(crtn, ' PROBLEM #2 file and variable handle never created => '//TRIM(cv_in)//' in '//TRIM(cf_in))
@@ -550,28 +550,28 @@ CONTAINS
       DO WHILE ( .NOT. l_okay )
 
          IF ( jlev == 0 ) THEN    ! No levels
-            IF ( kt == 0 ) THEN
-               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1/), count=(/lx,ly/)), &
+            IF ( jt == 0 ) THEN
+               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1/), count=(/ni,nj/)), &
                   &      crtn,cf_in,cv_in)
-            ELSEIF ( kt > 0 ) THEN
-               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,kt/), count=(/lx,ly,1/)), &
+            ELSEIF ( jt > 0 ) THEN
+               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jt/), count=(/ni,nj,1/)), &
                   &      crtn,cf_in,cv_in)
             END IF
             l_okay = .TRUE. ! we can exit the WHILE loop...
 
          ELSEIF ( jlev > 0 ) THEN
 
-            !! User possibly specified jlev = 1 and there is not an existing level dimension:
+            !! User possibnj specified jlev = 1 and there is not an existing level dimension:
             IF ( n3 == -1 ) THEN
-               PRINT *, ' *** warning: ',trim(crtn),' => there is actually no levels for ', trim(cv_in),' in ',trim(cf_in)
+               PRINT *, ' *** warning: ',trim(crtn),' => there is actualnj no levels for ', trim(cv_in),' in ',trim(cf_in)
                PRINT *, '              => fixing it...'
                jlev = 0 ! => should be treated at next "while" loop...
             ELSE
                IF ( jlev >  n3 ) CALL print_err(crtn, ' you want extract a level greater than max value')
-               IF ( kt == 0 ) THEN
-                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev/), count=(/lx,ly,1/)), crtn,cf_in,cv_in)
-               ELSEIF ( kt > 0 ) THEN
-                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev,kt/), count=(/lx,ly,1,1/)), crtn,cf_in,cv_in)
+               IF ( jt == 0 ) THEN
+                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev/), count=(/ni,nj,1/)), crtn,cf_in,cv_in)
+               ELSEIF ( jt > 0 ) THEN
+                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev,jt/), count=(/ni,nj,1,1/)), crtn,cf_in,cv_in)
                END IF
                l_okay = .TRUE.  ! we can exit the WHILE loop...
             END IF
@@ -581,7 +581,7 @@ CONTAINS
       IF (ierr1 == NF90_NOERR) X = rsf*X
       IF (ierr2 == NF90_NOERR) X = X + rao
 
-      IF ( ( (kt == ite ).OR.(kt == 0) ).AND.( (jlev == kz_stop).OR.(kz_stop == 0) ) )  THEN
+      IF ( ( (jt == ite ).OR.(jt == 0) ).AND.( (jlev == kz_stop).OR.(kz_stop == 0) ) )  THEN
          PRINT *, ' --- GETVAR_2D: closing file '//TRIM(cf_in)//' !'
          CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
          idx_f = 0 ; idx_v = 0
@@ -590,43 +590,43 @@ CONTAINS
 
    END SUBROUTINE GETVAR_2D_R4
 
-   SUBROUTINE GETVAR_2D_R8(idx_f, idx_v, cf_in, cv_in, lt, kz, kt, X, jt1, jt2, lz)
+   SUBROUTINE GETVAR_2D_R8(idx_f, idx_v, cf_in, cv_in, Nt, kz, jt, X, jt1, jt2, lz)
       !!-----------------------------------------------------------------------------
       !! See GETVAR_2D_R4
       !!------------------------------------------------------------------------
       INTEGER,                   INTENT(inout) :: idx_f, idx_v
       CHARACTER(len=*),          INTENT(in)    :: cf_in, cv_in
-      INTEGER,                   INTENT(in)    :: lt, kz, kt
+      INTEGER,                   INTENT(in)    :: Nt, kz, jt
       REAL(8),  DIMENSION (:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,   INTENT(in)    :: jt1, jt2, lz
 
-      INTEGER :: lx, ly, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
+      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
       REAL(4) :: rsf, rao
       LOGICAL :: l_okay
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_2D_R8'
 
-      lx = size(X,1)
-      ly = size(X,2)
+      ni = size(X,1)
+      nj = size(X,2)
 
       jlev = kz ! so we can modify jlev without affecting kz...
 
       CALL DIMS(cf_in, cv_in, n1, n2, n3, n4)
-      IF ( (lx /= n1).OR.(ly /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
+      IF ( (ni /= n1).OR.(nj /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in), ivect=(/n1,n2,ni,nj/))
 
-      its = 1 ; ite = lt
+      its = 1 ; ite = Nt
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
 
       IF ( present(lz) ) kz_stop = lz
 
-      IF ( (kt == its).OR.(kt == 0) ) THEN   ! Opening file and defining variable :
+      IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
          PRINT *, ''
          PRINT *, ' --- GETVAR_2D: opening file '//TRIM(cf_in)//' for '//TRIM(cv_in)//' !'
          CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, idx_f),  crtn,cf_in,cv_in)
          CALL sherr( NF90_INQ_VARID(idx_f, cv_in, idx_v),  crtn,cf_in,cv_in)
       END IF
 
-      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugly at each time...
+      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugnj at each time...
       ierr2 = NF90_GET_ATT(idx_f, idx_v, 'add_offset',   rao)
 
       IF ( (idx_f==0).AND.(idx_v==0) ) CALL print_err(crtn, ' PROBLEM #2 file and variable handle never created => '//TRIM(cv_in)//' in '//TRIM(cf_in))
@@ -635,28 +635,28 @@ CONTAINS
       DO WHILE ( .NOT. l_okay )
 
          IF ( jlev == 0 ) THEN    ! No levels
-            IF ( kt == 0 ) THEN
-               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1/), count=(/lx,ly/)), &
+            IF ( jt == 0 ) THEN
+               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1/), count=(/ni,nj/)), &
                   &      crtn,cf_in,cv_in)
-            ELSEIF ( kt > 0 ) THEN
-               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,kt/), count=(/lx,ly,1/)), &
+            ELSEIF ( jt > 0 ) THEN
+               CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jt/), count=(/ni,nj,1/)), &
                   &      crtn,cf_in,cv_in)
             END IF
             l_okay = .TRUE. ! we can exit the WHILE loop...
 
          ELSEIF ( jlev > 0 ) THEN
 
-            !! User possibly specified jlev = 1 and there is not an existing level dimension:
+            !! User possibnj specified jlev = 1 and there is not an existing level dimension:
             IF ( n3 == -1 ) THEN
-               PRINT *, ' *** warning: ',trim(crtn),' => there is actually no levels for ', trim(cv_in),' in ',trim(cf_in)
+               PRINT *, ' *** warning: ',trim(crtn),' => there is actualnj no levels for ', trim(cv_in),' in ',trim(cf_in)
                PRINT *, '              => fixing it...'
                jlev = 0 ! => should be treated at next "while" loop...
             ELSE
                IF ( jlev >  n3 ) CALL print_err(crtn, ' you want extract a level greater than max value')
-               IF ( kt == 0 ) THEN
-                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev/), count=(/lx,ly,1/)), crtn,cf_in,cv_in)
-               ELSEIF ( kt > 0 ) THEN
-                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev,kt/), count=(/lx,ly,1,1/)), crtn,cf_in,cv_in)
+               IF ( jt == 0 ) THEN
+                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev/), count=(/ni,nj,1/)), crtn,cf_in,cv_in)
+               ELSEIF ( jt > 0 ) THEN
+                  CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,jlev,jt/), count=(/ni,nj,1,1/)), crtn,cf_in,cv_in)
                END IF
                l_okay = .TRUE.  ! we can exit the WHILE loop...
             END IF
@@ -666,7 +666,7 @@ CONTAINS
       IF (ierr1 == NF90_NOERR) X = rsf*X
       IF (ierr2 == NF90_NOERR) X = X + rao
 
-      IF ( ( (kt == ite ).OR.(kt == 0) ).AND.( (jlev == kz_stop).OR.(kz_stop == 0) ) )  THEN
+      IF ( ( (jt == ite ).OR.(jt == 0) ).AND.( (jlev == kz_stop).OR.(kz_stop == 0) ) )  THEN
          PRINT *, ' --- GETVAR_2D: closing file '//TRIM(cf_in)//' !'
          CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
          idx_f = 0 ; idx_v = 0
@@ -690,7 +690,7 @@ CONTAINS
 
 
 
-   SUBROUTINE GETVAR_3D_R4(idx_f, idx_v, cf_in, cv_in, lt, kt, X, jt1, jt2, jz1, jz2)
+   SUBROUTINE GETVAR_3D_R4(idx_f, idx_v, cf_in, cv_in, Nt, jt, X, jt1, jt2, jz1, jz2)
 
       !!------------------------------------------------------------------
       !! This routine extract a 3D field from a netcdf file
@@ -702,9 +702,9 @@ CONTAINS
       !!          * idx_v    : ID of current variable              (integer)
       !!          * cf_in      : name of the input file              (character)
       !!          * cv_in      : name of the variable                (character)
-      !!          * lt        : time dimension of the variable     (integer)
+      !!          * Nt        : number of time records     (integer)
       !!
-      !!          * kt        : time snapshot to extract            (integer)
+      !!          * jt        : time snapshot to extract            (integer)
       !!                      0 => input file does not have a time snapshot
       !!                           (= old GETVAR_2D_NOTIME)
       !!
@@ -721,29 +721,29 @@ CONTAINS
 
       INTEGER,                    INTENT(inout) :: idx_f, idx_v
       CHARACTER(len=*),           INTENT(in)    :: cf_in, cv_in
-      INTEGER,                    INTENT(in)    :: lt, kt
+      INTEGER,                    INTENT(in)    :: Nt, jt
       REAL(4), DIMENSION (:,:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,    INTENT(in)    :: jt1, jt2
       INTEGER,       OPTIONAL,    INTENT(in)    :: jz1, jz2
 
       INTEGER ::  &
-         & lx,  &        ! x dimension of the variable        (integer)
-         & ly,  &        ! y dimension of the variable        (integer)
+         & ni,  &        ! x dimension of the variable        (integer)
+         & nj,  &        ! y dimension of the variable        (integer)
          & lz            ! z dimension of the variable        (integer)
       INTEGER :: n1, n2, n3, n4, its, ite, izs, ize
       INTEGER :: ierr1, ierr2
       REAL(4) :: rsf, rao
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_3D_R4'
 
-      lx = size(X,1)
-      ly = size(X,2)
+      ni = size(X,1)
+      nj = size(X,2)
       lz = size(X,3)
 
       CALL DIMS(cf_in, cv_in, n1, n2, n3, n4)
 
-      IF ( (lx /= n1).OR.(ly /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
+      IF ( (ni /= n1).OR.(nj /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
 
-      its = 1 ; ite = lt
+      its = 1 ; ite = Nt
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
 
@@ -753,7 +753,7 @@ CONTAINS
          izs = 1   ; ize = lz
       END IF
 
-      IF ( (kt == its).OR.(kt == 0) ) THEN   ! Opening file and defining variable :
+      IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
          PRINT *, ''
          PRINT *, ' --- GETVAR_3D_R4: opening file '//TRIM(cf_in)//' for '//TRIM(cv_in)//' !'
          CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE,  idx_f),  crtn,cf_in,cv_in)
@@ -762,21 +762,21 @@ CONTAINS
 
       IF ( (idx_f==0).AND.(idx_v==0) ) CALL print_err(crtn, ' PROBLEM #2 file and variable handle never created => '//TRIM(cv_in)//' in '//TRIM(cf_in))
 
-      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugly at each time...
+      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugnj at each time...
       ierr2 = NF90_GET_ATT(idx_f, idx_v, 'add_offset',   rao)
 
-      IF ( kt == 0 ) THEN
-         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs/), count=(/lx,ly,ize/)), &
+      IF ( jt == 0 ) THEN
+         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs/), count=(/ni,nj,ize/)), &
             &      crtn,cf_in,cv_in)
-      ELSEIF ( kt > 0 ) THEN
-         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs,kt/), count=(/lx,ly,ize,1/)), &
+      ELSEIF ( jt > 0 ) THEN
+         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs,jt/), count=(/ni,nj,ize,1/)), &
             &      crtn,cf_in,cv_in)
       END IF
 
       IF (ierr1 == NF90_NOERR) X = rsf*X
       IF (ierr2 == NF90_NOERR) X = X + rao
 
-      IF ( ( kt == ite ).OR.( kt == 0 ) )  THEN
+      IF ( ( jt == ite ).OR.( jt == 0 ) )  THEN
          PRINT *, ' --- GETVAR_3D_R4: closing file '//TRIM(cf_in)//' !'
          CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
          idx_f = 0 ; idx_v = 0
@@ -784,27 +784,27 @@ CONTAINS
 
    END SUBROUTINE GETVAR_3D_R4
 
-   SUBROUTINE GETVAR_3D_R8(idx_f, idx_v, cf_in, cv_in, lt, kt, X, jt1, jt2, jz1, jz2)
+   SUBROUTINE GETVAR_3D_R8(idx_f, idx_v, cf_in, cv_in, Nt, jt, X, jt1, jt2, jz1, jz2)
       INTEGER,                    INTENT(inout) :: idx_f, idx_v
       CHARACTER(len=*),           INTENT(in)    :: cf_in, cv_in
-      INTEGER,                    INTENT(in)    :: lt, kt
+      INTEGER,                    INTENT(in)    :: Nt, jt
       REAL(8), DIMENSION (:,:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,    INTENT(in)    :: jt1, jt2
       INTEGER,       OPTIONAL,    INTENT(in)    :: jz1, jz2
       INTEGER ::  &
-         & lx,  &        ! x dimension of the variable        (integer)
-         & ly,  &        ! y dimension of the variable        (integer)
+         & ni,  &        ! x dimension of the variable        (integer)
+         & nj,  &        ! y dimension of the variable        (integer)
          & lz            ! z dimension of the variable        (integer)
       INTEGER :: n1, n2, n3, n4, its, ite, izs, ize
       INTEGER :: ierr1, ierr2
       REAL(4) :: rsf, rao
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_3D_R8'
-      lx = SIZE(X,1)
-      ly = size(X,2)
+      ni = SIZE(X,1)
+      nj = size(X,2)
       lz = size(X,3)
       CALL DIMS(cf_in, cv_in, n1, n2, n3, n4)
-      IF ( (lx /= n1).OR.(ly /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
-      its = 1 ; ite = lt
+      IF ( (ni /= n1).OR.(nj /= n2) ) CALL print_err(crtn, ' PROBLEM #1 => '//TRIM(cv_in)//' in '//TRIM(cf_in))
+      its = 1 ; ite = Nt
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
       IF ( PRESENT(jz1).AND.PRESENT(jz2) ) THEN
@@ -812,25 +812,25 @@ CONTAINS
       ELSE
          izs = 1   ; ize = lz
       END IF
-      IF ( (kt == its).OR.(kt == 0) ) THEN   ! Opening file and defining variable :
+      IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
          PRINT *, ''
          PRINT *, ' --- GETVAR_3D_R8: opening file '//TRIM(cf_in)//' for '//TRIM(cv_in)//' !'
          CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE,  idx_f),  crtn,cf_in,cv_in)
          CALL sherr( NF90_INQ_VARID(idx_f, cv_in, idx_v),  crtn,cf_in,cv_in)
       END IF
       IF ( (idx_f==0).AND.(idx_v==0) ) CALL print_err(crtn, ' PROBLEM #2 file and variable handle never created => '//TRIM(cv_in)//' in '//TRIM(cf_in))
-      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugly at each time...
+      ierr1 = NF90_GET_ATT(idx_f, idx_v, 'scale_factor', rsf) ; !lolo, ugnj at each time...
       ierr2 = NF90_GET_ATT(idx_f, idx_v, 'add_offset',   rao)
-      IF ( kt == 0 ) THEN
-         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs/), count=(/lx,ly,ize/)), &
+      IF ( jt == 0 ) THEN
+         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs/), count=(/ni,nj,ize/)), &
             &      crtn,cf_in,cv_in)
-      ELSEIF ( kt > 0 ) THEN
-         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs,kt/), count=(/lx,ly,ize,1/)), &
+      ELSEIF ( jt > 0 ) THEN
+         CALL sherr( NF90_GET_VAR(idx_f, idx_v, X, start=(/1,1,izs,jt/), count=(/ni,nj,ize,1/)), &
             &      crtn,cf_in,cv_in)
       END IF
       IF (ierr1 == NF90_NOERR) X = rsf*X
       IF (ierr2 == NF90_NOERR) X = X + rao
-      IF ( ( kt == ite ).OR.( kt == 0 ) )  THEN
+      IF ( ( jt == ite ).OR.( jt == 0 ) )  THEN
          PRINT *, ' --- GETVAR_3D_R8: closing file '//TRIM(cf_in)//' !'
          CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
          idx_f = 0 ; idx_v = 0
@@ -868,15 +868,15 @@ CONTAINS
       INTEGER(1), DIMENSION(:,:), INTENT(out) :: IX
 
       INTEGER :: &
-         & lx, &    ! x dimension of the mask
-         & ly       ! y dimension of the mask
+         & ni, &    ! x dimension of the mask
+         & nj       ! y dimension of the mask
 
-      INTEGER :: nx, ny, nk, nt, icz
+      INTEGER :: nx, ny, nz, nt, icz
 
       CHARACTER(len=80), PARAMETER :: crtn = 'GETMASK_2D'
 
-      lx = size(IX,1)
-      ly = size(IX,2)
+      ni = size(IX,1)
+      nj = size(IX,2)
 
       icz = 1 ! getting mask at level 1 for default
 
@@ -888,9 +888,9 @@ CONTAINS
          END IF
       END IF
 
-      CALL DIMS(cf_in, cv_in, nx, ny, nk, nt)
+      CALL DIMS(cf_in, cv_in, nx, ny, nz, nt)
 
-      IF ( (nx /= lx).OR.(ny /= ly) ) CALL print_err(crtn, 'data and mask file dont have same horizontal dimensions')
+      IF ( (nx /= ni).OR.(ny /= nj) ) CALL print_err(crtn, 'data and mask file dont have same horizontal dimensions')
 
 
 
@@ -899,7 +899,7 @@ CONTAINS
       CALL sherr( NF90_INQ_VARID(id_f, trim(cv_in), id_v),  crtn,cf_in,cv_in)
 
 
-      IF ( nk > 0 ) THEN
+      IF ( nz > 0 ) THEN
 
          !! Mask is 3D
          !! ~~~~~~~~~~
@@ -972,16 +972,16 @@ CONTAINS
       INTEGER,       OPTIONAL,    INTENT(in)    :: jz1, jz2
 
       INTEGER :: &
-         & lx, &    ! x dimension of the mask
-         & ly, &    ! y dimension of the mask
+         & ni, &    ! x dimension of the mask
+         & nj, &    ! y dimension of the mask
          & lz       ! z dimension of the mask
 
-      INTEGER :: nx, ny, nk, nt, izs, ize
+      INTEGER :: nx, ny, nz, nt, izs, ize
 
       CHARACTER(len=80), PARAMETER :: crtn = 'GETMASK_3D'
 
-      lx = size(IX,1)
-      ly = size(IX,2)
+      ni = size(IX,1)
+      nj = size(IX,2)
       lz = size(IX,3)
 
       IF ( PRESENT(jz1).AND.PRESENT(jz2) ) THEN
@@ -990,21 +990,21 @@ CONTAINS
          izs = 1   ; ize = lz
       END IF
 
-      CALL DIMS(cf_in, cv_in, nx, ny, nk, nt)
+      CALL DIMS(cf_in, cv_in, nx, ny, nz, nt)
 
-      IF ( nk < 1 ) THEN
+      IF ( nz < 1 ) THEN
          WRITE(6,*) 'mask 3D file => ', trim(cf_in)
          WRITE(6,*) 'mask 3D name => ', trim(cv_in)
          CALL print_err(crtn, 'mask is not 3D')
       END IF
 
-      IF ( (nx /= lx).OR.(ny /= ly).OR.((ize-izs+1) /= lz) ) THEN
+      IF ( (nx /= ni).OR.(ny /= nj).OR.((ize-izs+1) /= lz) ) THEN
          !&   CALL print_err(crtn, 'data and mask file dont have same dimensions => '\\)
          PRINT *, ''
          WRITE(6,*) 'ERROR in ',TRIM(crtn),' (io_ezcdf.f90): '
          WRITE(6,*) 'data and mask file dont have same dimensions'
-         WRITE(6,*) '  => nx, ny, nk =', nx, ny, nk
-         WRITE(6,*) '  => lx, ly, lz =', lx, ly, lz
+         WRITE(6,*) '  => nx, ny, nz =', nx, ny, nz
+         WRITE(6,*) '  => ni, nj, lz =', ni, nj, lz
          PRINT *, ''
          STOP
       END IF
@@ -1340,7 +1340,7 @@ CONTAINS
 
    
 
-   SUBROUTINE P2D_T(idx_f, idx_v, lt, lct, xlon, xlat, vtime, x2d, cf_in, &
+   SUBROUTINE P2D_T(idx_f, idx_v, Nt, lct, xlon, xlat, vtime, x2d, cf_in, &
       &             cv_lo, cv_la, cv_t, cv_in, vflag,      &
       &             attr_lon, attr_lat, attr_time, attr_F, &
       &             cextrainfo, l_add_valid_min_max)
@@ -1349,7 +1349,7 @@ CONTAINS
       !! -------
       !!        idx_f = ID of the file (takes its value on the first call)
       !!        idx_v = ID of the variable //
-      !!        lt    = t dimension of array to plot              [integer]
+      !!        Nt    = t dimension of array to plot              [integer]
       !!        lct   = current time step                         [integer]
       !!        xlon  = 2D array of longitude  (nx,ny) or (nx,1)  [double]
       !!        xlat  = 2D array of latitude   (nx,ny) or (ny,1)  [double]
@@ -1368,10 +1368,10 @@ CONTAINS
       !!--------------------------------------------------------------------------
       !!
       INTEGER,                    INTENT(inout) :: idx_f, idx_v
-      INTEGER,                    INTENT(in)    :: lt, lct
+      INTEGER,                    INTENT(in)    :: Nt, lct
       REAL(8), DIMENSION(:,:),    INTENT(in)    :: xlat, xlon
       REAL(4), DIMENSION(:,:),    INTENT(in)    :: x2d
-      REAL(8), DIMENSION(lt),     INTENT(in)    :: vtime
+      REAL(8), DIMENSION(Nt),     INTENT(in)    :: vtime
       CHARACTER(len=*),           INTENT(in)    :: cf_in, cv_lo, cv_la, cv_t, cv_in
       REAL(4),                    INTENT(in)    :: vflag
       !! Optional:
@@ -1382,7 +1382,7 @@ CONTAINS
       INTEGER  :: id_x, id_y, id_t
       INTEGER  :: id_lo, id_la
       INTEGER  :: id_tim
-      INTEGER  :: lx, ly
+      INTEGER  :: ni, nj
       REAL(4)  :: rmin, rmax
       LOGICAL  :: lcopy_att_F = .FALSE., l_add_extrema=.true.
       INTEGER, DIMENSION(:), ALLOCATABLE :: vidim
@@ -1395,14 +1395,14 @@ CONTAINS
 
       !! About dimensions of xlon, xlat and x2d:
       cdt = TEST_XYZ(xlon, xlat, x2d)
-      lx = size(x2d,1) ; ly = size(x2d,2)
+      ni = size(x2d,1) ; nj = size(x2d,2)
 
       IF ( lct == 1 ) THEN
 
          IF ( vflag /= 0.) THEN
             rmin =  1.E6 ; rmax = -1.E6
-            DO jj=1, ly
-               DO ji=1, lx
+            DO jj=1, nj
+               DO ji=1, ni
                   IF ((x2d(ji,jj) <= rmin).and.(x2d(ji,jj) /= vflag)) rmin = x2d(ji,jj)
                   IF ((x2d(ji,jj) >= rmax).and.(x2d(ji,jj) /= vflag)) rmax = x2d(ji,jj)
                END DO
@@ -1434,7 +1434,7 @@ CONTAINS
          !PRINT *, 'attr_lat = ', attr_lat,'---'
          !PRINT *, 'attr_time = ', attr_time,'---'
 
-         CALL prepare_nc(idx_f, cdt, lx, ly, cv_lo, cv_la, cv_t, vextrema, &
+         CALL prepare_nc(idx_f, cdt, ni, nj, cv_lo, cv_la, cv_t, vextrema, &
             &            id_x, id_y, id_t, id_lo, id_la, id_tim, crtn,cf_in,cv_in, &
             &            attr_lon=attr_lon, attr_lat=attr_lat, attr_tim=attr_time, &
             &            l_add_valid_min_max=l_add_extrema)
@@ -1479,9 +1479,9 @@ CONTAINS
       END IF
 
       !!               WRITE VARIABLE
-      CALL sherr( NF90_PUT_VAR(idx_f, idx_v, x2d,  start=(/1,1,lct/), count=(/lx,ly,1/)),  crtn,cf_in,cv_in)
+      CALL sherr( NF90_PUT_VAR(idx_f, idx_v, x2d,  start=(/1,1,lct/), count=(/ni,nj,1/)),  crtn,cf_in,cv_in)
 
-      IF ( lct == lt ) CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
+      IF ( lct == Nt ) CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
 
    END SUBROUTINE P2D_T
 
@@ -1489,7 +1489,7 @@ CONTAINS
 
 
 
-   SUBROUTINE P3D_T(idx_f, idx_v, lt, lct, xlon, xlat, vdpth, vtime, x3d, cf_in, &
+   SUBROUTINE P3D_T(idx_f, idx_v, Nt, lct, xlon, xlat, vdpth, vtime, x3d, cf_in, &
       &             cv_lo, cv_la, cv_dpth, cv_t, cv_in, vflag, &
       &             attr_lon, attr_lat, attr_z, attr_time, attr_F, &
       &             cextrainfo, l_add_valid_min_max)
@@ -1498,7 +1498,7 @@ CONTAINS
       !! -------
       !!        idx_f = ID of the file (takes its value on the first call)
       !!        idx_v = ID of the variable //
-      !!        lt    = t dimension of array to plot              [integer]
+      !!        Nt    = t dimension of array to plot              [integer]
       !!        lct   = current time step                         [integer]
       !!        xlon  = 2D array of longitude  (nx,ny) or (nx,1)  [double]
       !!        xlat  = 2D array of latitude   (nx,ny) or (ny,1)  [double]
@@ -1518,11 +1518,11 @@ CONTAINS
 
       INTEGER,                    INTENT(inout) :: idx_f, idx_v
       INTEGER                                   :: id_dpt
-      INTEGER,                    INTENT(in)    :: lt, lct
+      INTEGER,                    INTENT(in)    :: Nt, lct
       REAL(4), DIMENSION(:,:,:),  INTENT(in)    :: x3d
       REAL(8), DIMENSION(:,:),    INTENT(in)    :: xlat, xlon
       REAL(8), DIMENSION(:),      INTENT(in)    :: vdpth
-      REAL(8), DIMENSION(lt),     INTENT(in)    :: vtime
+      REAL(8), DIMENSION(Nt),     INTENT(in)    :: vtime
       CHARACTER(len=*),           INTENT(in)    :: cf_in, cv_lo, cv_la, cv_dpth, cv_t, cv_in
       REAL(4),                    INTENT(in)    :: vflag
       !! Optional:
@@ -1533,7 +1533,7 @@ CONTAINS
 
       INTEGER          :: id_z
       INTEGER          :: id_x, id_y, id_t, id_lo, id_la, id_tim
-      INTEGER          :: lx, ly, lz
+      INTEGER          :: ni, nj, lz
       REAL(4)          :: dr, rmin, rmax
       LOGICAL :: lcopy_att_F = .FALSE., &
          &       lcopy_att_z = .FALSE., &
@@ -1550,7 +1550,7 @@ CONTAINS
       !! About dimensions of xlon, xlat, vdpth and x3d:
       cdt = TEST_XYZ(xlon, xlat, x3d(:,:,1))
 
-      lx = size(x3d,1) ; ly = size(x3d,2) ; lz = size(vdpth)
+      ni = size(x3d,1) ; nj = size(x3d,2) ; lz = size(vdpth)
       IF ( size(x3d,3) /= lz ) CALL print_err(crtn, 'depth array do not match data')
 
       IF ( lct == 1 ) THEN
@@ -1560,9 +1560,9 @@ CONTAINS
          IF ( vflag /= 0.) THEN
             rmin =  1.E6 ; rmax = -1.E6
             DO jk=1, lz
-               DO jj=1, ly
+               DO jj=1, nj
 
-                  DO ji=1, lx
+                  DO ji=1, ni
                      IF ((x3d(ji,jj,jk) <= rmin).and.(x3d(ji,jj,jk) /= vflag)) rmin = x3d(ji,jj,jk)
                      IF ((x3d(ji,jj,jk) >= rmax).and.(x3d(ji,jj,jk) /= vflag)) rmax = x3d(ji,jj,jk)
                   END DO
@@ -1578,7 +1578,7 @@ CONTAINS
          !!           CREATE NETCDF OUTPUT FILE :
          CALL sherr( NF90_CREATE(cf_in, NF90_NETCDF4, idx_f),  crtn,cf_in,cv_in)
          !!
-         CALL prepare_nc(idx_f, cdt, lx, ly, cv_lo, cv_la, cv_t, vextrema, &
+         CALL prepare_nc(idx_f, cdt, ni, nj, cv_lo, cv_la, cv_t, vextrema, &
             &            id_x, id_y, id_t, id_lo, id_la, id_tim, crtn,cf_in,cv_in, &
             &            attr_lon=attr_lon, attr_lat=attr_lat, attr_tim=attr_time, &
             &            l_add_valid_min_max=l_add_extrema)
@@ -1637,11 +1637,11 @@ CONTAINS
 
       !!                WRITE VARIABLE
       PRINT *, ' --- '//TRIM(crtn)//': writing '//TRIM(cv_in)//' in '//TRIM(cf_in)//', record #', lct
-      CALL sherr( NF90_PUT_VAR(idx_f, idx_v,  x3d, start=(/1,1,1,lct/), count=(/lx,ly,lz,1/)),  crtn,cf_in,cv_in)
+      CALL sherr( NF90_PUT_VAR(idx_f, idx_v,  x3d, start=(/1,1,1,lct/), count=(/ni,nj,lz,1/)),  crtn,cf_in,cv_in)
 
       !! Sync data from buffer to file
-      IF ( lct /= lt ) CALL sherr( NF90_SYNC (idx_f),  crtn,cf_in,cv_in)
-      IF ( lct == lt ) THEN
+      IF ( lct /= Nt ) CALL sherr( NF90_SYNC (idx_f),  crtn,cf_in,cv_in)
+      IF ( lct == Nt ) THEN
          PRINT *, ' --- '//TRIM(crtn)//': closing file '//TRIM(cf_in)//' .'
          CALL sherr( NF90_CLOSE(idx_f),  crtn,cf_in,cv_in)
       END IF
@@ -1787,7 +1787,7 @@ CONTAINS
       !!
       !! INPUT :
       !! -------
-      !!        xfld  = 2D array (lx,ly) contening mask            [real4]
+      !!        xfld  = 2D array (ni,nj) contening mask            [real4]
       !!        cf_in  = name of the output file                   [character]
       !!        cv_in  = name of the mask variable                 [character]
       !! OPTIONAL :
@@ -1807,10 +1807,10 @@ CONTAINS
       !!
       INTEGER                                :: id_f, id_v
       INTEGER                                :: id_x, id_y, id_lo, id_la
-      INTEGER     :: lx, ly, i01, i02
+      INTEGER     :: ni, nj, i01, i02
       LOGICAL :: lzcoord, l_mask
       CHARACTER(len=80), PARAMETER :: crtn = 'DUMP_2D_FIELD'
-      lx = size(xfld,1) ; ly = size(xfld,2)
+      ni = size(xfld,1) ; nj = size(xfld,2)
       lzcoord = .FALSE.
       l_mask  = .FALSE.
       IF ( PRESENT(xlon).AND.PRESENT(xlat) ) THEN
@@ -1825,11 +1825,11 @@ CONTAINS
       IF ( PRESENT(rfill) ) l_mask = .TRUE.
       CALL sherr( NF90_CREATE(cf_in, NF90_NETCDF4, id_f), crtn,cf_in,cv_in)
       IF ( lzcoord ) THEN
-         CALL prepare_nc(id_f, cdt, lx, ly, cv_lo, cv_la, '',  vextrema, &
+         CALL prepare_nc(id_f, cdt, ni, nj, cv_lo, cv_la, '',  vextrema, &
             &            id_x, id_y, i01, id_lo, id_la, i02, &
             &            crtn,cf_in,trim(cv_lo)//'+'//trim(cv_la))
       ELSE
-         CALL prepare_nc(id_f, cdt, lx, ly, '', '', '',        vextrema, &
+         CALL prepare_nc(id_f, cdt, ni, nj, '', '', '',        vextrema, &
             &            id_x, id_y, i01, id_lo, id_la, i02, &
             &            crtn,cf_in,cv_in)
       END IF
@@ -1855,12 +1855,12 @@ CONTAINS
       !!
       INTEGER                                :: id_f, id_v
       INTEGER                                :: id_x, id_y, id_z, id_lo, id_la
-      INTEGER     :: lx, ly, lz, i01, i02
+      INTEGER     :: ni, nj, lz, i01, i02
       LOGICAL :: lzcoord, l_mask
       CHARACTER(len=80), PARAMETER :: crtn = 'DUMP_3D_FIELD'
       !! LOLO: should add levels!!!!
       !!
-      lx = size(xfld,1) ; ly = size(xfld,2) ; lz = size(xfld,3)
+      ni = size(xfld,1) ; nj = size(xfld,2) ; lz = size(xfld,3)
       lzcoord = .FALSE.
       l_mask  = .FALSE.
       IF ( PRESENT(xlon).AND.PRESENT(xlat) ) THEN
@@ -1875,11 +1875,11 @@ CONTAINS
       IF ( PRESENT(rfill) ) l_mask = .TRUE.
       CALL sherr( NF90_CREATE(cf_in, NF90_NETCDF4, id_f), crtn,cf_in,cv_in)
       IF ( lzcoord ) THEN
-         CALL prepare_nc(id_f, cdt, lx, ly, cv_lo, cv_la, '',  vextrema, &
+         CALL prepare_nc(id_f, cdt, ni, nj, cv_lo, cv_la, '',  vextrema, &
             &            id_x, id_y, i01, id_lo, id_la, i02, &
             &            crtn,cf_in,trim(cv_lo)//'+'//trim(cv_la))
       ELSE
-         CALL prepare_nc(id_f, cdt, lx, ly, '', '', '',        vextrema, &
+         CALL prepare_nc(id_f, cdt, ni, nj, '', '', '',        vextrema, &
             &            id_x, id_y, i01, id_lo, id_la, i02, &
             &            crtn,cf_in,cv_in)
       END IF
@@ -1918,23 +1918,23 @@ CONTAINS
       INTEGER(2), DIMENSION(:,:),   INTENT(in) :: id_pb
       REAL(4), DIMENSION(:,:), OPTIONAL, INTENT(in) :: d2np ! distance to nearest point (km)
 
-      INTEGER          :: lx, ly, il0, id_n2, id_n3, id_v1, id_v2, id_v3, id_dnp
+      INTEGER          :: ni, nj, il0, id_n2, id_n3, id_v1, id_v2, id_v3, id_dnp
       LOGICAL          :: l_save_distance_to_np=.FALSE.
       CHARACTER(len=80), PARAMETER :: crtn = 'P2D_MAPPING_AB'
 
       IF ( PRESENT(d2np) ) l_save_distance_to_np=.TRUE.
 
-      lx = size(ralfbet,1) ; ly = size(ralfbet,2)
+      ni = size(ralfbet,1) ; nj = size(ralfbet,2)
 
       il0 = size(ralfbet,3)
       IF ( il0 /= 2 ) THEN
-         PRINT *, 'ralfbet in P2D_MAPPING_AB of io_ezcdf.f90 has wrong shape:', lx, ly, il0
+         PRINT *, 'ralfbet in P2D_MAPPING_AB of io_ezcdf.f90 has wrong shape:', ni, nj, il0
          STOP
       END IF
 
       il0 = size(imtrcs,3)
       IF ( il0 /= 3 ) THEN
-         PRINT *, 'imtrcs in P2D_MAPPING_AB of io_ezcdf.f90 has wrong shape:', lx, ly, il0
+         PRINT *, 'imtrcs in P2D_MAPPING_AB of io_ezcdf.f90 has wrong shape:', ni, nj, il0
          STOP
       END IF
 
@@ -1943,8 +1943,8 @@ CONTAINS
       !!           ---------------------------
       CALL sherr( NF90_CREATE(cf_out, NF90_NETCDF4, id_f),  crtn,cf_out,cdum)
 
-      CALL sherr( NF90_DEF_DIM(id_f, 'x',  lx, id_x), crtn,cf_out,cdum)
-      CALL sherr( NF90_DEF_DIM(id_f, 'y',  ly, id_y), crtn,cf_out,cdum)
+      CALL sherr( NF90_DEF_DIM(id_f, 'x',  ni, id_x), crtn,cf_out,cdum)
+      CALL sherr( NF90_DEF_DIM(id_f, 'y',  nj, id_y), crtn,cf_out,cdum)
       CALL sherr( NF90_DEF_DIM(id_f, 'n2',  2, id_n2), crtn,cf_out,cdum)
       CALL sherr( NF90_DEF_DIM(id_f, 'n3',  3, id_n3), crtn,cf_out,cdum)
 
@@ -2032,7 +2032,7 @@ CONTAINS
       !! -------
       !!        vx     = X array                                     [real8]
       !!        vy     = Y array                                     [real8]
-      !!        x2d    = 2D array (lx,ly) contening mask             [real4]
+      !!        x2d    = 2D array (ni,nj) contening mask             [real4]
       !!        cf_in  = name of the output file                   [character]
       !!        cv_in  = name of the mask variable                 [character]
       !!        cf_x   = name of X coordinates                     [character]
@@ -2055,11 +2055,11 @@ CONTAINS
       CHARACTER(len=*), OPTIONAL, INTENT(in) :: cuX, cuY
 
       CHARACTER(len=64) :: cuXin, cuYin
-      INTEGER :: lx, ly, i01, i02
+      INTEGER :: ni, nj, i01, i02
 
       CHARACTER(len=80), PARAMETER :: crtn = 'PHOVMOLLER'
 
-      lx = size(x2d,1) ; ly = size(x2d,2)
+      ni = size(x2d,1) ; nj = size(x2d,2)
 
       cuXin = 'unknown'
       cuYin = 'unknown'
@@ -2073,7 +2073,7 @@ CONTAINS
       !!           CREATE NETCDF OUTPUT FILE :
       CALL sherr( NF90_CREATE(CF_IN, NF90_NETCDF4, id_f),  crtn,cf_in,cv_in)
 
-      CALL prepare_nc(id_f, '1d', lx, ly, cv_x, cv_y, '', vextrema, &
+      CALL prepare_nc(id_f, '1d', ni, nj, cv_x, cv_y, '', vextrema, &
          &            id_x, id_y, i01, id_lo, id_la, i02, crtn,cf_in,cv_in)
 
       CALL sherr( NF90_DEF_VAR(id_f, TRIM(cv_in), NF90_FLOAT, (/id_x,id_y/), id_v, deflate_level=9), crtn,cf_in,cv_in)
@@ -2223,7 +2223,7 @@ CONTAINS
             TEST_XYZ = '1d'
          ELSEIF ( (ix1 == iy1).AND.(ix1 == iz1).AND.(iz2 == 1) ) THEN
             TEST_XYZ = 'y1'
-            !! This is thechnically 1D, yet in a 2D shape => [x=nx,y=1]
+            !! This is thechnicalnj 1D, yet in a 2D shape => [x=nx,y=1]
             !!  => may occur when 2D zonal sections
          ELSE
             PRINT *, 'ERROR, mod_manip.f90 = >TEST_XYZ 1: longitude and latitude array do not match data!'
@@ -2812,7 +2812,7 @@ CONTAINS
 
          !PRINT *, ' after previous jt:', jy, jmn, jd, jh, jm, js, jx
          IF ( jt == 1 ) THEN
-            !! Rewind 2 minutes backward (to find again, more acurately the start date (accuracy of 1/100 of a second rather than 60 second!
+            !! Rewind 2 minutes backward (to find again, more acuratenj the start date (accuracy of 1/100 of a second rather than 60 second!
             CALL REWIND_2MN(jy, jmn, jd, jh, jm)
             rjs_t     = rjs_t - 120.
             rjs_t_old = rjs_t - zinc
@@ -2928,11 +2928,14 @@ CONTAINS
 
 
 
-   SUBROUTINE print_err(crout, cmess)
-      CHARACTER(len=*), INTENT(in) :: crout, cmess
+   SUBROUTINE print_err(crout, cmess,  ivect)
+      CHARACTER(len=*),      INTENT(in) :: crout, cmess
+      INTEGER, DIMENSION(:), INTENT(in), OPTIONAL :: ivect
       PRINT *, ''
-      WRITE(6,*) 'ERROR in ',trim(crout),' (io_ezcdf.f90): '
-      WRITE(6,*) trim(cmess) ; PRINT *, ''
+      WRITE(6,*) 'ERROR in ',TRIM(crout),' (io_ezcdf.f90): '
+      WRITE(6,*) TRIM(cmess)
+      IF( PRESENT(ivect) ) WRITE(6,*) INT2(ivect(:))
+      PRINT *, ''
       STOP
    END SUBROUTINE print_err
 
