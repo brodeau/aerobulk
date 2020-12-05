@@ -5,7 +5,7 @@
 !! TO DO :
 
 !! Must be able to directly read 3x3 input fields as 1x1 !
-!!   => just like I did for "test_aerobulk_ice_series.f90" thanks to new "GETVAR_1D_R8_3x3_to_1x1" in io_ezcdf !!! 
+!!   => just like I did for "test_aerobulk_ice_series.f90" thanks to new "GETVAR_1D_R8_3x3_to_1x1" in io_ezcdf !!!
 
 
 PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
@@ -19,13 +19,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    USE mod_blk_coare3p0
    USE mod_blk_coare3p6
    USE mod_skin_coare, ONLY: Qnt_ac, Tau_ac ! Hz_wl
-   
+
    !
    USE mod_blk_ecmwf
    !USE mod_skin_ecmwf, ONLY: Hz_wl !: problem: Hz_wl already exists from mod_skin_coare ...
 
    USE mod_blk_andreas
-   
+
    IMPLICIT NONE
 
    !INTEGER :: DISP_DEBUG
@@ -37,8 +37,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    !INTEGER, PARAMETER :: nb_iter_wl = 2 !!LOLO
 
-   CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t
+   CHARACTER(len=800) :: cf_data='0', cn_exp='0', cunit_t, clnm_t, clndr_t
 
+   CHARACTER(len=80 ) :: cv_time
+   
    CHARACTER(len=80) :: csep='#################################################################################'
 
    INTEGER, PARAMETER ::   &
@@ -48,11 +50,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jj, jt, jarg, ialgo, jq, n0, info
+   INTEGER :: jj, jt, jarg, ialgo, jq, info, ifi=0, ivi=0
 
-   INTEGER :: nx, ny, Nt, ians
+   INTEGER, PARAMETER :: nx = 1, ny = 1
 
-   CHARACTER(len=9) :: calgo
+   INTEGER :: Nt, ians, nd0, nd1, nd2
+
+   CHARACTER(len=10) :: calgo
 
    INTEGER(4)        :: ihh, imm, isecday_utc
 
@@ -81,12 +85,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
    CHARACTER(len=3) :: czt, czu
 
-   !LOGICAL :: &
-   !   &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
-   !   &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
-   !   &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
-   !                                       !: (Cool Skin Warm Layer parameterization)
-   !                                       !:  => only in COARE and ECMWF
+   LOGICAL :: l_3x3_ts  = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -95,7 +94,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    nb_iter = 20 ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)
-
 
    !----------------------------------------------
 
@@ -114,19 +112,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       CASE('-f')
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
-         
-      CASE('-n')
-         jarg = jarg + 1
-         CALL get_command_ARGUMENT(jarg,cn_exp)
 
-      !CASE('-r')
-      !   l_use_rh = .TRUE.
-         !
-      !CASE('-d')
-         !l_use_dp = .TRUE.
-         !
-      !CASE('-S')
-      !   l_use_cswl = .TRUE.
+      CASE('-3')
+         l_3x3_ts = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -156,18 +144,19 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    !! Getting dimmension of the case and allocating arrays:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   CALL DIMS(cf_data, 'sst', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
-   IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
-      WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0
-      STOP
-   END IF
+   !! Number of time records?
+   cv_time = 'time'
+   IF( l_3x3_ts ) cv_time = 'time_counter'
+   CALL DIMS(cf_data, cv_time, Nt,  nd0, nd1, nd2 ) ! Getting dimmensions from field sst...
+   PRINT *, ' *** Number of time records to treat: ', Nt
+
 
    jpi = nx ; jpj = ny
 
    WRITE(6,*) ''
-   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
+   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', INT2( (/nx,ny,Nt/) )
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt) )
-   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
+   ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt) )
    ALLOCATE (  SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
       &        rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), precip(nx,ny,Nt) )
    ALLOCATE (  Ts(nx,ny,Nt), t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), qs(nx,ny,Nt), rho_zu(nx,ny,Nt), &
@@ -180,44 +169,89 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
    WRITE(6,*) ''
 
 
-   !! Reading data time-series into netcdf file:
-   !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
-   rlon = vlon(1)
+   CALL GETVAR_1D(cf_data, cv_time,  vtime ) ; ! (hours since ...)
+   CALL GET_VAR_INFO(cf_data, cv_time, cunit_t, clnm_t,  clndr=clndr_t)
+   PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
+   tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
+   PRINT *, ' *** Digested time unit is: '
+   PRINT *, tut_time_unit
+   PRINT *, ''
 
-   DO jj = 1, ny
-      xlon(:,jj) = vlon(:)
-   END DO
+
+
+   IF( .NOT. l_3x3_ts ) THEN
+      
+      !! "1D + t" AeroBulk convention:
+      !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      ALLOCATE( vlon(nx) )
+      CALL GETVAR_1D(cf_data, 'lon',  vlon ) ; ! (longitude for solar time...)
+      rlon = vlon(1)
+      DO jj = 1, ny
+         xlon(:,jj) = vlon(:)
+      END DO
+      DEALLOCATE( vlon )
+
+      CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
+      SST  = SST + rt0
+
+      CALL GETVAR_1D(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
+
+      CALL GETVAR_1D(cf_data, 'wndspd', W10  )
+
+      CALL GETVAR_1D(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
+      t_zt = t_zt + rt0
+
+      CALL GETVAR_1D(cf_data, 'rh_air', dummy)
+      dummy = MIN(99.999 , dummy)
+      DO jt = 1, Nt
+         PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+         q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+      END DO
+
+      CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
+      CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
+
+   ELSE
+
+      !! "2D (3x3) + t" NEMO convention:
+      !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      
+      !CALL GETVAR_1D_R8_3x3_to_1x1
+      
+      CALL GETVAR_2D( ifi, ivi, cf_data, 'nav_lon', 1, 0, 1, xlon )
+      rlon = xlon(1,1)
+      
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
+      SST  = SST + rt0
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'wndspd', W10  )
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
+      t_zt = t_zt + rt0
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
+      dummy = MIN(99.999 , dummy)
+      DO jt = 1, Nt
+         PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+         q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+      END DO
+
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rad_sw',  rad_sw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rad_lw',  rad_lw  )
+
+
+
+
+      
+   END IF
+
 
    PRINT *, ' *** Longitude of station: ', rlon
 
 
-   CALL GETVAR_1D(cf_data, 'time',  vtime ) ; ! (hours since ...)
-   CALL GET_VAR_INFO(cf_data, 'time', cunit_t, clnm_t)
-   PRINT *, 'time unit = "'//TRIM(cunit_t)//'"'
-   tut_time_unit = GET_TIME_UNIT_T0( TRIM(cunit_t) ) ; ! origin
-   PRINT *, ' *** Digested time unit is: ', tut_time_unit
-
-
-   CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! must be in [deg.C]
-   SST  = SST + rt0
-
-   CALL GETVAR_1D(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
-
-   CALL GETVAR_1D(cf_data, 'wndspd', W10  )
-
-   CALL GETVAR_1D(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
-   t_zt = t_zt + rt0
-
-   CALL GETVAR_1D(cf_data, 'rh_air', dummy)
-   dummy = MIN(99.999 , dummy)
-   DO jt = 1, Nt
-      PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
-      q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
-   END DO
-
-   CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
-   CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
 
 
    ians=-1
@@ -309,7 +343,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
 
       info = DISP_DEBUG(lverbose, 'Specific humidity of air at '//TRIM(czt), q_zt(:,:,jt),       '[kg/kg]')
 
-      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt      
+      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          tmp     - rt0, '[deg.C]')
@@ -317,7 +351,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
       info = DISP_DEBUG(lverbose, 'density of air at '//TRIM(czt), rho_air(t_zt(:,:,jt), q_zt(:,:,jt), SLP(:,:,jt)), '[kg/m^3]' )
 
       info = DISP_DEBUG(lverbose, 'scalar wind speed at '//TRIM(czu), W10(:,:,jt), '[m/s]' )
-      
+
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
 
@@ -403,7 +437,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_SKIN
          CALL TURB_ANDREAS(    zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
-         
+
 
       CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
@@ -532,14 +566,10 @@ SUBROUTINE usage_test()
    PRINT *,''
    PRINT *,' -f <netcdf_file>  => file containing data'
    PRINT *,''
+   PRINT *,' -3   => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
+   PRINT *,''
    PRINT *,' -n <name>         => name/label for the experiment'
    PRINT *,''
-   !PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
-   !PRINT *,''
-   !PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
-   !PRINT *,'         and use the skin temperature instead of the bulk SST'
-   !PRINT *,'         only in COARE and ECMWF'
-   !PRINT *,''
    PRINT *,' -h   => Show this message'
    PRINT *,''
    STOP

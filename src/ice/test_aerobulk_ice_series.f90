@@ -33,10 +33,11 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jt0, jt, jarg, ialgo, jq, n0, info
+   INTEGER :: jj, jt, jarg, ialgo, jq, info, ifi=0, ivi=0
 
-   INTEGER :: nx, ny, Nt, ians
+   INTEGER, PARAMETER :: nx = 1, ny = 1
 
+   INTEGER :: Nt, ians, nd0, nd1, nd2
 
    CHARACTER(len=10) :: calgo
 
@@ -66,20 +67,15 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    CHARACTER(len=3) :: czt, czu
 
    LOGICAL :: &
-      &     l_3x3_ts      = .FALSE. ,   &  !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
-      &     l_use_rh      = .FALSE. ,   &  !: ask for RH rather than q for humidity
-      &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
-      &     l_use_cswl    = .FALSE.        !: compute and use the skin temperature
-   !                                       !: (Cool Skin Warm Layer parameterization)
-   !                                       !:  => only in COARE and ECMWF
+      &     l_3x3_ts      = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
 
 
    TYPE(t_unit_t0) :: tut_time_unit
    TYPE(date)      :: d_idate
 
-   nb_iter = 8 ! 8 itterations in bulk algorithm...
+   nb_iter = 20 ! 20 itterations in bulk algorithm...
 
-   !OPEN(6, FORM='formatted', RECL=512)
+   OPEN(6, FORM='formatted', RECL=512)
 
    !----------------------------------------------
 
@@ -99,17 +95,8 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
          jarg = jarg + 1
          CALL get_command_ARGUMENT(jarg,cf_data)
 
-         !CASE('-r')
-         !   l_use_rh = .TRUE.
-
       CASE('-3')
          l_3x3_ts = .TRUE.
-
-         !CASE('-d')
-         !   l_use_dp = .TRUE.
-
-         !CASE('-S')
-         !   l_use_cswl = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -120,7 +107,7 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    END DO
 
 
-   IF ( trim(cf_data) == '0' ) CALL usage_test()
+   IF ( TRIM(cf_data) == '0' ) CALL usage_test()
 
 
    WRITE(6,*) ''
@@ -133,33 +120,15 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    WRITE(6,*) ''
 
 
-
-
-
-
-
-
    !! Getting dimmension of the case and allocating arrays:
    !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-   !lulu
+   !! Number of time records?
    cv_time = 'time'
    IF( l_3x3_ts ) cv_time = 'time_counter'
-
-
-   CALL DIMS(cf_data, cv_time, Nt,  nx, ny, n0 ) ! Getting dimmensions from field sst...
+   CALL DIMS(cf_data, cv_time, Nt,  nd0, nd1, nd2 ) ! Getting dimmensions from field sst...
    PRINT *, ' *** Number of time records to treat: ', Nt
 
-
-
-   nx = 1
-   ny = 1
-   !CALL DIMS(cf_data, 'istl1', nx, ny, n0, Nt) ! Getting dimmensions from field sst...
-   !IF ( SUM((/nx,ny,n0/)-(/1,1,-1/)) /= 0 ) THEN
-   !   WRITE(6,*) 'ERROR: wrong shape for field sst in input file =>', nx, ny, n0, Nt
-   !   STOP
-   !END IF
 
    jpi = nx ; jpj = ny
 
@@ -189,7 +158,6 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    PRINT *, ' *** Digested time unit is: '
    PRINT *, tut_time_unit
    PRINT *, ''
-
 
 
 
@@ -312,11 +280,9 @@ PROGRAM TEST_AEROBULK_ICE_SERIES
    d_idate%minute = 0
    d_idate%second = 0
 
-   jt0 = 1
-   IF( ldebug .AND. (jt>0) ) jt0 = jtdbg
 
    !! Time loop:
-   DO jt = jt0, Nt
+   DO jt = 1, Nt
 
       d_idate = time_to_date( tut_time_unit, vtime(jt),  date_prev=d_idate )
 
@@ -528,12 +494,6 @@ SUBROUTINE usage_test()
    PRINT *,' -f <netcdf_file>  => file containing data'
    PRINT *,''
    PRINT *,' -3   => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
-   PRINT *,''
-   !PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
-   !PRINT *,''
-   !PRINT *,' -S   => Use the Cool Skin Warm Layer parameterization to compute'
-   !PRINT *,'         and use the skin temperature instead of the SIT'
-   PRINT *,'         only in COARE and ECMWF'
    PRINT *,''
    PRINT *,' -h   => Show this message'
    PRINT *,''
