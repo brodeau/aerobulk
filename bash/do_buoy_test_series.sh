@@ -32,8 +32,7 @@ for calgo in "ecmwf" "coare3p6" "coare3p0" "ncar" "andreas" ; do
     rm -f ${clabel}_${calgo}.nc ${fout}
     
     echo
-    CMD="./bin/test_aerobulk_buoy_series_oce.x -f ${DSTOR}/${fforcing} -n ${clabel} -r"
-    #./bin/test_aerobulk_buoy_series_oce.x -f ${DSTOR}/${fforcing} -n ${clabel} -r  1>${fout} <<EOF
+    CMD="./bin/test_aerobulk_buoy_series_oce.x -f ${DSTOR}/${fforcing} -n ${clabel} -r -w"
     echo " *** Calling:"
     echo "  ${CMD}"
     ${CMD} 1>${fout} <<EOF

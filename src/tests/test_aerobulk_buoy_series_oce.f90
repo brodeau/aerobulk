@@ -24,7 +24,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
    IMPLICIT NONE
 
    !INTEGER :: DISP_DEBUG
+   
 
+   
    LOGICAL, PARAMETER :: lverbose = .TRUE.
    LOGICAL, PARAMETER :: ldebug   = .TRUE.
 
@@ -82,7 +84,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    LOGICAL :: &
       &   l_3x3_ts = .FALSE., &   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
-      &   l_hum_rh = .FALSE.      !: humidity in NetCDF file is Relative Humidity [%]
+      &   l_hum_rh = .FALSE., &   !: humidity in NetCDF file is Relative Humidity [%]
+      &   l_wndspd = .FALSE.      !: wind speed read instead of deduced from "u" and "v"
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -119,6 +122,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
       CASE('-r')
          l_hum_rh = .TRUE.
+
+      CASE('-w')         
+         l_wndspd = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -183,6 +189,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
 
 
+   CALL set_variable_names_default()
+   
    IF( .NOT. l_3x3_ts ) THEN
 
       !! "1D + t" AeroBulk convention:
@@ -197,19 +205,25 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       DEALLOCATE( vlon )
 
       !! SST must be in [K]
-      CALL GETVAR_1D(cf_data, 'sst',    SST  ) ; ! in [deg.C]
+      CALL GETVAR_1D(cf_data, cv_sst,    SST  ) ; ! in [deg.C]
       SST  = SST + rt0
 
-      CALL GETVAR_1D(cf_data, 'slp',    SLP  ) ; ! must be in [Pa]
+      CALL GETVAR_1D(cf_data, cv_patm,    SLP  ) ; ! must be in [Pa]
 
-      CALL GETVAR_1D(cf_data, 'wndspd', W10  )
-
-      CALL GETVAR_1D(cf_data, 't_air',  t_zt ) ; ! must be in [deg.C]
+      IF ( l_wndspd ) THEN
+         CALL GETVAR_1D(cf_data, cv_wndspd, W10  )
+      ELSE
+         CALL GETVAR_1D(cf_data, cv_u_wnd, W10  )
+         CALL GETVAR_1D(cf_data, cv_v_wnd, dummy  )
+         W10 = SQRT ( W10*W10 + dummy*dummy )
+      END IF
+         
+      CALL GETVAR_1D(cf_data, cv_t_air,  t_zt ) ; ! must be in [deg.C]
       t_zt = t_zt + rt0
 
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
-         CALL GETVAR_1D(cf_data, 'rh_air', dummy)
+         CALL GETVAR_1D(cf_data, cv_rh_air, dummy)
          dummy = MIN(99.999 , dummy)
          DO jt = 1, Nt
             !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
@@ -217,14 +231,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
          END DO
       ELSE
          !! Dew-point is read:
-         CALL GETVAR_1D(cf_data, 'd2m',  dummy )
+         CALL GETVAR_1D(cf_data, cv_dp_air,  dummy )
          DO jt = 1, Nt
             q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
          END DO
       END IF
 
-      CALL GETVAR_1D(cf_data, 'rad_sw',  rad_sw  )
-      CALL GETVAR_1D(cf_data, 'rad_lw',  rad_lw  )
+      CALL GETVAR_1D(cf_data, cv_radsw,  rad_sw  )
+      CALL GETVAR_1D(cf_data, cv_radlw,  rad_lw  )
 
    ELSE
 
@@ -232,7 +246,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       !CALL GETVAR_1D_R8_3x3_to_1x1
-
+      
+      CALL set_variable_names_ecmwf()  ! ECMWF !
+      
       ALLOCATE( X3(3,3) )
       CALL GETVAR_2D( ifi, ivi, cf_data, 'nav_lon', 1, 0, 0, X3 )
       xlon(:,:) = X3(2,2)
@@ -240,20 +256,27 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       DEALLOCATE( X3 )
 
       !! SST must be in [K]
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'sst',    SST  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_sst,    SST  )
       sst = sst + rt0
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'msl',    SLP  ) ; ! must be in [Pa]
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_patm,    SLP  ) ; ! must be in [Pa]
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'u10', W10  )
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'v10', dummy  )
+      IF ( l_wndspd ) THEN
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_wndspd, W10  )
+      ELSE
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_u_wnd, W10  )
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_v_wnd, dummy  )
+         W10 = SQRT ( W10*W10 + dummy*dummy )
+      END IF
+      
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_v_wnd, dummy  )
       W10 = SQRT ( W10*W10 + dummy*dummy )
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_t_air,  t_zt )
 
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
-         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_rh_air, dummy)
          dummy = MIN(99.999 , dummy)
          DO jt = 1, Nt
             !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
@@ -261,7 +284,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
          END DO
       ELSE
          !! Dew-point is read:
-         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_dp_air,  dummy )
          DO jt = 1, Nt
             q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
          END DO
@@ -269,8 +292,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
 
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'ssrd',  rad_sw  )
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_radsw,  rad_sw  )
+      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_radlw,  rad_lw  )
 
    END IF !IF( .NOT. l_3x3_ts )
 
@@ -373,8 +396,12 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
       info = DISP_DEBUG(lverbose, 'Specific humidity of air at '//TRIM(czt), q_zt(:,:,jt),       '[kg/kg]')
 
+      rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
+      info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
+      
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
+
       xtmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Virt. pot. air temp. at '//TRIM(czt),          xtmp     - rt0, '[deg.C]')
 
@@ -385,8 +412,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       Cp_ma(:,:) = cp_air(q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Cp of (moist) air at '//TRIM(czt), Cp_ma, '[J/K/kg]')
 
-      rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
-      info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
 
       ssq = rdct_qsat_salt*q_sat(SST(:,:,jt), SLP(:,:,jt))
       info = DISP_DEBUG(lverbose, 'SSQ = 0.98*q_sat(SST)', 1000.*ssq, '[g/kg]')
@@ -600,6 +625,8 @@ SUBROUTINE usage_test()
    PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
    PRINT *,''
    PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
+   PRINT *,''
+   PRINT *,' -w         => wind speed read in NetCDF file rather than "u" and "v"'
    PRINT *,''
    PRINT *,' -h         => Show this message'
    PRINT *,''

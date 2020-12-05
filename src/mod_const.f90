@@ -127,7 +127,7 @@ MODULE mod_const
    !&    rLevap=2.5008E+6, &
 
 
-
+   
 
 
 
@@ -152,9 +152,53 @@ MODULE mod_const
    !CCSM/ccsm2/models/ice/dice5/flux_ai.F90
 
 
+   !! input variable names within AeroBulk:
+   
+   CHARACTER(len=32), PUBLIC :: &
+      &   cv_sst    = 'xxx', & ! SST                    [K]
+      &   cv_patm   = 'xxx', & ! sea-level pressure     [Pa]
+      &   cv_t_air  = 'xxx', & ! absolute temperature   [K]
+      &   cv_q_air  = 'xxx', & ! specific humidity      [kg/kg]
+      &   cv_rh_air = 'xxx', & ! relative humidity      [%]
+      &   cv_dp_air = 'xxx', & ! dew-point temperature  [K]
+      &   cv_wndspd = 'xxx', & ! wind speed module      [m/s]
+      &   cv_u_wnd  = 'xxx', & ! zonal wind speed comp. [m/s]
+      &   cv_v_wnd  = 'xxx', & ! reidional "  "    "    [m/s]
+      &   cv_radsw  = 'xxx', & ! downwelling shortw. rad. [W/m^2]
+      &   cv_radlw  = 'xxx'    ! downwelling longw.  rad. [W/m^2]
 
 CONTAINS
 
+
+   SUBROUTINE set_variable_names_default()
+      cv_sst    = 'sst'
+      cv_patm   = 'msl'
+      cv_t_air  = 't_air'
+      cv_q_air  = 'q_air'
+      cv_rh_air = 'rh_air'
+      cv_dp_air = 'dp_air'
+      cv_wndspd = 'wndspd'
+      cv_u_wnd  = 'u10'
+      cv_v_wnd  = 'v10'
+      cv_radsw  = 'ssrd'
+      cv_radlw  = 'strd'
+   END SUBROUTINE set_variable_names_default
+
+   SUBROUTINE set_variable_names_ecmwf()
+      cv_sst    = 'sst'
+      cv_patm   = 'msl'
+      cv_t_air  = 't2m'
+      cv_q_air  = 'q2m'
+      cv_rh_air = 'rh2m'
+      cv_dp_air = 'd2m'
+      cv_wndspd = 'wndspd'
+      cv_u_wnd  = 'u10'
+      cv_v_wnd  = 'v10'
+      cv_radsw  = 'ssrd'
+      cv_radlw  = 'strd'
+   END SUBROUTINE set_variable_names_ecmwf
+   
+   
 
    SUBROUTINE ctl_stop( cd1, cd2, cd3, cd4, cd5, cd6, cd7, cd8, cd9, cd10 )
       !!----------------------------------------------------------------------
