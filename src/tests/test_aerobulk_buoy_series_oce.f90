@@ -217,7 +217,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
          END DO
       ELSE
          !! Dew-point is read:
-         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+         CALL GETVAR_1D(cf_data, 'd2m',  dummy )
          DO jt = 1, Nt
             q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
          END DO
@@ -251,7 +251,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
 
-
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
          CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
@@ -273,16 +272,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'ssrd',  rad_sw  )
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
 
-
-
-
-
-   END IF
+   END IF !IF( .NOT. l_3x3_ts )
 
 
    PRINT *, ' *** Longitude of station: ', rlon
 
-
+   WRITE(6,*) ''
+   WRITE(6,*) ''
+   !! All input time series read!
 
 
    ians=-1

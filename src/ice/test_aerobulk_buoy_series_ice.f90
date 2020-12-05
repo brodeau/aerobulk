@@ -66,7 +66,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    CHARACTER(len=3) :: czt, czu
 
-   LOGICAL :: l_3x3_ts  = .FALSE.   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
+   LOGICAL :: &
+      &   l_3x3_ts = .FALSE., &   !: fields in input netcdf are 3x3 in space (come from NEMO STATION_ASF!)
+      &   l_hum_rh = .FALSE.      !: humidity in NetCDF file is Relative Humidity [%]
 
 
    TYPE(t_unit_t0) :: tut_time_unit
@@ -96,6 +98,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       CASE('-3')
          l_3x3_ts = .TRUE.
+
+      CASE('-r')
+         l_hum_rh = .TRUE.
 
       CASE DEFAULT
          WRITE(6,*) 'Unknown option: ', trim(car) ; WRITE(6,*) ''
@@ -178,10 +183,21 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       CALL GETVAR_1D(cf_data, 't2m',  t_zt )
 
-      CALL GETVAR_1D(cf_data, 'd2m',  dummy )
-      DO jt = 1, Nt
-         q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
-      END DO
+      IF ( l_hum_rh ) THEN
+         !! Relative humidity is read:
+         CALL GETVAR_1D(cf_data, 'rh_air', dummy)
+         dummy = MIN(99.999 , dummy)
+         DO jt = 1, Nt
+            !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+         END DO
+      ELSE
+         !! Dew-point is read:
+         CALL GETVAR_1D(cf_data, 'd2m',  dummy )
+         DO jt = 1, Nt
+            q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+         END DO
+      END IF
 
       CALL GETVAR_1D(cf_data, 'ssrd',  rad_sw  )
       CALL GETVAR_1D(cf_data, 'strd',  rad_lw  )
@@ -206,10 +222,23 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 't2m',  t_zt )
 
-      CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
-      DO jt = 1, Nt
-         q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
-      END DO
+      IF ( l_hum_rh ) THEN
+         !! Relative humidity is read:
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'rh_air', dummy)
+         dummy = MIN(99.999 , dummy)
+         DO jt = 1, Nt
+            !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
+            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+         END DO
+      ELSE
+         !! Dew-point is read:
+         CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'd2m',  dummy )
+         DO jt = 1, Nt
+            q_zt(:,:,jt) = q_air_dp( dummy(:,:,jt), SLP(:,:,jt) )
+         END DO
+      END IF
+
+
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'ssrd',  rad_sw  )
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'strd',  rad_lw  )
@@ -489,12 +518,15 @@ SUBROUTINE usage_test()
    !!
    PRINT *,''
    PRINT *,'   List of command line options:'
+   PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
    PRINT *,''
-   PRINT *,' -f <netcdf_file>  => file containing data'
+   PRINT *,' -f <file>  => NetCDF file containing input data'
    PRINT *,''
-   PRINT *,' -3   => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
+   PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
    PRINT *,''
-   PRINT *,' -h   => Show this message'
+   PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
+   PRINT *,''
+   PRINT *,' -h         => Show this message'
    PRINT *,''
    STOP
    !!
