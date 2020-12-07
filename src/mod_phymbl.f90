@@ -150,7 +150,7 @@ MODULE mod_phymbl
 
 CONTAINS
 
-
+   !===============================================================================================
    FUNCTION virt_temp_sclr( pta, pqa )
       !!------------------------------------------------------------------------
       !!
@@ -167,13 +167,12 @@ CONTAINS
       REAL(wp), INTENT(in) :: pta       !: absolute or potential air temperature [K]
       REAL(wp), INTENT(in) :: pqa       !: specific humidity of air   [kg/kg]
       !!-------------------------------------------------------------------
-      !
       virt_temp_sclr = pta * (1._wp + rctv0*pqa)
       !!
       !! This is exactly the same thing as:
       !! virt_temp_sclr = pta * ( pwa + reps0) / (reps0*(1.+pwa))
       !! with wpa (mixing ration) defined as : pwa = pqa/(1.-pqa)
-      !
+      !!
    END FUNCTION virt_temp_sclr
    !!
    FUNCTION virt_temp_vctr( pta, pqa )
@@ -183,24 +182,8 @@ CONTAINS
       virt_temp_vctr(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
    END FUNCTION virt_temp_vctr
    !===============================================================================================
-
-
-   FUNCTION rho_air_vctr( ptak, pqa, ppa )
-      !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION rho_air_vctr  ***
-      !!
-      !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
-      !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!-------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak      ! air temperature             [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa       ! air specific humidity   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ppa      ! pressure in                [Pa]
-      REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air_vctr   ! density of moist air   [kg/m^3]
-      !!-------------------------------------------------------------------------------
-      rho_air_vctr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
-   END FUNCTION rho_air_vctr
-
+   
+   !===============================================================================================
    FUNCTION rho_air_sclr( ptak, pqa, ppa )
       !!-------------------------------------------------------------------------------
       !!                           ***  FUNCTION rho_air_sclr  ***
@@ -215,11 +198,19 @@ CONTAINS
       REAL(wp)             :: rho_air_sclr   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
       rho_air_sclr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
+      !!
    END FUNCTION rho_air_sclr
-
-
-
-
+   !!   
+   FUNCTION rho_air_vctr( ptak, pqa, ppa )
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak         ! air temperature             [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa          ! air specific humidity   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa          ! pressure in                [Pa]
+      REAL(wp), DIMENSION(jpi,jpj)             :: rho_air_vctr ! density of moist air   [kg/m^3]
+      !!-------------------------------------------------------------------------------
+      rho_air_vctr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
+   END FUNCTION rho_air_vctr
+   
+   !===============================================================================================
    FUNCTION visc_air_sclr(ptak)
       !!----------------------------------------------------------------------------------
       !! Air kinetic viscosity (m^2/s) given from air temperature in Kelvin
@@ -227,20 +218,18 @@ CONTAINS
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp)             :: visc_air_sclr   ! kinetic viscosity (m^2/s)
-      REAL(wp), INTENT(in) :: ptak       ! air temperature in (K)
-      !
+      REAL(wp), INTENT(in) :: ptak       ! air temperature in [K]
       REAL(wp) ::   ztc, ztc2   ! local scalar
       !!----------------------------------------------------------------------------------
-      !
       ztc  = ptak - rt0   ! air temp, in deg. C
       ztc2 = ztc*ztc
       visc_air_sclr = 1.326e-5*(1. + 6.542E-3*ztc + 8.301e-6*ztc2 - 4.84e-9*ztc2*ztc)
-      !
+      !!
    END FUNCTION visc_air_sclr
-
+   !!
    FUNCTION visc_air_vctr(ptak)
       REAL(wp), DIMENSION(jpi,jpj)             ::   visc_air_vctr   ! kinetic viscosity (m^2/s)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak       ! air temperature in (K)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak       ! air temperature in [K]
       INTEGER  ::   ji, jj      ! dummy loop indices
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -248,24 +237,10 @@ CONTAINS
          END DO
       END DO
    END FUNCTION visc_air_vctr
+   !===============================================================================================
+   
 
-
-   FUNCTION L_vap_vctr( psst )
-      !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION L_vap_vctr  ***
-      !!
-      !! ** Purpose : Compute the latent heat of vaporization of water from temperature
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   L_vap_vctr   ! latent heat of vaporization   [J/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
-      !!----------------------------------------------------------------------------------
-      !
-      L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
-      !
-   END FUNCTION L_vap_vctr
-
+   !===============================================================================================
    FUNCTION L_vap_sclr( psst )
       !!---------------------------------------------------------------------------------
       !!                           ***  FUNCTION L_vap_sclr  ***
@@ -274,29 +249,22 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             ::   L_vap_sclr   ! latent heat of vaporization   [J/kg]
-      REAL(wp), INTENT(in) ::   psst         ! water temperature                [K]
+      REAL(wp)             :: L_vap_sclr  ! latent heat of vaporization   [J/kg]
+      REAL(wp), INTENT(in) :: psst        ! water temperature               [K]
       !!----------------------------------------------------------------------------------
-      !
       L_vap_sclr = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
-      !
+      !!
    END FUNCTION L_vap_sclr
+   
+   FUNCTION L_vap_vctr( psst )
+      REAL(wp), DIMENSION(jpi,jpj)             :: L_vap_vctr  ! latent heat of vaporization [J/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst        ! water temperature             [K]
+      L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
+   END FUNCTION L_vap_vctr
+   !===============================================================================================
 
 
-   FUNCTION cp_air_vctr( pqa )
-      !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION cp_air_vctr  ***
-      !!
-      !! ** Purpose : Compute specific heat (Cp) of moist air
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!-------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa      ! air specific humidity         [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj)             ::   cp_air_vctr   ! specific heat of moist air   [J/K/kg]
-      !!-------------------------------------------------------------------------------
-      cp_air_vctr = rCp_dry + rCp_vap * pqa
-   END FUNCTION cp_air_vctr
-
+   !===============================================================================================
    FUNCTION cp_air_sclr( pqa )
       !!-------------------------------------------------------------------------------
       !!                           ***  FUNCTION cp_air_sclr  ***
@@ -309,10 +277,17 @@ CONTAINS
       REAL(wp)             :: cp_air_sclr   ! specific heat of moist air   [J/K/kg]
       !!-------------------------------------------------------------------------------
       cp_air_sclr = rCp_dry + rCp_vap * pqa
+      !!
    END FUNCTION cp_air_sclr
+   !!
+   FUNCTION cp_air_vctr( pqa )
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa      ! air specific humidity         [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj)             :: cp_air_vctr   ! specific heat of moist air   [J/K/kg]
+      cp_air_vctr = rCp_dry + rCp_vap * pqa
+   END FUNCTION cp_air_vctr
+   !===============================================================================================
 
-
-
+   
    !===============================================================================================
    FUNCTION gamma_moist_sclr( ptak, pqa )
       !!----------------------------------------------------------------------------------
@@ -325,7 +300,6 @@ CONTAINS
       REAL(wp)             :: gamma_moist_sclr !                           [K/m]
       REAL(wp), INTENT(in) ::   ptak           ! absolute air temperature  [K] !LOLO: double check it's absolute !!!
       REAL(wp), INTENT(in) ::   pqa            ! specific humidity     [kg/kg]
-      !
       REAL(wp) :: zta, zqa, zwa, ziRT, zLvap        ! local scalars
       !!----------------------------------------------------------------------------------
       zta = MAX( ptak,  180._wp) ! prevents screw-up over masked regions where field == 0.
@@ -353,6 +327,7 @@ CONTAINS
    !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
       !!------------------------------------------------------------------------
       !!
@@ -362,16 +337,14 @@ CONTAINS
       !! Author: L. Brodeau, June 2019 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L     !: 1./(Obukhov length) [m^-1]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha         !: reference potential temperature of air [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa          !: reference specific humidity of air   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus          !: u*: friction velocity [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pts, pqs     !: \theta* and q* friction aka turb. scales for temp. and spec. hum.
-      !
+      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L !: 1./(Obukhov length) [m^-1]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha     !: reference potential temperature of air [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa      !: reference specific humidity of air   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus      !: u*: friction velocity [m/s]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pts, pqs !: \theta* and q* friction aka turb. scales for temp. and spec. hum.
       INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) ::     zqa          ! local scalar
       !!-------------------------------------------------------------------
-      !
       DO jj = 1, jpj
          DO ji = 1, jpi
             !
@@ -389,7 +362,7 @@ CONTAINS
       END DO
       !
       One_on_L = SIGN( MIN(ABS(One_on_L),200._wp), One_on_L ) ! (prevent FPE from stupid values over masked regions...)
-      !
+      !!
    END FUNCTION One_on_L
 
 
@@ -411,7 +384,6 @@ CONTAINS
       REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
       REAL(wp), INTENT(in), OPTIONAL :: pta_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
       REAL(wp), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
-      !!
       LOGICAL  :: l_ptqa_l_prvd = .FALSE.
       REAL(wp) :: zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
@@ -433,7 +405,7 @@ CONTAINS
       END IF
       !
       Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )      ! the usual definition of Ri_bulk_sclr
-      !
+      !!
    END FUNCTION Ri_bulk_sclr
    !!
    FUNCTION Ri_bulk_vctr( pz, psst, ptha, pssq, pqa, pub,  pta_layer, pqa_layer )
@@ -446,7 +418,6 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pta_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
-      !!
       LOGICAL  :: l_ptqa_l_prvd = .FALSE.
       INTEGER  ::   ji, jj
       IF( PRESENT(pta_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
@@ -491,7 +462,7 @@ CONTAINS
    !!
    FUNCTION e_sat_vctr(ptak)
       REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_vctr !: vapour pressure at saturation  [Pa]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature (K)
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak    !: temperature [K]
       INTEGER  ::   ji, jj         ! dummy loop indices
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -703,9 +674,9 @@ CONTAINS
       !!
       REAL(wp), DIMENSION(jpi,jpj) :: rho_air_adv      !: density of air [kg/m^3]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::  &
-         &      zt,       &     !: air temperature in (K)
-         &      zq,       &     !: air spec. hum. (kg/kg)
-         &      zP              !: pressure in       (Pa)
+         &      zt,       &     !: air temperature in [K]
+         &      zq,       &     !: air spec. hum. [kg/kg]
+         &      zP              !: pressure in       [Pa]
       !!
       REAL(wp), DIMENSION(jpi,jpj) :: ztv !: virtual temperature
       !!
