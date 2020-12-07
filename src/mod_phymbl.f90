@@ -31,7 +31,7 @@ MODULE mod_phymbl
    PRIVATE
 
    REAL(wp), PARAMETER :: &
-      !! Constants for Goff formula in the presence of ice:
+                                !! Constants for Goff formula in the presence of ice:
       &      rAg_i = -9.09718_wp, &
       &      rBg_i = -3.56654_wp, &
       &      rCg_i = 0.876793_wp, &
@@ -78,7 +78,7 @@ MODULE mod_phymbl
    INTERFACE dq_sat_dt_ice
       MODULE PROCEDURE dq_sat_dt_ice_vctr, dq_sat_dt_ice_sclr
    END INTERFACE dq_sat_dt_ice
-   
+
    INTERFACE L_vap
       MODULE PROCEDURE L_vap_vctr, L_vap_sclr
    END INTERFACE L_vap
@@ -182,7 +182,7 @@ CONTAINS
       virt_temp_vctr(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
    END FUNCTION virt_temp_vctr
    !===============================================================================================
-   
+
    !===============================================================================================
    FUNCTION rho_air_sclr( ptak, pqa, ppa )
       !!-------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ CONTAINS
       rho_air_sclr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
       !!
    END FUNCTION rho_air_sclr
-   !!   
+   !!
    FUNCTION rho_air_vctr( ptak, pqa, ppa )
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptak         ! air temperature             [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa          ! air specific humidity   [kg/kg]
@@ -209,7 +209,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       rho_air_vctr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
    END FUNCTION rho_air_vctr
-   
+
    !===============================================================================================
    FUNCTION visc_air_sclr(ptak)
       !!----------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ CONTAINS
       END DO
    END FUNCTION visc_air_vctr
    !===============================================================================================
-   
+
 
    !===============================================================================================
    FUNCTION L_vap_sclr( psst )
@@ -255,7 +255,7 @@ CONTAINS
       L_vap_sclr = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
       !!
    END FUNCTION L_vap_sclr
-   
+
    FUNCTION L_vap_vctr( psst )
       REAL(wp), DIMENSION(jpi,jpj)             :: L_vap_vctr  ! latent heat of vaporization [J/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst        ! water temperature             [K]
@@ -287,7 +287,7 @@ CONTAINS
    END FUNCTION cp_air_vctr
    !===============================================================================================
 
-   
+
    !===============================================================================================
    FUNCTION gamma_moist_sclr( ptak, pqa )
       !!----------------------------------------------------------------------------------
@@ -595,7 +595,7 @@ CONTAINS
       REAL(wp), INTENT(in) :: pta  !: absolute temperature of air [K]
       REAL(wp), INTENT(in) :: ppa  !: atmospheric pressure        [Pa]
       REAL(wp) :: ze_s, zde_s_dt, ztmp
-      !!----------------------------------------------------------------------------------      
+      !!----------------------------------------------------------------------------------
       ze_s     =  e_sat_ice_sclr( pta ) ! Vapour pressure at saturation  in presence of ice (Goff)
       zde_s_dt = de_sat_dt_ice(   pta )
       !
@@ -619,7 +619,7 @@ CONTAINS
    END FUNCTION dq_sat_dt_ice_vctr
    !===============================================================================================
 
-   
+
    !===============================================================================================
    FUNCTION q_air_rh(prha, ptak, ppa)
       !!----------------------------------------------------------------------------------
@@ -888,20 +888,7 @@ CONTAINS
    END SUBROUTINE BULK_FORMULA_VCTR
 
 
-   FUNCTION alpha_sw_vctr( psst )
-      !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION alpha_sw_vctr  ***
-      !!
-      !! ** Purpose : ROUGH estimate of the thermal expansion coefficient of sea-water at the surface (P =~ 1010 hpa)
-      !!
-      !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! thermal expansion coefficient of sea-water [1/K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
-      !!----------------------------------------------------------------------------------
-      alpha_sw_vctr = 2.1e-5_wp * MAX(psst(:,:)-rt0 + 3.2_wp, 0._wp)**0.79
-   END FUNCTION alpha_sw_vctr
-
+   !===============================================================================================
    FUNCTION alpha_sw_sclr( psst )
       !!---------------------------------------------------------------------------------
       !!                           ***  FUNCTION alpha_sw_sclr  ***
@@ -913,8 +900,16 @@ CONTAINS
       REAL(wp)             ::   alpha_sw_sclr   ! thermal expansion coefficient of sea-water [1/K]
       REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
       !!----------------------------------------------------------------------------------
-      alpha_sw_sclr = 2.1e-5_wp * MAX(psst-rt0 + 3.2_wp, 0._wp)**0.79
+      alpha_sw_sclr = 2.1e-5_wp * MAX( psst - rt0 + 3.2_wp , 0._wp )**0.79_wp
+      !!
    END FUNCTION alpha_sw_sclr
+   !!
+   FUNCTION alpha_sw_vctr( psst )
+      REAL(wp), DIMENSION(jpi,jpj)             ::   alpha_sw_vctr   ! thermal expansion coefficient of sea-water [1/K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   psst   ! water temperature                [K]
+      alpha_sw_vctr = 2.1e-5_wp * MAX( psst(:,:) - rt0 + 3.2_wp , 0._wp )**0.79_wp
+   END FUNCTION alpha_sw_vctr
+   !===============================================================================================
 
 
    !===============================================================================================
@@ -940,6 +935,7 @@ CONTAINS
       END IF
       zt2 = pts*pts
       qlw_net_sclr = zemiss*( pdwlw - stefan*zt2*zt2)  ! zemiss used both as the IR albedo and IR emissivity...
+      !!
    END FUNCTION qlw_net_sclr
    !!
    FUNCTION qlw_net_vctr( pdwlw, pts,  l_ice )
@@ -949,7 +945,6 @@ CONTAINS
       LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
       LOGICAL  :: lice
       INTEGER  :: ji, jj
-      !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
       DO jj = 1, jpj
@@ -961,6 +956,7 @@ CONTAINS
    !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION z0_from_Cd( pzu, pCd,  ppsi )
       REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
@@ -977,9 +973,12 @@ CONTAINS
          !! Cd provided is the neutral-stability Cd, aka CdN :
          z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd(:,:)) )            !LB: ok, double-checked!
       END IF
+      !!
    END FUNCTION z0_from_Cd
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION z0_from_ustar( pzu, pus, puzu )
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) :: z0_from_ustar    !: roughness length    [m]
@@ -990,9 +989,10 @@ CONTAINS
       z0_from_ustar = pzu * EXP( -  vkarmn*puzu(:,:)/pus(:,:) )
       !!
    END FUNCTION z0_from_ustar
+   !===============================================================================================
 
 
-
+   !===============================================================================================
    FUNCTION Cd_from_z0( pzu, pz0,  ppsi )
       REAL(wp), DIMENSION(jpi,jpj) :: Cd_from_z0        !: (neutral or non-neutral) drag coefficient []
       REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
@@ -1010,9 +1010,12 @@ CONTAINS
          Cd_from_z0 = 1._wp /   LOG( pzu / pz0(:,:) )
       END IF
       Cd_from_z0 = vkarmn2 * Cd_from_z0 * Cd_from_z0
+      !!
    END FUNCTION Cd_from_z0
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION f_m_louis_sclr( pzu, pRib, pCdn, pz0 )
       !!----------------------------------------------------------------------------------
       !!  Stability correction function for MOMENTUM
@@ -1033,7 +1036,7 @@ CONTAINS
       !
       f_m_louis_sclr = (1._wp - zstab) *         ( 1._wp - ram_louis * ztu )  &  ! Unstable Eq.(A6)
          &               +      zstab  * 1._wp / ( 1._wp + ram_louis * zts )     ! Stable   Eq.(A7)
-      !
+      !!
    END FUNCTION f_m_louis_sclr
    !!
    FUNCTION f_m_louis_vctr( pzu, pRib, pCdn, pz0 )
@@ -1049,8 +1052,9 @@ CONTAINS
          END DO
       END DO
    END FUNCTION f_m_louis_vctr
+   !===============================================================================================
 
-
+   !===============================================================================================
    FUNCTION f_h_louis_sclr( pzu, pRib, pChn, pz0 )
       !!----------------------------------------------------------------------------------
       !!  Stability correction function for HEAT
@@ -1071,7 +1075,7 @@ CONTAINS
       !
       f_h_louis_sclr = (1._wp - zstab) *         ( 1._wp - rah_louis * ztu )  &  ! Unstable Eq.(A6)
          &              +       zstab  * 1._wp / ( 1._wp + rah_louis * zts )     ! Stable   Eq.(A7)  !LOLO: in paper it's "ram_louis" and not "rah_louis" typo or what????
-      !
+      !!
    END FUNCTION f_h_louis_sclr
    !!
    FUNCTION f_h_louis_vctr( pzu, pRib, pChn, pz0 )
@@ -1087,8 +1091,10 @@ CONTAINS
          END DO
       END DO
    END FUNCTION f_h_louis_vctr
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION UN10_from_ustar( pzu, pUzu, pus, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1102,8 +1108,10 @@ CONTAINS
       UN10_from_ustar(:,:) = pUzu(:,:) - pus(:,:)/vkarmn * ( LOG(pzu/10._wp) - ppsi(:,:) )
       !!
    END FUNCTION UN10_from_ustar
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION UN10_from_CDN( pzu, pUb, pCdn, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1117,8 +1125,10 @@ CONTAINS
       UN10_from_CDN(:,:) = pUb / ( 1._wp + SQRT(pCdn(:,:))/vkarmn * (LOG(pzu/10._wp) - ppsi(:,:)) )
       !!
    END FUNCTION UN10_from_CDN
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION UN10_from_CD( pzu, pUb, pCd, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
@@ -1135,8 +1145,10 @@ CONTAINS
       UN10_from_CD(:,:) = SQRT(pCd(:,:))*pUb/vkarmn * LOG( 10._wp / z0_from_Cd( pzu, pCd(:,:), ppsi=ppsi(:,:) ) )
       !!
    END FUNCTION UN10_from_CD
+   !===============================================================================================
 
 
+   !===============================================================================================
    FUNCTION Re_rough_tq_LKB( iflag, pRer )
       !!---------------------------------------------------------------------------------
       !!       ***  FUNCTION Re_rough_tq_LKB  ***
@@ -1169,8 +1181,6 @@ CONTAINS
       REAL(wp), DIMENSION(0:8),   PARAMETER :: &
          & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
       !-------------------------------------------------------------------
-      !
-      !-------------------------------------------------------------------
       ! Scalar Re_r relation from Moana Wave data.
       !
       !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
@@ -1181,19 +1191,16 @@ CONTAINS
       !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
       !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
       !-------------------------------------------------------------------
-
       LOGICAL  :: lfound=.FALSE.
       REAL(wp) :: zrr
       INTEGER  :: ji, jj, jm
-
+      !!----------------------------------------------------------------------------------
       Re_rough_tq_LKB(:,:) = -999._wp
-
+      !
       DO jj = 1, jpj
          DO ji = 1, jpi
-
             zrr    = pRer(ji,jj)
             lfound = .FALSE.
-
             IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
                jm = 0
                DO WHILE ( .NOT. lfound )
@@ -1202,14 +1209,14 @@ CONTAINS
                END DO
                Re_rough_tq_LKB(ji,jj) = XA(jm,iflag) * zrr**XB(jm,iflag)
             END IF
-
          END DO
       END DO
+      !!
    END FUNCTION Re_rough_tq_LKB
+   !===============================================================================================
 
 
-
-
+   !===============================================================================================
    FUNCTION z0tq_LKB( iflag, pRer, pz0 )
       !!---------------------------------------------------------------------------------
       !!       ***  FUNCTION z0tq_LKB  ***
@@ -1244,8 +1251,6 @@ CONTAINS
       REAL(wp), DIMENSION(0:8),   PARAMETER :: &
          & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
       !-------------------------------------------------------------------
-      !
-      !-------------------------------------------------------------------
       ! Scalar Re_r relation from Moana Wave data.
       !
       !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
@@ -1256,39 +1261,33 @@ CONTAINS
       !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
       !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
       !-------------------------------------------------------------------
-
       LOGICAL  :: lfound=.FALSE.
       REAL(wp) :: zrr
       INTEGER  :: ji, jj, jm
-
+      !!---------------------------------------------------------------------------------
       z0tq_LKB(:,:) = -999._wp
-
+      !
       DO jj = 1, jpj
          DO ji = 1, jpi
-
             zrr    = pRer(ji,jj)
             lfound = .FALSE.
-
             IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
                jm = 0
                DO WHILE ( .NOT. lfound )
                   jm = jm + 1
                   lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
                END DO
-
                z0tq_LKB(ji,jj) = XA(jm,iflag)*zrr**XB(jm,iflag) * pz0(ji,jj)/zrr
-
             END IF
-
          END DO
       END DO
-
       z0tq_LKB(:,:) = MIN( MAX(ABS(z0tq_LKB(:,:)), 1.E-9) , 0.05_wp )
-
+      !!
    END FUNCTION z0tq_LKB
+   !===============================================================================================
 
 
-
+   !===============================================================================================
    FUNCTION e_air(pqa, ppa)
       !!--------------------------------------------------------------------
       !!                  **** Function e_air ****
@@ -1315,24 +1314,29 @@ CONTAINS
       e_air = ee
       !
       DEALLOCATE ( ee, e_old )
+      !!
    END FUNCTION e_air
+   !===============================================================================================
 
+
+   !===============================================================================================
    FUNCTION rh_air(pqa, pta, ppa)
-      !!--------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !!                  **** Function e_air ****
       !!
       !! Gives relative humidity of air of air from spec. hum., temperature and pressure
       !!
-      !!--------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: rh_air  !: relative humidity [] (fraction!!!, not percent!)
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa     !: specific humidity of air      [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta     !: air temperature               [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa     !: atmospheric pressure          [Pa]
-      !
+      !!----------------------------------------------------------------------------------
       rh_air = e_sat(pta)
       rh_air = e_air(pqa, ppa) / rh_air
-      !
+      !!
    END FUNCTION rh_air
+   !===============================================================================================
 
 
 
@@ -1368,95 +1372,103 @@ CONTAINS
 
 
 
-FUNCTION VARIANCE( pvc )
-   REAL(4)                            :: VARIANCE
-   REAL(wp), DIMENSION(:), INTENT(in) :: pvc
-   !!
-   INTEGER :: Nn
-   REAL(wp) :: zmean
-   !!
-   Nn = SIZE(pvc)
-   !!
-   zmean = SUM(pvc)/Nn
-   !!
-   VARIANCE = REAL( SQRT( SUM( (pvc(:) - zmean) * (pvc(:) - zmean) ) / Nn ) , 4)
-   !!
-END FUNCTION VARIANCE
+   !===============================================================================================
+   FUNCTION VARIANCE( pvc )
+      REAL(4)                            :: VARIANCE
+      REAL(wp), DIMENSION(:), INTENT(in) :: pvc
+      !!
+      INTEGER :: Nn
+      REAL(wp) :: zmean
+      !!
+      Nn = SIZE(pvc)
+      !!
+      zmean = SUM(pvc)/Nn
+      !!
+      VARIANCE = REAL( SQRT( SUM( (pvc(:) - zmean) * (pvc(:) - zmean) ) / Nn ) , 4)
+      !!
+   END FUNCTION VARIANCE
+   !===============================================================================================
+
+   !===============================================================================================
+   FUNCTION VMEAN( pvc )
+      REAL(4)                            :: VMEAN
+      REAL(wp), DIMENSION(:), INTENT(in) :: pvc
+      !!
+      INTEGER :: Nn
+      REAL(wp) :: zmean
+      !!
+      Nn = SIZE(pvc)
+      !!
+      VMEAN = SUM(pvc)/Nn
+      !!
+   END FUNCTION VMEAN
+   !===============================================================================================
 
 
-FUNCTION VMEAN( pvc )
-   REAL(4)                            :: VMEAN
-   REAL(wp), DIMENSION(:), INTENT(in) :: pvc
-   !!
-   INTEGER :: Nn
-   REAL(wp) :: zmean
-   !!
-   Nn = SIZE(pvc)
-   !!
-   VMEAN = SUM(pvc)/Nn
-   !!
-END FUNCTION VMEAN
-
-
-SUBROUTINE TO_KELVIN_3D( pt, cname )
-   REAL(wp), DIMENSION(:,:,:), INTENT(inout) :: pt
-   CHARACTER(len=*), OPTIONAL, INTENT(in)    :: cname
-   INTEGER :: nt   
-   REAL(wp) :: zm
-   CHARACTER(len=32) :: cvar='...'
-   !
-   IF(PRESENT(cname)) cvar=trim(cname)
-   !
-   nt = SIZE( pt )
-   !
-   zm = SUM(pt)/REAL(nt)
-   IF( (zm < 50._wp).AND.(zm > -80._wp) ) THEN
-      PRINT *, ' *** Variable ', TRIM(cvar), ' is in [deg.C] => converting to [K] !!!'
-      pt  = pt + rt0
-   ELSEIF ( (zm > 200._wp).AND.(zm < 320._wp) ) THEN
-      PRINT *, ' *** Variable ', TRIM(cvar), ' is already in [K], doing nothing...'
-   ELSE
-      PRINT *, ' *** PROBLEM: cannot figure out unit of variable ', TRIM(cvar), ' !!!'
-      STOP
-   END IF
-END SUBROUTINE TO_KELVIN_3D
+   !===============================================================================================
+   SUBROUTINE TO_KELVIN_3D( pt, cname )
+      REAL(wp), DIMENSION(:,:,:), INTENT(inout) :: pt
+      CHARACTER(len=*), OPTIONAL, INTENT(in)    :: cname
+      INTEGER :: nt
+      REAL(wp) :: zm
+      CHARACTER(len=32) :: cvar='...'
+      !
+      IF(PRESENT(cname)) cvar=trim(cname)
+      !
+      nt = SIZE( pt )
+      !
+      zm = SUM(pt)/REAL(nt)
+      IF( (zm < 50._wp).AND.(zm > -80._wp) ) THEN
+         PRINT *, ' *** Variable ', TRIM(cvar), ' is in [deg.C] => converting to [K] !!!'
+         pt  = pt + rt0
+      ELSEIF ( (zm > 200._wp).AND.(zm < 320._wp) ) THEN
+         PRINT *, ' *** Variable ', TRIM(cvar), ' is already in [K], doing nothing...'
+      ELSE
+         PRINT *, ' *** PROBLEM: cannot figure out unit of variable ', TRIM(cvar), ' !!!'
+         STOP
+      END IF
+   END SUBROUTINE TO_KELVIN_3D
+   !===============================================================================================
 
    
 END MODULE mod_phymbl
 
 
-   !FUNCTION e_sat_buck(rT, slp)
-   !   !!**************************************************
-   !   !!  rT:     air temperature          [K]
-   !   !! slp:     atmospheric pressure     [Pa]
-   !   !! e_sat:  water vapor at saturation [Pa]
-   !   !!
-   !   !! Based on Buck' formula for saturation vapor pressure
-   !   !! from Buck (1981), J. App. Meteor., 1527-1532.
-   !   !!
-   !   !! This version follows the saturation specific humidity computation in
-   !   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
-   !   !! latent heat flux compared to the calculation with Teten's
-   !   !!
-   !   !!**************************************************
-   !   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
-   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
-   !      &                                        slp          !: atmospheric pressure          [Pa]
-   !   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-   !   ALLOCATE ( ztmp(jpi,jpj) )
-   !   !! Achtung: originaly given with temperature in deg.C and pressure in
-   !   !!          millibars! 1 mb = 100 Pa !!!
-   !   ztmp(:,:) = rT(:,:) - rt0
-   !   !! Buck 1981:
-   !   !! Buck, A. L., New equations for computing vapor pressure and enhancement
-   !   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
-   !   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
-   !   !! Official COARE 3.0 code:
-   !   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
-   !   !! Kara et al. 2000:
-   !   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
-   !   DEALLOCATE ( ztmp )
-   !END FUNCTION e_sat_buck
+
+
+
+!FUNCTION e_sat_buck(rT, slp)
+!   !!**************************************************
+!   !!  rT:     air temperature          [K]
+!   !! slp:     atmospheric pressure     [Pa]
+!   !! e_sat:  water vapor at saturation [Pa]
+!   !!
+!   !! Based on Buck' formula for saturation vapor pressure
+!   !! from Buck (1981), J. App. Meteor., 1527-1532.
+!   !!
+!   !! This version follows the saturation specific humidity computation in
+!   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
+!   !! latent heat flux compared to the calculation with Teten's
+!   !!
+!   !!**************************************************
+!   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
+!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
+!      &                                        slp          !: atmospheric pressure          [Pa]
+!   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
+!   ALLOCATE ( ztmp(jpi,jpj) )
+!   !! Achtung: originaly given with temperature in deg.C and pressure in
+!   !!          millibars! 1 mb = 100 Pa !!!
+!   ztmp(:,:) = rT(:,:) - rt0
+!   !! Buck 1981:
+!   !! Buck, A. L., New equations for computing vapor pressure and enhancement
+!   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
+!   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
+!   !! Official COARE 3.0 code:
+!   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
+!   !! Kara et al. 2000:
+!   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
+!   DEALLOCATE ( ztmp )
+!END FUNCTION e_sat_buck
 
 
 
