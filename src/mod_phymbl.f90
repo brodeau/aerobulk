@@ -67,6 +67,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE de_sat_dt_ice_vctr, de_sat_dt_ice_sclr
    END INTERFACE de_sat_dt_ice
 
+   INTERFACE One_on_L
+      MODULE PROCEDURE One_on_L_vctr, One_on_L_sclr
+   END INTERFACE One_on_L
+
    INTERFACE Ri_bulk
       MODULE PROCEDURE Ri_bulk_vctr, Ri_bulk_sclr
    END INTERFACE Ri_bulk
@@ -102,6 +106,14 @@ MODULE mod_phymbl
    INTERFACE qlw_net
       MODULE PROCEDURE qlw_net_vctr, qlw_net_sclr
    END INTERFACE qlw_net
+
+   INTERFACE z0_from_Cd
+      MODULE PROCEDURE z0_from_Cd_vctr, z0_from_Cd_sclr
+   END INTERFACE z0_from_Cd
+
+   INTERFACE UN10_from_CD
+      MODULE PROCEDURE UN10_from_CD_vctr, UN10_from_CD_sclr
+   END INTERFACE UN10_from_CD
 
    INTERFACE f_m_louis
       MODULE PROCEDURE f_m_louis_vctr, f_m_louis_sclr
@@ -328,7 +340,7 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION One_on_L( ptha, pqa, pus, pts, pqs )
+   FUNCTION One_on_L_sclr( ptha, pqa, pus, pts, pqs )
       !!------------------------------------------------------------------------
       !!
       !! Evaluates the 1./(Obukhov length) from air temperature,
@@ -337,35 +349,42 @@ CONTAINS
       !! Author: L. Brodeau, June 2019 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L !: 1./(Obukhov length) [m^-1]
+      REAL(wp)             :: One_on_L_sclr !: 1./(Obukhov length) [m^-1]
+      REAL(wp), INTENT(in) :: ptha     !: reference potential temperature of air [K]
+      REAL(wp), INTENT(in) :: pqa      !: reference specific humidity of air   [kg/kg]
+      REAL(wp), INTENT(in) :: pus      !: u*: friction velocity [m/s]
+      REAL(wp), INTENT(in) :: pts, pqs !: \theta* and q* friction aka turb. scales for temp. and spec. hum.
+      REAL(wp) ::     zqa          ! local scalar
+      !!-------------------------------------------------------------------
+      zqa = (1._wp + rctv0*pqa)
+      !
+      ! The main concern is to know whether, the vertical turbulent flux of virtual temperature, < u' theta_v' > is estimated with:
+      !  a/  -u* [ theta* (1 + 0.61 q) + 0.61 theta q* ] => this is the one that seems correct! chose this one!
+      !                      or
+      !  b/  -u* [ theta*              + 0.61 theta q* ]
+      !
+      One_on_L_sclr = grav*vkarmn*( pts*zqa + rctv0*ptha*pqs ) / MAX( pus*pus*ptha*zqa , 1.E-9_wp )
+      !
+      One_on_L_sclr = SIGN( MIN(ABS(One_on_L_sclr),200._wp), One_on_L_sclr ) ! (prevent FPE from stupid values over masked regions...)
+      !!
+   END FUNCTION One_on_L_sclr
+   !!
+   FUNCTION One_on_L_vctr( ptha, pqa, pus, pts, pqs )
+      REAL(wp), DIMENSION(jpi,jpj)             :: One_on_L_vctr !: 1./(Obukhov length) [m^-1]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha     !: reference potential temperature of air [K]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa      !: reference specific humidity of air   [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus      !: u*: friction velocity [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pts, pqs !: \theta* and q* friction aka turb. scales for temp. and spec. hum.
       INTEGER  ::   ji, jj         ! dummy loop indices
-      REAL(wp) ::     zqa          ! local scalar
       !!-------------------------------------------------------------------
       DO jj = 1, jpj
          DO ji = 1, jpi
-            !
-            zqa = (1._wp + rctv0*pqa(ji,jj))
-            !
-            ! The main concern is to know whether, the vertical turbulent flux of virtual temperature, < u' theta_v' > is estimated with:
-            !  a/  -u* [ theta* (1 + 0.61 q) + 0.61 theta q* ] => this is the one that seems correct! chose this one!
-            !                      or
-            !  b/  -u* [ theta*              + 0.61 theta q* ]
-            !
-            One_on_L(ji,jj) = grav*vkarmn*( pts(ji,jj)*zqa + rctv0*ptha(ji,jj)*pqs(ji,jj) ) &
-               &               / MAX( pus(ji,jj)*pus(ji,jj)*ptha(ji,jj)*zqa , 1.E-9_wp )
-            !
+            One_on_L_vctr(ji,jj) = One_on_L_sclr( ptha(ji,jj), pqa(ji,jj), pus(ji,jj), pts(ji,jj), pqs(ji,jj) )
          END DO
       END DO
-      !
-      One_on_L = SIGN( MIN(ABS(One_on_L),200._wp), One_on_L ) ! (prevent FPE from stupid values over masked regions...)
-      !!
-   END FUNCTION One_on_L
-
-
+   END FUNCTION One_on_L_vctr
+   !===============================================================================================
+   
    !===============================================================================================
    FUNCTION Ri_bulk_sclr( pz, psst, ptha, pssq, pqa, pub,  pta_layer, pqa_layer )
       !!----------------------------------------------------------------------------------
@@ -957,24 +976,38 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION z0_from_Cd( pzu, pCd,  ppsi )
-      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd        !: roughness length [m]
-      REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral or non-neutral) drag coefficient []
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
+   FUNCTION z0_from_Cd_sclr( pzu, pCd,  ppsi )
+      REAL(wp)                       :: z0_from_Cd_sclr        !: roughness length [m]
+      REAL(wp), INTENT(in)           :: pzu   !: reference height zu [m]
+      REAL(wp), INTENT(in)           :: pCd   !: (neutral or non-neutral) drag coefficient []
+      REAL(wp), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!
       !! If pCd is the NEUTRAL-STABILITY drag coefficient then ppsi must be 0 or not given
       !! If pCd is the drag coefficient (in stable or unstable conditions) then pssi must be provided
       !!----------------------------------------------------------------------------------
       IF( PRESENT(ppsi) ) THEN
          !! Cd provided is the actual Cd (not the neutral-stability CdN) :
-         z0_from_Cd = pzu * EXP( - ( vkarmn/SQRT(pCd(:,:)) + ppsi(:,:) ) ) !LB: ok, double-checked!
+         z0_from_Cd_sclr = pzu * EXP( - ( vkarmn/SQRT(pCd) + ppsi ) ) !LB: ok, double-checked!
       ELSE
          !! Cd provided is the neutral-stability Cd, aka CdN :
-         z0_from_Cd = pzu * EXP( - vkarmn/SQRT(pCd(:,:)) )            !LB: ok, double-checked!
+         z0_from_Cd_sclr = pzu * EXP( - vkarmn/SQRT(pCd) )            !LB: ok, double-checked!
       END IF
       !!
-   END FUNCTION z0_from_Cd
+   END FUNCTION z0_from_Cd_sclr
+
+   FUNCTION z0_from_Cd_vctr( pzu, pCd,  ppsi )
+      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_Cd_vctr        !: roughness length [m]
+      REAL(wp)                    , INTENT(in) :: pzu   !: reference height zu [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd   !: (neutral or non-neutral) drag coefficient []
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
+      !!----------------------------------------------------------------------------------
+      IF( PRESENT(ppsi) ) THEN
+         z0_from_Cd_vctr = pzu * EXP( - ( vkarmn/SQRT(pCd(:,:)) + ppsi(:,:) ) ) !LB: ok, double-checked!
+      ELSE
+         z0_from_Cd_vctr = pzu * EXP( - vkarmn/SQRT(pCd(:,:)) )            !LB: ok, double-checked!
+      END IF
+      !!
+   END FUNCTION z0_from_Cd_vctr
    !===============================================================================================
 
 
@@ -1129,22 +1162,33 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION UN10_from_CD( pzu, pUb, pCd, ppsi )
+   FUNCTION UN10_from_CD_sclr( pzu, pUb, pCd, ppsi )
       !!----------------------------------------------------------------------------------
       !!  Provides the neutral-stability wind speed at 10 m
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: UN10_from_CD  !: [m/s]
+      REAL(wp)             :: UN10_from_CD_sclr  !: [m/s]
+      REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
+      REAL(wp), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
+      REAL(wp), INTENT(in) :: pCd  !: drag coefficient
+      REAL(wp), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
+      !!----------------------------------------------------------------------------------
+      !! Reminder: UN10 = u*/vkarmn * log(10/z0)
+      !!     and: u* = sqrt(Cd) * Ub
+      !!                                  u*/vkarmn * log(   10   /       z0    )
+      UN10_from_CD_sclr = SQRT(pCd)*pUb/vkarmn * LOG( 10._wp / z0_from_Cd_sclr( pzu, pCd, ppsi=ppsi ) )
+      !!
+   END FUNCTION UN10_from_CD_sclr
+   !!
+   FUNCTION UN10_from_CD_vctr( pzu, pUb, pCd, ppsi )
+      REAL(wp), DIMENSION(jpi,jpj)             :: UN10_from_CD_vctr  !: [m/s]
       REAL(wp),                     INTENT(in) :: pzu  !: measurement heigh of bulk wind speed
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pUb  !: bulk wind speed at height pzu m   [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pCd  !: drag coefficient
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppsi !: "Psi_m(pzu/L)" stability correction profile for momentum []
       !!----------------------------------------------------------------------------------
-      !! Reminder: UN10 = u*/vkarmn * log(10/z0)
-      !!     and: u* = sqrt(Cd) * Ub
-      !!                                  u*/vkarmn * log(   10   /       z0    )
-      UN10_from_CD(:,:) = SQRT(pCd(:,:))*pUb/vkarmn * LOG( 10._wp / z0_from_Cd( pzu, pCd(:,:), ppsi=ppsi(:,:) ) )
+      UN10_from_CD_vctr(:,:) = SQRT(pCd(:,:))*pUb/vkarmn * LOG( 10._wp / z0_from_Cd_vctr( pzu, pCd(:,:), ppsi=ppsi(:,:) ) )
       !!
-   END FUNCTION UN10_from_CD
+   END FUNCTION UN10_from_CD_vctr
    !===============================================================================================
 
 
@@ -1430,7 +1474,7 @@ CONTAINS
    END SUBROUTINE TO_KELVIN_3D
    !===============================================================================================
 
-   
+
 END MODULE mod_phymbl
 
 
