@@ -28,22 +28,7 @@ MODULE mod_phymbl
    USE mod_const
 
    IMPLICIT NONE
-   PRIVATE
-
-   REAL(wp), PARAMETER :: &
-                                !! Constants for Goff formula in the presence of ice:
-      &      rAg_i = -9.09718_wp, &
-      &      rBg_i = -3.56654_wp, &
-      &      rCg_i = 0.876793_wp, &
-      &      rDg_i = LOG10(6.1071_wp)
-
-   REAL(wp), PARAMETER :: rc_louis  = 5._wp
-   REAL(wp), PARAMETER :: rc2_louis = rc_louis * rc_louis
-   REAL(wp), PARAMETER :: ram_louis = 2. * rc_louis
-   REAL(wp), PARAMETER :: rah_louis = 3. * rc_louis
-
-   REAL(wp), PARAMETER :: repsilon = 1.e-6_wp
-
+   
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
@@ -99,6 +84,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE alpha_sw_vctr, alpha_sw_sclr
    END INTERFACE alpha_sw
 
+   INTERFACE update_qnsol_tau
+      MODULE PROCEDURE update_qnsol_tau_vctr, update_qnsol_tau_sclr
+   END INTERFACE update_qnsol_tau
+
    INTERFACE bulk_formula
       MODULE PROCEDURE bulk_formula_vctr, bulk_formula_sclr
    END INTERFACE bulk_formula
@@ -124,42 +113,61 @@ MODULE mod_phymbl
    END INTERFACE f_h_louis
 
 
-   PUBLIC virt_temp
-   PUBLIC rho_air
-   PUBLIC visc_air
-   PUBLIC L_vap
-   PUBLIC cp_air
-   PUBLIC gamma_moist
-   PUBLIC One_on_L
-   PUBLIC Ri_bulk
-   PUBLIC q_sat
-   PUBLIC dq_sat_dt_ice
-   PUBLIC e_sat
-   PUBLIC e_sat_ice
-   PUBLIC de_sat_dt_ice
-   PUBLIC e_air
-   PUBLIC rh_air
-   PUBLIC rho_air_adv
-   PUBLIC dry_static_energy
-   PUBLIC q_air_rh
-   PUBLIC q_air_dp
-   PUBLIC q_sat_crude
-   PUBLIC update_qnsol_tau
-   PUBLIC alpha_sw
-   PUBLIC bulk_formula
-   PUBLIC qlw_net
-   PUBLIC z0_from_Cd, z0_from_ustar
-   PUBLIC Cd_from_z0
-   PUBLIC f_m_louis, f_h_louis
-   PUBLIC UN10_from_ustar
-   PUBLIC UN10_from_CDN
-   PUBLIC UN10_from_CD
-   PUBLIC Re_rough_tq_LKB
-   PUBLIC z0tq_LKB
-   PUBLIC vmean, variance
-   PUBLIC to_kelvin_3d
+   !PUBLIC virt_temp
+   !PUBLIC rho_air
+   !PUBLIC visc_air
+   !PUBLIC L_vap
+   !PUBLIC cp_air
+   !!PUBLIC gamma_moist
+   !PUBLIC One_on_L
+   !PUBLIC Ri_bulk
+   !PUBLIC q_sat
+   !PUBLIC dq_sat_dt_ice
+   !PUBLIC e_sat
+   !PUBLIC e_sat_ice
+   !PUBLIC de_sat_dt_ice
+   !PUBLIC e_air
+   !PUBLIC rh_air
+   !PUBLIC rho_air_adv
+   !PUBLIC dry_static_energy
+   !PUBLIC q_air_rh
+   !PUBLIC q_air_dp
+   !PUBLIC q_sat_crude
+   !PUBLIC update_qnsol_tau
+   !PUBLIC alpha_sw
+   !PUBLIC bulk_formula
+   !PUBLIC qlw_net
+   !PUBLIC z0_from_Cd, z0_from_ustar
+   !PUBLIC Cd_from_z0
+   !PUBLIC f_m_louis, f_h_louis
+   !PUBLIC UN10_from_ustar
+   !PUBLIC UN10_from_CDN
+   !PUBLIC UN10_from_CD
+   !PUBLIC Re_rough_tq_LKB
+   !PUBLIC z0tq_LKB
+   !PUBLIC vmean, variance
+   !PUBLIC to_kelvin_3d
+
+   
+   !! P R I V A T E :
+   
+   REAL(wp), PARAMETER, PRIVATE :: &
+                                !! Constants for Goff formula in the presence of ice:
+      &      rAg_i = -9.09718_wp, &
+      &      rBg_i = -3.56654_wp, &
+      &      rCg_i = 0.876793_wp, &
+      &      rDg_i = LOG10(6.1071_wp)
+
+   REAL(wp), PARAMETER, PRIVATE :: rc_louis  = 5._wp
+   REAL(wp), PARAMETER, PRIVATE :: rc2_louis = rc_louis * rc_louis
+   REAL(wp), PARAMETER, PRIVATE :: ram_louis = 2. * rc_louis
+   REAL(wp), PARAMETER, PRIVATE :: rah_louis = 3. * rc_louis
+
+   REAL(wp), PARAMETER, PRIVATE :: repsilon = 1.e-6_wp
 
 
+
+   
 CONTAINS
 
    !===============================================================================================
@@ -384,7 +392,7 @@ CONTAINS
       END DO
    END FUNCTION One_on_L_vctr
    !===============================================================================================
-   
+
    !===============================================================================================
    FUNCTION Ri_bulk_sclr( pz, psst, ptha, pssq, pqa, pub,  pta_layer, pqa_layer )
       !!----------------------------------------------------------------------------------
@@ -744,10 +752,55 @@ CONTAINS
    END FUNCTION dry_static_energy
 
 
+   !===============================================================================================
+   SUBROUTINE UPDATE_QNSOL_TAU_SCLR( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, ppa, prlw, &
+      &                              pQns, pTau,    Qlat )
+      !!----------------------------------------------------------------------------------
+      !! Purpose: returns the non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw"
+      !!          and the module of the wind stress => pTau = Tau
+      !! ** Author: L. Brodeau, Sept. 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
+      REAL(wp), INTENT(in)  :: pTs  ! water temperature at the air-sea interface [K]
+      REAL(wp), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pTs   [kg/kg]
+      REAL(wp), INTENT(in)  :: pTa  ! potential air temperature at z=pzu [K]
+      REAL(wp), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
+      REAL(wp), INTENT(in)  :: pust ! u*
+      REAL(wp), INTENT(in)  :: ptst ! t*
+      REAL(wp), INTENT(in)  :: pqst ! q*
+      REAL(wp), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
+      REAL(wp), INTENT(in)  :: ppa ! sea-level atmospheric pressure [Pa]
+      REAL(wp), INTENT(in)  :: prlw ! downwelling longwave radiative flux [W/m^2]
+      !
+      REAL(wp), INTENT(out) :: pQns ! non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw" [W/m^2]]
+      REAL(wp), INTENT(out) :: pTau ! module of the wind stress [N/m^2]
+      !
+      REAL(wp), OPTIONAL, INTENT(out) :: Qlat
+      !
+      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zz0, zQlat, zQsen, zQlw
+      !!----------------------------------------------------------------------------------
+      zdt = pTa - pTs ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+      zdq = pqa - pqs ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      zz0 = pust/pUb
+      zCd = zz0*zz0
+      zCh = zz0*ptst/zdt
+      zCe = zz0*pqst/zdq
 
-   SUBROUTINE UPDATE_QNSOL_TAU( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, ppa, prlw, &
-      &                         pQns, pTau,  &
-      &                         Qlat)
+      CALL BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, zCd, zCh, zCe, &
+         &                    pwnd, pUb, ppa,                         &
+         &                    pTau, zQsen, zQlat )
+      
+      zQlw = qlw_net_sclr( prlw, pTs ) ! Net longwave flux
+      
+      pQns = zQlat + zQsen + zQlw
+      
+      IF( PRESENT(Qlat) ) Qlat = zQlat
+
+   END SUBROUTINE UPDATE_QNSOL_TAU_SCLR
+   !!
+   SUBROUTINE UPDATE_QNSOL_TAU_VCTR( pzu, pTs, pqs, pTa, pqa, pust, ptst, pqst, pwnd, pUb, ppa, prlw, &
+      &                              pQns, pTau,    Qlat)
       !!----------------------------------------------------------------------------------
       !! Purpose: returns the non-solar heat flux to the ocean aka "Qlat + Qsen + Qlw"
       !!          and the module of the wind stress => pTau = Tau
@@ -771,32 +824,25 @@ CONTAINS
       !
       REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(out) :: Qlat
       !
-      REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zz0, zQlat, zQsen, zQlw
+      REAL(wp) :: zQlat
       INTEGER  ::   ji, jj     ! dummy loop indices
+      LOGICAL  :: lrQlat=.false.
       !!----------------------------------------------------------------------------------
+      lrQlat = PRESENT(Qlat)
       DO jj = 1, jpj
          DO ji = 1, jpi
-            zdt = pTa(ji,jj) - pTs(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-            zdq = pqa(ji,jj) - pqs(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
-            zz0 = pust(ji,jj)/pUb(ji,jj)
-            zCd = zz0*zz0
-            zCh = zz0*ptst(ji,jj)/zdt
-            zCe = zz0*pqst(ji,jj)/zdq
-
-            CALL BULK_FORMULA( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), zCd, zCh, zCe, &
-               &              pwnd(ji,jj), pUb(ji,jj), ppa(ji,jj), &
-               &              pTau(ji,jj), zQsen, zQlat )
-
-            zQlw = qlw_net_sclr( prlw(ji,jj), pTs(ji,jj) ) ! Net longwave flux
-
-            pQns(ji,jj) = zQlat + zQsen + zQlw
-
-            IF( PRESENT(Qlat) ) Qlat(ji,jj) = zQlat
+            CALL UPDATE_QNSOL_TAU_SCLR( pzu, pTs(ji,jj),  pqs(ji,jj),  pTa(ji,jj), pqa(ji,jj),  &
+               &                            pust(ji,jj), ptst(ji,jj), pqst(ji,jj), pwnd(ji,jj), &
+               &                             pUb(ji,jj),  ppa(ji,jj), prlw(ji,jj),              &
+               &                            pQns(ji,jj), pTau(ji,jj),              Qlat=zQlat   )
+            IF( lrQlat ) Qlat(ji,jj) = zQlat
          END DO
       END DO
-   END SUBROUTINE UPDATE_QNSOL_TAU
+   END SUBROUTINE UPDATE_QNSOL_TAU_VCTR
+   !===============================================================================================
 
 
+   !===============================================================================================
    SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, &
       &                          pCd, pCh, pCe,           &
       &                          pwnd, pUb, ppa,         &
@@ -885,27 +931,27 @@ CONTAINS
       LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!
       REAL(wp) :: zevap, zrho
-      LOGICAL  :: lice
+      LOGICAL  :: lice=.FALSE., lrE=.FALSE., lrR=.FALSE.
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------------------
-      lice = .FALSE.
-      IF( PRESENT(l_ice) ) lice = l_ice
-
+      lice = PRESENT(l_ice)
+      lrE  = PRESENT(pEvap)
+      lrR  = PRESENT(prhoa)
       DO jj = 1, jpj
          DO ji = 1, jpi
-
             CALL BULK_FORMULA_SCLR( pzu, pTs(ji,jj), pqs(ji,jj), pTa(ji,jj), pqa(ji,jj), &
                &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
                &                    pwnd(ji,jj), pUb(ji,jj), ppa(ji,jj),                &
                &                    pTau(ji,jj), pQsen(ji,jj), pQlat(ji,jj),             &
                &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
-
-            IF( PRESENT(pEvap) ) pEvap(ji,jj) = zevap
-            IF( PRESENT(prhoa) ) prhoa(ji,jj) = zrho
+            IF( lrE ) pEvap(ji,jj) = zevap
+            IF( lrR ) prhoa(ji,jj) = zrho
          END DO
       END DO
    END SUBROUTINE BULK_FORMULA_VCTR
+   !===============================================================================================
 
+   
 
    !===============================================================================================
    FUNCTION alpha_sw_sclr( psst )
