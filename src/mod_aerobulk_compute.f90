@@ -187,13 +187,15 @@ CONTAINS
       !QH   = slp - pRHO*grav*zu      ! QH used as temporary array!
       !pRHO = rho_air(pTzu, pQzu, QH) !! lolo/crude / NEMO 3.6
 
+      pUblk(:,:) = pWzu(:,:) !! lolo/crude / NEMO 3.6  
+      
       !! *** Wind stress ***
       Tau_x = pCd*1.22_wp * U_zu * pUblk !! lolo/crude / NEMO 3.6
       Tau_y = pCd*1.22_wp * V_zu * pUblk !! lolo/crude / NEMO 3.6
 
       !! *** Latent and Sensible heat fluxes ***
-      QL = pCe*1.22_wp * 2.5e6     * (pQzu - pqs) * pUblk  !! lolo/crude / NEMO 3.6
-      QH = pCh*1.22_wp * 1000.5_wp * (pTzu - pTs) * pUblk  !! lolo/crude / NEMO 3.6
+      QL = MIN( pCe*1.22_wp * 2.5e6     * (pQzu - pqs) * pUblk , 0.0_wp ) !! lolo/crude / NEMO 3.6
+      QH =      pCh*1.22_wp * 1000.5_wp * (pTzu - pTs) * pUblk            !! lolo/crude / NEMO 3.6
 
       DEALLOCATE ( pmask, pWzu, pSSQ, pCd, pCh, pCe, pTzt, pTzu, pQzu, pUblk, pTs, pqs )
 
