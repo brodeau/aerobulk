@@ -122,7 +122,7 @@ CONTAINS
       pWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
       !! Computing specific humidity at saturation at sea surface temperature :
-      pSSQ (:,:) = 0.98*q_sat(sst, slp) !! lolo/crude / NEMO 3.6  (slp not used!)
+      pSSQ(:,:) = 0.98_wp*640380._wp/1.22_wp * EXP( -5107.4_wp/MAX(sst(:,:),100._wp) ) !lolo crude
 
       !! Approximate potential temperarure at zt meters above sea surface:
       !pTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
@@ -130,8 +130,8 @@ CONTAINS
 
       !! Mind that TURB_COARE and TURB_ECMWF will modify SST and SSQ if their
       !! respective Cool Skin Warm Layer parameterization is used
-      pTs = sst
-      pqs = pSSQ
+      pTs(:,:) =  sst(:,:)
+      pqs(:,:) = pSSQ(:,:)
 
 
       SELECT CASE(TRIM(calgo))
