@@ -215,7 +215,9 @@ PROGRAM cx_vs_wind_test
 
             IF ( TRIM(calgo) == 'ncar' ) &
                CALL TURB_NCAR( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
-               &          Cd, Ch, Ce, t10, q10, U_bulk, xz0=z0, xu_star=us)
+               &          Cd, Ch, Ce, t10, q10 )
+            U_bulk = w10
+            !, , xz0=z0, xu_star=us)
 
             IF ( trim(calgo) == 'ecmwf' ) &
                CALL TURB_ECMWF(zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
@@ -366,7 +368,8 @@ PROGRAM cx_vs_wind_test
 
       IF ( trim(calgo) == 'ncar' ) &
          CALL TURB_NCAR(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
-         &             Cd, Ch, Ce, t10, q10, U_bulk)
+         &             Cd, Ch, Ce, t10, q10)
+      U_bulk = w10
 
       IF ( trim(calgo) == 'ecmwf' ) &
          CALL TURB_ECMWF(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &

@@ -159,7 +159,8 @@ CONTAINS
          !!
       CASE('ncar')
          CALL TURB_NCAR( zt, zu, pTs, pTzt, pqs, q_zt, pWzu, &
-            &            pCd, pCh, pCe, pTzu, pQzu, pUblk)
+            &            pCd, pCh, pCe, pTzu, pQzu )
+         pUblk = pWzu
          !!
          !!
       CASE('ecmwf')

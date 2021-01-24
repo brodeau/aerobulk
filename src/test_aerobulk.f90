@@ -59,7 +59,7 @@ PROGRAM TEST_AEROBULK
 
    nb_itt = 20  ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   !OPEN(6, FORM='formatted', RECL=512)
 
    jarg = 0
 
@@ -290,10 +290,13 @@ PROGRAM TEST_AEROBULK
 
 
       CASE(3)
+         !lolo crude
          CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10, &
-            &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,      &
-            &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-
+            &            Cd, Ch, Ce, theta_zu, q_zu )
+         Ublk = W10
+         zz0 = 0.0001
+         zus = 0.0001         
+         ! xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(4)
 
@@ -355,8 +358,8 @@ PROGRAM TEST_AEROBULK
       vz0(ialgo) = REAL(zz0(1,1) ,4)
       vus(ialgo) = REAL(zus(1,1) ,4)
 
-      zts = Ch*(theta_zu - Ts)*Ublk/zus
-      zqs = Ce*(q_zu     - qs)*Ublk/zus
+      zts = Ch*(theta_zu - Ts)*Ublk/MAX(zus, 1.E-9_wp)
+      zqs = Ce*(q_zu     - qs)*Ublk/MAX(zus, 1.E-9_wp)
 
       vL(ialgo) = zL(1,1)
 
@@ -446,7 +449,7 @@ PROGRAM TEST_AEROBULK
    WRITE(6,*) '    QH        =   ', vQH        , '[W/m^2]'
    WRITE(6,*) ''
    WRITE(6,*) ''
-   CLOSE(6)
+   !CLOSE(6)
 
 END PROGRAM TEST_AEROBULK
 
