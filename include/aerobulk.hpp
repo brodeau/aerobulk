@@ -24,9 +24,11 @@ namespace aerobulk
     // To check the size of the inputs
     int check_sizes(int count, ...);
 
-    // Interface for lvap
-    std::vector<double> lvap(const std::vector<double> &sst);
-
+    // Interface for l_vap
+    // std::vector<double> l_vap(const std::vector<double> &sst);
+    // std::vector<double> aerobulk::l_vap(const std::vector<double> &sst)
+    std::vector<double> l_vap(const std::vector<double> &sst);
+    
     // Interface to aerobulk_model with rad_sw and rad_lw as inputs and T_s as output
     void model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
         const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,

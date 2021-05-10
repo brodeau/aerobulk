@@ -60,7 +60,7 @@ contains
       CALL aerobulk_model( calgo_fort, zt, zu, sst, t_zt, &
                            q_zt, U_zu, V_zu, slp,         &
                            QL, QH, Tau_x, Tau_y,          &
-                           Niter=Niter, Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, T_s=T_s )
+                           Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
 
       end subroutine aerobulk_cxx_skin
 

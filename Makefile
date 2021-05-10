@@ -49,8 +49,9 @@ LIB_OBJ = $(LIB_SRC:.f90=.o)
 #          src/mod_wl_coare3p6.f90 \
 #          src/mod_wl_ecmwf.f90 \
 
+LIB_COMP = -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
-LIB_CXX = -L./lib -laerobulk_cxx
+LIB_CXX = -L./lib -laerobulk_cxx -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
 LIB_SRC_CXX = src/aerobulk.cpp \
 		  src/aerobulk_cxx.f90
@@ -82,7 +83,7 @@ bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
 
-bin/example_call_aerobulk.x: src/example_call_aerobulk.f90 lib/libaerobulk.a #
+bin/example_call_aerobulk.x: src/example_call_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/example_call_aerobulk.f90 -o bin/example_call_aerobulk.x $(LIB)
 
@@ -120,7 +121,7 @@ bin/test_aerobulk_oce+ice.x: src/ice/test_aerobulk_oce+ice.f90 lib/libaerobulk.a
 
 bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
-	$(CXX) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB)
+	$(CXX) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB) $(LIB_COMP)
 
 bin/test_aerobulk_buoy_series_oce.x: src/tests/test_aerobulk_buoy_series_oce.f90 lib/libaerobulk.a mod/io_ezcdf.mod
 	@mkdir -p bin

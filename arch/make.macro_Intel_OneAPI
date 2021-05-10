@@ -4,6 +4,11 @@
 # Fortran compiler :
 FC  = ifort
 CXX = icc
+VERSION = 2021.2.0
+
+# Libraries of Fortran compiler
+DIR_FORT_LIB = /opt/intel/oneapi/compiler/$(VERSION)/linux/compiler/lib/intel64
+LNK_FORT_LIB = -lifcore
 
 ### Fortran compilation flags :
 
@@ -23,3 +28,4 @@ NETCDF_DIR = /opt/hdf5_netcdf4_intel
 
 # Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
 L_NCDF = -lnetcdff
+

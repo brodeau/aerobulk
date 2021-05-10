@@ -1,22 +1,30 @@
-# Makefile for AeroBulk with the GNU Fortran Compiler
-# ===================================================
+# Makefile for AeroBulk with the GNU Fortran Compiler version 9 on Ubuntu
+# =======================================================================
 
 # Fortran compiler :
 FC  = gfortran
 CXX = g++
+VERSION = 9
 
-DIR_FORT_LIB = /usr/lib/gcc/x86_64-linux-gnu/7
+# Libraries of Fortran compiler
+DIR_FORT_LIB = /usr/lib/gcc/x86_64-linux-gnu/$(VERSION)
 LNK_FORT_LIB = -lgfortran
 
 # Fortran compilation flags :
-#DEBUG_FF = -g -w -fbounds-check
 
-FF = -O3 -fdefault-real-8 -ffree-line-length-200 $(DEBUG_FF) -J./mod -I./mod
+
+# Production
+FF = -O3 -fdefault-real-8 -ffree-line-length-200 -J./mod -I./mod
 # These are needed for the C/C++ interface
 FF += -std=f2008 -lstdc++
 
-# g++ compilarion flags
-CXXFLAGS += -std=c++11 -lgfortran -O3
+# Debugging:
+#DEBUG_FF = -g -w -fbounds-check
+#FF = -O3 -fdefault-real-8 -ffree-line-length-200 $(DEBUG_FF) -module mod/
+
+
+# g++ compilation flags
+CXXFLAGS += -std=c++11 -O3
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
@@ -26,3 +34,4 @@ NETCDF_DIR = /usr
 
 # Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
 L_NCDF = -lnetcdff
+
