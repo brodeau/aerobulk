@@ -1239,72 +1239,76 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION Re_rough_tq_LKB( iflag, pRer )
-      !!---------------------------------------------------------------------------------
-      !!       ***  FUNCTION Re_rough_tq_LKB  ***
-      !!
-      !! ** Purpose : returns the "temperature/humidity roughness Reynolds number"
-      !!              * iflag==1 => temperature => returns: [z_{0t} u*]/Nu_{air}
-      !!              * iflag==2 => humidity    => returns: [z_{0q} u*]/Nu_{air}
-      !!              from roughness reynold number "pRer" (i.e. [z_0 u*]/Nu_{air})
-      !!              between 0 and 1000. Out of range "pRer" indicated by prt=-999.
-      !!
-      !!              Based on Liu et al. (1979) JAS 36 1722-1723s
-      !!
-      !!              Note: this is what is used into COARE 2.5 to estimate z_{0t} and z_{0q}
-      !!
-      !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: Re_rough_tq_LKB
-      INTEGER,                      INTENT(in) :: iflag     !: 1 => dealing with temperature; 2 => dealing with humidity
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pRer      !: roughness Reynolds number  [z_0 u*]/Nu_{air}
-      !-------------------------------------------------------------------
-      ! Scalar Re_r relation from Liu et al.
-      REAL(wp), DIMENSION(8,2), PARAMETER :: &
-         & XA = (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5,  &
-         &         0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5 /)
-      !!
-      REAL(wp), DIMENSION(8,2), PARAMETER :: &
-         & XB = (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935,  &
-         &         0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616 /)
-      !!
-      REAL(wp), DIMENSION(0:8),   PARAMETER :: &
-         & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
-      !-------------------------------------------------------------------
-      ! Scalar Re_r relation from Moana Wave data.
-      !
-      !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
-      !      integer iflag
-      !      DATA A/0.177,2.7e3,1.03,1.026,1.625,4.661,34.904,1667.19,5.88E5,
-      !     &       0.292,3.7e3,1.4,1.393,1.956,4.994,30.709,1448.68,2.98E5/
-      !      DATA B/0.,4.28,0,-0.599,-1.018,-1.475,-2.067,-2.907,-3.935,
-      !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
-      !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
-      !-------------------------------------------------------------------
-      LOGICAL  :: lfound=.FALSE.
-      REAL(wp) :: zrr
-      INTEGER  :: ji, jj, jm
-      !!----------------------------------------------------------------------------------
-      Re_rough_tq_LKB(:,:) = -999._wp
-      !
-      DO jj = 1, jpj
-         DO ji = 1, jpi
-            zrr    = pRer(ji,jj)
-            lfound = .FALSE.
-            IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
-               jm = 0
-               DO WHILE ( .NOT. lfound )
-                  jm = jm + 1
-                  lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
-               END DO
-               Re_rough_tq_LKB(ji,jj) = XA(jm,iflag) * zrr**XB(jm,iflag)
-            END IF
-         END DO
-      END DO
-      !!
-   END FUNCTION Re_rough_tq_LKB
+   !FUNCTION Re_rough_tq_LKB( iflag, pRer )
+   !   !!---------------------------------------------------------------------------------
+   !   !!       ***  FUNCTION Re_rough_tq_LKB  ***
+   !   !!
+   !   !! ** Purpose : returns the "temperature/humidity roughness Reynolds number"
+   !   !!              * iflag==1 => temperature => returns: [z_{0t} u*]/Nu_{air}
+   !   !!              * iflag==2 => humidity    => returns: [z_{0q} u*]/Nu_{air}
+   !   !!              from roughness reynold number "pRer" (i.e. [z_0 u*]/Nu_{air})
+   !   !!              between 0 and 1000. Out of range "pRer" indicated by prt=-999.
+   !   !!
+   !   !!              Based on Liu et al. (1979) JAS 36 1722-1723s
+   !   !!
+   !   !!              Note: this is what is used into COARE 2.5 to estimate z_{0t} and z_{0q}
+   !   !!
+   !   !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
+   !   !!----------------------------------------------------------------------------------
+   !   REAL(wp), DIMENSION(jpi,jpj)             :: Re_rough_tq_LKB
+   !   INTEGER,                      INTENT(in) :: iflag     !: 1 => dealing with temperature; 2 => dealing with humidity
+   !   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pRer      !: roughness Reynolds number  [z_0 u*]/Nu_{air}
+   !   !-------------------------------------------------------------------
+   !   ! Scalar Re_r relation from Liu et al.
+   !   REAL(wp), DIMENSION(8,2), PARAMETER :: &
+   !      & XA = (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5, &
+   !      &         0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5  /)
+   !   !!
+   !   REAL(wp), DIMENSION(8,2), PARAMETER :: &
+   !      & XB = (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935, &
+   !      &         0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616  /)
+   !   !!
+   !   REAL(wp), DIMENSION(0:8),   PARAMETER :: &
+   !      & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)
+   !   !-------------------------------------------------------------------
+   !   ! Scalar Re_r relation from Moana Wave data.
+   !   !
+   !   !      real*8 A(9,2),B(9,2),RAN(9),pRer,prt
+   !   !      integer iflag
+   !   !      DATA A/0.177,2.7e3,1.03,1.026,1.625,4.661,34.904,1667.19,5.88E5,
+   !   !     &       0.292,3.7e3,1.4,1.393,1.956,4.994,30.709,1448.68,2.98E5/
+   !   !      DATA B/0.,4.28,0,-0.599,-1.018,-1.475,-2.067,-2.907,-3.935,
+   !   !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
+   !   !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
+   !   !-------------------------------------------------------------------
+   !   LOGICAL  :: lfound=.FALSE.
+   !   REAL(wp) :: zrr
+   !   INTEGER  :: ji, jj, jm
+   !   !!----------------------------------------------------------------------------------
+   !   Re_rough_tq_LKB(:,:) = -999._wp
+   !   !
+   !   DO jj = 1, jpj
+   !      DO ji = 1, jpi
+   !         zrr    = pRer(ji,jj)
+   !         lfound = .FALSE.
+   !         IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
+   !            jm = 0
+   !            DO WHILE ( .NOT. lfound )
+   !               jm = jm + 1
+   !               lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
+   !            END DO
+   !            Re_rough_tq_LKB(ji,jj) = XA(jm,iflag) * zrr**XB(jm,iflag)
+   !         END IF
+   !      END DO
+   !   END DO
+   !   !!
+   !END FUNCTION Re_rough_tq_LKB
    !===============================================================================================
 
+
+
+
+   
 
    !===============================================================================================
    FUNCTION z0tq_LKB( iflag, pRer, pz0 )
@@ -1331,12 +1335,12 @@ CONTAINS
       !-------------------------------------------------------------------
       ! Scalar Re_r relation from Liu et al.
       REAL(wp), DIMENSION(8,2), PARAMETER :: &
-         & XA = (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5,  &
-         &         0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5 /)
+         & XA = RESHAPE ( (/ 0.177, 1.376, 1.026, 1.625, 4.661, 34.904, 1667.19, 5.88e5,  &
+         &                   0.292, 1.808, 1.393, 1.956, 4.994, 30.709, 1448.68, 2.98e5 /), (/8,2/) )
       !!
       REAL(wp), DIMENSION(8,2), PARAMETER :: &
-         & XB = (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935,  &
-         &         0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616 /)
+         & XB = RESHAPE ( (/ 0., 0.929, -0.599, -1.018, -1.475, -2.067, -2.907, -3.935,  &
+         &                   0., 0.826, -0.528, -0.870, -1.297, -1.845, -2.682, -3.616 /), (/8,2/) )
       !!
       REAL(wp), DIMENSION(0:8),   PARAMETER :: &
          & XRAN = (/ 0., 0.11, 0.825, 3.0, 10.0, 30.0, 100., 300., 1000. /)

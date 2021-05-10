@@ -18,6 +18,8 @@ CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
 
 LIB = -L./lib -laerobulk 
 
+### 	  src/mod_blk_ecmwf_ij.f90 \
+
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_phymbl.f90 \
           src/mod_cs_coare3p0.f90 \
@@ -28,7 +30,6 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_blk_ncar.f90 \
           src/mod_blk_ncar_ij.f90 \
 	  src/mod_blk_ecmwf.f90 \
-	  src/mod_blk_ecmwf_ij.f90 \
           src/mod_blk_andreas.f90 \
 	  src/mod_blk_neutral_10m.f90 \
           src/mod_aerobulk_compute.f90 \
