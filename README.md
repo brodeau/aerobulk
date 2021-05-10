@@ -4,12 +4,9 @@
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
-**AeroBulk** is a FORTRAN90-based library and suite of tools that feature the most accurate parameterizations available to estimate turbulent air-sea fluxes by means of the traditional **aerodynamic bulk formulae**.
+**AeroBulk** is a FORTRAN90-based library and suite of tools (including a C++ interface) that feature *state of the art* parametrizations to estimate turbulent air-sea fluxes by means of the traditional **aerodynamic bulk formulae**.
 
-These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and
-sensible heat flux, are estimated using the sea surface temperature (bulk or
-skin), and the near-surface atmospheric surface state: wind speed, air
-temperature and humidity.
+These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity.
 
 ![Bulk Formula](https://brodeau.github.io/images/projects/bulk.svg)
 
@@ -20,7 +17,7 @@ The following figure provides a schematic view on the way turbulent fluxes are c
 
 &nbsp;
 
-In AeroBulk, 5 *state of the art* bulk algorithms are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
+Currently, in AeroBulk, 5 bulk algorithm parametrizations are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
 *   COARE v3.0 ([Fairall *et al.*, 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
 *   COARE v3.6 (Fairall *et al.*, 2018 + [Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
@@ -56,7 +53,7 @@ You will be interactively prompted for different sea-surface and ABL related par
     
     -r   => Ask for relative humidity rather than specific humidity
     
-    -S   => Use the Cool Skin Warm Layer parameterization to compute
+    -S   => Use the Cool Skin Warm Layer parametrization to compute
             and use the skin temperature instead of the bulk SST
             only in COARE and ECMWF
     
@@ -138,7 +135,7 @@ INPUT ARGUMENTS:
 *   ```rad_sw``` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
 *   ```rad_lw``` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
 
-(The presence of ```rad_sw``` and ```rad_sw``` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
+(The presence of ```rad_sw``` and ```rad_sw``` triggers the use of the Cool-Skin Warm-Layer parametrization with COARE and ECMWF algorithms)
 
 OUTPUT ARGUMENTS:
 
@@ -147,7 +144,7 @@ OUTPUT ARGUMENTS:
 *   ```Tau_x``` : (2D,real) zonal wind stress [N/m^2]
 *   ```Tau_y``` : (2D,real) meridional wind stress [N/m^2]
 
-Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
+Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parametrization and 10 iterations:
 
            CALL AEROBULK_MODEL( 'coare_3p0', 2., 10., sst, t_zt, q_zt, U_zu, V_zu, SLP, &
            &                    Qe, Qh, Tau_x, Tau_y,                                   &
@@ -202,7 +199,7 @@ Example of a call:
 *   ```rad_lw``` : (2D,real) downw. longw. rad. at surface (>0) [W/m^2]
 *   ```slp``` : (2D,real) sea-level pressure [Pa]
 
-(The presence of these 3 optional input parameters triggers the use of the Cool-Skin Warm-Layer parameterization)
+(The presence of these 3 optional input parameters triggers the use of the Cool-Skin Warm-Layer parametrization)
 
 **OUTPUT ARGUMENTS:**
 
@@ -221,7 +218,7 @@ Example of a call:
 
 **> Some Examples**
 
-Using COARE 3.0 without the cool-skin warm-layer parameterization, with air temperature and humidity provided at 2m and wind at 10m:
+Using COARE 3.0 without the cool-skin warm-layer parametrization, with air temperature and humidity provided at 2m and wind at 10m:
 
               PROGRAM TEST_COEFF
                   USE mod_const
@@ -237,7 +234,7 @@ Using COARE 3.0 without the cool-skin warm-layer parameterization, with air temp
 
 In this case, Ts and qs, the surface temperature and saturation specific humidity won't be modified. The relevant value of qs must be provided as input.
 
-Now the same but using the cool-skin warm-layer parameterization:
+Now the same but using the cool-skin warm-layer parametrization:
 
               PROGRAM TEST_COEFF
                   USE mod_const
