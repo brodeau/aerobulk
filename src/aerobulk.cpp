@@ -27,11 +27,8 @@ std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
         case algorithm::OTHER:
             return_value = std::string("other");
             break;
-        case algorithm::COARE:
-            return_value = std::string("coare");
-            break;
-        case algorithm::COARE35:
-            return_value = std::string("coare35");
+        case algorithm::COARE3p6:
+            return_value = std::string("coare3p6");
             break;
         case algorithm::NCAR:
             return_value = std::string("ncar");

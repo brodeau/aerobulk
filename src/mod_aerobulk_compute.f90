@@ -104,10 +104,10 @@ CONTAINS
 
 
       ! Cool skin ?
-      IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
-         IF((TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf')) THEN
+      IF((TRIM(calgo(1:5)) == 'coare').OR.(TRIM(calgo) == 'ecmwf')) THEN
+         IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
             l_use_skin = .TRUE.
-            PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'
+            PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
          END IF
          CALL check_unit_consitency( 'rad_sw', rad_sw, zmask )
          CALL check_unit_consitency( 'rad_lw', rad_lw, zmask )

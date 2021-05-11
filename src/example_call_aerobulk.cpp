@@ -22,13 +22,13 @@ int main(int argc, char** argv)
     std::vector<double> zTau_y;
     std::vector<double> zT_s;
 
-    aerobulk::model(aerobulk::algorithm::COARE, 2, 10, zsst, zt_zt,
+    aerobulk::model(aerobulk::algorithm::COARE3p6, 2, 10, zsst, zt_zt,
             zq_zt, zU_zu, zV_zu, zslp,
             zQL, zQH, zTau_x, zTau_y,
             zRsw, zRlw, zT_s );
 
     std::cout
-        << "\n *********** COARE 3.0 *****************\n"
+        << "\n *********** COARE 3.6 *****************\n"
         << " QH = \t" << zQH[0] << "\t" << zQH[1] << std::endl
         << " QL = \t" << zQL[0] << "\t" << zQL[1] << std::endl
         << " Tau_x = \t" << zTau_x[0] << "\t" << zTau_x[1] << std::endl

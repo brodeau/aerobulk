@@ -159,9 +159,9 @@ CONTAINS
             isd_sol = MODULO( isd + ilag_gw_s , 24*3600 )
             rhr_sol = REAL( isd_sol , wp) / 3600._wp
 
-            PRINT *, '#LBD:'
-            PRINT *, '#LBD: dT_wl at former ts:', zdTwl
-            PRINT *, '#LBD:  Hz_wl at former ts:', zHwl
+            !PRINT *, '#LBD:'
+            !PRINT *, '#LBD: dT_wl at former ts:', zdTwl
+            !PRINT *, '#LBD:  Hz_wl at former ts:', zHwl
 
             !*****  variables for warm layer  ***
             zalpha = alpha_sw( pSST(ji,jj) ) ! thermal expansion coefficient of sea-water (SST accurate enough!)

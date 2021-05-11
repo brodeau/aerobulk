@@ -4,7 +4,7 @@
 # Fortran compiler :
 FC  = ifort
 CXX = icc
-VERSION = 2021.2.0
+VERSION = latest
 
 # Libraries of Fortran compiler
 DIR_FORT_LIB = /opt/intel/oneapi/compiler/$(VERSION)/linux/compiler/lib/intel64
