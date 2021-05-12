@@ -1,6 +1,6 @@
+<!-- https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg -->
 
-
-![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/main/doc/figs/logo_300.svg)
+![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg)
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
@@ -8,12 +8,12 @@
 
 These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity.
 
-![Bulk Formula](https://github.com/brodeau/aerobulk/blob/main/doc/figs/bulk.svg)
+![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg)
 
 
 The following figure provides a schematic view on the way turbulent fluxes are computed in AeroBulk:
 
-![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/main/doc/figs/fig_bulk_model_f2p.svg)
+![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg)
 
 &nbsp;
 
@@ -33,7 +33,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 &nbsp;
 
-![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/main/doc/figs/Comparaison_Psi.svg)
+![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)
 *Example of a set of figures generated with one of AeroBulk diagnostic Python scripts: comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
 
 &nbsp;
