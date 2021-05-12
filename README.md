@@ -39,7 +39,7 @@ Currently, in AeroBulk, 5 bulk algorithm parameterizations are available to comp
 
 In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature is the bulk SST (usually measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. The NCAR algorithm is supposed to be used with the bulk SST and does not feature a cool-skin/warm layer scheme.
 
-Beside bulk algorithms, AeroBulk also provides a variety of functions to accurately estimate relevant atmospheric variable such as density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, Obukhov length, wind gustiness, etc...
+Beside bulk algorithms, AeroBulk also provides a collection of functions (module `mod_phymbl.f90`) to accurately estimate relevant atmospheric variable such as density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, *Obukhov* length, bulk *Richardson* number, wind gustiness, etc...
 
 The focus in AeroBulk is readability, efficiency, and portability towards modern ocean & atmosphere GCMs (Fortran 90, set of modules and a library).
 
