@@ -894,10 +894,10 @@ CONTAINS
 
       IF( lice) THEN
          pQlat =      rLsub * zevap
-         IF( PRESENT(pEvap) ) pEvap = MAX( -zevap , 0._wp )
+         IF( PRESENT(pEvap) ) pEvap = MIN( zevap , 0._wp )
       ELSE
          pQlat = L_vap(pTs) * zevap
-         IF( PRESENT(pEvap) ) pEvap = -zevap
+         IF( PRESENT(pEvap) ) pEvap = zevap
       END IF
 
       IF( PRESENT(prhoa) ) prhoa = zrho
@@ -1489,7 +1489,6 @@ CONTAINS
       REAL(wp), DIMENSION(:), INTENT(in) :: pvc
       !!
       INTEGER :: Nn
-      REAL(wp) :: zmean
       !!
       Nn = SIZE(pvc)
       !!

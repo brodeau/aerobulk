@@ -52,7 +52,7 @@ PROGRAM TEST_AEROBULK_ICE
    !! Over water only :
    REAL(wp), DIMENSION(lx,ly) :: sst, ssq, &
       &                          Cd_w, Ce_w, Ch_w,    &
-      &                          t_zu_w, theta_zu_w, q_zu_w, rho_zu_w, &
+      &                          theta_zu_w, q_zu_w, &
       &                          Ublk_w, zz0_w, zus_w, zL_w, zUN10_w
 
    REAL(wp) :: zt, zu, nu_air
@@ -134,7 +134,7 @@ PROGRAM TEST_AEROBULK_ICE
    CALL prtcol( 6, ' zu', zu, 'm' )
    CALL prtcol( 6, ' zt', zt, 'm' )
    WRITE(6,*) ''
-   
+
    IF ( zt < 10. ) THEN
       WRITE(czt,'(i1,"m")') INT(zt)
    ELSE
@@ -348,7 +348,7 @@ PROGRAM TEST_AEROBULK_ICE
          CALL TURB_ICE_LG15_IO( zt, zu, sit, theta_zt, siq, q_zt, W10, frci,  &
             &                   Cd, Ch, Ce, theta_zu, q_zu, Ublk,             &
             &                   xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
+
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
@@ -489,38 +489,36 @@ CONTAINS
       WRITE(id,*) ACHAR(27)//'[95m ***'//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
    END SUBROUTINE prtcol
 
+
+   SUBROUTINE usage_test( icontinue )
+      INTEGER, INTENT(in) :: icontinue
+      !!
+      PRINT *,''
+      IF (icontinue>=1) THEN
+         PRINT *,''
+         PRINT *,'                 ======   A e r o B u l k   ====='
+         PRINT *,''
+         PRINT *,'                      (L. Brodeau, 2015-2019)'
+         PRINT *,''
+         PRINT *,'                   Simple interactive test-case'
+      END IF
+      PRINT *,'##########################################################################'
+      PRINT *,'   List of command line options:'
+      PRINT *,''
+      PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
+      PRINT *,''
+      PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
+      PRINT *,''
+      PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
+      PRINT *,'           -> will not ask for air temp. at zt, instead will only'
+      PRINT *,'           ask for relative humidity at zt and will force the air'
+      PRINT *,'           temperature at zt that yields a neutral-stability!'
+      PRINT *,''
+      PRINT *,'   -h   => Show this message'
+      PRINT *,'##########################################################################'
+      PRINT *,''
+      IF (icontinue==0) STOP
+      !!
+   END SUBROUTINE usage_test
+
 END PROGRAM TEST_AEROBULK_ICE
-
-
-
-SUBROUTINE usage_test( icontinue )
-   INTEGER, INTENT(in) :: icontinue
-   !!
-   PRINT *,''
-   IF (icontinue>=1) THEN
-      PRINT *,''
-      PRINT *,'                 ======   A e r o B u l k   ====='
-      PRINT *,''
-      PRINT *,'                      (L. Brodeau, 2015-2019)'
-      PRINT *,''
-      PRINT *,'                   Simple interactive test-case'
-   END IF
-   PRINT *,'##########################################################################'
-   PRINT *,'   List of command line options:'
-   PRINT *,''
-   PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
-   PRINT *,''
-   PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
-   PRINT *,''
-   PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
-   PRINT *,'           -> will not ask for air temp. at zt, instead will only'
-   PRINT *,'           ask for relative humidity at zt and will force the air'
-   PRINT *,'           temperature at zt that yields a neutral-stability!'
-   PRINT *,''
-   PRINT *,'   -h   => Show this message'
-   PRINT *,'##########################################################################'
-   PRINT *,''
-   IF (icontinue==0) STOP
-   !!
-END SUBROUTINE usage_test
-!!

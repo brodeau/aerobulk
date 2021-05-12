@@ -465,11 +465,6 @@ CONTAINS
       WRITE(id,*) ''
    END SUBROUTINE prtcol
 
-
-END PROGRAM TEST_AEROBULK_ICE
-
-
-
 SUBROUTINE usage_test( icontinue )
    INTEGER, INTENT(in) :: icontinue
    !!
@@ -500,4 +495,8 @@ SUBROUTINE usage_test( icontinue )
    IF (icontinue==0) STOP
    !!
 END SUBROUTINE usage_test
-!!
+
+   
+
+END PROGRAM TEST_AEROBULK_ICE
+

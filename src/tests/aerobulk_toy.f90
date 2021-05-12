@@ -569,8 +569,6 @@ CONTAINS
       WRITE(id,*) ''
    END SUBROUTINE prtcol
 
-END PROGRAM AEROBULK_TOY
-
 
 SUBROUTINE usage_test( icontinue )
    INTEGER, INTENT(in) :: icontinue
@@ -608,6 +606,5 @@ SUBROUTINE usage_test( icontinue )
    IF (icontinue==0) STOP
    !!
 END SUBROUTINE usage_test
-!!
-
    
+END PROGRAM AEROBULK_TOY

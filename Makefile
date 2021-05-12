@@ -54,10 +54,10 @@ LIB_COMP = -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 LIB_CXX = -L./lib -laerobulk_cxx -L$(DIR_FORT_LIB) $(LNK_FORT_LIB)
 
 LIB_SRC_CXX = src/aerobulk.cpp \
-		  src/aerobulk_cxx.f90
+		  src/mod_aerobulk_cxx.f90
 
 LIB_OBJ_CXX = src/aerobulk.o \
-		  src/aerobulk_cxx.o
+		  src/mod_aerobulk_cxx.o
 
 
 CXXFLAGS += -I./include

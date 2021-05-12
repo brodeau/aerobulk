@@ -8,7 +8,7 @@
 !
 !
 MODULE mod_aerobulk
-
+   
    USE mod_const
    USE mod_aerobulk_compute
 
@@ -17,8 +17,7 @@ MODULE mod_aerobulk
    PRIVATE
 
    PUBLIC :: AEROBULK_MODEL
-
-
+   
 CONTAINS
 
 
@@ -36,7 +35,7 @@ CONTAINS
 
       PRINT *, ''
       PRINT *, '****************************************************'
-      PRINT *, '*            ----- aerobulk_init -----'
+      PRINT *, '             ----- AeroBulk_init -----'
       ! 1.
       jpi = size(psst,1) ; jpj = size(psst,2)
 
@@ -67,8 +66,8 @@ CONTAINS
          PRINT *, 'ERROR: aerobulk_init => SST and SLP arrays do not agree in shape!' ; STOP
       END IF
 
-      PRINT *, '    *** jpi and jpj set to ', jpi, jpj
-      PRINT *, '    *** nb_iter is set to ', nb_iter
+      PRINT *, '    *** Computational domain shape: jpi, jpj =', INT(jpi,2), ',', INT(jpj,2)
+      PRINT *, '    *** Number of iterations:       nb_iter  =', INT(nb_iter,1)
       PRINT *, '****************************************************'
       PRINT *, ''
 
@@ -80,19 +79,18 @@ CONTAINS
 
    SUBROUTINE aerobulk_bye()
       PRINT *, ''
-      PRINT *, 'aerobulk_bye'
+      PRINT *, 'AeroBulk_bye'
       PRINT *, ''
    END SUBROUTINE aerobulk_bye
 
 
 
 
-
-
-   SUBROUTINE AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, &
-      &                       q_zt, U_zu, V_zu, slp,    &
-      &                       QL, QH, Tau_x, Tau_y,     &
-      &                       Niter, rad_sw, rad_lw, T_s )
+   
+   SUBROUTINE AEROBULK_MODEL( calgo, zt, zu, sst, t_zt,   &
+      &                       q_zt, U_zu, V_zu, slp,      &
+      &                       QL, QH, Tau_x, Tau_y, Evap,  &
+      &                       Niter, rad_sw, rad_lw, T_s  )
       !!======================================================================================
       !!
       !! INPUT :
@@ -113,6 +111,7 @@ CONTAINS
       !!    *  QH     : Sensible heat flux                                   [W/m^2]
       !!    *  Tau_x  : zonal wind stress                                    [N/m^2]
       !!    *  Tau_y  : zonal wind stress                                    [N/m^2]
+      !!    *  Evap    : Evaporation                                          [mm/s]
       !!
       !! OPTIONAL :
       !! ----------
@@ -125,12 +124,12 @@ CONTAINS
       CHARACTER(len=*),         INTENT(in)  :: calgo
       REAL(wp),                 INTENT(in)  :: zt, zu
       REAL(wp), DIMENSION(:,:), INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
-      REAL(wp), DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
       REAL(wp), DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s
 
       INTEGER, INTENT(in), OPTIONAL :: Niter
-
+      
       IF ( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       IF ( l_first_call ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
@@ -140,14 +139,21 @@ CONTAINS
 
          CALL aerobulk_compute(calgo, zt, zu, sst, t_zt, &
             &                  q_zt, U_zu, V_zu, slp,    &
-            &                  QL, QH, Tau_x, Tau_y ,    &
-            &                  rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
+            &                  QL, QH, Tau_x, Tau_y,     &
+            &                  rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
+         
+         !PRINT *, 'LOLO DEBUG INTO mod_aerobulk after CALL aerobulk_compute !!! ', TRIM(calgo)
+         !PRINT *, 'LOLO: Ts =', T_s
+         !PRINT *, 'LOLO: (sst was) =', sst
+         !PRINT *, 'LOLO: Evap =', Evap*3600.*24., ' mm/day'
+         !PRINT *, ''
 
       ELSE
 
          CALL aerobulk_compute(calgo, zt, zu, sst, t_zt, &
             &                  q_zt, U_zu, V_zu, slp,    &
-            &                  QL, QH, Tau_x, Tau_y)
+            &                  QL, QH, Tau_x, Tau_y,     &
+            &                  Evp=Evap)
 
       END IF
 

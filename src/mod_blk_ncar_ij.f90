@@ -108,7 +108,7 @@ CONTAINS
       REAL(wp) ::   zsqrt_Cd, zsqrt_CdN   ! square root of Cd_n10
       REAL(wp) ::   zeta_u, zeta_t         ! stability parameter at height zu and zt
       REAL(wp) :: zlog1, zlog2, ztmp, ztmp2
-      REAL(wp) :: zdt, zdq, zus, zts, zqs, z1oL, zpsi_m, zpsi_h, zUn10
+      REAL(wp) :: zdt, zdq, zus, zts, zqs, z1oL, zpsi_m, zUn10
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.

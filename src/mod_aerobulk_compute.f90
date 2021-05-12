@@ -20,7 +20,8 @@ CONTAINS
    SUBROUTINE aerobulk_compute( calgo, zt, zu, sst, t_zt, &
       &                         q_zt, U_zu, V_zu, slp,    &
       &                         QL, QH, Tau_x, Tau_y,     &
-      &                         mask, rad_sw, rad_lw, T_s )
+      &                         mask, rad_sw, rad_lw,     &
+      &                         T_s, Evp )
       !!
       !!******************************
       !! 2015: L. Brodeau
@@ -57,8 +58,9 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT
       !! ---------------
-      !!    *  T_s : skin temperature    [K]
-      !!             (only when l_use_skin=TRUE)
+      !!    *  T_s  : skin temperature    [K]    (only when l_use_skin=TRUE)
+      !!    *  Evp : evaporation         [mm/s]
+      !!             
       !!
       !!============================================================================
       !!
@@ -69,7 +71,7 @@ CONTAINS
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(out) :: QL, QH, Tau_x, Tau_y
       INTEGER(1), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: mask
       REAL(wp),   DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: rad_sw, rad_lw
-      REAL(wp),   DIMENSION(jpi,jpj), INTENT(out),OPTIONAL :: T_s
+      REAL(wp),   DIMENSION(jpi,jpj), INTENT(out),OPTIONAL :: T_s, Evp
       !!
       INTEGER(1), DIMENSION(:,:), ALLOCATABLE  :: zmask
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -78,7 +80,7 @@ CONTAINS
          &   zCd, zCh, zCe,     & !: bulk transfer coefficients
          &  zTzt,               & !: potential temperature at zt meters
          &  pTzu, zQzu,         & !: potential temperature and specific humidity at zu meters
-         &  zTs, zqs,           & !:
+         &  zTs, zqs, zEvap,    & !:
          &  zTaum,              & !: wind stress module
          &  zUblk,              & !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
          &  ztmp                  !: temporary array
@@ -93,7 +95,7 @@ CONTAINS
          &     zCd(jpi,jpj), zCh(jpi,jpj), zCe(jpi,jpj),       &
          &     zTzt(jpi,jpj), pTzu(jpi,jpj), zQzu(jpi,jpj),    &
          &     zUblk(jpi,jpj), zTs(jpi,jpj), zqs(jpi,jpj),     &
-         &     zTaum(jpi,jpj), ztmp(jpi,jpj)  )
+         &     zEvap(jpi,jpj), zTaum(jpi,jpj), ztmp(jpi,jpj)  )
 
       ! Masked region ?
       IF( PRESENT(mask) ) THEN
@@ -104,7 +106,7 @@ CONTAINS
 
 
       ! Cool skin ?
-      IF((TRIM(calgo(1:5)) == 'coare').OR.(TRIM(calgo) == 'ecmwf')) THEN
+      IF((TRIM(calgo(1:4)) == 'coar').OR.(TRIM(calgo) == 'ecmwf')) THEN
          IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
             l_use_skin = .TRUE.
             PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
@@ -123,7 +125,7 @@ CONTAINS
 
       !! Scalar wind:
       zWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
-
+      
       !! Computing specific humidity at saturation at sea surface temperature :
       zSSQ (:,:) = rdct_qsat_salt*q_sat(sst, slp)
 
@@ -172,11 +174,21 @@ CONTAINS
          STOP
       END SELECT
 
+
+
+      
       !! Skin temperature:
       !! IF( l_use_skin ) => zTs and zqs have been updated from SST to skin temperature !
 
+      
+      !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
+      !PRINT *, 'LOLO: Ts =', zTs
+      !PRINT *, 'LOLO: (sst was) =', sst
+      !PRINT *, ''
+
+      
       CALL BULK_FORMULA( zu, zTs, zqs, pTzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
-         &                                 zTaum, QH, QL )
+         &                                 zTaum, QH, QL, pEvap=zEvap )
 
       Tau_x = zTaum / zWzu * U_zu
       Tau_y = zTaum / zWzu * V_zu
@@ -190,9 +202,15 @@ CONTAINS
       !PRINT *, 'q_zu =', zQzu
       !PRINT *, 'ssq =', zSSQ
       !PRINT *, ''
+      
+      IF( PRESENT(T_s) ) T_s(:,:)   = zTs(:,:)
 
-      DEALLOCATE ( zmask, zWzu, zSSQ, zCd, zCh, zCe, zTzt, pTzu, zQzu, zUblk, zTs, zqs, zTaum )
+      IF( PRESENT(Evp) ) Evp(:,:) = zEvap(:,:)
+      
+      DEALLOCATE ( zmask, zWzu, zSSQ, zCd, zCh, zCe, zTzt, pTzu, zQzu,    &
+         &         zUblk, zTs, zqs, zEvap, zTaum, ztmp  )
 
+      
    END SUBROUTINE aerobulk_compute
 
 
