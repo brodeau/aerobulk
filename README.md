@@ -1,6 +1,9 @@
-<!-- https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg -->
+<!-- ![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg) -->
 
-![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg)
+<p align="center">
+  <img width="350" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg">
+</p>
+
 
 <!-- Online documentation: https://brodeau.github.io/aerobulk/ -->
 
