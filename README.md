@@ -13,7 +13,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 <!-- ![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg) -->
 <p align="center">
-  <img width="200" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg">
+  <img width="300" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg">
 </p>
 
 
