@@ -23,7 +23,7 @@ The following figure provides a schematic view on the way turbulent fluxes are c
 <!-- ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg) -->
 
 <p align="center">
-  <img width="600" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg">
+  <img width="700" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg">
 </p>
 
 
