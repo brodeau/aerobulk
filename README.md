@@ -45,10 +45,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 &nbsp;
 
-<!--![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)-->
-<p align="center">
-  <img width="700" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg">
-</p>
+![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)
 *Example of a set of figures generated with one of AeroBulk diagnostic Python scripts: comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
 
 &nbsp;
