@@ -1,7 +1,7 @@
 <!-- ![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg) -->
 
 <p align="center">
-  <img width="350" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg">
+  <img width="300" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg">
 </p>
 
 
@@ -11,7 +11,11 @@
 
 These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity.
 
-![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg)
+<!-- ![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg) -->
+<p align="center">
+  <img width="200" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg">
+</p>
+
 
 
 The following figure provides a schematic view on the way turbulent fluxes are computed in AeroBulk:
