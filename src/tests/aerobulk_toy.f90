@@ -7,8 +7,7 @@ PROGRAM AEROBULK_TOY
 
    USE mod_blk_coare3p0
    USE mod_blk_coare3p6
-   !USE mod_blk_ncar
-   USE mod_blk_ncar_ij
+   USE mod_blk_ncar
    USE mod_blk_ecmwf
    USE mod_blk_andreas
 
@@ -363,13 +362,12 @@ PROGRAM AEROBULK_TOY
          END IF
 
       CASE(3)
-         !CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
-         CALL TURB_NCAR_IJ( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
+         CALL TURB_NCAR( zt, zu, sst, theta_zt, ssq, q_zt, W10,              &
             &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
             &            CdN=zCdN, ChN=zChN, CeN=zCeN,                       &
             &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-
-
+         
+         
       CASE(4)
          IF ( l_use_coolsk ) THEN
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &

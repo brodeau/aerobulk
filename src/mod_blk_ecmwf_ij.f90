@@ -183,7 +183,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL     ! Obukhov length [m]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
       !
       INTEGER :: ji, jj, jit
@@ -191,9 +191,10 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST  ! to back up the initial bulk SST
       !
-      REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m, zpsi_h, zUn10, zdT_cs
-      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h
+      REAL(wp) :: zdt, zdq, zus, zus2, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zUn10, zdT_cs, zgust2
+      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zstab, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
       REAL(wp) :: ztmp0, ztmp1, ztmp2
+      REAL(wp) :: zlog_z0, zlog_zu, zlog_zt_o_zu
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -232,6 +233,11 @@ CONTAINS
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
 
+      !! Constants:
+      zlog_zu      = LOG(zu)
+      zlog_zt_o_zu = LOG(zt/zu)
+      
+
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -251,6 +257,7 @@ CONTAINS
 
             zz0     = charn0_ecmwf*zus*zus/grav + 0.11_wp*zNu_a/zus
             zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+            zlog_z0 = LOG(zz0)
 
             zz0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
             zz0t    = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
@@ -258,28 +265,26 @@ CONTAINS
             Cd(ji,jj)     = MAX( (vkarmn/ztmp0)**2 , Cx_min )   ! first guess of Cd
 
             ztmp0 = vkarmn2/LOG(zt/zz0t)/Cd(ji,jj)
-
+            
             zRib = Ri_bulk( zu, T_s(ji,jj), t_zu(ji,jj), q_s(ji,jj), q_zu(ji,jj), Ubzu(ji,jj) ) ! Bulk Richardson Number (BRN)
 
             !! First estimate of zeta_u, depending on the stability, ie sign of BRN (zRib):
-            ztmp1 = 0.5 + SIGN( 0.5_wp , zRib )
-            zprof_h = (1._wp - ztmp1) *   ztmp0*zRib / (1._wp - zRib*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
-               &  +       ztmp1      * ( ztmp0*zRib + 27._wp/9._wp*zRib*zRib )                 !  BRN > 0
+            zstab = 0.5 + SIGN( 0.5_wp , zRib )
+            zzeta_u = (1._wp - zstab) *   ztmp0*zRib / (1._wp - zRib*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
+               &  +        zstab      * ( ztmp0*zRib + 27._wp/9._wp*zRib*zRib )                  !  BRN > 0
 
             !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-            ztmp0  = vkarmn/(LOG(zu/zz0t) - psi_h_ecmwf_ij(zprof_h))
-
-            zus = MAX ( Ubzu(ji,jj)*vkarmn/(LOG(zu) - LOG(zz0)  - psi_m_ecmwf_ij(zprof_h)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+            ztmp0  = vkarmn/(LOG(zu/zz0t) - psi_h_ecmwf_ij(zzeta_u))
+            zus = MAX ( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0  - psi_m_ecmwf_ij(zzeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
             zts = zdt*ztmp0
             zqs = zdq*ztmp0
 
             ! What needs to be done if zt /= zu:
             IF( .NOT. l_zt_equal_zu ) THEN
                !! First update of values at zu (or zt for wind)
-               ztmp0 = psi_h_ecmwf_ij(zprof_h) - psi_h_ecmwf_ij(zt*zprof_h/zu)    ! zt*zprof_h/zu == zeta_t
-               ztmp1 = LOG(zt/zu) + ztmp0
-               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*ztmp1
-               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*ztmp1
+               zprof_h = zlog_zt_o_zu + psi_h_ecmwf_ij(zzeta_u) - psi_h_ecmwf_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
+               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof_h
+               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof_h
                q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
                !
                zdt = t_zu(ji,jj) - T_s(ji,jj)  ; zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
@@ -292,38 +297,46 @@ CONTAINS
 
             !! First guess of inverse of Obukov length (1/L) :
             z1oL = One_on_L( t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs )
-
+            
             !! Functions such as  u* = Ubzu*vkarmn/zprof_m
-            ztmp0 = zu*z1oL
-            zprof_m = LOG(zu) - LOG(zz0)  - psi_m_ecmwf_ij(ztmp0) + psi_m_ecmwf_ij( zz0*z1oL)
-            zprof_h = LOG(zu) - LOG(zz0t) - psi_h_ecmwf_ij(ztmp0) + psi_h_ecmwf_ij(zz0t*z1oL)
+            zzeta_u = zu*z1oL
+            zprof_m = zlog_zu - zlog_z0   - psi_m_ecmwf_ij(zzeta_u) + psi_m_ecmwf_ij(zz0 *z1oL)
+            zprof_h = zlog_zu - LOG(zz0t) - psi_h_ecmwf_ij(zzeta_u) + psi_h_ecmwf_ij(zz0t*z1oL)
 
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
 
                !! Bulk Richardson Number at z=zu (Eq. 3.25)
-               ztmp0 = Ri_bulk( zu, T_s(ji,jj), t_zu(ji,jj), q_s(ji,jj), q_zu(ji,jj), Ubzu(ji,jj) ) ! Bulk Richardson Number (BRN)
+               zRib = Ri_bulk( zu, T_s(ji,jj), t_zu(ji,jj), q_s(ji,jj), q_zu(ji,jj), Ubzu(ji,jj) ) ! Bulk Richardson Number (BRN)
 
                !! New estimate of the inverse of the Obukhon length (z1oL == zeta/zu) :
-               z1oL = ztmp0*zprof_m*zprof_m/zprof_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
+               z1oL = zRib*zprof_m*zprof_m/zprof_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
                !! Note: it is slightly different that the L we would get with the usual
                z1oL = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! (prevent FPE from stupid values from masked region later on...)
-
+               zzeta_u = zu*z1oL
+               zzeta_t = zt*z1oL
+               
+               !! Update stability corrections:
+               zpsi_m_u = psi_m_ecmwf_ij(zzeta_u)
+               zpsi_h_u = psi_h_ecmwf_ij(zzeta_u)
+               zpsi_h_t = psi_h_ecmwf_ij(zzeta_t)
+               
                !! Update zprof_m with new z1oL:
-               zprof_m = LOG(zu) -LOG(zz0) - psi_m_ecmwf_ij(zu*z1oL) + psi_m_ecmwf_ij(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
+               zprof_m = zlog_zu - zlog_z0 - zpsi_m_u + psi_m_ecmwf_ij(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
 
                !! Need to update roughness lengthes:
                zus = Ubzu(ji,jj)*vkarmn/zprof_m
-               ztmp2  = zus*zus !
+               zus2  = zus*zus !
                ztmp1  = zNu_a/zus
-               zz0     = MIN( ABS( alpha_M*ztmp1 + charn0_ecmwf*ztmp2/grav ) , 0.001_wp)
+               zz0     = MIN( ABS( alpha_M*ztmp1 + charn0_ecmwf*zus2/grav )  , 0.001_wp)
                zz0t    = MIN( ABS( alpha_H*ztmp1                           ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
                zz0q    = MIN( ABS( alpha_Q*ztmp1                           ) , 0.001_wp)
+               zlog_z0 = LOG(zz0)
 
                !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
-               ztmp2 = Beta0*Beta0*ztmp2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
-               !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
-               Ubzu(ji,jj) = MAX(SQRT(U_zu(ji,jj)*U_zu(ji,jj) + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
+               zgust2 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
+               !!   ! Only true when unstable (L<0) => when zRib < 0 => explains "-" before zi0
+               Ubzu(ji,jj) = MAX(SQRT(U_zu(ji,jj)*U_zu(ji,jj) + zgust2), 0.2_wp)        ! include gustiness in bulk wind speed
                ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
 
 
@@ -331,30 +344,27 @@ CONTAINS
                !! as well the air-sea differences:
                IF( .NOT. l_zt_equal_zu ) THEN
                   !! Arrays zprof_m and zprof_h are free for a while so using them as temporary arrays...
-                  zprof_h = psi_h_ecmwf_ij(zu*z1oL) ! temporary array !!!
-                  zprof_m = psi_h_ecmwf_ij(zt*z1oL) ! temporary array !!!
-
-                  ztmp2  = psi_h_ecmwf_ij(zz0t*z1oL)
-                  ztmp0  = zprof_h - ztmp2
-                  ztmp1  = vkarmn/(LOG(zu) - LOG(zz0t) - ztmp0)
+                  
+                  zpsi_h_z0t  = psi_h_ecmwf_ij(zz0t*z1oL)
+                  ztmp0  = zpsi_h_u - zpsi_h_z0t
+                  ztmp1  = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0)
                   zts = zdt*ztmp1
-                  ztmp2  = ztmp0 - zprof_m + ztmp2
-                  ztmp1  = LOG(zt/zu) + ztmp2
+                  ztmp2  = ztmp0 - zpsi_h_t + zpsi_h_z0t
+                  ztmp1  = zlog_zt_o_zu + ztmp2
                   t_zu(ji,jj)   = t_zt(ji,jj) - zts/vkarmn*ztmp1
 
-                  ztmp2  = psi_h_ecmwf_ij(zz0q*z1oL)
-                  ztmp0  = zprof_h - ztmp2
-                  ztmp1  = vkarmn/(LOG(zu) - LOG(zz0q) - ztmp0)
+                  zpsi_h_z0q  = psi_h_ecmwf_ij(zz0q*z1oL)
+                  ztmp0  = zpsi_h_u - zpsi_h_z0q
+                  ztmp1  = vkarmn/(zlog_zu - LOG(zz0q) - ztmp0)
                   zqs = zdq*ztmp1
-                  ztmp2  = ztmp0 - zprof_m + ztmp2
-                  ztmp1  = LOG(zt/zu) + ztmp2
+                  ztmp2  = ztmp0 - zpsi_h_t + zpsi_h_z0q
+                  ztmp1  = zlog_zt_o_zu + ztmp2
                   q_zu(ji,jj)   = q_zt(ji,jj) - zqs/vkarmn*ztmp1
                ENDIF
 
-               !! Updating because of updated z0 and z0t and new z1oL...
-               ztmp0 = zu*z1oL
-               zprof_m = log(zu) - LOG(zz0 ) - psi_m_ecmwf_ij(ztmp0) + psi_m_ecmwf_ij(zz0 *z1oL)
-               zprof_h = log(zu) - LOG(zz0t) - psi_h_ecmwf_ij(ztmp0) + psi_h_ecmwf_ij(zz0t*z1oL)
+               !! Updating because of updated z0 and z0t and new zzeta_u...
+               zprof_m = zlog_zu - zlog_z0   - zpsi_m_u + psi_m_ecmwf_ij(zz0 *z1oL)
+               zprof_h = zlog_zu - LOG(zz0t) - zpsi_h_u + psi_h_ecmwf_ij(zz0t*z1oL)
 
 
                IF( l_use_cs ) THEN
@@ -362,12 +372,12 @@ CONTAINS
 
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), &
                      &                   zus, zts, zqs, U_zu(ji,jj), Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), &
-                     &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0
+                     &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0    !LOLO: fix ztmp0 is not what it is supposed to be !!!
                   
                   CALL CS_ECMWF_IJ( Qsw(ji,jj), ztmp1, zus, zSST(ji,jj), zdT_cs )  ! Qnsol -> ztmp1
 
                   T_s(ji,jj) = zSST(ji,jj) + zdT_cs
-                  IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(:,:)
+                  IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
                   q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
 
                ENDIF
@@ -379,8 +389,8 @@ CONTAINS
                      &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
                   CALL WL_ECMWF_IJ( ji, jj, Qsw(ji,jj), ztmp1, zus, zSST(ji,jj) )
                   !! Updating T_s(ji,jj) and q_s !!!
-                  T_s(ji,jj) = zSST(ji,jj) + dT_wl(:,:) !
-                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + dT_cs(:,:)
+                  T_s(ji,jj) = zSST(ji,jj) + dT_wl(ji,jj) !
+                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + zdT_cs
                   q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
                ENDIF
 
@@ -405,14 +415,15 @@ CONTAINS
             IF( lreturn_ustar ) xu_star(ji,jj) = zus
             IF( lreturn_L )     xL(ji,jj)      = 1./z1oL
             IF( lreturn_UN10 )  xUN10(ji,jj)   = zus/vkarmn*LOG(10./zz0)
-
-            IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
-            IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
-            IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
+            
+            IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
 
          END DO
       END DO
 
+      IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl(:,:) = dT_wl(:,:)
+      IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl(:,:) = Hz_wl(:,:)
+      
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
 
    END SUBROUTINE turb_ecmwf_ij

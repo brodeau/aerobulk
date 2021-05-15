@@ -199,7 +199,7 @@ CONTAINS
          ! Stability parameter (z/L):
          zeta =  (1._wp - zwf) * zHwl*zL1   +   zwf * zHwl*zL2
 
-         ZB = zcst3 / PHI(zeta)
+         ZB = zcst3 / PHI_ij(zeta)
 
          zdTwl_n = MAX ( zdTwl_b + ZA + ZB*zdTwl_n , 0._wp )  ! Eq.(6)
 
@@ -246,14 +246,14 @@ CONTAINS
    END FUNCTION delta_skin_layer_ij
 
 
-   FUNCTION PHI( pzeta)
+   FUNCTION PHI_ij( pzeta)
       !!---------------------------------------------------------------------
       !!
       !! Takaya et al., 2010
       !!  Eq.(5)
       !! L. Brodeau, october 2019
       !!---------------------------------------------------------------------
-      REAL(wp)                :: PHI
+      REAL(wp)                :: PHI_ij
       REAL(wp), INTENT(in)    :: pzeta    ! stability parameter
       !!---------------------------------------------------------------------
       REAL(wp) :: ztf, zzt2
@@ -263,10 +263,10 @@ CONTAINS
       !
       ztf = 0.5_wp + SIGN(0.5_wp, pzeta)  ! zeta > 0 => ztf = 1
       !                                   ! zeta < 0 => ztf = 0
-      PHI =      ztf     * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! zeta > 0
+      PHI_ij =      ztf     * ( 1. + (5.*pzeta + 4.*zzt2)/(1. + 3.*pzeta + 0.25*zzt2) ) &   ! zeta > 0
          &  + (1. - ztf) * 1./SQRT( 1. - 16.*(-ABS(pzeta)) )                             ! zeta < 0
       !
-   END FUNCTION PHI
+   END FUNCTION PHI_ij
 
    !!======================================================================
 END MODULE mod_skin_ecmwf_ij
