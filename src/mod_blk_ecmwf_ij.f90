@@ -1,9 +1,3 @@
-!! TO DO:
-!!            * do "delta_skin_layer_ij" and "PHI" of mod_skin_ecmwf_ij.f90 !
-!!            * do "WL_ECMWF_IJ" of mod_skin_ecmwf_ij.f90 ! => better is to keep the ji, jj as input and keep the 2 public arrays: dT_wl, Hz_wl ... (keep in mind that Hz_wl is constant in ecmwf !!!)
-
-
-
 ! AeroBulk / 2019 / L. Brodeau
 !
 !   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
@@ -189,10 +183,11 @@ CONTAINS
       INTEGER :: ji, jj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST  ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST, &  ! to back up the initial bulk SST
+         &                                zu_star, zt_star, zq_star
       !
-      REAL(wp) :: zdt, zdq, zus, zus2, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zUn10, zdT_cs, zgust2
-      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zstab, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
+      REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
+      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
       REAL(wp) :: ztmp0, ztmp1, ztmp2
       REAL(wp) :: zlog_z0, zlog_zu, zlog_zt_o_zu
       !
@@ -227,81 +222,44 @@ CONTAINS
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
 
+      ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
 
-      !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
 
 
       !! Constants:
       zlog_zu      = LOG(zu)
       zlog_zt_o_zu = LOG(zt/zu)
-      
+
+
+      CALL FIRST_GUESS_COARE( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, U_zu*0.+charn0_ecmwf,  &
+         &                    zu_star, zt_star, zq_star, t_zu, q_zu, Ubzu )
+
 
       DO jj = 1, jpj
          DO ji = 1, jpi
-
-            ! Identical first gess as in COARE, with IFS parameter values though...
 
             !! Pot. temp. difference (and we don't want it to be 0!)
             zdt = t_zu(ji,jj) - T_s(ji,jj) ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
             zdq = q_zu(ji,jj) - q_s(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
 
-            zNu_a = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
-
-            Ubzu(ji,jj) = SQRT(U_zu(ji,jj)*U_zu(ji,jj) + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
-
-            ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
-            ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
-            zus = 0.035_wp*Ubzu(ji,jj)*ztmp1/ztmp0       ! (u* = 0.035*Un10)
-
-            zz0     = charn0_ecmwf*zus*zus/grav + 0.11_wp*zNu_a/zus
-            zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-            zlog_z0 = LOG(zz0)
-
-            zz0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-            zz0t    = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-
-            Cd(ji,jj)     = MAX( (vkarmn/ztmp0)**2 , Cx_min )   ! first guess of Cd
-
-            ztmp0 = vkarmn2/LOG(zt/zz0t)/Cd(ji,jj)
-            
-            zRib = Ri_bulk( zu, T_s(ji,jj), t_zu(ji,jj), q_s(ji,jj), q_zu(ji,jj), Ubzu(ji,jj) ) ! Bulk Richardson Number (BRN)
-
-            !! First estimate of zeta_u, depending on the stability, ie sign of BRN (zRib):
-            zstab = 0.5 + SIGN( 0.5_wp , zRib )
-            zzeta_u = (1._wp - zstab) *   ztmp0*zRib / (1._wp - zRib*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
-               &  +        zstab      * ( ztmp0*zRib + 27._wp/9._wp*zRib*zRib )                  !  BRN > 0
-
-            !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-            ztmp0  = vkarmn/(LOG(zu/zz0t) - psi_h_ecmwf_ij(zzeta_u))
-            zus = MAX ( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0  - psi_m_ecmwf_ij(zzeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
-            zts = zdt*ztmp0
-            zqs = zdq*ztmp0
-
-            ! What needs to be done if zt /= zu:
-            IF( .NOT. l_zt_equal_zu ) THEN
-               !! First update of values at zu (or zt for wind)
-               zprof_h = zlog_zt_o_zu + psi_h_ecmwf_ij(zzeta_u) - psi_h_ecmwf_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
-               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof_h
-               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof_h
-               q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
-               !
-               zdt = t_zu(ji,jj) - T_s(ji,jj)  ; zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-               zdq = q_zu(ji,jj) - q_s(ji,jj)  ; zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
-            ENDIF
-
-
-            !! => that was same first guess as in COARE...
-
+            !! first guess turb. scales:
+            zus = zu_star(ji,jj)
+            zts = zt_star(ji,jj)
+            zqs = zq_star(ji,jj)
 
             !! First guess of inverse of Obukov length (1/L) :
             z1oL = One_on_L( t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs )
-            
+
+            zNu_a = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+
+            CALL update_z0_ecmwf( zus, zNu_a,  zz0, zz0t, zz0q )
+            zlog_z0  = LOG(zz0)
+
             !! Functions such as  u* = Ubzu*vkarmn/zprof_m
             zzeta_u = zu*z1oL
             zprof_m = zlog_zu - zlog_z0   - psi_m_ecmwf_ij(zzeta_u) + psi_m_ecmwf_ij(zz0 *z1oL)
             zprof_h = zlog_zu - LOG(zz0t) - psi_h_ecmwf_ij(zzeta_u) + psi_h_ecmwf_ij(zz0t*z1oL)
+
 
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
@@ -315,26 +273,22 @@ CONTAINS
                z1oL = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! (prevent FPE from stupid values from masked region later on...)
                zzeta_u = zu*z1oL
                zzeta_t = zt*z1oL
-               
+
                !! Update stability corrections:
                zpsi_m_u = psi_m_ecmwf_ij(zzeta_u)
                zpsi_h_u = psi_h_ecmwf_ij(zzeta_u)
                zpsi_h_t = psi_h_ecmwf_ij(zzeta_t)
-               
+
                !! Update zprof_m with new z1oL:
                zprof_m = zlog_zu - zlog_z0 - zpsi_m_u + psi_m_ecmwf_ij(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
 
                !! Need to update roughness lengthes:
                zus = Ubzu(ji,jj)*vkarmn/zprof_m
-               zus2  = zus*zus !
-               ztmp1  = zNu_a/zus
-               zz0     = MIN( ABS( alpha_M*ztmp1 + charn0_ecmwf*zus2/grav )  , 0.001_wp)
-               zz0t    = MIN( ABS( alpha_H*ztmp1                           ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-               zz0q    = MIN( ABS( alpha_Q*ztmp1                           ) , 0.001_wp)
+               CALL update_z0_ecmwf( zus, zNu_a,  zz0, zz0t, zz0q )
                zlog_z0 = LOG(zz0)
 
                !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
-               zgust2 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
+               zgust2 = Beta0*Beta0*zus*zus*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
                !!   ! Only true when unstable (L<0) => when zRib < 0 => explains "-" before zi0
                Ubzu(ji,jj) = MAX(SQRT(U_zu(ji,jj)*U_zu(ji,jj) + zgust2), 0.2_wp)        ! include gustiness in bulk wind speed
                ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
@@ -344,7 +298,7 @@ CONTAINS
                !! as well the air-sea differences:
                IF( .NOT. l_zt_equal_zu ) THEN
                   !! Arrays zprof_m and zprof_h are free for a while so using them as temporary arrays...
-                  
+
                   zpsi_h_z0t  = psi_h_ecmwf_ij(zz0t*z1oL)
                   ztmp0  = zpsi_h_u - zpsi_h_z0t
                   ztmp1  = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0)
@@ -373,7 +327,7 @@ CONTAINS
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), &
                      &                   zus, zts, zqs, U_zu(ji,jj), Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), &
                      &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0    !LOLO: fix ztmp0 is not what it is supposed to be !!!
-                  
+
                   CALL CS_ECMWF_IJ( Qsw(ji,jj), ztmp1, zus, zSST(ji,jj), zdT_cs )  ! Qnsol -> ztmp1
 
                   T_s(ji,jj) = zSST(ji,jj) + zdT_cs
@@ -415,7 +369,7 @@ CONTAINS
             IF( lreturn_ustar ) xu_star(ji,jj) = zus
             IF( lreturn_L )     xL(ji,jj)      = 1./z1oL
             IF( lreturn_UN10 )  xUN10(ji,jj)   = zus/vkarmn*LOG(10./zz0)
-            
+
             IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
 
          END DO
@@ -423,8 +377,10 @@ CONTAINS
 
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl(:,:) = dT_wl(:,:)
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl(:,:) = Hz_wl(:,:)
-      
+
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
+
+      DEALLOCATE ( zu_star, zt_star, zq_star )
 
    END SUBROUTINE turb_ecmwf_ij
 
@@ -504,6 +460,42 @@ CONTAINS
       !
    END FUNCTION psi_h_ecmwf_ij
 
+
+
+   SUBROUTINE update_z0_ecmwf( pus, pnu,  pz0, pz0t, pz0q )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  update_z0_ecmwf  ***
+      !!
+      !! ** Purpose :
+      !!
+      !! INPUT :
+      !! -------
+      !!    *  pus : u* aka friction velocity                            [m/s]
+      !!    *  pnu : kinematic viscosity of air                          [lolo]
+      !!
+      !! OUTPUT :
+      !! --------
+      !!    * pz0, pz0t, pz0q: roughness lengthes for momentum, theta and q    [m]
+      !!
+      !! ** Author: L. Brodeau, May 2021 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), INTENT(in)  :: pus
+      REAL(wp), INTENT(in)  :: pnu
+      !!
+      REAL(wp), INTENT(out) :: pz0
+      REAL(wp), INTENT(out) :: pz0t
+      REAL(wp), INTENT(out) :: pz0q
+
+      !
+      REAL(wp) :: ztmp
+
+      ztmp  = pnu/pus
+
+      pz0   = MIN( ABS( alpha_M*ztmp + charn0_ecmwf*pus*pus/grav ) , 0.001_wp)
+      pz0t  = MIN( ABS( alpha_H*ztmp                             ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+      pz0q  = MIN( ABS( alpha_Q*ztmp                             ) , 0.001_wp)
+
+   END SUBROUTINE update_z0_ecmwf
 
 
 END MODULE mod_blk_ecmwf_ij

@@ -264,7 +264,7 @@ CONTAINS
       z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
       z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
-      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )   ! first guess of Cd
+      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )    ! first guess of Cd
 
       ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
 

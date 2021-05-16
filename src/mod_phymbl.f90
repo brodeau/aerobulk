@@ -28,7 +28,7 @@ MODULE mod_phymbl
    USE mod_const
 
    IMPLICIT NONE
-   
+
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
@@ -148,9 +148,9 @@ MODULE mod_phymbl
    !PUBLIC vmean, variance
    !PUBLIC to_kelvin_3d
 
-   
+
    !! P R I V A T E :
-   
+
    REAL(wp), PARAMETER, PRIVATE :: &
                                 !! Constants for Goff formula in the presence of ice:
       &      rAg_i = -9.09718_wp, &
@@ -167,7 +167,7 @@ MODULE mod_phymbl
 
 
 
-   
+
 CONTAINS
 
    !===============================================================================================
@@ -790,11 +790,11 @@ CONTAINS
       CALL BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, zCd, zCh, zCe, &
          &                    pwnd, pUb, ppa,                         &
          &                    pTau, zQsen, zQlat )
-      
+
       zQlw = qlw_net_sclr( prlw, pTs ) ! Net longwave flux
-      
+
       pQns = zQlat + zQsen + zQlw
-      
+
       IF( PRESENT(Qlat) ) Qlat = zQlat
 
    END SUBROUTINE UPDATE_QNSOL_TAU_SCLR
@@ -951,7 +951,7 @@ CONTAINS
    END SUBROUTINE BULK_FORMULA_VCTR
    !===============================================================================================
 
-   
+
 
    !===============================================================================================
    FUNCTION alpha_sw_sclr( psst )
@@ -1308,7 +1308,7 @@ CONTAINS
 
 
 
-   
+
 
    !===============================================================================================
    FUNCTION z0tq_LKB( iflag, pRer, pz0 )
@@ -1524,6 +1524,156 @@ CONTAINS
    !===============================================================================================
 
 
+
+
+
+
+
+   SUBROUTINE FIRST_GUESS_COARE( pzi0, pBeta0, zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
+      &                          pus, pts, pqs, t_zu, q_zu, Ubzu )
+      !!----------------------------------------------------------------------
+      !!                      ***  ROUTINE  FIRST_GUESS_COARE  ***
+      !!
+      !! ** Purpose :  Computes fairly accurate first guess of u*, theta* and q*
+      !!               by means of the method developed by Fairall et al in the
+      !!               COARE family of algorithms
+      !!               Purpose is to limit the number of itteration needed...
+      !!
+      !! INPUT :
+      !! -------
+      !!    *  zt   : height for temperature and spec. hum. of air            [m]
+      !!    *  zu   : height for wind speed (usually 10m)                     [m]
+      !!    *  psst  : bulk SST                                                [K]
+      !!    *  t_zt : potential air temperature at zt                         [K]
+      !!    *  pssq  : SSQ aka saturation specific humidity at temp. psst       [kg/kg]
+      !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
+      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
+      !!    *  pcharn: Charnock parameter
+      !!
+      !! OUTPUT :
+      !! --------
+      !!    *  pus    : FIRST GUESS of u* aka friction velocity                            [m/s]
+      !!    *  pts    : FIRST GUESS of theta*                                               [K]
+      !!    *  pqs    : FIRST GUESS of q* aka friction velocity                            [kg/kg]
+      !!    *  t_zu   : FIRST GUESS of pot. air temperature adjusted at wind height zu      [K]
+      !!    *  q_zu   : FIRST GUESS of specific humidity of air        //                   [kg/kg]
+      !!    *  Ubzu   : FIRST GUESS of bulk wind speed at zu                                [m/s]
+      !!
+      !! ** Author: L. Brodeau, May 2021 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp), INTENT(in)                     :: pzi0, pBeta0
+      REAL(wp), INTENT(in)                     ::   zt
+      REAL(wp), INTENT(in)                     ::   zu
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   psst
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   t_zt
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   pssq
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   q_zt
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   U_zu
+      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   pcharn
+
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pus
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pts
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pqs
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ubzu
+      !
+      INTEGER :: ji, jj
+      LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
+      !
+      REAL(wp) :: zdt, zdq, zUb, zCd, zus, zts, zqs, zNu_a, zRib
+      REAL(wp) :: zlog_zt_o_zu, zlog_10, zlog_zt, zlog_zu, zlog_z0, zlog_z0t, z1_o_sqrt_Cd10, zcc, zcc_ri, z1_o_Ribcu
+      REAL(wp) :: zc_a, zc_b
+      REAL(wp) :: zz0, zz0t, zprof, zstab, zzeta_u
+      REAL(wp) :: ztmp
+      !
+      CHARACTER(len=40), PARAMETER :: crtnm = 'FIRST_GUESS_COARE@mod_phymbl.f90'
+      !!----------------------------------------------------------------------------------
+
+      l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
+
+      !! First guess of temperature and humidity at height zu:
+      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
+      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
+
+      zz0 = 0.0001
+
+      !! Constants:
+      zlog_10 = LOG(10._wp)
+      zlog_zt = LOG(zt)
+      zlog_zu = LOG(zu)
+      zlog_zt_o_zu = LOG(zt/zu)
+      zc_a = 0.035_wp*LOG(10._wp/zz0)/LOG(zu/zz0)   !       "                    "               "
+      zc_b = 0.004_wp*pzi0*pBeta0*pBeta0*pBeta0
+
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+
+            !! Air-sea differences (and we don't want them to be 0...)
+            zdt = t_zu(ji,jj) - psst(ji,jj) ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+            zdq = q_zu(ji,jj) - pssq(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+
+            zNu_a = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+
+            zUb = SQRT(U_zu(ji,jj)*U_zu(ji,jj) + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+
+            zus = zc_a*zUb
+
+            !! Roughness length:
+            zz0     = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus
+            zz0     = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
+            zlog_z0 = LOG(zz0)
+
+            zCd          = (vkarmn/(zlog_zu - zlog_z0))**2     ! first guess of Cd
+            z1_o_sqrt_Cd10 =       (zlog_10 - zlog_z0)/vkarmn  ! sum less costly than product: log(a/b) == log(a) - log(b)
+
+            !! theta,q roughness length:
+            zz0t  = 10._wp / EXP( vkarmn/( 0.00115*z1_o_sqrt_Cd10 ) )
+            zz0t    = MIN( MAX(ABS(zz0t), 1.E-8) , 1._wp )         ! (prevents FPE from stupid values from masked region later on)
+            zlog_z0t = LOG(zz0t)
+
+            zRib = Ri_bulk( zu, psst(ji,jj), t_zu(ji,jj), pssq(ji,jj), q_zu(ji,jj), zUb ) ! Bulk Richardson Number (BRN)
+
+            !! First estimate of zeta_u, depending on the stability, ie sign of BRN (zRib):
+            zcc = vkarmn2/(zCd*(zlog_zt - zlog_z0t))
+            zcc_ri  = zcc*zRib
+            z1_o_Ribcu = -zc_b/zu
+            zstab   = 0.5 + SIGN( 0.5_wp , zRib )
+            zzeta_u = (1._wp - zstab) *   zcc_ri / (1._wp + zRib*z1_o_Ribcu) & !  Ri_bulk < 0, Unstable
+               &  +        zstab      * ( zcc_ri + 27._wp/9._wp*zRib*zRib )    !  Ri_bulk > 0, Stable
+
+            !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
+
+            PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
+            PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
+            STOP
+            
+!lolo            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_ij(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
+!lolo            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_ij(zzeta_u))
+            zts  = zdt*ztmp
+            zqs  = zdq*ztmp
+
+            ! What needs to be done if zt /= zu:
+            IF( .NOT. l_zt_equal_zu ) THEN
+               !! First update of values at zu (or zt for wind)
+!lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
+               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof
+               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof
+               q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
+               !
+            ENDIF
+
+            pus(ji,jj)  = zus
+            pts(ji,jj)  = zts
+            pqs(ji,jj)  = zqs
+            Ubzu(ji,jj) = zub
+
+         END DO
+      END DO
+
+   END SUBROUTINE FIRST_GUESS_COARE
+
+   
 END MODULE mod_phymbl
 
 
