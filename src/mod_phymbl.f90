@@ -1649,8 +1649,8 @@ CONTAINS
             !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
             !STOP
             
-            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
-            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_sclr(zzeta_u))
+            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
+            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
             zts  = zdt*ztmp
             zqs  = zdq*ztmp
 
@@ -1678,8 +1678,7 @@ CONTAINS
 
 
 
-   FUNCTION psi_m_sclr( pzeta )
-      !! => see mod_blk_coare*.f90 for details... It's just a copy here
+   FUNCTION psi_m_coare_sclr( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
       !!             COARE 3.0, Fairall et al. 2003
@@ -1692,7 +1691,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp) :: psi_m_sclr
+      REAL(wp) :: psi_m_coare_sclr
       REAL(wp), INTENT(in) :: pzeta
       !!
       REAL(wp) :: zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
@@ -1712,13 +1711,13 @@ CONTAINS
       zc = MIN(50._wp, 0.35_wp*pzeta)
       zstab = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_m_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
+      psi_m_coare_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
          &           -   zstab  * ( 1. + 1.*pzeta     &                ! (pzeta > 0)
          &                          + 0.6667*(pzeta - 14.28)/EXP(zc) + 8.525 )  !     "
       !!
-   END FUNCTION psi_m_sclr
+   END FUNCTION psi_m_coare_sclr
    
-   FUNCTION psi_h_sclr( pzeta )
+   FUNCTION psi_h_coare_sclr( pzeta )
       !!---------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !! COARE 3.0, Fairall et al. 2003
@@ -1734,7 +1733,7 @@ CONTAINS
       !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
-      REAL(wp) :: psi_h_sclr
+      REAL(wp) :: psi_h_coare_sclr
       REAL(wp), INTENT(in) :: pzeta
       !!
       REAL(wp) :: zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
@@ -1753,13 +1752,11 @@ CONTAINS
       zc = MIN(50._wp,0.35_wp*pzeta)
       zstab = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_h_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
+      psi_h_coare_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
          &        -   zstab     * ( (ABS(1. + 2.*pzeta/3.))**1.5     &
          &                           + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
       !!
-   END FUNCTION psi_h_sclr
-
-
-
+   END FUNCTION psi_h_coare_sclr
+   
 
 END MODULE mod_phymbl

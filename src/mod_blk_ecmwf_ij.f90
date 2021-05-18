@@ -183,8 +183,8 @@ CONTAINS
       INTEGER :: ji, jj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST, &  ! to back up the initial bulk SST
-         &                                     zu_star, zt_star, zq_star
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST     ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zu_star, zt_star, zq_star
       !
       REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
       REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
@@ -223,7 +223,6 @@ CONTAINS
       ENDIF
 
       ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
-      
 
 
       !! Constants:
@@ -235,8 +234,9 @@ CONTAINS
          &                    zu_star, zt_star, zq_star, t_zu, q_zu, Ubzu )
       PRINT *, ''
       PRINT *, 'LOLO: apres FIRST_GUESS_COARE turb_ecmwf_ij: zu_star =', zu_star
-      
-      
+      !+ check t_zu and q_zu !!!
+
+
       DO jj = 1, jpj
          DO ji = 1, jpi
 
