@@ -1529,7 +1529,7 @@ CONTAINS
 
 
 
-   SUBROUTINE FIRST_GUESS_COARE( pzi0, pBeta0, zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
+   SUBROUTINE FIRST_GUESS_COARE( zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
       &                          pus, pts, pqs, t_zu, q_zu, Ubzu )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  FIRST_GUESS_COARE  ***
@@ -1561,7 +1561,6 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, May 2021 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in)                     :: pzi0, pBeta0
       REAL(wp), INTENT(in)                     ::   zt
       REAL(wp), INTENT(in)                     ::   zu
       REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   psst
@@ -1570,7 +1569,7 @@ CONTAINS
       REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   q_zt
       REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   U_zu
       REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   pcharn
-
+      !!
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pus
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pts
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pqs
@@ -1586,6 +1585,8 @@ CONTAINS
       REAL(wp) :: zc_a, zc_b
       REAL(wp) :: zz0, zz0t, zprof, zstab, zzeta_u
       REAL(wp) :: ztmp
+      !
+      REAL(wp), PARAMETER :: zzi0=600._wp, zBeta0=1.2_wp ! COARE values, after all it's a coare method...
       !
       CHARACTER(len=40), PARAMETER :: crtnm = 'FIRST_GUESS_COARE@mod_phymbl.f90'
       !!----------------------------------------------------------------------------------
@@ -1604,7 +1605,7 @@ CONTAINS
       zlog_zu = LOG(zu)
       zlog_zt_o_zu = LOG(zt/zu)
       zc_a = 0.035_wp*LOG(10._wp/zz0)/LOG(zu/zz0)   !       "                    "               "
-      zc_b = 0.004_wp*pzi0*pBeta0*pBeta0*pBeta0
+      zc_b = 0.004_wp*zzi0*zBeta0*zBeta0*zBeta0
 
       DO jj = 1, jpj
          DO ji = 1, jpi
@@ -1644,19 +1645,19 @@ CONTAINS
 
             !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
 
-            PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
-            PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
-            STOP
+            !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
+            !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
+            !STOP
             
-!lolo            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_ij(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
-!lolo            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_ij(zzeta_u))
+            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
+            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_sclr(zzeta_u))
             zts  = zdt*ztmp
             zqs  = zdq*ztmp
 
             ! What needs to be done if zt /= zu:
             IF( .NOT. l_zt_equal_zu ) THEN
                !! First update of values at zu (or zt for wind)
-!lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
+               !lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
                t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof
                q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof
                q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
@@ -1673,126 +1674,92 @@ CONTAINS
 
    END SUBROUTINE FIRST_GUESS_COARE
 
+
+
+
+
+   FUNCTION psi_m_sclr( pzeta )
+      !! => see mod_blk_coare*.f90 for details... It's just a copy here
+      !!----------------------------------------------------------------------------------
+      !! ** Purpose: compute the universal profile stability function for momentum
+      !!             COARE 3.0, Fairall et al. 2003
+      !!             pzeta : stability paramenter, z/L where z is altitude
+      !!                     measurement and L is M-O length
+      !!       Stability function for wind speed and scalars matching Kansas and free
+      !!       convection forms with weighting f convective form, follows Fairall et
+      !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
+      !!       form from Beljaars and Holtslag (1991)
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------------------------
+      REAL(wp) :: psi_m_sclr
+      REAL(wp), INTENT(in) :: pzeta
+      !!
+      REAL(wp) :: zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      !!----------------------------------------------------------------------------------
+      zphi_m = ABS(1. - 15.*pzeta)**.25    !!Kansas unstable
+      !
+      zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
+         & - 2.*ATAN(zphi_m) + 0.5*rpi
+      !
+      zphi_c = ABS(1. - 10.15*pzeta)**.3333                   !!Convective
+      !
+      zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
+         &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
+      !
+      zf = pzeta*pzeta
+      zf = zf/(1. + zf)
+      zc = MIN(50._wp, 0.35_wp*pzeta)
+      zstab = 0.5 + SIGN(0.5_wp, pzeta)
+      !
+      psi_m_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
+         &           -   zstab  * ( 1. + 1.*pzeta     &                ! (pzeta > 0)
+         &                          + 0.6667*(pzeta - 14.28)/EXP(zc) + 8.525 )  !     "
+      !!
+   END FUNCTION psi_m_sclr
    
+   FUNCTION psi_h_sclr( pzeta )
+      !!---------------------------------------------------------------------
+      !! Universal profile stability function for temperature and humidity
+      !! COARE 3.0, Fairall et al. 2003
+      !!
+      !! pzeta : stability paramenter, z/L where z is altitude measurement
+      !!         and L is M-O length
+      !!
+      !! Stability function for wind speed and scalars matching Kansas and free
+      !! convection forms with weighting f convective form, follows Fairall et
+      !! al (1996) with profile constants from Grachev et al (2000) BLM stable
+      !! form from Beljaars and Holtslag (1991)
+      !!
+      !! Author: L. Brodeau, June 2016 / AeroBulk
+      !!         (https://github.com/brodeau/aerobulk/)
+      !!----------------------------------------------------------------
+      REAL(wp) :: psi_h_sclr
+      REAL(wp), INTENT(in) :: pzeta
+      !!
+      REAL(wp) :: zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      !!----------------------------------------------------------------
+      zphi_h = (ABS(1. - 15.*pzeta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
+      !
+      zpsi_k = 2.*LOG((1. + zphi_h)/2.)
+      !
+      zphi_c = (ABS(1. - 34.15*pzeta))**.3333   !! Convective
+      !
+      zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
+         &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
+      !
+      zf = pzeta*pzeta
+      zf = zf/(1. + zf)
+      zc = MIN(50._wp,0.35_wp*pzeta)
+      zstab = 0.5 + SIGN(0.5_wp, pzeta)
+      !
+      psi_h_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
+         &        -   zstab     * ( (ABS(1. + 2.*pzeta/3.))**1.5     &
+         &                           + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
+      !!
+   END FUNCTION psi_h_sclr
+
+
+
+
 END MODULE mod_phymbl
-
-
-
-
-
-!FUNCTION e_sat_buck(rT, slp)
-!   !!**************************************************
-!   !!  rT:     air temperature          [K]
-!   !! slp:     atmospheric pressure     [Pa]
-!   !! e_sat:  water vapor at saturation [Pa]
-!   !!
-!   !! Based on Buck' formula for saturation vapor pressure
-!   !! from Buck (1981), J. App. Meteor., 1527-1532.
-!   !!
-!   !! This version follows the saturation specific humidity computation in
-!   !! the COARE Fortran code v2.5b.  This results in an increase of ~5% in
-!   !! latent heat flux compared to the calculation with Teten's
-!   !!
-!   !!**************************************************
-!   REAL(wp), DIMENSION(jpi,jpj)             :: e_sat_buck !: vapour pressure at saturation [Pa]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: rT, &        !: temperature                   [K]
-!      &                                        slp          !: atmospheric pressure          [Pa]
-!   REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp
-!   ALLOCATE ( ztmp(jpi,jpj) )
-!   !! Achtung: originaly given with temperature in deg.C and pressure in
-!   !!          millibars! 1 mb = 100 Pa !!!
-!   ztmp(:,:) = rT(:,:) - rt0
-!   !! Buck 1981:
-!   !! Buck, A. L., New equations for computing vapor pressure and enhancement
-!   !! factor, J. Appl. Meteorol., 20, 1527-1532, 1981
-!   !e_sat_buck = 611.21 * EXP( 17.502*ztmp/(ztmp + 240.97) )
-!   !! Official COARE 3.0 code:
-!   e_sat_buck = 611.2*(1.0007 + 3.46e-8*slp) * EXP( 17.502*ztmp/(ztmp + 240.97) )
-!   !! Kara et al. 2000:
-!   !!e_sat_buck = 611.21*(1. + 3.46E-8*slp)*EXP( (17.5*ztmp)/(240.97 + ztmp) )
-!   DEALLOCATE ( ztmp )
-!END FUNCTION e_sat_buck
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!FUNCTION Ri_bulk_ecmwf( pz, ptha, pdt, pqa, pdq, pub )
-!   !!----------------------------------------------------------------------------------
-!   !! Bulk Richardson number (Eq. 3.25 IFS doc)
-!   !!
-!   !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-!   !!----------------------------------------------------------------------------------
-!   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_ecmwf   !
-!   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha  ! pot. air temp. at height "pz"    [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa   ! air spec. hum. at pz m  [kg/kg]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
-!   !!----------------------------------------------------------------------------------
-!   !
-!   Ri_bulk_ecmwf =   grav*pz/(pub*pub)   &
-!      &            * ( pdt/(ptha - 0.5_wp*(pdt + grav*pz/cp_air(pqa))) + rctv0*pdq )
-!   !
-!END FUNCTION Ri_bulk_ecmwf
-
-!FUNCTION Ri_bulk_ecmwf_b( pz, psst, ptha, pssq, pqa, pub )
-!   !!----------------------------------------------------------------------------------
-!   !! TODO: Bulk Richardson number according to equation 3.90 (p.50) of IFS Cy45r1 doc!
-!   !!
-!   !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
-!   !!----------------------------------------------------------------------------------
-!   REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_ecmwf_b
-!   REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ptha  ! pot. air temp. at height "pz"         [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! (scalar) bulk wind speed            [m/s]
-!   !
-!   INTEGER  ::   ji, jj         ! dummy loop indices
-!   REAL(wp) :: zta, zsz, zs0, zqa         ! local scalar
-!   !!-------------------------------------------------------------------
-!   !
-!   DO jj = 1, jpj
-!      DO ji = 1, jpi
-!         zqa = 0.5_wp*(pqa(ji,jj)+pssq(ji,jj))  ! ~ mean q in layer...
-!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(ptha(ji,jj),zqa)*pz ) ! Absolute temperature of air within the layer
-!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
-!         zta = 0.5_wp*( psst(ji,jj) + ptha(ji,jj) - gamma_moist(zta,        zqa)*pz ) ! Absolute temperature of air within the layer
-!         !
-!         zs0 =           (rCp_dry + rCp_vap*pssq(ji,jj))*psst(ji,jj)  ! dry static energy at air-sea interface (z=0)
-!         zsz = grav*pz + (rCp_dry + rCp_vap* pqa(ji,jj))*zta          ! dry static energy at z=pz
-!         !
-!         Ri_bulk_ecmwf_b(ji,jj) =   grav*pz/(pub(ji,jj)*pub(ji,jj)) &
-!            &  * ( 2._wp*(zsz - zs0)/(zsz + zs0 - grav*pz) + rctv0*(pqa(ji,jj) - pssq(ji,jj)) )
-!         !
-!      END DO
-!   END DO
-!   !
-!END FUNCTION Ri_bulk_ecmwf_b
-
-!FUNCTION Ri_bulk_coare( pz, ptha, pdt, pdq, pub )
-!   !!----------------------------------------------------------------------------------
-!   !! Bulk Richardson number as found in the original coare 3.0 algorithm...
-!   !!----------------------------------------------------------------------------------
-!   REAL(wp), DIMENSION(jpi,jpj) ::   Ri_bulk_coare   !
-!   REAL(wp)                    , INTENT(in) ::   pz    ! height above the sea        [m]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptha   ! air temperature at pz m     [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdt   ! ptha - sst                   [K]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pdq   ! pqa - ssq               [kg/kg]
-!   REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pub   ! bulk wind speed           [m/s]
-!   !!----------------------------------------------------------------------------------
-!   Ri_bulk_coare = grav*pz*(pdt + rctv0*ptha*pdq)/(ptha*pub*pub)  !! Ribu Bulk Richardson number ;       !Ribcu = -zu/(zi0*0.004*Beta0**3) !! Saturation Rib, zi0 = tropicalbound. layer depth
-!END FUNCTION Ri_bulk_coare

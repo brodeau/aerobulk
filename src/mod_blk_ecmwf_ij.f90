@@ -75,9 +75,9 @@ CONTAINS
    END SUBROUTINE ecmwf_init
 
 
-
-   SUBROUTINE turb_ecmwf_ij( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,    &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                                 &
+   
+   SUBROUTINE turb_ecmwf_ij( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      pdT_wl, pHz_wl,                                             & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -184,7 +184,7 @@ CONTAINS
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST, &  ! to back up the initial bulk SST
-         &                                zu_star, zt_star, zq_star
+         &                                     zu_star, zt_star, zq_star
       !
       REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
       REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
@@ -223,7 +223,7 @@ CONTAINS
       ENDIF
 
       ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
-
+      
 
 
       !! Constants:
@@ -233,8 +233,10 @@ CONTAINS
 
       CALL FIRST_GUESS_COARE( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, U_zu*0.+charn0_ecmwf,  &
          &                    zu_star, zt_star, zq_star, t_zu, q_zu, Ubzu )
-
-
+      PRINT *, ''
+      PRINT *, 'LOLO: apres FIRST_GUESS_COARE turb_ecmwf_ij: zu_star =', zu_star
+      
+      
       DO jj = 1, jpj
          DO ji = 1, jpi
 
@@ -253,8 +255,8 @@ CONTAINS
             zNu_a = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
             CALL update_z0_ecmwf( zus, zNu_a,  zz0, zz0t, zz0q )
-            zlog_z0  = LOG(zz0)
-
+            zlog_z0 = LOG(zz0)
+            
             !! Functions such as  u* = Ubzu*vkarmn/zprof_m
             zzeta_u = zu*z1oL
             zprof_m = zlog_zu - zlog_z0   - psi_m_ecmwf_ij(zzeta_u) + psi_m_ecmwf_ij(zz0 *z1oL)
@@ -353,6 +355,9 @@ CONTAINS
                   zdq = q_zu(ji,jj) - q_s(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
                ENDIF
 
+               
+               PRINT *, 'LOLO:                 zus =', zus
+               
             END DO !DO jit = 1, nb_iter
 
             Cd(ji,jj) = MAX( vkarmn2/(zprof_m*zprof_m) , Cx_min )
@@ -372,6 +377,9 @@ CONTAINS
 
             IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
 
+            !! Remove:
+            zu_star(ji,jj) = zus !LOLO
+            
          END DO
       END DO
 
@@ -380,6 +388,11 @@ CONTAINS
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
 
+
+
+      PRINT *, 'LOLO: fin turb_ecmwf_ij: zu_star =', zu_star, '(', nb_iter, 'iterations)'
+      PRINT *, ''
+      
       DEALLOCATE ( zu_star, zt_star, zq_star )
 
    END SUBROUTINE turb_ecmwf_ij
