@@ -192,13 +192,13 @@ CONTAINS
       !   &  dt_zu, dq_zu,    &
       !   &  znu_a,           & !: Nu_air, Viscosity of air
       !   &  z0, z0t
-      !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zu_star, zt_star, zq_star
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST     ! to back up the initial bulk SST
       !
-      REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
+      REAL(wp) :: zdt, zdq, zus, zus2, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
       REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
       REAL(wp) :: ztmp0, ztmp1, ztmp2
       REAL(wp) :: zlog_z0, zlog_zu, zlog_zt_o_zu
@@ -236,7 +236,7 @@ CONTAINS
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
 
-      !ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
+      ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
 
       !! Constants:
       zlog_zu      = LOG(zu)
@@ -262,27 +262,27 @@ CONTAINS
             DO jit = 1, nb_iter
 
                !!Inverse of Obukov length (1/L) :
-               ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
-               ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
+               z1oL = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
+               z1oL = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! 1/L (prevents FPE from stupid values from masked region later on...)
 
                ztmp1 = u_star*u_star   ! u*^2
 
                !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
-               ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
-               !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
+               ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
+               !!   ! Only true when unstable (L<0) => when z1oL < 0 => explains "-" before zi0
                Ubzu = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
                ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
 
                !! Stability parameters:
-               zeta_u = zu*ztmp0
+               zeta_u = zu*z1oL
                zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
                IF( .NOT. l_zt_equal_zu ) THEN
-                  zeta_t = zt*ztmp0
+                  zeta_t = zt*z1oL
                   zeta_t = SIGN( MIN(ABS(zeta_t),zeta_abs_max), zeta_t )
                ENDIF
 
                !! Adjustment the wind at 10m (not needed in the current algo form):
-               !IF( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*ztmp0) + psi_m_coare_sclr(zeta_u))
+               !IF( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*z1oL) + psi_m_coare_sclr(zeta_u))
 
                !! Roughness lengthes z0, z0t (z0q = z0t) :
                ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
@@ -362,7 +362,6 @@ CONTAINS
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
       IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
-      DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
       IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
 
       IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
@@ -371,6 +370,8 @@ CONTAINS
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
 
+      DEALLOCATE ( zu_star, zt_star, zq_star )
+      
    END SUBROUTINE turb_coare3p6_ij
 
 
