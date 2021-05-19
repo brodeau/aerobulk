@@ -191,15 +191,13 @@ CONTAINS
       !   &  u_star, t_star, q_star, &
       !   &  dt_zu, dq_zu,    &
       !   &  znu_a,           & !: Nu_air, Viscosity of air
-      !   &  z0, z0t
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zu_star, zt_star, zq_star
-      !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
-      !REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
+
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: Zu_star, Zt_star, Zq_star
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST     ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: Zsst     ! to back up the initial bulk SST
       !
       REAL(wp) :: zdt, zdq, zus, zus2, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
-      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzeta_u, zzeta_t
+      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzta_u, zzta_t
       REAL(wp) :: ztmp0, ztmp1, ztmp2
       REAL(wp) :: zlog_z0, zlog_zu, zlog_zt_o_zu
       !
@@ -230,13 +228,13 @@ CONTAINS
          &   ' & plong to use warm-layer param!'  )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zSST(jpi,jpj) )
-         zSST = T_s ! backing up the bulk SST
+         ALLOCATE ( Zsst(jpi,jpj) )
+         Zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
 
-      ALLOCATE ( zu_star(jpi,jpj), zt_star(jpi,jpj), zq_star(jpi,jpj) )
+      ALLOCATE ( Zu_star(jpi,jpj), Zt_star(jpi,jpj), Zq_star(jpi,jpj) )
 
       !! Constants:
       zlog_zu      = LOG(zu)
@@ -244,9 +242,9 @@ CONTAINS
 
 
       CALL FIRST_GUESS_COARE( zt, zu, T_s, t_zt, q_s, q_zt, U_zu, charn_coare3p6(U_zu),  &
-         &                    zu_star, zt_star, zq_star, t_zu, q_zu, Ubzu )
+         &                    Zu_star, Zt_star, Zq_star, t_zu, q_zu, Ubzu )
       PRINT *, ''
-      PRINT *, 'LOLO: apres FIRST_GUESS_COARE turb_ecmwf_ij: zu_star =', zu_star
+      PRINT *, 'LOLO: apres FIRST_GUESS_COARE turb_ecmwf_ij: Zu_star =', Zu_star
       !+ check t_zu and q_zu !!! LOLO
 
 
@@ -258,119 +256,126 @@ CONTAINS
             zdq = q_zu(ji,jj) - q_s(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
 
 
+            zus = Zu_star(ji,jj)
+            zts = Zt_star(ji,jj)
+            zqs = Zq_star(ji,jj)
+
+            zus2 = zus*zus
+            zz0  = MIN( MAX(z0_from_ustar( zu, zus, puzu )), 1.E-9) , 1._wp )
+            PRINT *, 'LOLO: mod_blk_coare3p6_ij.f90 before iter loop: z0 =', REAL(zz0,4)
+            STOP
+
+            
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
 
                !!Inverse of Obukov length (1/L) :
-               z1oL = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
+               z1oL = One_on_L(t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs)  ! 1/L == 1/[Obukhov length]
                z1oL = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! 1/L (prevents FPE from stupid values from masked region later on...)
 
-               ztmp1 = u_star*u_star   ! u*^2
-
                !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
-               ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
+               zgust2 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, zgust2 == Ug^2
                !!   ! Only true when unstable (L<0) => when z1oL < 0 => explains "-" before zi0
-               Ubzu = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
+               Ubzu(ji,jj) = MAX(SQRT(U_zu(ji,jj)*U_zu(ji,jj) + zgust2), 0.2_wp)        ! include gustiness in bulk wind speed
                ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
 
                !! Stability parameters:
-               zeta_u = zu*z1oL
-               zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
+               zzta_u = zu*z1oL
+               zzta_u = SIGN( MIN(ABS(zzta_u),zeta_abs_max), zzta_u )
                IF( .NOT. l_zt_equal_zu ) THEN
-                  zeta_t = zt*z1oL
-                  zeta_t = SIGN( MIN(ABS(zeta_t),zeta_abs_max), zeta_t )
+                  zzta_t = zt*z1oL
+                  zzta_t = SIGN( MIN(ABS(zzta_t),zeta_abs_max), zzta_t )
                ENDIF
 
                !! Adjustment the wind at 10m (not needed in the current algo form):
-               !IF( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*z1oL) + psi_m_coare_sclr(zeta_u))
+               !IF( zu \= 10._wp ) U10 = U_zu + zus/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*z1oL) + psi_m_coare_sclr(zzta_u))
 
                !! Roughness lengthes z0, z0t (z0q = z0t) :
-               ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-               z0    = charn_coare3p6(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
-               z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+               zUn10 = zus/vkarmn*(LOG(10._wp) - zlog_z0)       ! Neutral wind speed at 10m
+               zz0    = charn_coare3p6(zUn10)*zus2/grav + 0.11_wp*znu_a/zus   ! Roughness length (eq.6)
+               zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+               zlog_z0 = LOG(zz0)
 
-               ztmp1 = ( znu_a / (z0*u_star) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
-               z0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
-               z0t   = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+               ztmp1 = ( znu_a / (zz0*zus) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
+               zz0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
+               zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
 
                !! Turbulent scales at zu :
-               ztmp0   = psi_h_coare_sclr(zeta_u)
-               ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare_sclr(zeta_t) rather than psi_h_coare_sclr(zeta_t) ???
+               ztmp0   = psi_h_coare_sclr(zzta_u)
+               ztmp1   = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare_sclr(zzta_t) rather than psi_h_coare_sclr(zzta_t) ???
 
-               t_star = dt_zu*ztmp1
-               q_star = dq_zu*ztmp1
-               u_star = MAX( Ubzu*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare_sclr(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
+               zts = zdt*ztmp1
+               zqs = zdq*ztmp1
+               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare_sclr(zzta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
 
                IF( .NOT. l_zt_equal_zu ) THEN
                   !! Re-updating temperature and humidity at zu if zt /= zu :
-                  ztmp1 = LOG(zt/zu) + ztmp0 - psi_h_coare_sclr(zeta_t)
-                  t_zu = t_zt - t_star/vkarmn*ztmp1
-                  q_zu = q_zt - q_star/vkarmn*ztmp1
+                  ztmp1 = LOG(zt) - zlog_zu + ztmp0 - psi_h_coare_sclr(zzta_t)
+                  t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*ztmp1
+                  q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*ztmp1
                ENDIF
 
                IF( l_use_cs ) THEN
                   !! Cool-skin contribution
 
-                  CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-                     &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
+                     &                   U_zu(ji,jj), Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zqnsol, ztau, Qlat=zqlat)
 
-                  CALL CS_COARE( Qsw, ztmp1, u_star, zSST, ztmp2 )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
-
-                  T_s(:,:) = zSST(:,:) + dT_cs(:,:)
-                  IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
-                  q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
+                  CALL CS_COARE( Qsw(ji,jj), zqnsol, zus, Zsst(ji,jj), zqlat )
+                  
+                  T_s(ji,jj) = Zsst(ji,jj) + dT_cs(ji,jj)
+                  IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
                ENDIF
-
+               
                IF( l_use_wl ) THEN
                   !! Warm-layer contribution
-                  CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-                     &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
+                     &                   U_zu(ji,jj), Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zqnsol, ztau)
                   !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-                  CALL WL_COARE( Qsw, ztmp1, zeta_u, zSST, plong, isecday_utc, MOD(nb_iter,jit) )
+                  CALL WL_COARE( Qsw(ji,jj), zqnsol, ztau, Zsst, plong, isecday_utc, MOD(nb_iter,jit) )
 
                   !! Updating T_s and q_s !!!
-                  T_s(:,:) = zSST(:,:) + dT_wl(:,:)
-                  IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
-                  q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
+                  T_s(ji,jj) = Zsst(ji,jj) + dT_wl(ji,jj)
+                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + dT_cs(ji,jj)
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
                ENDIF
 
                IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
-                  dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-                  dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+                  zdt = t_zu(ji,jj) - T_s(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+                  zdq = q_zu(ji,jj) - q_s(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
                ENDIF
 
             END DO !DO jit = 1, nb_iter
 
             ! compute transfer coefficients at zu :
-            ztmp0 = u_star/Ubzu
-            Cd   = MAX( ztmp0*ztmp0        , Cx_min )
-            Ch   = MAX( ztmp0*t_star/dt_zu , Cx_min )
-            Ce   = MAX( ztmp0*q_star/dq_zu , Cx_min )
+            ztmp0 = zus/Ubzu(ji,jj)
+            Cd   = MAX( ztmp0*ztmp0   , Cx_min )
+            Ch   = MAX( ztmp0*zts/zdt , Cx_min )
+            Ce   = MAX( ztmp0*zqs/zdq , Cx_min )
 
 
          END DO
       END DO
 
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
-      IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+      !IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
+      !IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
+      !IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+      !IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
 
-      IF( lreturn_z0 )    xz0     = z0
-      IF( lreturn_ustar ) xu_star = u_star
-      IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
-      IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
-
-      IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
+      !IF( lreturn_z0 )    xz0     = z0
+      !IF( lreturn_ustar ) xu_star = zu_star
+      !IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, Zu_star, Zt_star, Zq_star)
+      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
       IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( Zsst )
 
-      DEALLOCATE ( zu_star, zt_star, zq_star )
+      DEALLOCATE ( Zu_star, Zt_star, Zq_star )
       
    END SUBROUTINE turb_coare3p6_ij
 

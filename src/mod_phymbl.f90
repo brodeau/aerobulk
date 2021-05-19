@@ -100,6 +100,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE z0_from_Cd_vctr, z0_from_Cd_sclr
    END INTERFACE z0_from_Cd
 
+   INTERFACE z0_from_ustar
+      MODULE PROCEDURE z0_from_ustar_vctr, z0_from_ustar_sclr
+   END INTERFACE z0_from_ustar
+
    INTERFACE UN10_from_CD
       MODULE PROCEDURE UN10_from_CD_vctr, UN10_from_CD_sclr
    END INTERFACE UN10_from_CD
@@ -1058,16 +1062,27 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION z0_from_ustar( pzu, pus, puzu )
+   FUNCTION z0_from_ustar_sclr( pzu, pus, puzu )
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_ustar    !: roughness length    [m]
+      REAL(wp)             :: z0_from_ustar_sclr    !: roughness length    [m]
+      REAL(wp), INTENT(in) :: pzu  !: reference height zu [m]
+      REAL(wp), INTENT(in) :: pus  !: friction velocity   [m/s]
+      REAL(wp), INTENT(in) :: puzu !: wind speed at z=pzu [m/s]
+      !!----------------------------------------------------------------------------------
+      z0_from_ustar_sclr = pzu * EXP( -  vkarmn*puzu/pus )
+      !!
+   END FUNCTION z0_from_ustar_sclr
+   !!
+   FUNCTION z0_from_ustar_vctr( pzu, pus, puzu )
+      !!----------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) :: z0_from_ustar_vctr    !: roughness length    [m]
       REAL(wp)                    , INTENT(in) :: pzu  !: reference height zu [m]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus  !: friction velocity   [m/s]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: puzu !: wind speed at z=pzu [m/s]
       !!----------------------------------------------------------------------------------
-      z0_from_ustar = pzu * EXP( -  vkarmn*puzu(:,:)/pus(:,:) )
+      z0_from_ustar_vctr = pzu * EXP( -  vkarmn*puzu(:,:)/pus(:,:) )
       !!
-   END FUNCTION z0_from_ustar
+   END FUNCTION z0_from_ustar_vctr
    !===============================================================================================
 
 
@@ -1530,7 +1545,7 @@ CONTAINS
 
 
    SUBROUTINE FIRST_GUESS_COARE( zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
-      &                          pus, pts, pqs, t_zu, q_zu, Ubzu )
+      &                          pus, pts, pqs, t_zu, q_zu, Ubzu,  pz0 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  FIRST_GUESS_COARE  ***
       !!
@@ -1576,6 +1591,7 @@ CONTAINS
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu
       REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ubzu
+      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: pz0    ! roughness length [m]
       !
       INTEGER :: ji, jj
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -1668,7 +1684,16 @@ CONTAINS
             pts(ji,jj)  = zts
             pqs(ji,jj)  = zqs
             Ubzu(ji,jj) = zub
-
+            
+            zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
+            PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE" => z0 =', REAL(zz0,4)
+            
+            IF( PRESENT(pz0) ) THEN
+               !! Again, because new zus:
+               zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus
+               pz0(ji,jj) = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
+            END IF
+            
          END DO
       END DO
 
