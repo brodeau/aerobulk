@@ -849,7 +849,7 @@ CONTAINS
    !===============================================================================================
    SUBROUTINE BULK_FORMULA_SCLR( pzu, pTs, pqs, pTa, pqa, &
       &                          pCd, pCh, pCe,           &
-      &                          pwnd, pUb, ppa,         &
+      &                          pwnd, pUb, ppa,          &
       &                          pTau, pQsen, pQlat,      &
       &                          pEvap, prhoa, l_ice      )
       !!----------------------------------------------------------------------------------
@@ -980,7 +980,7 @@ CONTAINS
    END FUNCTION alpha_sw_vctr
    !===============================================================================================
 
-
+   
    !===============================================================================================
    FUNCTION qlw_net_sclr( pdwlw, pts,  l_ice )
       !!---------------------------------------------------------------------------------
@@ -1700,9 +1700,7 @@ CONTAINS
    END SUBROUTINE FIRST_GUESS_COARE
 
 
-
-
-
+   
    FUNCTION psi_m_coare_sclr( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
@@ -1719,7 +1717,7 @@ CONTAINS
       REAL(wp) :: psi_m_coare_sclr
       REAL(wp), INTENT(in) :: pzeta
       !!
-      REAL(wp) :: zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstb
       !!----------------------------------------------------------------------------------
       zphi_m = ABS(1. - 15.*pzeta)**.25    !!Kansas unstable
       !
@@ -1734,10 +1732,10 @@ CONTAINS
       zf = pzeta*pzeta
       zf = zf/(1. + zf)
       zc = MIN(50._wp, 0.35_wp*pzeta)
-      zstab = 0.5 + SIGN(0.5_wp, pzeta)
+      zstb = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_m_coare_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
-         &           -   zstab  * ( 1. + 1.*pzeta     &                ! (pzeta > 0)
+      psi_m_coare_sclr = (1. - zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
+         &           -   zstb  * ( 1. + 1.*pzeta     &                ! (pzeta > 0)
          &                          + 0.6667*(pzeta - 14.28)/EXP(zc) + 8.525 )  !     "
       !!
    END FUNCTION psi_m_coare_sclr
@@ -1761,7 +1759,7 @@ CONTAINS
       REAL(wp) :: psi_h_coare_sclr
       REAL(wp), INTENT(in) :: pzeta
       !!
-      REAL(wp) :: zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
+      REAL(wp) :: zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstb
       !!----------------------------------------------------------------
       zphi_h = (ABS(1. - 15.*pzeta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
       !
@@ -1775,11 +1773,11 @@ CONTAINS
       zf = pzeta*pzeta
       zf = zf/(1. + zf)
       zc = MIN(50._wp,0.35_wp*pzeta)
-      zstab = 0.5 + SIGN(0.5_wp, pzeta)
+      zstb = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_h_coare_sclr = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-         &        -   zstab     * ( (ABS(1. + 2.*pzeta/3.))**1.5     &
-         &                           + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
+      psi_h_coare_sclr = (1.-zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
+         &                  -zstb  * ( (ABS(1. + 2.*pzeta/3.))**1.5     &
+         &                            + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
       !!
    END FUNCTION psi_h_coare_sclr
    
