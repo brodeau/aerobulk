@@ -33,6 +33,16 @@ MODULE mod_phymbl
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
 
+   !!GS:
+   INTERFACE pres_temp
+      MODULE PROCEDURE pres_temp_vctr, pres_temp_sclr
+   END INTERFACE pres_temp
+
+   INTERFACE theta_exner
+      MODULE PROCEDURE theta_exner_vctr, theta_exner_sclr
+   END INTERFACE theta_exner
+   !!GS.
+
    INTERFACE visc_air
       MODULE PROCEDURE visc_air_vctr, visc_air_sclr
    END INTERFACE visc_air
@@ -48,6 +58,7 @@ MODULE mod_phymbl
    INTERFACE e_sat_ice
       MODULE PROCEDURE e_sat_ice_vctr, e_sat_ice_sclr
    END INTERFACE e_sat_ice
+
    INTERFACE de_sat_dt_ice
       MODULE PROCEDURE de_sat_dt_ice_vctr, de_sat_dt_ice_sclr
    END INTERFACE de_sat_dt_ice
@@ -206,6 +217,128 @@ CONTAINS
       virt_temp_vctr(:,:) = pta(:,:) * (1._wp + rctv0*pqa(:,:))
    END FUNCTION virt_temp_vctr
    !===============================================================================================
+
+
+   !===============================================================================================
+   FUNCTION pres_temp_sclr( pqspe, pslp, pz, ptpot, pta, l_ice )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION pres_temp  ***
+      !!
+      !! ** Purpose : compute air pressure using barometric equation
+      !!              from either potential or absolute air temperature
+      !! ** Author: G. Samson, Feb 2021
+      !!-------------------------------------------------------------------------------
+      REAL(wp)                          :: pres_temp_sclr    ! air pressure              [Pa]
+      REAL(wp), INTENT(in )             :: pqspe             ! air specific humidity     [kg/kg]
+      REAL(wp), INTENT(in )             :: pslp              ! sea-level pressure        [Pa]
+      REAL(wp), INTENT(in )             :: pz                ! height above surface      [m]
+      REAL(wp), INTENT(in )  , OPTIONAL :: ptpot             ! air potential temperature [K]
+      REAL(wp), INTENT(inout), OPTIONAL :: pta               ! air absolute temperature  [K]
+      LOGICAL , INTENT(in)   , OPTIONAL :: l_ice             ! sea-ice presence
+      !!
+      REAL(wp)                          :: ztpot, zta, zpa, zxm, zmask, zqsat
+      INTEGER                           :: it, niter = 3     ! iteration indice and number
+      LOGICAL                           :: lice              ! sea-ice presence
+
+      IF( PRESENT(ptpot) ) THEN
+         zmask = 1._wp
+         ztpot = ptpot
+      ELSE
+         zmask = 0._wp
+         zta   = pta
+      ENDIF
+
+      lice = .FALSE.
+      IF( PRESENT(l_ice) ) lice = l_ice
+
+      zpa = pslp              ! air pressure first guess [Pa]
+      DO it = 1, niter
+         zta   = ztpot * ( zpa / Patm )**rgamma_dry * zmask + (1._wp - zmask) * zta
+         zqsat = q_sat( zta, zpa, l_ice=lice )                                   ! saturation specific humidity [kg/kg]
+         zxm   = (1._wp - pqspe/zqsat) * rmm_dryair + pqspe/zqsat * rmm_water    ! moist air molar mass [kg/mol]
+         zpa   = pslp * EXP( -grav * zxm * pz / ( R_gas * zta ) )
+      END DO
+
+      pres_temp_sclr = zpa
+      IF(( PRESENT(pta) ).AND.( PRESENT(ptpot) )) pta = zta
+
+   END FUNCTION pres_temp_sclr
+
+   FUNCTION pres_temp_vctr( pqspe, pslp, pz, ptpot, pta, l_ice )
+
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION pres_temp  ***
+      !!
+      !! ** Purpose : compute air pressure using barometric equation
+      !!              from either potential or absolute air temperature
+      !! ** Author: G. Samson, Feb 2021
+      !!-------------------------------------------------------------------------------
+
+      REAL(wp), DIMENSION(jpi,jpj)                          :: pres_temp_vctr    ! air pressure              [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in )             :: pqspe             ! air specific humidity     [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in )             :: pslp              ! sea-level pressure        [Pa]
+      REAL(wp),                     INTENT(in )             :: pz                ! height above surface      [m]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in )  , OPTIONAL :: ptpot             ! air potential temperature [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout), OPTIONAL :: pta               ! air absolute temperature  [K]
+      LOGICAL                     , INTENT(in)   , OPTIONAL :: l_ice             ! sea-ice presence
+      !!
+      INTEGER                                               :: ji, jj            ! loop indices
+      LOGICAL                                               :: lice              ! sea-ice presence
+      lice = .FALSE.
+      IF( PRESENT(l_ice) ) lice = l_ice
+      IF( PRESENT(ptpot) ) THEN
+         DO jj = 1, jpj
+            DO ji = 1, jpi
+               pres_temp_vctr(ji,jj) = pres_temp_sclr( pqspe(ji,jj), pslp(ji,jj), pz, ptpot=ptpot(ji,jj), pta=pta(ji,jj), l_ice=lice )
+            END DO
+         END DO
+      ELSE
+         DO jj = 1, jpj
+            DO ji = 1, jpi
+               pres_temp_vctr(ji,jj) = pres_temp_sclr( pqspe(ji,jj), pslp(ji,jj), pz,                     pta=pta(ji,jj), l_ice=lice )
+            END DO
+         END DO
+      ENDIF
+   END FUNCTION pres_temp_vctr
+   !===============================================================================================
+
+   !===============================================================================================
+   FUNCTION theta_exner_sclr( pta, ppa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION theta_exner  ***
+      !!
+      !! ** Purpose : compute air/surface potential temperature from absolute temperature
+      !!              and pressure using Exner function
+      !! ** Author: G. Samson, Feb 2021
+      !!-------------------------------------------------------------------------------
+      REAL(wp)             :: theta_exner_sclr   ! air/surface potential temperature [K]
+      REAL(wp), INTENT(in) :: pta                ! air/surface absolute temperature  [K]
+      REAL(wp), INTENT(in) :: ppa                ! air/surface pressure              [Pa]
+      !!
+      theta_exner_sclr = pta * ( Patm / ppa ) ** rgamma_dry
+      !!
+   END FUNCTION theta_exner_sclr
+
+   FUNCTION theta_exner_vctr( pta, ppa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION theta_exner  ***
+      !!
+      !! ** Purpose : compute air/surface potential temperature from absolute temperature
+      !!              and pressure using Exner function
+      !! ** Author: G. Samson, Feb 2021
+      !!-------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: theta_exner_vctr   ! air/surface potential temperature [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta                ! air/surface absolute temperature  [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppa                ! air/surface pressure              [Pa]
+      INTEGER                                  :: ji, jj             ! loop indices
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            theta_exner_vctr(ji,jj) = theta_exner_sclr( pta(ji,jj), ppa(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION theta_exner_vctr
+   !===============================================================================================
+   
 
    !===============================================================================================
    FUNCTION rho_air_sclr( ptak, pqa, ppa )
@@ -980,7 +1113,7 @@ CONTAINS
    END FUNCTION alpha_sw_vctr
    !===============================================================================================
 
-   
+
    !===============================================================================================
    FUNCTION qlw_net_sclr( pdwlw, pts,  l_ice )
       !!---------------------------------------------------------------------------------
@@ -1664,7 +1797,7 @@ CONTAINS
             !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
             !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
             !STOP
-            
+
             zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
             ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
             zts  = zdt*ztmp
@@ -1684,23 +1817,23 @@ CONTAINS
             pts(ji,jj)  = zts
             pqs(ji,jj)  = zqs
             Ubzu(ji,jj) = zub
-            
+
             zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
             PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE" => z0 =', REAL(zz0,4)
-            
+
             IF( PRESENT(pz0) ) THEN
                !! Again, because new zus:
                zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus
                pz0(ji,jj) = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
             END IF
-            
+
          END DO
       END DO
 
    END SUBROUTINE FIRST_GUESS_COARE
 
 
-   
+
    FUNCTION psi_m_coare_sclr( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
@@ -1739,7 +1872,7 @@ CONTAINS
          &                          + 0.6667*(pzeta - 14.28)/EXP(zc) + 8.525 )  !     "
       !!
    END FUNCTION psi_m_coare_sclr
-   
+
    FUNCTION psi_h_coare_sclr( pzeta )
       !!---------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
@@ -1780,6 +1913,6 @@ CONTAINS
          &                            + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
       !!
    END FUNCTION psi_h_coare_sclr
-   
+
 
 END MODULE mod_phymbl

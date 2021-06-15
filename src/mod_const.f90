@@ -23,7 +23,6 @@ MODULE mod_const
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
-
    !! General constants:
    REAL(wp), PARAMETER, PUBLIC :: grav  = 9.8      !: acceleration of gravity    [m.s^-2]
    REAL(wp), PARAMETER, PUBLIC :: rpi   = 3.141592653589793_wp
@@ -63,6 +62,12 @@ MODULE mod_const
    !!
    REAL(wp), PARAMETER, PUBLIC :: R_dry = 287.05     !: Specific gas constant for dry air              [J/K/kg]
    REAL(wp), PARAMETER, PUBLIC :: R_vap = 461.495    !: Specific gas constant for water vapor          [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: R_gas = 8.314510   !: Universal molar gas constant                   [J/mol/K]
+   !!
+   REAL(wp), PARAMETER, PUBLIC :: rmm_dryair = 28.9647e-3             !: dry air molar mass / molecular weight     [kg/mol]
+   REAL(wp), PARAMETER, PUBLIC :: rmm_water  = 18.0153e-3             !: water   molar mass / molecular weight           [kg/mol]
+   REAL(wp), PARAMETER, PUBLIC :: rmm_ratio  = rmm_water / rmm_dryair
+   REAL(wp), PARAMETER, PUBLIC :: rgamma_dry = R_gas / ( rmm_dryair * rCp_dry )  !: Poisson constant for dry air
    !!
    REAL(wp), PARAMETER, PUBLIC :: reps0 = R_dry/R_vap      !: ratio of gas constant for dry air and water vapor => ~ 0.622
    REAL(wp), PARAMETER, PUBLIC :: rctv0 = R_vap/R_dry - 1. !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
