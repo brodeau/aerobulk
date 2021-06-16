@@ -80,6 +80,30 @@ CONTAINS
       ENDIF
    END SUBROUTINE ecmwf_init
 
+   SUBROUTINE ecmwf_exit(l_use_cs, l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION ecmwf_exit  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_cs : use the cool-skin parameterization
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF( l_use_wl ) THEN
+         ierr = 0
+         DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+      ENDIF
+      IF( l_use_cs ) THEN
+         ierr = 0
+         DEALLOCATE ( dT_cs, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
+      ENDIF
+   END SUBROUTINE ecmwf_exit
 
 
    SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,    &
@@ -274,7 +298,7 @@ CONTAINS
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       func_h = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
          &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
-      
+
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
 
@@ -402,7 +426,7 @@ CONTAINS
       Ch = MAX( vkarmn2/(func_m*func_h) , Cx_min )
       ztmp2 = LOG(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
       Ce = MAX( vkarmn2/(func_m*ztmp2)  , Cx_min )
-      
+
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
       IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
@@ -421,6 +445,8 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+
+      IF( kt == nitend ) CALL ECMWF_EXIT(l_use_cs, l_use_wl)
 
    END SUBROUTINE turb_ecmwf
 
@@ -506,7 +532,7 @@ CONTAINS
             zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
             psi_h_ecmwf(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable            
+               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
             !
          END DO
       END DO

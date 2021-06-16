@@ -5,7 +5,7 @@ MODULE MOD_AEROBLUK_CXX
    USE mod_const
 
    IMPLICIT NONE
-
+   
    PRIVATE
 
    !PUBLIC :: l_vap_cxx
@@ -26,7 +26,7 @@ CONTAINS
 
    
    !==== C++ interface for using optional skin temperature shceme ====
-   SUBROUTINE aerobulk_cxx_skin( calgo, zt, zu, sst, t_zt,   &
+   SUBROUTINE aerobulk_cxx_skin( calgo, Nt, zt, zu, sst, t_zt,   &
       &                          q_zt, U_zu, V_zu, slp,      &
       &                          QL, QH, Tau_x, Tau_y, Evap, &
       &                          Niter, rad_sw, rad_lw, T_s, &
@@ -35,6 +35,7 @@ CONTAINS
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
+      INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
       REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
@@ -51,8 +52,10 @@ CONTAINS
       
       ! Check that the jpi and jpj are right
       IF( jpi /= m .OR. jpj /= 1 ) THEN
-         l_first_call = .TRUE.
+         l_1st_call_ab_init = .TRUE.
       ENDIF
+
+      nitend = Nt
       
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
@@ -65,7 +68,7 @@ CONTAINS
 
    
    !==== C++ interface without using optional skin temperature scheme ====
-   SUBROUTINE aerobulk_cxx_no_skin( calgo, zt, zu, sst, t_zt, &
+   SUBROUTINE aerobulk_cxx_no_skin( calgo, Nt, zt, zu, sst, t_zt, &
       &                             q_zt, U_zu, V_zu, slp,    &
       &                             QL, QH, Tau_x, Tau_y, Evap,     &
       &                             Niter, l, m ) BIND(c)
@@ -73,6 +76,7 @@ CONTAINS
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
+      INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
       REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
@@ -88,8 +92,10 @@ CONTAINS
       
       ! Check that the jpi and jpj are right
       IF( jpi /= m .OR. jpj /= 1 ) THEN
-         l_first_call = .TRUE.
+         l_1st_call_ab_init = .TRUE.
       ENDIF
+
+      nitend = Nt
       
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary

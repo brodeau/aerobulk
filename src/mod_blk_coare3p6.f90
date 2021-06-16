@@ -73,6 +73,32 @@ CONTAINS
       ENDIF
    END SUBROUTINE coare3p6_init
 
+   SUBROUTINE coare3p6_exit(l_use_cs, l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION coare3p6_exit  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_cs : use the cool-skin parameterization
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF( l_use_wl ) THEN
+         ierr = 0
+         DEALLOCATE ( Tau_ac , Qnt_ac, dT_wl, Hz_wl, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+      ENDIF
+      IF( l_use_cs ) THEN
+         ierr = 0
+         DEALLOCATE ( dT_cs, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_EXIT => deallocation of dT_cs failed!' )
+      ENDIF
+   END SUBROUTINE coare3p6_exit
+
+
 
 
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
@@ -267,7 +293,7 @@ CONTAINS
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       zeta_u = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
          &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
-      
+
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
@@ -379,11 +405,11 @@ CONTAINS
       Ce   = MAX( ztmp0*q_star/dq_zu , Cx_min )
 
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
       IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
       IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      
+
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
@@ -397,6 +423,8 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+
+      IF( kt == nitend ) CALL COARE3P6_EXIT(l_use_cs, l_use_wl)
 
    END SUBROUTINE turb_coare3p6
 

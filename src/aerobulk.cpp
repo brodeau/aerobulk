@@ -4,13 +4,13 @@
 
 extern "C"
 {
-	void aerobulk_cxx_skin( const char *, const double *, const double *, const double *, const double *,
+	void aerobulk_cxx_skin( const char *, const int *, const double *, const double *, const double *, const double *,
                             const double *, const double *, const double *, const double *,
                             double *, double *, double *, double *, double *,
                             const int *, const double *, const double *, double *,
                             const int *, const int *);
     
-	void aerobulk_cxx_no_skin( const char *, const double *, const double *, const double *, const double *,
+	void aerobulk_cxx_no_skin( const char *, const int *, const double *, const double *, const double *, const double *,
                                const double *, const double *, const double *, const double *,
                                double *, double *, double *, double *, double *,
                                const int *, const int *, const int *);
@@ -26,6 +26,9 @@ std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
         case algorithm::OTHER:
             return_value = std::string("other");
             break;
+        case algorithm::COARE3p0:
+            return_value = std::string("coare3p0");
+            break;
         case algorithm::COARE3p6:
             return_value = std::string("coare3p6");
             break;
@@ -34,6 +37,9 @@ std::string aerobulk::algorithm_to_string(aerobulk::algorithm algo)
             break;
         case algorithm::ECMWF:
             return_value = std::string("ecmwf");
+            break;
+        case algorithm::ANDREAS:
+            return_value = std::string("andreas");
             break;
         default:
             return_value = "unknown";
@@ -73,7 +79,7 @@ std::vector<double> aerobulk::l_vap(const std::vector<double> &sst)
 */
 
 // Interface to aerobulk_model with rad_sw and rad_lw as inputs and T_s as output
-void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(algorithm algo, const int Nt, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
               const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
               std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
               const int Niter, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s)
@@ -95,7 +101,7 @@ void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<dou
     T_s.resize(m);
 
     // The actual function call - we need to sent the adresses/pointer because it's a C interface to a Fortran routine
-    aerobulk_cxx_skin(calgo.c_str(), &zt, &zu, &sst[0], &t_zt[0], &q_zt[0], &U_zu[0], &V_zu[0], &slp[0],
+    aerobulk_cxx_skin(calgo.c_str(), &Nt, &zt, &zu, &sst[0], &t_zt[0], &q_zt[0], &U_zu[0], &V_zu[0], &slp[0],
                       &QL[0], &QH[0], &Tau_x[0], &Tau_y[0], &Evap[0],
                       &Niter, &rad_sw[0], &rad_lw[0], &T_s[0],
                       &l, &m);
@@ -105,7 +111,7 @@ void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<dou
 
 
 // Interface to aerobulk_model without rad_sw, rad_lw, and T_s
-void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+void aerobulk::model(algorithm algo, const int Nt, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
                      const std::vector<double> &q_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
                      std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
                      const int Niter)
@@ -125,7 +131,7 @@ void aerobulk::model(algorithm algo, double zt, double zu, const std::vector<dou
     Evap.resize(m);
 
     // The actual function call - we need to sent the adresses/pointer because it's a C interface to a Fortran routine
-    aerobulk_cxx_no_skin( calgo.c_str(), &zt, &zu, &sst[0], &t_zt[0], &q_zt[0], &U_zu[0], &V_zu[0], &slp[0],
+    aerobulk_cxx_no_skin( calgo.c_str(), &Nt, &zt, &zu, &sst[0], &t_zt[0], &q_zt[0], &U_zu[0], &V_zu[0], &slp[0],
                           &QL[0], &QH[0], &Tau_x[0], &Tau_y[0], &Evap[0],
                           &Niter, &l, &m );
 }

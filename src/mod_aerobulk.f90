@@ -34,7 +34,7 @@ CONTAINS
       INTEGER :: ni, nj
 
       PRINT *, ''
-      PRINT *, '****************************************************'
+      PRINT *, '===================================================='
       PRINT *, '             ----- AeroBulk_init -----'
       ! 1.
       jpi = size(psst,1) ; jpj = size(psst,2)
@@ -68,11 +68,11 @@ CONTAINS
 
       PRINT *, '    *** Computational domain shape: jpi, jpj =', INT(jpi,2), ',', INT(jpj,2)
       PRINT *, '    *** Number of iterations:       nb_iter  =', INT(nb_iter,1)
-      PRINT *, '****************************************************'
+      PRINT *, '===================================================='
       PRINT *, ''
 
-      l_first_call = .FALSE.
-
+      l_1st_call_ab_init = .FALSE.
+      
    END SUBROUTINE aerobulk_init
 
 
@@ -111,7 +111,7 @@ CONTAINS
       !!    *  QH     : Sensible heat flux                                   [W/m^2]
       !!    *  Tau_x  : zonal wind stress                                    [N/m^2]
       !!    *  Tau_y  : zonal wind stress                                    [N/m^2]
-      !!    *  Evap    : Evaporation                                          [mm/s]
+      !!    *  Evap    : Evaporation                                          [mm/s] aka [kg/m^2/s] (usually <0, as ocean loses water!)
       !!
       !! OPTIONAL :
       !! ----------
@@ -132,8 +132,7 @@ CONTAINS
       
       IF ( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
-      IF ( l_first_call ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
-
+      IF ( l_1st_call_ab_init ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
 
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
 

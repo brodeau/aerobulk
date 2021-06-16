@@ -73,10 +73,36 @@ CONTAINS
       ENDIF
    END SUBROUTINE coare3p0_init
 
+   SUBROUTINE coare3p0_exit(l_use_cs, l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION coare3p0_exit  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_cs : use the cool-skin parameterization
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF( l_use_wl ) THEN
+         ierr = 0
+         DEALLOCATE ( Tau_ac , Qnt_ac, dT_wl, Hz_wl, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+      ENDIF
+      IF( l_use_cs ) THEN
+         ierr = 0
+         DEALLOCATE ( dT_cs, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of dT_cs failed!' )
+      ENDIF
+   END SUBROUTINE coare3p0_exit
+
+
 
 
    SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                                 &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -135,7 +161,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ubzu     : bulk wind speed at zu that we used                    [m/s]
+      !!    *  Ubzu  : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -267,7 +293,7 @@ CONTAINS
       ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
       zeta_u = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
          &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
-      
+
       !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
       ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
 
@@ -379,11 +405,11 @@ CONTAINS
       Ce   = MAX( ztmp0*q_star/dq_zu , Cx_min )
 
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)      
+      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
       IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
       IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      
+
       IF( lreturn_z0 )    xz0     = z0
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
@@ -397,6 +423,8 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+
+      IF( kt == nitend ) CALL COARE3P0_EXIT(l_use_cs, l_use_wl)
 
    END SUBROUTINE turb_coare3p0
 

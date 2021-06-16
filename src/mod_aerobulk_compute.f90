@@ -5,9 +5,11 @@ MODULE mod_aerobulk_compute
    USE mod_const        !: physical constants
    USE mod_phymbl       !: thermodynamics functions
    
-   USE mod_blk_coare3p6 !: COARE v3.5 algorithm
+   USE mod_blk_coare3p0 !: COARE v3.0 algorithm
+   USE mod_blk_coare3p6 !: COARE v3.6 algorithm
    USE mod_blk_ncar     !: Large & Yeager algorithm
    USE mod_blk_ecmwf    !: following ECMWF doc...
+   USE mod_blk_andreas  !: Andreas et al.
 
    IMPLICIT NONE
 
@@ -59,7 +61,7 @@ CONTAINS
       !! OPTIONAL OUTPUT
       !! ---------------
       !!    *  T_s  : skin temperature    [K]    (only when l_use_skin=TRUE)
-      !!    *  Evp : evaporation         [mm/s]
+      !!    *  Evp : evaporation         [mm/s] aka [kg/m^2/s] (usually <0, as ocean loses water!)
       !!             
       !!
       !!============================================================================
@@ -109,7 +111,7 @@ CONTAINS
       IF((TRIM(calgo(1:4)) == 'coar').OR.(TRIM(calgo) == 'ecmwf')) THEN
          IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
             l_use_skin = .TRUE.
-            PRINT *, ''; PRINT *, ' *** Will use the cool-skin warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
+            PRINT *, ' *** we use the cool-skin/warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
          END IF
          CALL check_unit_consitency( 'rad_sw', rad_sw, zmask )
          CALL check_unit_consitency( 'rad_lw', rad_lw, zmask )
@@ -143,14 +145,24 @@ CONTAINS
 
       SELECT CASE(TRIM(calgo))
          !!
+      CASE('coare3p0')
+         IF( l_use_skin ) THEN
+            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
+               &                zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
+         ELSE
+            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &                zCd, zCh, zCe, pTzu, zQzu, zUblk )
+         END IF
+         !!
       CASE('coare3p6')
          IF( l_use_skin ) THEN
             CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
-               &              zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
-               &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
+               &                zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
          ELSE
             CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
-               &              zCd, zCh, zCe, pTzu, zQzu, zUblk )
+               &                 zCd, zCh, zCe, pTzu, zQzu, zUblk )
          END IF
          !!
       CASE('ncar')
@@ -167,6 +179,11 @@ CONTAINS
             CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
                &              zCd, zCh, zCe, pTzu, zQzu, zUblk)
          END IF
+         !!
+         !!
+      CASE('andreas')
+         CALL TURB_ANDREAS( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, &
+            &               zCd, zCh, zCe, pTzu, zQzu, zUblk)
          !!
          !!
       CASE DEFAULT

@@ -3,7 +3,7 @@
 
 # Fortran compiler :
 FC  = ifort
-CXX = icc
+CXX = icpc
 VERSION = latest
 
 # Libraries of Fortran compiler

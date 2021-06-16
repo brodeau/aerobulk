@@ -975,9 +975,9 @@ CONTAINS
 
    !===============================================================================================
    SUBROUTINE BULK_FORMULA_SCLR( pzu, pts, pqs, ptpa, pqa, &
-      &                          pCd, pCh, pCe,           &
+      &                          pCd, pCh, pCe,            &
       &                          pwnd, pUb, pslp,          &
-      &                          pTau, pQsen, pQlat,      &
+      &                          pTau, pQsen, pQlat,       &
       &                          pEvap, prhoa, l_ice      )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
@@ -996,7 +996,7 @@ CONTAINS
       REAL(wp), INTENT(out) :: pQsen !  [W/m^2]
       REAL(wp), INTENT(out) :: pQlat !  [W/m^2]
       !!
-      REAL(wp), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
+      REAL(wp), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s] (usually <0, as ocean loses water!)
       REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!

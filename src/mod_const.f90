@@ -13,13 +13,21 @@ MODULE mod_const
 
    ! THINGS THAT NEED TO BE GIVEN A VALUE, anh have the same name and type as in NEMO...
    ! Stupid values here to prevent to ommit to give them a value:
+   !!
+   !! Space dimmension:
    INTEGER,                  SAVE :: jpi=0, jpj=0    !: 2D dimensions of array to be used in AeroBulk
-   INTEGER,  PARAMETER            :: jpk = 1, nit000 = 1
+   INTEGER,  PARAMETER            :: jpk = 1
+   !!
+   !! Time dimmension:
+   INTEGER,  PARAMETER            :: nit000 = 1
+   INTEGER,                  SAVE :: nitend = 1 !: time steps (aka # of calls) at which to end
+   
+   
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
    INTEGER,                  SAVE :: nb_iter=5  !: number of itteration in the bulk algorithm
 
-   LOGICAL, SAVE :: l_first_call=.true. , l_last_call=.false.
+   LOGICAL, SAVE :: l_1st_call_ab_init=.true. , l_last_call=.false.
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
