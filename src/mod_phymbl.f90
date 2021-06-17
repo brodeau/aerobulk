@@ -14,6 +14,7 @@
 
 MODULE mod_phymbl
 
+   !!   pot_temp      : potential temperature
    !!   virt_temp     : virtual (aka sensible) temperature (potential or absolute)
    !!   rho_air       : density of (moist) air (depends on T_air, q_air and SLP
    !!   visc_air      : kinematic viscosity (aka Nu_air) of air from temperature
@@ -29,6 +30,10 @@ MODULE mod_phymbl
 
    IMPLICIT NONE
 
+   INTERFACE pot_temp
+      MODULE PROCEDURE pot_temp_vctr, pot_temp_sclr
+   END INTERFACE pot_temp
+   
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
@@ -184,6 +189,61 @@ MODULE mod_phymbl
 CONTAINS
 
    !===============================================================================================
+   FUNCTION pot_temp_sclr( pta, pqa, pslp, ppz )
+      !!------------------------------------------------------------------------
+      !!
+      !! Converts absolute temperature to POTENTIAL temperature
+      !!
+      !! Air parcel is at height `z` m above sea-level where the pressure is `ppz`,
+      !! its absolute temperature and specific humidity are `pta` and `pqa`, respectively.
+      !! `pslp` is the pressure at sea level aka P0.
+      !!
+      !! Author: L. Brodeau, June 2021 / AeroBulk
+      !!         (https://github.com/brodeau/aerobulk/)
+      !!
+      !! TODO: include presence of ice ??? (in getting q_sat)
+      !!
+      !!------------------------------------------------------------------------
+      REAL(wp)             :: pot_temp_sclr !: potential air temperature at `zt` m above sea level [K]
+      REAL(wp), INTENT(in) :: pta           !: absolute  air temperature     "           "         [K]
+      REAL(wp), INTENT(in) :: pqa           !: specific humidity of air  at  "           "     [kg/kg]
+      REAL(wp), INTENT(in) :: pslp          !: pressure at sea-level                              [Pa]
+      REAL(wp), INTENT(in) :: ppz           !: pressure at `zt` m above sea level                 [Pa]
+      !!
+      REAL(wp) :: zCp, zqs, zf, zRm
+      !!-------------------------------------------------------------------
+      zCp = cp_air( pqa )   ! specific heat capacity of air at a constant pressure, taking into account humidity
+      !!
+      !! Now we need the universal gas constant for moist air!
+      !!   On the AMS website (https://glossary.ametsoc.org/wiki/Gas_constant), I read:
+      !!   "For moist air, the variable percentage of water vapor is taken into account by retaining the gas constant
+      !!    for dry air WHILE using the virtual temperature in place of the temperature."
+      !!  So based on P*V = n*R*T:
+      !!     => Rm = T/Tv * Rd
+      !!           = 1/(1 + rctv0*pqa) * Rd
+      !!           = 1/(1 + (R_vap/R_dry - 1.)*pqa) * Rd
+      !zRm = pta/virt_temp_sclr( pta, pqa ) * R_dry   ! Then why smaller than Rd when moist???
+      !!
+      !! Most obvious I can come with is:
+      zRm = (1._wp - pqa)*R_dry + pqa*R_vap   ! universal gas constant for moist air
+      !!
+      pot_temp_sclr = pta * ( pslp / ppz )**(zRm/zCp)
+      !!
+   END FUNCTION pot_temp_sclr
+
+   FUNCTION pot_temp_vctr( pta, pqa, pslp, ppz )
+      REAL(wp), DIMENSION(jpi,jpj)             :: pot_temp_vctr !: potential air temperature at `zt` m above sea level [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pta           !: absolute  air temperature     "           "         [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa           !: specific humidity of air  at  "           "     [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp          !: pressure at sea-level                              [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: ppz           !: pressure at `zt` m above sea level                 [Pa]
+      !!-------------------------------------------------------------------
+      pot_temp_vctr = pta * ( pslp / ppz )**( ((1._wp-pqa)*R_dry + pqa*R_vap) / cp_air( pqa ) )
+   END FUNCTION pot_temp_vctr
+
+
+
+   !===============================================================================================
    FUNCTION virt_temp_sclr( pta, pqa )
       !!------------------------------------------------------------------------
       !!
@@ -235,9 +295,10 @@ CONTAINS
       REAL(wp), INTENT(inout), OPTIONAL :: pta              ! air absolute temperature  [K]
       LOGICAL , INTENT(in)   , OPTIONAL :: l_ice            ! sea-ice presence
       !!
-      REAL(wp)                          :: ztpa, zta, zpa, zxm, zmask, zqsat
-      INTEGER                           :: it, niter = 3    ! iteration indice and number
+      REAL(wp)                          :: ztpa, zta, zpa, zxm, zmask, zqsat, zf
+      INTEGER                           :: it
       LOGICAL                           :: lice             ! sea-ice presence
+      INTEGER, PARAMETER                :: niter = 3    ! iteration indice and number
 
       IF( PRESENT(ptpa) ) THEN
          zmask = 1._wp
@@ -250,16 +311,19 @@ CONTAINS
       lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
 
-      zpa = pslp              ! air pressure first guess [Pa]
+      zpa = pslp              ! first guess of air pressure at zt   [Pa]
       DO it = 1, niter
-         zta   = ztpa * ( zpa / Patm )**rgamma_dry_GS * zmask + (1._wp - zmask) * zta
-         zqsat = q_sat( zta, zpa, l_ice=lice )                                   ! saturation specific humidity [kg/kg]
-         zxm   = (1._wp - pqa/zqsat) * rmm_dryair + pqa/zqsat * rmm_water    ! moist air molar mass [kg/mol]
-         zpa   = pslp * EXP( -grav * zxm * pz / ( R_gas * zta ) )
+         zta =            zmask  * ztpa*(zpa/Patm )**rpoiss_dry & ! if provided temp is potential => converstion to absolute temp !
+            &  + (1._wp - zmask) * zta                            !  "           "      absolute  => keep unchanged
+         !!
+         zqsat = q_sat( zta, zpa, l_ice=lice )                               ! saturation specific humidity [kg/kg]
+         zf    = pqa/zqsat
+         zxm   = (1._wp - zf) * rmm_dryair + zf * rmm_water    ! moist air molar mass [kg/mol]
+         zpa   = pslp * EXP( -grav * zxm * pz / ( R_gas * zta ) )            
       END DO
 
       Pz_from_P0_sclr = zpa
-      IF(( PRESENT(pta) ).AND.( PRESENT(ptpa) )) pta = zta
+      IF(( PRESENT(pta) ).AND.( PRESENT(ptpa) )) pta = zta   !! Absolute temperature is returned (it was not used as an input)
 
    END FUNCTION Pz_from_P0_sclr
 
@@ -314,7 +378,7 @@ CONTAINS
       REAL(wp), INTENT(in) :: pta                ! air/surface absolute temperature  [K]
       REAL(wp), INTENT(in) :: pslp                ! air/surface pressure              [Pa]
       !!
-      theta_exner_sclr = pta * ( Patm / pslp ) ** rgamma_dry_GS
+      theta_exner_sclr = pta * ( Patm / pslp ) ** rpoiss_dry
       !!
    END FUNCTION theta_exner_sclr
 

@@ -60,7 +60,6 @@ PROGRAM TEST_PHYMBL
       PRINT *, '    note: saturation value is ',REAL(zqsat*1000.,4), ' g/kg'
       READ(*,*) zqa
       zqa = zqa/1000.
-
       
       !!PRINT *, 'zslp, zzt, zta, zqa, zqsat = ', zslp, zzt, zta, zqa, zqsat
 
@@ -81,15 +80,20 @@ PROGRAM TEST_PHYMBL
 
       !! We are dealing with moist air (spec. hum. of zqa)!
       zCp = cp_air( zqa ) ; ! specific heat capacity of air at a constant pressure, taking into account humidity
-      zRm = (1. - zqa)*R_dry + zqa*R_vap ! universal gas constant for moist air            
+      
+      !zRm = zta/virt_temp_sclr( zta, zqa ) * R_dry  ! Gas constant for MOIST air ! Then why smaller than Rd when moist???
+      ! Best I can guess is:
+      zRm = (1. - zqa)*R_dry + zqa*R_vap  ! universal gas constant for MOIST air
+      
       PRINT *, '  *** based on humidity, Cp_air = ', REAL(zCp,4), 'J/K/kg'
-      PRINT *, '  *** based on humidity,  R_air = ', REAL(zRm,4), 'J/K/kg'
+      PRINT *, '  *** based on humidity,  R_air = ', REAL(zRm,4), 'J/K/kg, (R_dry=', REAL(R_dry,4),')'
       PRINT *, '  *** R/Cp is = ', REAL(zRm/zCp,4)
       
       ztpa = zta * ( zslp / zP_zt )**(zRm/zCp)
-
+      
       PRINT *, '  ==> potential '
       WRITE(*,'("   ==> potential temperature of air at ",f4.1," m is: ", f7.3, " deg.C !")') zzt, ztpa-rt0
+      PRINT *, '    ====> from `pot_temp@mod_phymbl` function: ', pot_temp( zta, zqa, zslp, zP_zt ) - rt0
       PRINT *, ''
 
       !! For comparison checking what we would have gotten with the gamma lapse-rate version:
