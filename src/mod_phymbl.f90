@@ -33,9 +33,9 @@ MODULE mod_phymbl
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
 
-   INTERFACE pres_temp
-      MODULE PROCEDURE pres_temp_vctr, pres_temp_sclr
-   END INTERFACE pres_temp
+   INTERFACE Pz_from_P0
+      MODULE PROCEDURE Pz_from_P0_vctr, Pz_from_P0_sclr
+   END INTERFACE Pz_from_P0
 
    INTERFACE theta_exner
       MODULE PROCEDURE theta_exner_vctr, theta_exner_sclr
@@ -217,30 +217,31 @@ CONTAINS
    !===============================================================================================
 
 
+
    !===============================================================================================
-   FUNCTION pres_temp_sclr( pqa, pslp, pz, ptpa, pta, l_ice )
+   FUNCTION Pz_from_P0_sclr( pqa, pslp, pz, ptpa, pta, l_ice )
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION pres_temp  ***
+      !!                           ***  FUNCTION Pz_from_P0  ***
       !!
       !! ** Purpose : compute air pressure using barometric equation
       !!              from either potential or absolute air temperature
       !! ** Author: G. Samson, Feb 2021
       !!-------------------------------------------------------------------------------
-      REAL(wp)                          :: pres_temp_sclr   ! air pressure              [Pa]
+      REAL(wp)                          :: Pz_from_P0_sclr  ! pressure at `pz` m above sea level [Pa]
       REAL(wp), INTENT(in )             :: pqa              ! air specific humidity     [kg/kg]
-      REAL(wp), INTENT(in )             :: pslp             ! sea-level pressure        [Pa]
+      REAL(wp), INTENT(in )             :: pslp             ! pressure at sea-level     [Pa]
       REAL(wp), INTENT(in )             :: pz               ! height above surface      [m]
       REAL(wp), INTENT(in )  , OPTIONAL :: ptpa             ! air potential temperature [K]
       REAL(wp), INTENT(inout), OPTIONAL :: pta              ! air absolute temperature  [K]
       LOGICAL , INTENT(in)   , OPTIONAL :: l_ice            ! sea-ice presence
       !!
-      REAL(wp)                          :: ztpot, zta, zpa, zxm, zmask, zqsat
+      REAL(wp)                          :: ztpa, zta, zpa, zxm, zmask, zqsat
       INTEGER                           :: it, niter = 3    ! iteration indice and number
       LOGICAL                           :: lice             ! sea-ice presence
 
       IF( PRESENT(ptpa) ) THEN
          zmask = 1._wp
-         ztpot = ptpa
+         ztpa = ptpa
       ELSE
          zmask = 0._wp
          zta   = pta
@@ -251,28 +252,28 @@ CONTAINS
 
       zpa = pslp              ! air pressure first guess [Pa]
       DO it = 1, niter
-         zta   = ztpot * ( zpa / Patm )**rgamma_dry * zmask + (1._wp - zmask) * zta
+         zta   = ztpa * ( zpa / Patm )**rgamma_dry_GS * zmask + (1._wp - zmask) * zta
          zqsat = q_sat( zta, zpa, l_ice=lice )                                   ! saturation specific humidity [kg/kg]
          zxm   = (1._wp - pqa/zqsat) * rmm_dryair + pqa/zqsat * rmm_water    ! moist air molar mass [kg/mol]
          zpa   = pslp * EXP( -grav * zxm * pz / ( R_gas * zta ) )
       END DO
 
-      pres_temp_sclr = zpa
+      Pz_from_P0_sclr = zpa
       IF(( PRESENT(pta) ).AND.( PRESENT(ptpa) )) pta = zta
 
-   END FUNCTION pres_temp_sclr
+   END FUNCTION Pz_from_P0_sclr
 
-   FUNCTION pres_temp_vctr( pqa, pslp, pz, ptpa, pta, l_ice )
+   FUNCTION Pz_from_P0_vctr( pqa, pslp, pz, ptpa, pta, l_ice )
 
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION pres_temp  ***
+      !!                           ***  FUNCTION Pz_from_P0  ***
       !!
       !! ** Purpose : compute air pressure using barometric equation
       !!              from either potential or absolute air temperature
       !! ** Author: G. Samson, Feb 2021
       !!-------------------------------------------------------------------------------
 
-      REAL(wp), DIMENSION(jpi,jpj)                          :: pres_temp_vctr ! air pressure              [Pa]
+      REAL(wp), DIMENSION(jpi,jpj)                          :: Pz_from_P0_vctr ! air pressure              [Pa]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in )             :: pqa            ! air specific humidity     [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in )             :: pslp           ! sea-level pressure        [Pa]
       REAL(wp),                     INTENT(in )             :: pz             ! height above surface      [m]
@@ -287,17 +288,17 @@ CONTAINS
       IF( PRESENT(ptpa) ) THEN
          DO jj = 1, jpj
             DO ji = 1, jpi
-               pres_temp_vctr(ji,jj) = pres_temp_sclr( pqa(ji,jj), pslp(ji,jj), pz, ptpa=ptpa(ji,jj), pta=pta(ji,jj), l_ice=lice )
+               Pz_from_P0_vctr(ji,jj) = Pz_from_P0_sclr( pqa(ji,jj), pslp(ji,jj), pz, ptpa=ptpa(ji,jj), pta=pta(ji,jj), l_ice=lice )
             END DO
          END DO
       ELSE
          DO jj = 1, jpj
             DO ji = 1, jpi
-               pres_temp_vctr(ji,jj) = pres_temp_sclr( pqa(ji,jj), pslp(ji,jj), pz,                     pta=pta(ji,jj), l_ice=lice )
+               Pz_from_P0_vctr(ji,jj) = Pz_from_P0_sclr( pqa(ji,jj), pslp(ji,jj), pz,                     pta=pta(ji,jj), l_ice=lice )
             END DO
          END DO
       ENDIF
-   END FUNCTION pres_temp_vctr
+   END FUNCTION Pz_from_P0_vctr
    !===============================================================================================
 
    !===============================================================================================
@@ -313,7 +314,7 @@ CONTAINS
       REAL(wp), INTENT(in) :: pta                ! air/surface absolute temperature  [K]
       REAL(wp), INTENT(in) :: pslp                ! air/surface pressure              [Pa]
       !!
-      theta_exner_sclr = pta * ( Patm / pslp ) ** rgamma_dry
+      theta_exner_sclr = pta * ( Patm / pslp ) ** rgamma_dry_GS
       !!
    END FUNCTION theta_exner_sclr
 

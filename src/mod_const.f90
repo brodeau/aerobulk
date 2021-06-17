@@ -75,8 +75,11 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: rmm_dryair = 28.9647e-3             !: dry air molar mass / molecular weight     [kg/mol]
    REAL(wp), PARAMETER, PUBLIC :: rmm_water  = 18.0153e-3             !: water   molar mass / molecular weight           [kg/mol]
    REAL(wp), PARAMETER, PUBLIC :: rmm_ratio  = rmm_water / rmm_dryair
-   REAL(wp), PARAMETER, PUBLIC :: rgamma_dry = R_gas / ( rmm_dryair * rCp_dry )  !: Poisson constant for dry air
+   REAL(wp), PARAMETER, PUBLIC :: rgamma_dry_GS = R_gas / ( rmm_dryair * rCp_dry )  !: Poisson constant for dry air
    !!
+   REAL(wp), PARAMETER, PUBLIC :: rgamma_dry = grav / rCp_dry  !: dry adabiatic lapse rate [K/m]
+
+   
    REAL(wp), PARAMETER, PUBLIC :: reps0 = R_dry/R_vap      !: ratio of gas constant for dry air and water vapor => ~ 0.622
    REAL(wp), PARAMETER, PUBLIC :: rctv0 = R_vap/R_dry - 1. !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
    !!
