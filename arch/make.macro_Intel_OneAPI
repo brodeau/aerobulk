@@ -4,10 +4,11 @@
 # Fortran compiler :
 FC  = ifort
 CXX = icpc
-VERSION = latest
 
 # Libraries of Fortran compiler
-DIR_FORT_LIB = /opt/intel/oneapi/compiler/$(VERSION)/linux/compiler/lib/intel64
+FC_PATH = /opt/intel/oneapi
+VERSION = latest
+DIR_FORT_LIB = $(FC_PATH)/compiler/$(VERSION)/linux/compiler/lib/intel64
 LNK_FORT_LIB = -lifcore
 
 ### Fortran compilation flags :

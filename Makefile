@@ -9,6 +9,7 @@ test: All bin/test_aerobulk_buoy_series_oce.x bin/test_aerobulk_buoy_series_ice.
       bin/test_aerobulk_cdnf_series.x bin/test_psi_stab.x bin/test_coef_n10.x
 
 CPP: lib/libaerobulk_cxx.a bin/example_call_aerobulk_cxx.x
+cpp: CPP
 
 
 # 
