@@ -45,32 +45,37 @@ PROGRAM TEST_PHYMBL
       
 
       PRINT *, ''
-      PRINT *, 'Give reference height above sea-level [m]:'
+      PRINT *, 'Give local height above sea-level [m]:'
       READ(*,*) zzt
 
       PRINT *, ''
-      PRINT *, 'Give ABSOLUTE temperature at reference height [deg.C]:'
+      PRINT *, 'Give ABSOLUTE temperature at local height [deg.C]:'
       READ(*,*) zta
       zta = zta + rt0
 
       zqsat = q_sat( zta, zslp )
       
       PRINT *, ''
-      PRINT *, 'Give specific humidity at reference height [g/kg]:'
+      PRINT *, 'Give specific humidity at local height [g/kg]:'
       PRINT *, '    note: saturation value is ',REAL(zqsat*1000.,4), ' g/kg'
       READ(*,*) zqa
       zqa = zqa/1000.
       
       !!PRINT *, 'zslp, zzt, zta, zqa, zqsat = ', zslp, zzt, zta, zqa, zqsat
 
+      !! Spoiler:
+      PRINT *, ''
+      WRITE(*,'(" SPOILER: `Theta_from_z_P0_T_q_vctr@mod_phymbl` gives: theta =", f7.3, " deg.C at ",f3.0," m")') &
+         &   Theta_from_z_P0_T_q( zzt, zslp, zta, zqa )-rt0, zzt
+      PRINT *, ''
+
+
       !! Calculating pressure at zzt m:
-
-
-      zP_zt = Pz_from_P0( zqa, zslp, zzt, pta=zta )
+      zP_zt = Pz_from_P0_tz_qz( zzt, zslp, zta, zqa )
 
       PRINT *, ''
-      WRITE(*,'("   *** sea-level pressure is: ", f8.2, " hPa !")')                       zslp/100.
-      WRITE(*,'("   ==> atmospheric pressure at ",f4.1," m is: ", f7.2, " hPa !")') zzt, zP_zt/100.
+      WRITE(*,'("   *** Reference sea-level pressure we use: ", f7.2, " hPa !")')      zslp/100.
+      WRITE(*,'("     ==> computed pressure at ",f4.1,"m is: ", f7.2, " hPa  ")') zzt, zP_zt/100.
       PRINT *, ''
 
       !! Now that we have the pressure at height zt above sea-level we can convert absolute temperature to potential
@@ -79,23 +84,23 @@ PROGRAM TEST_PHYMBL
 
 
       !! We are dealing with moist air (spec. hum. of zqa)!
-      zCp = cp_air( zqa ) ; ! specific heat capacity of air at a constant pressure, taking into account humidity
-      
-      !zRm = zta/virt_temp_sclr( zta, zqa ) * R_dry  ! Gas constant for MOIST air ! Then why smaller than Rd when moist???
-      ! Best I can guess is:
-      zRm = (1. - zqa)*R_dry + zqa*R_vap  ! universal gas constant for MOIST air
-      
-      PRINT *, '  *** based on humidity, Cp_air = ', REAL(zCp,4), 'J/K/kg'
-      PRINT *, '  *** based on humidity,  R_air = ', REAL(zRm,4), 'J/K/kg, (R_dry=', REAL(R_dry,4),')'
-      PRINT *, '  *** R/Cp is = ', REAL(zRm/zCp,4)
-      
-      ztpa = zta * ( zslp / zP_zt )**(zRm/zCp)
+      !zCp = cp_air( zqa ) ; ! specific heat capacity of air at a constant pressure, taking into account humidity      
+      !zRm = (1. - zqa)*R_dry + zqa*R_vap  ! universal gas constant for MOIST air     
+      !PRINT *, '  *** based on humidity, Cp_air = ', REAL(zCp,4), 'J/K/kg'
+      !PRINT *, '  *** based on humidity,  R_air = ', REAL(zRm,4), 'J/K/kg, (R_dry=', REAL(R_dry,4),')'
+      !PRINT *, '  *** R/Cp is = ', REAL(zRm/zCp,4)
+      !ztpa = zta * ( zslp / zP_zt )**(zRm/zCp)
+
+      ztpa = zta * ( zslp / zP_zt )**rpoiss_dry
       
       PRINT *, '  ==> potential '
-      WRITE(*,'("   ==> potential temperature of air at ",f4.1," m is: ", f7.3, " deg.C !")') zzt, ztpa-rt0
-      PRINT *, '    ====> from `pot_temp@mod_phymbl` function: ', pot_temp( zta, zqa, zslp, zP_zt ) - rt0
+      WRITE(*,'("   ==> potential temperature of air at ",f3.0," m is: ", f7.3, " deg.C !")') zzt, ztpa-rt0
+      PRINT *, '    ====> from `pot_temp@mod_phymbl` function:', REAL(pot_temp( zta, zP_zt, pPref=zslp ) - rt0,4)
       PRINT *, ''
 
+
+      PRINT *, ' *** R/Cp used (dry air!):', REAL(rpoiss_dry)
+      
       !! For comparison checking what we would have gotten with the gamma lapse-rate version:
       !PRINT *, '  *** rgamma_dry =', rgamma_dry, gamma_moist(zta,0._wp)
       ztpa = zta + rgamma_dry*zzt

@@ -92,9 +92,9 @@ MODULE mod_const
 
    
    !! Some defaults:
-   REAL(wp), PARAMETER, PUBLIC :: Patm  = 101000. !: atmospheric pressure               [Pa]
-   REAL(wp), PARAMETER, PUBLIC :: rho0_a = 1.2    !: Approx. of density of air          [kg/m^3]
-
+   REAL(wp), PARAMETER, PUBLIC :: Patm  = 101000. !: reference atmospheric pressure at sea-level            [Pa]
+   REAL(wp), PARAMETER, PUBLIC :: rho0_a = 1.2    !: Approx. of density of air                          [kg/m^3]
+   
    
    !! Bulk model:
    REAL(wp), PARAMETER, PUBLIC :: vkarmn  = 0.4_wp         !: Von Karman's constant
