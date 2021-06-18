@@ -42,7 +42,7 @@ PROGRAM AEROBULK_TOY
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
       &  tmp
 
-   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
+   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma !, rgamma
 
    REAL(wp) :: zt, zu, nu_air
 
@@ -212,7 +212,7 @@ PROGRAM AEROBULK_TOY
       t_zt = sst ! first guess
       DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
+         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - rgamma_dry*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
 
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -235,8 +235,8 @@ PROGRAM AEROBULK_TOY
    Cp_ma = cp_air(q_zt)
    WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
    WRITE(6,*) ''
-   rgamma = gamma_moist(t_zt, q_zt)
-   WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
+   !rgamma = gamma_moist(t_zt, q_zt)
+   !WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
    WRITE(6,*) '============================================================================'
    WRITE(6,*) ''
    WRITE(6,*) ''
@@ -250,10 +250,10 @@ PROGRAM AEROBULK_TOY
 
 
    !! Must give something more like a potential temperature at zt:
-   theta_zt = t_zt + rgamma*zt
+   theta_zt = t_zt + rgamma_dry*zt
 
    WRITE(6,*) ''
-   WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
+   WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using `rgamma_dry`)  =', theta_zt - rt0, ' [deg.C]   FIX ME !!!'
 
 
 
@@ -401,7 +401,7 @@ PROGRAM AEROBULK_TOY
       !   rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
       !   t_zu = theta_zu - rgamma*zu   ! Absolute temp.
       !END DO
-      t_zu = theta_zu - rgamma*zu    ! !! using the old gamma based on t_zt and q_zt seems like the wisest choice...
+      t_zu = theta_zu - rgamma_dry*zu    ! !! using the old gamma based on t_zt and q_zt seems like the wisest choice...
       vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
 
       !! So what is the saturation at t_zu then ???
@@ -494,7 +494,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) ''
 
    WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1000.*vQu_sane, 4), '[g/kg]'
-   PRINT *, 'LOLO: aerobulk_toy.f90 => gamma_moist =', rgamma
+   !PRINT *, 'LOLO: aerobulk_toy.f90 => gamma_moist =', rgamma
    PRINT *, 'LOLO: aerobulk_toy.f90 => t_zu =', t_zu
    PRINT *, ''
 

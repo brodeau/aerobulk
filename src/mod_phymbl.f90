@@ -664,7 +664,7 @@ CONTAINS
       REAL(wp), INTENT(in), OPTIONAL :: pTa_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
       REAL(wp), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
       LOGICAL  :: l_ptqa_l_prvd = .FALSE.
-      REAL(wp) :: zqa, zta, zgamma, zdthv, ztv, zsstv  ! local scalars
+      REAL(wp) :: zqa, zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
       IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       !
@@ -676,11 +676,7 @@ CONTAINS
       IF( l_ptqa_l_prvd ) THEN
          ztv = virt_temp_sclr( pTa_layer, pqa_layer )
       ELSE
-         zqa = 0.5_wp*( pqa  + pssq )                             ! ~ mean q within the layer...
-         zta = 0.5_wp*( psst + pThta - gamma_moist(pThta, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-         zta = 0.5_wp*( psst + pThta - gamma_moist( zta, zqa)*pz ) ! ~ mean absolute temperature of air within the layer
-         zgamma =  gamma_moist(zta, zqa)                          ! Adiabatic lapse-rate for moist air within the layer
-         ztv = 0.5_wp*( zsstv + virt_temp_sclr( pThta-zgamma*pz, pqa ) )
+         ztv = 0.5_wp*( zsstv + virt_temp_sclr( pThta-rgamma_dry*pz, pqa ) )
       END IF
       !
       Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )      ! the usual definition of Ri_bulk_sclr
@@ -1117,19 +1113,14 @@ CONTAINS
       REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!
-      REAL(wp) :: zta, zgamma, zrho, zUrho, zevap
-      INTEGER  :: jq
+      REAL(wp) :: zta, zrho, zUrho, zevap
       LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
 
       !! Need zta, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pThta")
-      zta = pThta ! first guess...
-      DO jq = 1, 4
-         zgamma = gamma_moist( 0.5*(zta+pts) , pqa )  !LOLO: why not "0.5*(pqs+pqa)" rather then "pqa" ???
-         zta = pThta - zgamma*pzu   ! Absolute temp. is slightly colder...
-      END DO
+      zta  = pThta - rgamma_dry*pzu   ! Absolute temp. is slightly colder...
       zrho = rho_air(zta, pqa, pslp)
       zrho = rho_air(zta, pqa, pslp-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
 
