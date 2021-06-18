@@ -167,7 +167,7 @@ Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameter
 
 # **> Computing transfer coefficients with AeroBulk**
 
-In AeroBulk, 3 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air potential temperature and specific humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
+In AeroBulk, 5 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air potential temperature and specific humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
 
 
 **> TURB_COARE3p0, transfer coefficients with COARE 3.0 (replace "3p0" by "3p6" to use COARE 3.6)**
@@ -179,8 +179,10 @@ Example of a call:
                   USE mod_const
                   USE mod_blk_coare3p0
                   ...
-                  jpi = Ni ! x-shape of the 2D domain
-                  jpj = Nj ! y-shape of the 2D domain
+                  !! Some global parameters that must be defined
+                  jpi    = Ni     ! x-shape of the 2D domain
+                  jpj    = Nj     ! y-shape of the 2D domain
+                  nitend = Nt  ! number of time steps to go (default is 1)
                   ...
                   CALL TURB_COARE3P0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cool_skin, l_use_warm_layer, &
                   &                    Cd, Ch, Ce, t_zu, q_zu, U_blk            &
@@ -191,6 +193,7 @@ Example of a call:
 
 **INPUT ARGUMENTS:**
 
+*   `kt` : (Sc,int) current time step (starts at 1 until `nitend`)
 *   `zt` : (Sc,real) height for air temperature and humidity [m]
 *   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
 *   `t_zt` : (2D,real) POTENTIAL air temperature at zt [K]
