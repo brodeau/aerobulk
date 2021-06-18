@@ -152,7 +152,7 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 
 .f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
 	@mkdir -p mod
-	$(FC) -c $(FF) $< -o $*.o
+	$(FC) -c $(FF) $(FORT_INC) $< -o $*.o
 
 .cpp.o: $(LIB_SRC_CXX)
 	@mkdir -p mod

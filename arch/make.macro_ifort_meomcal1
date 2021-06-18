@@ -1,9 +1,16 @@
-# Makefile for AeroBulk with the Intel Fortran Compiler
-# ===================================================
+# Makefile for AeroBulk with the Intel suite of Compilers
+# =======================================================
 
 # Fortran compiler :
 FC  = ifort
-CXX = icc
+CXX = icpc
+
+# Libraries of Fortran compiler
+FC_PATH = /mnt/meom/workdir/brodeau/opt/intel/oneapi
+VERSION = latest
+DIR_FORT_LIB = $(FC_PATH)/compiler/$(VERSION)/linux/compiler/lib/intel64
+LNK_FORT_LIB = -lifcore
+FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64 ; # only for C++, to find module "iso_c_binding"
 
 ### Fortran compilation flags :
 
@@ -11,16 +18,18 @@ CXX = icc
 FF = -xHOST -O3 -r8 -i4 -module mod/
 
 # Debugging:
-#DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
-#DEBUG_FF = -g -fpe0 -traceback -CB
+DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
+DEBUG_FF = -g -fpe0 -traceback -CB
 #FF = -xHOST -O0 -r8 -i4 $(DEBUG_FF) -module mod/
+
+CXXFLAGS = -traceback
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local
 
-
 # Root directory for Netcdf:
-NETCDF_DIR = $(HOME)/opt/hdf5_netcdf4_intel_mpi
+NETCDF_DIR = /mnt/meom/workdir/brodeau/opt/hdf5_netcdf4_intel_seq
 
 # Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
 L_NCDF = -lnetcdff
+
