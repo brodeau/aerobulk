@@ -39,7 +39,7 @@ CONTAINS
       !!    *  zt   : height for temperature and spec. hum. of air           [m]
       !!    *  zu   : height for wind (10m = traditional anemometric height  [m]
       !!    *  sst  : bulk SST                                               [K]
-      !!    *  t_zt : air temperature at zt                                  [K]
+      !!    *  t_zt : ABSOLUTE air temperature at zt                         [K]
       !!    *  q_zt : specific humidity of air at zt                         [kg/kg]
       !!    *  U_zu : zonal wind speed at zu                                 [m/s]
       !!    *  V_zu : meridional wind speed at zu                            [m/s]
@@ -80,8 +80,8 @@ CONTAINS
          &     zWzu,            & !: Scalar wind speed at zu m
          &   zSSQ,              & !: Specific humidiyt at the air-sea interface
          &   zCd, zCh, zCe,     & !: bulk transfer coefficients
-         &  zTzt,               & !: potential temperature at zt meters
-         &  pTzu, zQzu,         & !: potential temperature and specific humidity at zu meters
+         &  zThtzt,             & !: POTENTIAL air temperature at zt meters
+         &  zThtzu, zQzu,       & !: POTENTIAL air temperature and specific humidity at zu meters
          &  zTs, zqs, zEvap,    & !:
          &  zTaum,              & !: wind stress module
          &  zUblk,              & !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
@@ -95,7 +95,7 @@ CONTAINS
 
       ALLOCATE ( zmask(jpi,jpj), zWzu(jpi,jpj), zSSQ(jpi,jpj), &
          &     zCd(jpi,jpj), zCh(jpi,jpj), zCe(jpi,jpj),       &
-         &     zTzt(jpi,jpj), pTzu(jpi,jpj), zQzu(jpi,jpj),    &
+         &     zThtzt(jpi,jpj), zThtzu(jpi,jpj), zQzu(jpi,jpj),    &
          &     zUblk(jpi,jpj), zTs(jpi,jpj), zqs(jpi,jpj),     &
          &     zEvap(jpi,jpj), zTaum(jpi,jpj), ztmp(jpi,jpj)  )
 
@@ -132,8 +132,9 @@ CONTAINS
       zSSQ (:,:) = rdct_qsat_salt*q_sat(sst, slp)
 
       !! Approximate potential temperarure at zt meters above sea surface:
-      zTzt = t_zt + gamma_moist(t_zt, q_zt)*zt
-
+      !zThtzt = t_zt + gamma_moist(t_zt, q_zt)*zt  !BAD! and should have used `gamma_dry` anyway...
+      zThtzt = Theta_from_z_P0_T_q( zt, slp, t_zt, q_zt )
+      
       !! Mind that TURB_COARE* and TURB_ECMWF will modify SST and SSQ if their
       !! respective Cool Skin Warm Layer parameterization is used
       zTs = sst
@@ -147,43 +148,43 @@ CONTAINS
          !!
       CASE('coare3p0')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
-               &                zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
+            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
+               &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
                &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
          ELSE
-            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
-               &                zCd, zCh, zCe, pTzu, zQzu, zUblk )
+            CALL TURB_COARE3P0 ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &                zCd, zCh, zCe, zThtzu, zQzu, zUblk )
          END IF
          !!
       CASE('coare3p6')
          IF( l_use_skin ) THEN
-            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
-               &                zCd, zCh, zCe, pTzu, zQzu, zUblk,            &
+            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .TRUE., .TRUE., &
+               &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
                &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
          ELSE
-            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
-               &                 zCd, zCh, zCe, pTzu, zQzu, zUblk )
+            CALL TURB_COARE3P6 ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &                 zCd, zCh, zCe, zThtzu, zQzu, zUblk )
          END IF
          !!
       CASE('ncar')
-         CALL TURB_NCAR( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, &
-            &            zCd, zCh, zCe, pTzu, zQzu, zUblk)
+         CALL TURB_NCAR( zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, &
+            &            zCd, zCh, zCe, zThtzu, zQzu, zUblk)
          !!
          !!
       CASE('ecmwf')
          IF( l_use_skin ) THEN
-            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .TRUE., .TRUE.,  &
-               &              zCd, zCh, zCe, pTzu, zQzu, zUblk,      &
+            CALL TURB_ECMWF ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .TRUE., .TRUE.,  &
+               &              zCd, zCh, zCe, zThtzu, zQzu, zUblk,      &
                &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
          ELSE
-            CALL TURB_ECMWF ( 1, zt, zu, zTs, zTzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
-               &              zCd, zCh, zCe, pTzu, zQzu, zUblk)
+            CALL TURB_ECMWF ( 1, zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, .FALSE., .FALSE.,  &
+               &              zCd, zCh, zCe, zThtzu, zQzu, zUblk)
          END IF
          !!
          !!
       CASE('andreas')
-         CALL TURB_ANDREAS( zt, zu, zTs, zTzt, zqs, q_zt, zWzu, &
-            &               zCd, zCh, zCe, pTzu, zQzu, zUblk)
+         CALL TURB_ANDREAS( zt, zu, zTs, zThtzt, zqs, q_zt, zWzu, &
+            &               zCd, zCh, zCe, zThtzu, zQzu, zUblk)
          !!
          !!
       CASE DEFAULT
@@ -204,7 +205,7 @@ CONTAINS
       !PRINT *, ''
 
       
-      CALL BULK_FORMULA( zu, zTs, zqs, pTzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
+      CALL BULK_FORMULA( zu, zTs, zqs, zThtzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
          &                                 zTaum, QH, QL, pEvap=zEvap )
 
       Tau_x = zTaum / zWzu * U_zu
@@ -215,7 +216,7 @@ CONTAINS
       !PRINT *, 'Qlat =', QL
       !PRINT *, 'Ublk =', zUblk
       !PRINT *, 'zCe/Ublk =', zCe/zUblk
-      !PRINT *, 't_zu =', pTzu
+      !PRINT *, 't_zu =', zThtzu
       !PRINT *, 'q_zu =', zQzu
       !PRINT *, 'ssq =', zSSQ
       !PRINT *, ''
@@ -224,7 +225,7 @@ CONTAINS
 
       IF( PRESENT(Evp) ) Evp(:,:) = zEvap(:,:)
       
-      DEALLOCATE ( zmask, zWzu, zSSQ, zCd, zCh, zCe, zTzt, pTzu, zQzu,    &
+      DEALLOCATE ( zmask, zWzu, zSSQ, zCd, zCh, zCe, zThtzt, zThtzu, zQzu,    &
          &         zUblk, zTs, zqs, zEvap, zTaum, ztmp  )
 
       

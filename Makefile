@@ -84,9 +84,9 @@ bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
 
-bin/example_call_aerobulk.x: src/example_call_aerobulk.f90 lib/libaerobulk.a
+bin/example_call_aerobulk.x: src/tests/example_call_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/example_call_aerobulk.f90 -o bin/example_call_aerobulk.x $(LIB)
+	$(FC) $(FF) src/tests/example_call_aerobulk.f90 -o bin/example_call_aerobulk.x $(LIB)
 
 bin/test_coef_n10.x: src/tests/test_coef_n10.f90 lib/libaerobulk.a
 	@mkdir -p bin
@@ -120,9 +120,9 @@ bin/test_aerobulk_oce+ice.x: src/ice/test_aerobulk_oce+ice.f90 lib/libaerobulk.a
 
 
 
-bin/example_call_aerobulk_cxx.x: src/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
+bin/example_call_aerobulk_cxx.x: src/tests/example_call_aerobulk.cpp lib/libaerobulk.a lib/libaerobulk_cxx.a
 	@mkdir -p bin dat
-	$(CXX) $(CXXFLAGS) src/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB) $(LIB_COMP)
+	$(CXX) $(CXXFLAGS) src/tests/example_call_aerobulk.cpp -o bin/example_call_aerobulk_cxx.x $(LIB_CXX) $(LIB) $(LIB_COMP)
 
 bin/test_aerobulk_buoy_series_oce.x: src/tests/test_aerobulk_buoy_series_oce.f90 lib/libaerobulk.a mod/io_ezcdf.mod
 	@mkdir -p bin

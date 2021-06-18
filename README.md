@@ -53,13 +53,13 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 # **> Giving AeroBulk a first try in interactive "toy mode"**
 
-Check that ```bin/aerobulk_toy.x``` has been compiled and execute it:
+Check that `bin/aerobulk_toy.x` has been compiled and execute it:
 
      ./bin/aerobulk_toy.x
 
-You will be interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then ```aerobulk_toy.x``` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
+You will be interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then `aerobulk_toy.x` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
 
- List of command line options for ```aerobulk_toy.x```:
+ List of command line options for `aerobulk_toy.x`:
 
     -p   => Ask for sea-level pressure, otherwise assume 1010 hPa
     
@@ -118,7 +118,7 @@ Example of an output obtained with the following setup:
 
 # **> Computing turbulent fluxes with AeroBulk**
 
-AeroBulk can also directly compute the 3 turbulent fluxes with the routine ```aerobulk_model()``` of module ```mod_aerobulk``` (mod\_aerobulk.f90):
+AeroBulk can also directly compute the 3 turbulent fluxes by means of the `aerobulk_model()` routine of module `mod_aerobulk` (`mod_aerobulk.f90`):
 
        PROGRAM TEST_FLUX
            USE mod_aerobulk
@@ -131,31 +131,31 @@ AeroBulk can also directly compute the 3 turbulent fluxes with the routine ```ae
 
 INPUT ARGUMENTS:
 
-*   ```calgo``` : (String) algorithm to use (coare3p0/coare3p6/ncar/ecmwf)
-*   ```zt``` : (Sc,real) height for temperature and spec. hum. of air [m]
-*   ```zu``` : (Sc,real) height for wind speed (generally 10m) [m]
-*   ```sst``` : (2D,real) SST [K]
-*   ```t_zt``` : (2D,real) potential air temperature at zt [K]
-*   ```q_zt``` : (2D,real) specific humidity of air at zt [kg/kg]
-*   ```U_zu``` : (2D,real) zonal scalar wind speed at 10m [m/s]
-*   ```V_zu``` : (2D,real) meridional scalar wind speed at 10m [m/s]
-*   ```SLP``` : (2D,real) sea-level pressure [Pa]
+*   `calgo` : (String) algorithm to use (coare3p0/coare3p6/ncar/ecmwf)
+*   `zt` : (Sc,real) height for temperature and spec. hum. of air [m]
+*   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
+*   `sst` : (2D,real) SST [K]
+*   `t_zt` : (2D,real) ABSOLUTE air temperature at zt [K]
+*   `q_zt` : (2D,real) specific humidity of air at zt [kg/kg]
+*   `U_zu` : (2D,real) zonal scalar wind speed at 10m [m/s]
+*   `V_zu` : (2D,real) meridional scalar wind speed at 10m [m/s]
+*   `SLP` : (2D,real) sea-level pressure [Pa]
 
 [ OPTIONAL INPUT ARGUMENT: ]
 
-*   ```Niter``` : (Sc,int) number of iterations (default is 4)
-*   ```rad_sw``` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
-*   ```rad_lw``` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
+*   `Niter` : (Sc,int) number of iterations (default is 4)
+*   `rad_sw` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
+*   `rad_lw` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
 
-(The presence of ```rad_sw``` and ```rad_sw``` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
+(The presence of `rad_sw` and `rad_sw` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
 
 OUTPUT ARGUMENTS:
 
-*   ```Qe``` : (2D,real) latent heat flux [W/m^2]
-*   ```Qh``` : (2D,real) sensible heat flux [W/m^2]
-*   ```Tau_x``` : (2D,real) zonal wind stress [N/m^2]
-*   ```Tau_y``` : (2D,real) meridional wind stress [N/m^2]
-*   ```Evap``` : (2D,real) evaporation [mm/s]
+*   `Qe` : (2D,real) latent heat flux [W/m^2]
+*   `Qh` : (2D,real) sensible heat flux [W/m^2]
+*   `Tau_x` : (2D,real) zonal wind stress [N/m^2]
+*   `Tau_y` : (2D,real) meridional wind stress [N/m^2]
+*   `Evap` : (2D,real) evaporation [mm/s]
 
 Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
 
@@ -167,12 +167,12 @@ Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameter
 
 # **> Computing transfer coefficients with AeroBulk**
 
-In AeroBulk, 3 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air temperature and humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
+In AeroBulk, 3 different routines are available to compute the bulk transfer (_a.k.a_ exchange) coefficients C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>. Beside computing the transfer coefficients, these routines adjust air potential temperature and specific humidity from height _z<sub>t</sub>_ to the reference height (wind) _z<sub>u</sub>_. They also return the bulk wind speed, which is the scalar wind speed at height _z<sub>u</sub>_ with the potential inclusion of a gustiness contribution (in calm and unstable conditions).
 
 
 **> TURB_COARE3p0, transfer coefficients with COARE 3.0 (replace "3p0" by "3p6" to use COARE 3.6)**
 
-Use ```turb_coare3p0()``` of module ```mod_blk_coare3p0``` (mod\_blk\_coare3p0.f90).
+Use `turb_coare3p0()` of module `mod_blk_coare3p0` (`mod_blk_coare3p0.f90`).
 Example of a call:
 
               PROGRAM TEST_COEFF
@@ -191,43 +191,43 @@ Example of a call:
 
 **INPUT ARGUMENTS:**
 
-*   ```zt``` : (Sc,real) height for air temperature and humidity [m]
-*   ```zu``` : (Sc,real) height for wind speed (generally 10m) [m]
-*   ```t_zt``` : (2D,real) potential air temperature at zt [K]
-*   ```q_zt``` : (2D,real) air spec. humidity of at zt [kg/kg]
-*   ```U_zu``` : (2D,real) scalar wind speed at zu [m/s]
+*   `zt` : (Sc,real) height for air temperature and humidity [m]
+*   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
+*   `t_zt` : (2D,real) POTENTIAL air temperature at zt [K]
+*   `q_zt` : (2D,real) air spec. humidity of at zt [kg/kg]
+*   `U_zu` : (2D,real) scalar wind speed at zu [m/s]
 
 **INPUT and OUTPUT ARGUMENTS:**
 
-*   ```T_s``` : (2D,real) surface temperature [K]
+*   `T_s` : (2D,real) surface temperature [K]
     *   input: bulk SST
     *   output: skin temperature or SST (unchanged)
-*   ```q_s``` : (2D,real) surface satur. spec. humidity at T_s [kg/kg]
+*   `q_s` : (2D,real) surface satur. spec. humidity at T_s [kg/kg]
     *   input: saturation at bulk SST (not needed if skin p. used)
     *   output: saturation at skin temp. or at SST (unchanged)
 
 **[ OPTIONAL INPUT ARGUMENTS: ]**
 
-*   ```Qsw``` : (2D,real) net shortw. rad. at surface (>0, after albedo!) [W/m^2]
-*   ```rad_lw``` : (2D,real) downw. longw. rad. at surface (>0) [W/m^2]
-*   ```slp``` : (2D,real) sea-level pressure [Pa]
+*   `Qsw` : (2D,real) net shortw. rad. at surface (>0, after albedo!) [W/m^2]
+*   `rad_lw` : (2D,real) downw. longw. rad. at surface (>0) [W/m^2]
+*   `slp` : (2D,real) sea-level pressure [Pa]
 
 (The presence of these 3 optional input parameters triggers the use of the Cool-Skin Warm-Layer parameterization)
 
 **OUTPUT ARGUMENTS:**
 
-*   ```Cd``` : (2D,real) drag coefficient
-*   ```Ch``` : (2D,real) sensible heat transfer coefficient
-*   ```Ce``` : (2D,real) moisture transfer (evaporation) coefficient
-*   ```t_zu``` : (2D,real) air pot. temperature adjusted at zu [K]
-*   ```q_zu``` : (2D,real) air spec. humidity adjusted at zu [kg/kg]
-*   ```Ublk``` : (2D,real) bulk wind speed at 10m [m/s]
+*   `Cd` : (2D,real) drag coefficient
+*   `Ch` : (2D,real) sensible heat transfer coefficient
+*   `Ce` : (2D,real) moisture transfer (evaporation) coefficient
+*   `t_zu` : (2D,real) air pot. temperature adjusted at zu [K]
+*   `q_zu` : (2D,real) air spec. humidity adjusted at zu [kg/kg]
+*   `Ublk` : (2D,real) bulk wind speed at 10m [m/s]
 
 **[ OPTIONAL OUTPUT ARGUMENTS: ]**
 
-*   ```z0``` : (2D,real) roughness length of the sea surface [m]
-*   ```u_s``` : (2D,real) friction velocity [m/s]
-*   ```L``` : (2D,real) Obukhov length [m]
+*   `z0` : (2D,real) roughness length of the sea surface [m]
+*   `u_s` : (2D,real) friction velocity [m/s]
+*   `L` : (2D,real) Obukhov length [m]
 
 **> Some Examples**
 
@@ -271,7 +271,7 @@ Note: `Ts` is the bulk SST as an input and is updated to the skin temperature as
 
 # **> Computing atmospheric state variables with AeroBulk**
 
-A selection of useful functions to estimate some atmospheric state variables in the marine boundary layer are available in the module ```mod_phymbl``` (mod\_phymbl.f90).
+A selection of useful functions to estimate some atmospheric state variables in the marine boundary layer are available in the module `mod_phymbl` (`mod_phymbl.f90`).
 
 Example for computing SSQ of Eq.(1) out of the SST and the SLP:
 

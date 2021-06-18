@@ -8,7 +8,7 @@
 !
 !
 MODULE mod_aerobulk
-   
+
    USE mod_const
    USE mod_aerobulk_compute
 
@@ -17,7 +17,7 @@ MODULE mod_aerobulk
    PRIVATE
 
    PUBLIC :: AEROBULK_MODEL
-   
+
 CONTAINS
 
 
@@ -72,7 +72,7 @@ CONTAINS
       PRINT *, ''
 
       l_1st_call_ab_init = .FALSE.
-      
+
    END SUBROUTINE aerobulk_init
 
 
@@ -86,7 +86,7 @@ CONTAINS
 
 
 
-   
+
    SUBROUTINE AEROBULK_MODEL( calgo, zt, zu, sst, t_zt,   &
       &                       q_zt, U_zu, V_zu, slp,      &
       &                       QL, QH, Tau_x, Tau_y, Evap,  &
@@ -99,7 +99,7 @@ CONTAINS
       !!    *  zt   : height for temp. & spec. hum. of air (usually 2 or 10) [m]
       !!    *  zu   : height for wind (usually 10)                           [m]
       !!    *  sst  : SST                                                    [K]
-      !!    *  t_zt : potential air temperature at zt                        [K]
+      !!    *  t_zt : ABSOLUTE air temperature at zt                         [K]
       !!    *  q_zt : specific humidity of air at zt                         [kg/kg]
       !!    *  U_zu : zonal wind speed at zu                                 [m/s]
       !!    *  V_zu : meridional wind speed at zu                            [m/s]
@@ -129,7 +129,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s
 
       INTEGER, INTENT(in), OPTIONAL :: Niter
-      
+
       IF ( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       IF ( l_1st_call_ab_init ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
@@ -140,7 +140,7 @@ CONTAINS
             &                  q_zt, U_zu, V_zu, slp,    &
             &                  QL, QH, Tau_x, Tau_y,     &
             &                  rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
-         
+
          !PRINT *, 'LOLO DEBUG INTO mod_aerobulk after CALL aerobulk_compute !!! ', TRIM(calgo)
          !PRINT *, 'LOLO: Ts =', T_s
          !PRINT *, 'LOLO: (sst was) =', sst

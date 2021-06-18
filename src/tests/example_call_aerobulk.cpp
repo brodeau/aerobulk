@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     std::vector<double> zt_zt = {273.15 + 20., 273.15 + 25.}; // air absolute temperature at zt [K] ## second case is stable ABL as t_air > SST (25>22)!
     std::vector<double> zq_zt = {0.012, 0.012};               // air specific humidity at zt [g/kg]
     std::vector<double> zU_zu = { 4.,  4.};                   // u-wind speed component at zu [m/s]
-    std::vector<double> zV_zu = {10., 10.};                   // v-wind speed component at zu [m/s]
+    std::vector<double> zV_zu = { 9.,  9.};                   // v-wind speed component at zu [m/s]
     std::vector<double> zslp  = {101000.0, 101000.0};         // sea-level atmospheric pressure [Pa]
 
     std::vector<double> zRsw  = {0., 0.};       // downwelling shortwave (solar)     radiation [W/m^2] ## night!
