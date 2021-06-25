@@ -42,7 +42,7 @@ PROGRAM AEROBULK_TOY_IJ
       &  W10, t_zt, theta_zt, q_zt, RH_zt, d_zt, t_zu, theta_zu, q_zu, ssq, qs, rho_zu, rad_sw, rad_lw, &
       &  tmp
 
-   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
+   REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma
 
    REAL(wp) :: zt, zu, nu_air
 
@@ -212,7 +212,7 @@ PROGRAM AEROBULK_TOY_IJ
       t_zt = sst ! first guess
       DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
+         t_zt = virt_temp(sst, ssq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - rgamma_dry*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
 
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -235,8 +235,8 @@ PROGRAM AEROBULK_TOY_IJ
    Cp_ma = cp_air(q_zt)
    WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
    WRITE(6,*) ''
-   rgamma = gamma_moist(t_zt, q_zt)
-   WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
+   !rgamma = gamma_moist(t_zt, q_zt)
+   !WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
    WRITE(6,*) '============================================================================'
    WRITE(6,*) ''
    WRITE(6,*) ''
@@ -249,17 +249,15 @@ PROGRAM AEROBULK_TOY_IJ
    WRITE(6,*) ''
 
 
-   !! Must give something more like a potential temperature at zt:
-   theta_zt = t_zt + rgamma*zt
-
-   WRITE(6,*) ''
-   WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
-
-
+   !! Estimate of POTENTIAL temperature at zt:
+   !theta_zt = t_zt + rgamma_dry*zt
+   theta_zt = Theta_from_z_P0_T_q( zt, SLP, t_zt, q_zt )
+   CALL prtcol( 6, 'Pot. temp. at '//TRIM(czt), theta_zt(1,1) - rt0, '[deg.C]', color_code='94' )
 
    !! Checking the difference of virtual potential temperature between air at zt and sea surface:
    tmp = virt_temp(theta_zt, q_zt)
-   WRITE(6,*) 'Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
+   CALL prtcol( 6, 'Virtual pot. temp. at '//TRIM(czt), tmp(1,1) - rt0, '[deg.C]', color_code='94' )
+   !WRITE(6,*) 'Virtual pot. temp. at ',TRIM(czt),'   =', REAL(tmp - rt0 , 4), ' [deg.C]'
    WRITE(6,*) 'Pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(theta_zt - sst , 4), ' [deg.C]'
    WRITE(6,*) 'Virt. pot. temp. diff. air/sea at ',TRIM(czt),' =', REAL(tmp - virt_temp(sst, ssq), 4), ' [deg.C]'
    WRITE(6,*) ''; WRITE(6,*) ''
@@ -383,33 +381,25 @@ PROGRAM AEROBULK_TOY_IJ
                &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
-         
+
       CASE(5)
          CALL TURB_ANDREAS( zt, zu, sst, theta_zt, ssq, q_zt, W10,           &
             &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
             &            CdN=zCdN, ChN=zChN, CeN=zCeN,                       &
             &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-        
+
       CASE DEFAULT
          WRITE(6,*) 'Bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
       END SELECT
 
       !! Absolute temperature at zu ?
-      !t_zu = theta_zu ! first guess...
-      !DO jq = 1, 4
-      !   rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
-      !   t_zu = theta_zu - rgamma*zu   ! Absolute temp.
-      !END DO
-      t_zu = theta_zu - rgamma*zu    ! !! using the old gamma based on t_zt and q_zt seems like the wisest choice...
-      vT_u(ialgo) =  t_zu(1,1) -rt0     ! Absolute temp.
+      t_zu = T_from_z_P0_Theta_q( zu, SLP, theta_zu, q_zu )
+      vT_u(ialgo) =  t_zu(1,1) -rt0 
 
       !! So what is the saturation at t_zu then ???
       vQu_sane(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
-
       vQu(ialgo)  =  q_zu(1,1)
-
-
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
       tmp = Ri_bulk(zu, Ts, theta_zu, qs, q_zu, Ublk )
@@ -472,14 +462,15 @@ PROGRAM AEROBULK_TOY_IJ
    WRITE(ctitle,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),&
       '     |    ',TRIM(vca(4)),'     |    ',TRIM(vca(5))
 
-   IF ( zt < zu ) THEN
+   IF ( zt /= zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
-      WRITE(6,*) 't_',TRIM(czt),'  =', theta_zt-rt0 ;  WRITE(6,*) 'q_',TRIM(czt),'  =', q_zt
+      WRITE(6,*) 'theta_',TRIM(czt),' =', REAL(theta_zt-rt0,4), '[deg.C]'
+      WRITE(6,*)     'q_',TRIM(czt),' =', REAL(1000.*q_zt  ,4), '[g/kg]'
    END IF
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-    WRITE(6,*) TRIM(ctitle)
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
@@ -494,8 +485,6 @@ PROGRAM AEROBULK_TOY_IJ
    WRITE(6,*) ''
 
    WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1000.*vQu_sane, 4), '[g/kg]'
-   PRINT *, 'LOLO: aerobulk_toy.f90 => gamma_moist =', rgamma
-   PRINT *, 'LOLO: aerobulk_toy.f90 => t_zu =', t_zu
    PRINT *, ''
 
    WRITE(6,*) ''
@@ -519,7 +508,7 @@ PROGRAM AEROBULK_TOY_IJ
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-    WRITE(6,*) TRIM(ctitle)
+   WRITE(6,*) TRIM(ctitle)
    WRITE(6,*) '=============================================================================================='
    WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , ' [10^-3]'
    WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , ' [10^-3]'
@@ -558,51 +547,55 @@ PROGRAM AEROBULK_TOY_IJ
 
 CONTAINS
 
-   SUBROUTINE prtcol( id, cs1, pval, cs2 )
+   SUBROUTINE prtcol( id, cs1, pval, cs2,  color_code )
       INTEGER,          INTENT(in) :: id
       CHARACTER(len=*), INTENT(in) :: cs1
       REAL(wp),         INTENT(in) :: pval
       CHARACTER(len=*), INTENT(in) :: cs2
-      WRITE(id,*) ACHAR(27)//'[95m *** '//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
+      CHARACTER(len=2), INTENT(in), OPTIONAL :: color_code
+      CHARACTER(len=2) :: cc = '95' ; ! Light magenta
+      !!
+      IF( PRESENT(color_code) ) cc = color_code
+      WRITE(id,*) ACHAR(27)//'['//cc//'m *** '//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
       WRITE(id,*) ''
    END SUBROUTINE prtcol
 
 
-SUBROUTINE usage_test( icontinue )
-   INTEGER, INTENT(in) :: icontinue
-   !!
-   PRINT *,''
-   IF (icontinue>=1) THEN
+   SUBROUTINE usage_test( icontinue )
+      INTEGER, INTENT(in) :: icontinue
+      !!
       PRINT *,''
-      PRINT *,'  ======   A e r o B u l k  c o m m a n d  l i n e  T o y   ====='
+      IF (icontinue>=1) THEN
+         PRINT *,''
+         PRINT *,'  ======   A e r o B u l k  c o m m a n d  l i n e  T o y   ====='
+         PRINT *,''
+         PRINT *,'                      (L. Brodeau, 2015-2019)'
+         PRINT *,''
+         PRINT *,'                   Simple interactive test-case'
+      END IF
+      PRINT *,'##########################################################################'
+      PRINT *,'   List of command line options:'
       PRINT *,''
-      PRINT *,'                      (L. Brodeau, 2015-2019)'
+      PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
       PRINT *,''
-      PRINT *,'                   Simple interactive test-case'
-   END IF
-   PRINT *,'##########################################################################'
-   PRINT *,'   List of command line options:'
-   PRINT *,''
-   PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
-   PRINT *,''
-   PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
-   PRINT *,''
-   PRINT *,'   -S   => Use the Cool-Skin parameterization to compute and use the'
-   PRINT *,'           cool-skin temperature instead of the bulk SST'
-   PRINT *,'           only usable for COARE and ECMWF families of algorithms'
-   PRINT *,'           (warm-layer param. cannot be used in this simple test as'
-   PRINT *,'           no time-integration is involved here...)'
-   PRINT *,''
-   PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
-   PRINT *,'           -> will not ask for air temp. at zt, instead will only'
-   PRINT *,'           ask for relative humidity at zt and will force the air'
-   PRINT *,'           temperature at zt that yields a neutral-stability!'
-   PRINT *,''
-   PRINT *,'   -h   => Show this message'
-   PRINT *,'##########################################################################'
-   PRINT *,''
-   IF (icontinue==0) STOP
-   !!
-END SUBROUTINE usage_test
-   
+      PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
+      PRINT *,''
+      PRINT *,'   -S   => Use the Cool-Skin parameterization to compute and use the'
+      PRINT *,'           cool-skin temperature instead of the bulk SST'
+      PRINT *,'           only usable for COARE and ECMWF families of algorithms'
+      PRINT *,'           (warm-layer param. cannot be used in this simple test as'
+      PRINT *,'           no time-integration is involved here...)'
+      PRINT *,''
+      PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
+      PRINT *,'           -> will not ask for air temp. at zt, instead will only'
+      PRINT *,'           ask for relative humidity at zt and will force the air'
+      PRINT *,'           temperature at zt that yields a neutral-stability!'
+      PRINT *,''
+      PRINT *,'   -h   => Show this message'
+      PRINT *,'##########################################################################'
+      PRINT *,''
+      IF (icontinue==0) STOP
+      !!
+   END SUBROUTINE usage_test
+
 END PROGRAM AEROBULK_TOY_IJ

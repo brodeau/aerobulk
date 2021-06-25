@@ -34,6 +34,10 @@ MODULE mod_phymbl
       MODULE PROCEDURE pot_temp_vctr, pot_temp_sclr
    END INTERFACE pot_temp
 
+   INTERFACE abs_temp
+      MODULE PROCEDURE abs_temp_vctr, abs_temp_sclr
+   END INTERFACE abs_temp
+
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
    END INTERFACE virt_temp
@@ -45,6 +49,10 @@ MODULE mod_phymbl
    INTERFACE Theta_from_z_P0_T_q
       MODULE PROCEDURE Theta_from_z_P0_T_q_vctr, Theta_from_z_P0_T_q_sclr
    END INTERFACE Theta_from_z_P0_T_q
+
+   INTERFACE T_from_z_P0_Theta_q
+      MODULE PROCEDURE T_from_z_P0_Theta_q_vctr, T_from_z_P0_Theta_q_sclr
+   END INTERFACE T_from_z_P0_Theta_q
 
    INTERFACE visc_air
       MODULE PROCEDURE visc_air_vctr, visc_air_sclr
@@ -230,6 +238,50 @@ CONTAINS
 
 
    !===============================================================================================
+   FUNCTION abs_temp_sclr( pThta, pPz,  pPref )
+      !!------------------------------------------------------------------------
+      !!
+      !! Poisson equation to obtain absolute temperature from potential temperature, pressure, and
+      !! the reference (sea-level) pressure.
+      !!
+      !! Air parcel is at height `z` m above sea-level where the pressure is `ppz`,
+      !! its potential temperature is `pThta`.
+      !! `pPref` is the reference pressure at sea level aka P0.
+      !!
+      !! Author: L. Brodeau, June 2021 / AeroBulk
+      !!         (https://github.com/brodeau/aerobulk/)
+      !!------------------------------------------------------------------------
+      REAL(wp), INTENT(in)           :: pThta          !: potential air temperature at `z` m above sea level  [K]
+      REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
+      REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
+      REAL(wp)                       :: abs_temp_sclr  !: potential air temperature at `z` m above sea level [K]
+      !!
+      REAL(wp) :: zPref = Patm
+      !!-------------------------------------------------------------------
+      IF( PRESENT(pPref) ) zPref = pPref
+      abs_temp_sclr = pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
+      !!
+   END FUNCTION abs_temp_sclr
+
+   FUNCTION abs_temp_vctr( pThta, pPz,  pPref )
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pThta
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)           :: pPz
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pPref
+      REAL(wp), DIMENSION(jpi,jpj)                       :: abs_temp_vctr
+      !!-------------------------------------------------------------------
+      IF( PRESENT(pPref) ) THEN
+         abs_temp_vctr = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
+      ELSE
+         abs_temp_vctr = pThta / MAX ( ( Patm  / pPz )**rpoiss_dry, 1.E-9_wp )
+      END IF
+   END FUNCTION abs_temp_vctr
+   !===============================================================================================
+
+
+
+   
+
+   !===============================================================================================
    FUNCTION virt_temp_sclr( pTa, pqa )
       !!------------------------------------------------------------------------
       !!
@@ -330,7 +382,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       !!                           ***  FUNCTION Theta_from_z_P0_T_q  ***
       !!
-      !! ** Purpose : Converts absolute temperature at height `pz` to absolute temperature,
+      !! ** Purpose : Converts absolute temperature at height `pz` to potential temperature,
       !!              using sea-level pressure and specific humidity at heaight `pz`
       !!
       !! ** Author: G. Samson,  Feb  2021
@@ -361,6 +413,55 @@ CONTAINS
    END FUNCTION Theta_from_z_P0_T_q_vctr
    !===============================================================================================
 
+
+   !===============================================================================================
+   FUNCTION T_from_z_P0_Theta_q_sclr( pz, pslp, pThta, pqa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION T_from_z_P0_Theta_q  ***
+      !!
+      !! ** Purpose : Converts potential temperature at height `pz` to absolute temperature,
+      !!              using sea-level pressure and specific humidity at heaight `pz`
+      !!
+      !! ** Author: G. Samson,  Feb  2021
+      !!            L. Brodeau, June 2021
+      !!-------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: pz               ! height above sea-level             [m]
+      REAL(wp), INTENT(in) :: pslp             ! pressure at sea-level (z=0)        [Pa]
+      REAL(wp), INTENT(in) :: pThta            ! air potential temperature at z=`pz`     [K]
+      REAL(wp), INTENT(in) :: pqa              ! air specific humidity at z=`pz`    [kg/kg]
+      REAL(wp)             :: T_from_z_P0_Theta_q_sclr ! air pot. temperature at z=`pz` [K]
+      !!
+      REAL(wp) :: zPz, zTa
+      INTEGER  :: it
+      !!-------------------------------------------------------------------------------
+      zTa = pThta - rgamma_dry*pz   ! 1st guess of abs. temp. based on pot. temp
+      !!
+      DO it = 1, 4
+         zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, zTa, pqa ) ! pressure at z=`pz`
+         zTa = abs_temp_sclr( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
+      END DO         
+      T_from_z_P0_Theta_q_sclr = zTa
+      !!
+   END FUNCTION T_from_z_P0_Theta_q_sclr
+
+   FUNCTION T_from_z_P0_Theta_q_vctr( pz, pslp, pThta, pqa )
+      REAL(wp),                     INTENT(in) :: pz               
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp             
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pThta            
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa              
+      REAL(wp), DIMENSION(jpi,jpj)             :: T_from_z_P0_Theta_q_vctr
+      INTEGER :: ji, jj
+      DO jj = 1, jpj
+         DO ji = 1, jpi
+            T_from_z_P0_Theta_q_vctr(ji,jj) = T_from_z_P0_Theta_q_sclr( pz, pslp(ji,jj), pThta(ji,jj), pqa(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION T_from_z_P0_Theta_q_vctr
+   !===============================================================================================
+
+
+
+   
 
    !   !===============================================================================================
    !   FUNCTION Pz_from_P0_sclr( pz, pslp, pqa, pThta, pTa, l_ice )
@@ -685,14 +786,14 @@ CONTAINS
    !!
    FUNCTION Ri_bulk_vctr( pz, psst, pThta, pssq, pqa, pub,  pTa_layer, pqa_layer )
       REAL(wp), DIMENSION(jpi,jpj)             :: Ri_bulk_vctr
-      REAL(wp)                    , INTENT(in) :: pz    ! height above the sea (aka "delta z")  [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst  ! SST                                   [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pThta  ! pot. air temp. at height "pz"         [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq  ! 0.98*q_sat(SST)                   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa   ! air spec. hum. at height "pz"     [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pTa_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
+      REAL(wp)                    , INTENT(in) :: pz
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: psst
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pThta
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pssq
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pub
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pTa_layer
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: pqa_layer
       LOGICAL  :: l_ptqa_l_prvd = .FALSE.
       INTEGER  ::   ji, jj
       IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
@@ -709,6 +810,7 @@ CONTAINS
    END FUNCTION Ri_bulk_vctr
    !===============================================================================================
 
+   
    !===============================================================================================
    FUNCTION e_sat_sclr( pTa )
       !!----------------------------------------------------------------------------------
