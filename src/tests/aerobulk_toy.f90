@@ -173,27 +173,26 @@ PROGRAM AEROBULK_TOY
    IF ( l_use_rh .OR. l_force_neutral ) THEN
       WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
       READ(*,*) RH_zt
-      RH_zt = 1.E-2*RH_zt
       IF ( .NOT. l_force_neutral ) THEN
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-         !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+         WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1.E3*q_zt, ' [g/kg]'
+         !WRITE(6,*) 'Inverse => RH from q_zt:', rh_air(q_zt, t_zt, SLP)
       END IF
    ELSEIF ( l_use_dp ) THEN
       WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
       READ(*,*) d_zt
       d_zt = d_zt + rt0
       q_zt = q_air_dp(d_zt, SLP)
-      WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1.E3*q_zt, ' [g/kg]'
+      !WRITE(6,*) 'Inverse => RH from q_zt:', rh_air(q_zt, t_zt, SLP)
    ELSE
       WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
-         &      TRIM(czt), 1000.*qsat_zt
+         &      TRIM(czt), 1.E3*qsat_zt
       READ(*,*) q_zt
       q_zt = 1.E-3*q_zt
       RH_zt   = rh_air(q_zt, t_zt, SLP)
-      WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
-      !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
+      WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), RH_zt
+      !WRITE(6,*) 'Inverse => q_zt from RH :', 1.E3*q_air_rh(RH_zt, t_zt, SLP)
    END IF
 
    CALL prtcol( 6, 'q_zt', q_zt(1,1), 'kg/kg' )
@@ -217,7 +216,7 @@ PROGRAM AEROBULK_TOY
 
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
       WRITE(6,*) 'We force t_',TRIM(czt),' to =>', REAL(  t_zt-rt0,4), ' [deg.C]'
-      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1000.*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1000.*qsat_zt,4),')'
+      WRITE(6,*) 'We force q_',TRIM(czt),' to =>', REAL(1.E3*q_zt,4), ' [g/kg] ', ' (sat:', REAL(1.E3*qsat_zt,4),')'
 
    END IF
 
@@ -236,7 +235,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) ' *** Cp of (moist) air at ',TRIM(czt),' => ', Cp_ma, '[J/K/kg]'
    WRITE(6,*) ''
    !rgamma = gamma_moist(t_zt, q_zt)
-   !WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1000.*rgamma ,4), '[K/1000m]'
+   !WRITE(6,*) ' *** Adiabatic lapse-rate of (moist) air at ',TRIM(czt),' => ', REAL(1.E3*rgamma ,4), '[K/1000m]'
    WRITE(6,*) '============================================================================'
    WRITE(6,*) ''
    WRITE(6,*) ''
@@ -244,8 +243,8 @@ PROGRAM AEROBULK_TOY
 
 
    WRITE(6,*) ''
-   WRITE(6,*) ' *** q_',TRIM(czt),'                      =', REAL(1000.*q_zt,4), '[g/kg]'
-   WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst, SLP) =',            REAL(1000.*ssq ,4), '[g/kg]'
+   WRITE(6,*) ' *** q_',TRIM(czt),'                      =', REAL(1.E3*q_zt,4), '[g/kg]'
+   WRITE(6,*) ' *** SSQ = 0.98*q_sat(sst, SLP) =',            REAL(1.E3*ssq ,4), '[g/kg]'
    WRITE(6,*) ''
 
 
@@ -408,9 +407,9 @@ PROGRAM AEROBULK_TOY
 
       vTheta_u(ialgo) = theta_zu(1,1) -rt0   ! Potential temperature at zu
 
-      vCd(ialgo) = 1000.*Cd(1,1)
-      vCh(ialgo) = 1000.*Ch(1,1)
-      vCe(ialgo) = 1000.*Ce(1,1)
+      vCd(ialgo) = 1.E3*Cd(1,1)
+      vCh(ialgo) = 1.E3*Ch(1,1)
+      vCe(ialgo) = 1.E3*Ce(1,1)
 
 
 
@@ -427,9 +426,9 @@ PROGRAM AEROBULK_TOY
       vL(ialgo) = zL(1,1)
 
       vUN10(ialgo) = zUN10(1,1)
-      vCdN(ialgo)  = 1000.*zCdN(1,1)
-      vChN(ialgo)  = 1000.*zChN(1,1)
-      vCeN(ialgo)  = 1000.*zCeN(1,1)
+      vCdN(ialgo)  = 1.E3*zCdN(1,1)
+      vChN(ialgo)  = 1.E3*zChN(1,1)
+      vCeN(ialgo)  = 1.E3*zCeN(1,1)
 
       !! Air density at zu (10m)
       rho_zu = rho_air(t_zu, q_zu, SLP)
@@ -444,7 +443,7 @@ PROGRAM AEROBULK_TOY
       CALL BULK_FORMULA( zu, Ts(1,1), qs(1,1), theta_zu(1,1), q_zu(1,1), Cd(1,1), Ch(1,1), Ce(1,1), W10(1,1), Ublk(1,1), SLP(1,1), &
          &              vTau(ialgo), vQH(ialgo), vQL(ialgo),  pEvap=vEvap(ialgo) )
 
-      vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
+      vTau(ialgo)  =       1.E3 *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
 
       IF ( l_use_coolsk ) THEN
@@ -465,7 +464,7 @@ PROGRAM AEROBULK_TOY
    IF ( zt /= zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
       WRITE(6,*) 'theta_',TRIM(czt),' =', REAL(theta_zt-rt0,4), '[deg.C]'
-      WRITE(6,*)     'q_',TRIM(czt),' =', REAL(1000.*q_zt  ,4), '[g/kg]'
+      WRITE(6,*)     'q_',TRIM(czt),' =', REAL(1.E3*q_zt  ,4), '[g/kg]'
    END IF
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
@@ -474,17 +473,17 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) '===================================================================================================='
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
-   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1000.*vQu, 4)       , '[g/kg]'
-   WRITE(6,*) '    q_',TRIM(czu),'_sane=   ', REAL(1000.*vQu_sane, 4)  , '[g/kg]'
+   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1.E3*vQu, 4)       , '[g/kg]'
+   WRITE(6,*) '    q_',TRIM(czu),'_sane=   ', REAL(1.E3*vQu_sane, 4)  , '[g/kg]'
    WRITE(6,*) ''
-   WRITE(6,*) '      SSQ     =   ', REAL(1000.*qs(1,1), 4)             , '[g/kg]'
+   WRITE(6,*) '      SSQ     =   ', REAL(1.E3*qs(1,1), 4)             , '[g/kg]'
    WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
-   WRITE(6,*) '    Delta q   =   ', REAL(1000.*(vQu - qs(1,1)), 4)     , '[g/kg]'
+   WRITE(6,*) '    Delta q   =   ', REAL(1.E3*(vQu - qs(1,1)), 4)     , '[g/kg]'
    WRITE(6,*) ''
    WRITE(6,*) '    Ug (gust) =   ', REAL(vUg, 4)                       , '[m/s]'
    WRITE(6,*) ''
 
-   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1000.*vQu_sane, 4), '[g/kg]'
+   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1.E3*vQu_sane, 4), '[g/kg]'
    PRINT *, ''
 
    WRITE(6,*) ''
@@ -538,7 +537,7 @@ PROGRAM AEROBULK_TOY
       WRITE(6,*) '  Q non-solar =   ', REAL( vQL + vQH + vQlw ,4), ' [W/m^2]'
       WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), ' [deg.C]'
       WRITE(6,*) '  Ts - SST    =   ', REAL( vTs-vSST ,4), ' [deg.C]'
-      WRITE(6,*) '      qs      =   ', REAL( 1000.*vqs,4), ' [g/kg]'
+      WRITE(6,*) '      qs      =   ', REAL( 1.E3*vqs,4), ' [g/kg]'
       WRITE(6,*) ''
    END IF
 

@@ -165,7 +165,7 @@ PROGRAM TEST_PHYMBL
       vqsat3(:,:) = rdct_qsat_salt*q_sat_crude(vsst_k, vrho)
 
       !! Same but using density of air at 10m => T=SST-2 and not saturated => 80% hum!
-      vrh(:,:) = 0.8_wp                    ! Relative humidity at 10m
+      vrh(:,:)  = 80._wp                   ! Relative humidity at 10m
       vt10(:,:) = vsst_k + dT              ! Air temperature at 10m
 
       !! Don't need to do what follows cause we specified that SLP is at 10m !

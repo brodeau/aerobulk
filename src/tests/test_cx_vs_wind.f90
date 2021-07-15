@@ -16,7 +16,7 @@ PROGRAM cx_vs_wind_test
       &             wind_max = 50.
 
    !! Realistic relative humidity range to test:
-   REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 0.7 , 0.75 , 0.8 , 0.85 , 0.9 , 0.95 , 1. /)
+   REAL(wp), DIMENSION(7), PARAMETER :: vrh = (/ 70. , 75. , 80. , 85. , 90. , 95. , 100. /)
 
    LOGICAL,  PARAMETER :: ldebug = .FALSE.
    REAL(wp), PARAMETER :: wdebug = 4.2
@@ -444,7 +444,7 @@ CONTAINS
       !!    Ts         surface temperature          (K)
       !!    dvt        difference virt. pot. (Tvp_a - Ts)       (K)
       !!    nh         number of different relative humidity values tested
-      !!    trh        table containing the nh humidities     (ratio)
+      !!    trh        table containing the nh humidities     (%)
       !!    t_ta_qa    array contening the nh couples possible   (K,kg/kg)
       !!
       !!#######################################################################

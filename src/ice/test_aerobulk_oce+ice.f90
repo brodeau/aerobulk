@@ -191,11 +191,10 @@ PROGRAM TEST_AEROBULK_ICE
    IF ( l_use_rh .OR. l_force_neutral ) THEN
       WRITE(6,*) 'Give relative humidity at ',TRIM(czt),' [%]:'
       READ(*,*) RH_zt
-      RH_zt = 1.E-2*RH_zt
       IF ( .NOT. l_force_neutral ) THEN
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
          WRITE(6,*) 'q_',TRIM(czt),' from RH_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-         !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+         !WRITE(6,*) 'Inverse => RH from q_zt:', rh_air(q_zt, t_zt, SLP)
       END IF
    ELSEIF ( l_use_dp ) THEN
       WRITE(6,*) 'Give dew-point temperature at ',TRIM(czt),' (deg. C):'
@@ -203,14 +202,14 @@ PROGRAM TEST_AEROBULK_ICE
       d_zt = d_zt + rt0
       q_zt = q_air_dp(d_zt, SLP)
       WRITE(6,*) 'q_',TRIM(czt),' from d_',TRIM(czt),' =>', 1000*q_zt, ' [g/kg]'
-      !WRITE(6,*) 'Inverse => RH from q_zt:', 100*rh_air(q_zt, t_zt, SLP)
+      !WRITE(6,*) 'Inverse => RH from q_zt:', rh_air(q_zt, t_zt, SLP)
    ELSE
       WRITE(*, '("Give specific humidity at ",a," (g/kg) (saturation is at ",f6.3," g/kg):")') &
          &      TRIM(czt), 1000.*qsat_zt
       READ(*,*) q_zt
       q_zt = 1.E-3*q_zt
       RH_zt   = rh_air(q_zt, t_zt, SLP)
-      WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), 100*RH_zt
+      WRITE(*,'("  => Relative humidity at ",a," = ",f4.1,"%")') TRIM(czt), RH_zt
       !WRITE(6,*) 'Inverse => q_zt from RH :', 1000*q_air_rh(RH_zt, t_zt, SLP)
    END IF
    WRITE(6,*) ''

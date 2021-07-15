@@ -199,7 +199,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          dummy = MIN(99.999 , dummy)
          DO jt = 1, Nt
             !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
-            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+            q_zt(:,:,jt) = q_air_rh(dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
          END DO
       ELSE
          !! Dew-point is read:
@@ -239,7 +239,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
          dummy = MIN(99.999 , dummy)
          DO jt = 1, Nt
             !PRINT *, 'LOLO: rh, t_zt, SLP =', dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt)
-            q_zt(:,:,jt) = q_air_rh(0.01*dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
+            q_zt(:,:,jt) = q_air_rh(dummy(:,:,jt), t_zt(:,:,jt), SLP(:,:,jt))
          END DO
       ELSE
          !! Dew-point is read:

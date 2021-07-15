@@ -1005,9 +1005,9 @@ CONTAINS
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj)             :: q_air_rh
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: prha        !: relative humidity      [fraction, not %!!!]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTa        !: absolute air temperature        [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp        !: atmospheric pressure   [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: prha        !: relative humidity       [%]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTa         !: absolute air temperature [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp        !: atmospheric pressure    [Pa]
       !
       INTEGER  ::   ji, jj      ! dummy loop indices
       REAL(wp) ::   ze      ! local scalar
@@ -1015,7 +1015,7 @@ CONTAINS
       !
       DO jj = 1, jpj
          DO ji = 1, jpi
-            ze = prha(ji,jj)*e_sat_sclr(pTa(ji,jj))
+            ze = 0.01_wp*prha(ji,jj)*e_sat_sclr(pTa(ji,jj))
             q_air_rh(ji,jj) = ze*reps0/(pslp(ji,jj) - (1. - reps0)*ze)
          END DO
       END DO
@@ -1772,14 +1772,14 @@ CONTAINS
       !!
       !! Gives relative humidity of air of air from spec. hum., temperature and pressure
       !!
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)             :: rh_air  !: relative humidity [] (fraction!!!, not percent!)
+      !!---------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj)             :: rh_air  !: relative humidity [%]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa     !: specific humidity of air      [kg/kg]
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pTa     !: absolute air temperature               [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp     !: atmospheric pressure          [Pa]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp    !: atmospheric pressure          [Pa]
       !!----------------------------------------------------------------------------------
       rh_air = e_sat(pTa)
-      rh_air = e_air(pqa, pslp) / rh_air
+      rh_air = 100. * ( e_air(pqa, pslp) / rh_air )
       !!
    END FUNCTION rh_air
    !===============================================================================================
