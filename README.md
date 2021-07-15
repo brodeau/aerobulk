@@ -123,8 +123,8 @@ AeroBulk can also directly compute the 3 turbulent fluxes by means of the `aerob
        PROGRAM TEST_FLUX
            USE mod_aerobulk
            ...
-           CALL AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, q_zt, U_zu, V_zu, SLP, &
-           &                    Qe, Qh, Tau_x, Tau_y, Evap,                      &
+           CALL AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
+           &                    Qe, Qh, Tau_x, Tau_y, Evap,                        &
            &                   [, Niter=N, rad_sw=Rsw, rad_lw=Rlw] )
            ...
        END PROGRAM TEST_FLUX
@@ -136,7 +136,7 @@ INPUT ARGUMENTS:
 *   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
 *   `sst` : (2D,real) SST [K]
 *   `t_zt` : (2D,real) ABSOLUTE air temperature at zt [K]
-*   `q_zt` : (2D,real) specific humidity of air at zt [kg/kg]
+*   `hum_zt`: (2D,real) humidity of air at zt given as *specific* [kg/kg], or *relative* [%], or *dew-point* [K]
 *   `U_zu` : (2D,real) zonal scalar wind speed at 10m [m/s]
 *   `V_zu` : (2D,real) meridional scalar wind speed at 10m [m/s]
 *   `SLP` : (2D,real) sea-level pressure [Pa]
@@ -159,7 +159,7 @@ OUTPUT ARGUMENTS:
 
 Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
 
-           CALL AEROBULK_MODEL( 'coare3p0', 2., 10., sst, t_zt, q_zt, U_zu, V_zu, SLP, &
+           CALL AEROBULK_MODEL( 'coare3p0', 2., 10., sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
                 &               Qe, Qh, Tau_x, Tau_y, Evap,                            &
                 &               Niter=10, rad_sw=Rsw, rad_lw=Rlw T_s=SSST )
 
@@ -185,20 +185,20 @@ Example of a call:
                   nitend = Nt  ! number of time steps to go (default is 1)
                   ...
                   CALL TURB_COARE3P0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cool_skin, l_use_warm_layer, &
-                  &                    Cd, Ch, Ce, t_zu, q_zu, U_blk            &
-                  &                   [ , Qsw=Rsw, rad_lw=Rlw, slp=P ]         &
+                  &                    Cd, Ch, Ce, t_zu, q_zu, U_blk             &
+                  &                   [ , Qsw=Rsw, rad_lw=Rlw, slp=P ]           &
                   &                   [ , xz0=z0, xu_star=u_s, xL=L ] )
                   ...  
               END PROGRAM TEST_COEFF
 
 **INPUT ARGUMENTS:**
 
-*   `kt` : (Sc,int) current time step (starts at 1 until `nitend`)
-*   `zt` : (Sc,real) height for air temperature and humidity [m]
-*   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
-*   `t_zt` : (2D,real) POTENTIAL air temperature at zt [K]
-*   `q_zt` : (2D,real) air spec. humidity of at zt [kg/kg]
-*   `U_zu` : (2D,real) scalar wind speed at zu [m/s]
+*   `kt`  : (Sc,int) current time step (starts at 1 until `nitend`)
+*   `zt`  : (Sc,real) height for air temperature and humidity [m]
+*   `zu`  : (Sc,real) height for wind speed (generally 10m) [m]
+*   `t_zt`: (2D,real) POTENTIAL air temperature at zt [K]
+*   `q_zt`: (2D,real) air spec. humidity of at zt [kg/kg]
+*   `U_zu`: (2D,real) scalar wind speed at zu [m/s]
 
 **INPUT and OUTPUT ARGUMENTS:**
 

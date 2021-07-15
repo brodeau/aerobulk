@@ -26,10 +26,10 @@ CONTAINS
 
    
    !==== C++ interface for using optional skin temperature shceme ====
-   SUBROUTINE aerobulk_cxx_skin( calgo, Nt, zt, zu, sst, t_zt,   &
-      &                          q_zt, U_zu, V_zu, slp,      &
-      &                          QL, QH, Tau_x, Tau_y, Evap, &
-      &                          Niter, rad_sw, rad_lw, T_s, &
+   SUBROUTINE aerobulk_cxx_skin( calgo, Nt, zt, zu, sst, t_zt, &
+      &                          hum_zt, U_zu, V_zu, slp,      &
+      &                          QL, QH, Tau_x, Tau_y, Evap,   &
+      &                          Niter, rad_sw, rad_lw, T_s,   &
       &                          l, m ) BIND(c)
       
       ! Arguments
@@ -37,7 +37,7 @@ CONTAINS
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
-      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
+      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
       REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: rad_sw, rad_lw
       
@@ -60,7 +60,7 @@ CONTAINS
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL AEROBULK_MODEL( calgo_fort, zt, zu, sst, t_zt,                     &
-         &                 q_zt, U_zu, V_zu, slp,                             &
+         &                 hum_zt, U_zu, V_zu, slp,                           &
          &                 QL, QH, Tau_x, Tau_y, Evap,                        &
          &                 Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
       
@@ -68,17 +68,17 @@ CONTAINS
 
    
    !==== C++ interface without using optional skin temperature scheme ====
-   SUBROUTINE aerobulk_cxx_no_skin( calgo, Nt, zt, zu, sst, t_zt, &
-      &                             q_zt, U_zu, V_zu, slp,    &
-      &                             QL, QH, Tau_x, Tau_y, Evap,     &
+   SUBROUTINE aerobulk_cxx_no_skin( calgo, Nt, zt, zu, sst, t_zt,  &
+      &                             hum_zt, U_zu, V_zu, slp,       &
+      &                             QL, QH, Tau_x, Tau_y, Evap,    &
       &                             Niter, l, m ) BIND(c)
-
+      
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
-      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
+      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
       
       ! Locals
@@ -100,7 +100,7 @@ CONTAINS
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
       CALL AEROBULK_MODEL( calgo_fort, zt, zu, sst, t_zt,         &
-         &                 q_zt, U_zu, V_zu, slp,                 &
+         &                 hum_zt, U_zu, V_zu, slp,               &
          &                 QL, QH, Tau_x, Tau_y, Evap, Niter=Niter )
       
    END SUBROUTINE aerobulk_cxx_no_skin

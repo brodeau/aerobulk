@@ -22,14 +22,14 @@ CONTAINS
 
 
 
-   SUBROUTINE aerobulk_init(psst, pt, pq, pU, pV, pslp)
+   SUBROUTINE aerobulk_init(psst, pt, ph, pU, pV, pslp)
 
       !! 1. Check on correct size for array
       !! 2. Set the official 2D shape of the problem jpi,jpj (saved and shared via mod_const)
       !! 3. Check the values in the array make sense
       !! 4. Give some info
 
-      REAL(wp), DIMENSION(:,:), INTENT(in)  :: psst, pt, pq, pU, pV, pslp
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: psst, pt, ph, pU, pV, pslp
 
       INTEGER :: ni, nj
 
@@ -46,7 +46,7 @@ CONTAINS
       END IF
 
       ! 3.
-      ni = SIZE(pq,1)  ; nj = SIZE(pq,2)
+      ni = SIZE(ph,1)  ; nj = SIZE(ph,2)
       IF ( (ni /= jpi).OR.(ni /= jpi) ) THEN
          PRINT *, 'ERROR: aerobulk_init => SST and q_air arrays do not agree in shape!' ; STOP
       END IF
@@ -88,22 +88,26 @@ CONTAINS
 
 
    SUBROUTINE AEROBULK_MODEL( calgo, zt, zu, sst, t_zt,   &
-      &                       q_zt, U_zu, V_zu, slp,      &
-      &                       QL, QH, Tau_x, Tau_y, Evap,  &
+      &                       hum_zt, U_zu, V_zu, slp,    &
+      &                       QL, QH, Tau_x, Tau_y, Evap, &
       &                       Niter, rad_sw, rad_lw, T_s  )
       !!======================================================================================
       !!
       !! INPUT :
       !! -------
-      !!    *  calgo: what bulk algorithm to use => 'coare'/'ncar'/'ecmwf'
-      !!    *  zt   : height for temp. & spec. hum. of air (usually 2 or 10) [m]
-      !!    *  zu   : height for wind (usually 10)                           [m]
-      !!    *  sst  : SST                                                    [K]
-      !!    *  t_zt : ABSOLUTE air temperature at zt                         [K]
-      !!    *  q_zt : specific humidity of air at zt                         [kg/kg]
-      !!    *  U_zu : zonal wind speed at zu                                 [m/s]
-      !!    *  V_zu : meridional wind speed at zu                            [m/s]
-      !!    *  slp  : mean sea-level pressure                                [Pa] ~101000 Pa
+      !!    *  calgo  : what bulk algorithm to use => 'coare'/'ncar'/'ecmwf'
+      !!    *  zt     : height for temp. & spec. hum. of air (usually 2 or 10) [m]
+      !!    *  zu     : height for wind (usually 10)                           [m]
+      !!    *  sst    : SST                                                    [K]
+      !!    *  t_zt   : ABSOLUTE air temperature at zt                         [K]
+      !!    *  hum_zt : air humidity at zt, can be given as:
+      !!                - specific humidity                                [kg/kg]
+      !!                - dew-point temperature                                [K]
+      !!                - relative humidity                                    [%]
+      !!               => type should normally be recognized based on value range
+      !!    *  U_zu   : zonal wind speed at zu                                 [m/s]
+      !!    *  V_zu   : meridional wind speed at zu                            [m/s]
+      !!    *  slp    : mean sea-level pressure                                [Pa] ~101000 Pa
       !!
       !! OUTPUT :
       !! --------
@@ -123,7 +127,7 @@ CONTAINS
       !!============================================================================
       CHARACTER(len=*),         INTENT(in)  :: calgo
       REAL(wp),                 INTENT(in)  :: zt, zu
-      REAL(wp), DIMENSION(:,:), INTENT(in)  :: sst, t_zt, q_zt, U_zu, V_zu, slp
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(wp), DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
       REAL(wp), DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s
@@ -132,12 +136,12 @@ CONTAINS
 
       IF ( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
-      IF ( l_1st_call_ab_init ) CALL aerobulk_init(sst, t_zt, q_zt, U_zu, V_zu, slp)
+      IF ( l_1st_call_ab_init ) CALL aerobulk_init(sst, t_zt, hum_zt, U_zu, V_zu, slp)
 
       IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
 
          CALL aerobulk_compute(calgo, zt, zu, sst, t_zt, &
-            &                  q_zt, U_zu, V_zu, slp,    &
+            &                  hum_zt, U_zu, V_zu, slp,    &
             &                  QL, QH, Tau_x, Tau_y,     &
             &                  rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
 
@@ -150,7 +154,7 @@ CONTAINS
       ELSE
 
          CALL aerobulk_compute(calgo, zt, zu, sst, t_zt, &
-            &                  q_zt, U_zu, V_zu, slp,    &
+            &                  hum_zt, U_zu, V_zu, slp,  &
             &                  QL, QH, Tau_x, Tau_y,     &
             &                  Evp=Evap)
 

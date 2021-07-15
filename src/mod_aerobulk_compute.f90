@@ -114,6 +114,7 @@ CONTAINS
 
       ! Type of humidity provided?
       chum = type_of_humidity(hum_zt, zmask)
+      PRINT *, 'LOLO: humidity type is: "'//chum//'" !'
 
       ! Conversion to specific humidity when needed:
       SELECT CASE(chum)
@@ -126,6 +127,9 @@ CONTAINS
       CASE DEFAULT
          WRITE(6,*) 'ERROR: mod_aerobulk_compute.f90 => humidty type "',chum,'" is unknown!!!' ; STOP
       END SELECT
+
+
+      PRINT *, 'LOLO: as "'//chum//'", "sh" =>', hum_zt(10,10), zQzt(10,10)
 
 
       ! Cool skin ?
@@ -262,9 +266,18 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
       INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
 
+      LOGICAL, DIMENSION(:,:), ALLOCATABLE :: lmask
+      INTEGER :: nx, ny
       CHARACTER(len=64) :: cunit
       REAL(wp) :: zmean, zmin, zmax
       LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
+
+      nx = SIZE(mask,1)
+      ny = SIZE(mask,2)
+      ALLOCATE( lmask(nx,ny) )
+      lmask(:,:) = .FALSE.
+      WHERE( mask==1 ) lmask = .TRUE.
+
 
       zmean = SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
 
@@ -317,8 +330,8 @@ CONTAINS
          STOP
       END SELECT
 
-      IF ( MAXVAL(Xval) > zmax )                   l_too_large    = .TRUE.
-      IF ( MINVAL(Xval) < zmin )                   l_too_small    = .TRUE.
+      IF ( MAXVAL(Xval, MASK=lmask) > zmax )                   l_too_large    = .TRUE.
+      IF ( MINVAL(Xval, MASK=lmask) < zmin )                   l_too_small    = .TRUE.
       IF ( (zmean < zmin) .OR. (zmean > zmax) ) l_mean_outside = .TRUE.
 
       IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
@@ -326,7 +339,9 @@ CONTAINS
          WRITE(*,'(" min value = ", es10.3," max value = ", es10.3," mean value = ", es10.3)') MINVAL(Xval), MAXVAL(Xval), zmean
          STOP
       END IF
-
+      
+      DEALLOCATE( lmask )
+      
    END SUBROUTINE check_unit_consitency
 
 
@@ -340,14 +355,24 @@ CONTAINS
       INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
       CHARACTER(len=2)                       :: type_of_humidity
 
+      LOGICAL, DIMENSION(:,:), ALLOCATABLE :: lmask
+      INTEGER :: nx, ny
       CHARACTER(len=64) :: cunit
       REAL(wp) :: zmean, zmin, zmax
       LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
+      
+      nx = SIZE(mask,1)
+      ny = SIZE(mask,2)
+      ALLOCATE( lmask(nx,ny) )
+      lmask(:,:) = .FALSE.
+      WHERE( mask==1 ) lmask = .TRUE.
 
-      zmean = SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
-
+      zmean =    SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
+      zmin  = MINVAL( Xval,  MASK=lmask )
+      zmax  = MAXVAL( Xval,  MASK=lmask )
+      
       !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
-
+      type_of_humidity = '00'
 
       IF( (zmean >= 0._wp).AND.(zmean < 0.08_wp).AND.(zmin >= 0._wp).AND.(zmax < 0.08_wp) ) THEN
          !! Specific humidity! [kg/kg]
@@ -367,10 +392,10 @@ CONTAINS
          WRITE(6,*) '     * mean =', REAL(zmean,4)
          WRITE(6,*) '     * min  =', REAL(zmin, 4)
          WRITE(6,*) '     * max  =', REAL(zmax, 4)
-
+         STOP
       END IF
-
-      !PRINT *, 'LOLO: humidity is of "'//type_of_humidity//'" type !'
+      
+      DEALLOCATE( lmask )
 
    END FUNCTION type_of_humidity
 
