@@ -1016,7 +1016,7 @@ CONTAINS
       DO jj = 1, jpj
          DO ji = 1, jpi
             ze = 0.01_wp*prha(ji,jj)*e_sat_sclr(pTa(ji,jj))
-            q_air_rh(ji,jj) = ze*reps0/(pslp(ji,jj) - (1. - reps0)*ze)
+            q_air_rh(ji,jj) = ze*reps0/MAX( pslp(ji,jj) - (1. - reps0)*ze , 1._wp )
          END DO
       END DO
       !
@@ -1035,8 +1035,9 @@ CONTAINS
          &     da,     &    !: dew-point temperature   [K]
          &     slp         !: atmospheric pressure    [Pa]
       !!
-      q_air_dp = e_sat(da)*reps0/(slp - (1. - reps0)*e_sat(da))
-      !!
+      q_air_dp = MAX( e_sat(da) , 0._wp ) ! q_air_dp is e_sat !!!
+      q_air_dp = q_air_dp*reps0/MAX( slp - (1. - reps0)*q_air_dp, 1._wp )  ! MAX() are solely here to prevent NaN 
+      !!                                                                   ! over masked regions with silly values
    END FUNCTION q_air_dp
 
 
