@@ -114,22 +114,21 @@ CONTAINS
 
       ! Type of humidity provided?
       chum = type_of_humidity(hum_zt, zmask)
-      PRINT *, 'LOLO: humidity type is: "'//chum//'" !'
+      !PRINT *, 'LOLO: humidity type is: "'//chum//'" !'
 
       ! Conversion to specific humidity when needed:
       SELECT CASE(chum)
       CASE('sh')
          zQzt(:,:) =           hum_zt(:,:)                        ! already specific humidity!
       CASE('dp')
-         zQzt(:,:) = q_air_dp( hum_zt(:,:),            slp(:,:) ) ! dew-point to specific humidity
+         zQzt(:,:) = q_air_dp( hum_zt(:,:),            MAX(slp(:,:),50000._wp) ) ! dew-point to specific humidity
+         !zQzt(:,:) = q_air_dp( MIN(MAX(hum_zt(:,:),150._wp),325._wp), MIN(MAX(slp(:,:),50000._wp),120000._wp) ) ! dew-point to specific humidity
       CASE('rh')
-         zQzt(:,:) = q_air_rh( hum_zt(:,:), t_zt(:,:), slp(:,:) ) ! relative to specific humidity
+         zQzt(:,:) = q_air_rh( hum_zt(:,:), t_zt(:,:), MAX(slp(:,:),50000._wp) ) ! relative to specific humidity
       CASE DEFAULT
          WRITE(6,*) 'ERROR: mod_aerobulk_compute.f90 => humidty type "',chum,'" is unknown!!!' ; STOP
       END SELECT
-
-
-      PRINT *, 'LOLO: as "'//chum//'", "sh" =>', hum_zt(10,10), zQzt(10,10)
+      !PRINT *, 'LOLO: as "'//chum//'", "sh" =>', hum_zt(2,1), zQzt(2,1), ' slp=', slp(2,1)
 
 
       ! Cool skin ?
