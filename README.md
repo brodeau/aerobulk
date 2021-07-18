@@ -123,14 +123,15 @@ AeroBulk can also directly compute the 3 turbulent fluxes by means of the `aerob
        PROGRAM TEST_FLUX
            USE mod_aerobulk
            ...
-           CALL AEROBULK_MODEL( calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
-           &                    Qe, Qh, Tau_x, Tau_y, Evap,                        &
+           CALL AEROBULK_MODEL( jt, Nt, calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
+           &                    Qe, Qh, Tau_x, Tau_y, Evap                                 &
            &                   [, Niter=N, rad_sw=Rsw, rad_lw=Rlw] )
            ...
        END PROGRAM TEST_FLUX
 
 INPUT ARGUMENTS:
-
+*   `jt`  : (Sc,int) current time step (to go from `1` to `Nt`)
+*   `Nt`  : (Sc,int) number of time records to go for
 *   `calgo` : (String) algorithm to use (coare3p0/coare3p6/ncar/ecmwf)
 *   `zt` : (Sc,real) height for temperature and spec. hum. of air [m]
 *   `zu` : (Sc,real) height for wind speed (generally 10m) [m]
@@ -142,8 +143,7 @@ INPUT ARGUMENTS:
 *   `SLP` : (2D,real) sea-level pressure [Pa]
 
 [ OPTIONAL INPUT ARGUMENT: ]
-
-*   `Niter` : (Sc,int) number of iterations (default is 4)
+*   `Niter`  : (Sc,int) number of iterations for the bulk algorithms (default is 5)
 *   `rad_sw` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
 *   `rad_lw` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
 
@@ -159,9 +159,9 @@ OUTPUT ARGUMENTS:
 
 Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
 
-           CALL AEROBULK_MODEL( 'coare3p0', 2., 10., sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
-                &               Qe, Qh, Tau_x, Tau_y, Evap,                            &
-                &               Niter=10, rad_sw=Rsw, rad_lw=Rlw T_s=SSST )
+    CALL AEROBULK_MODEL( 1, 24, 'coare3p0', 2., 10., sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
+         &               Qe, Qh, Tau_x, Tau_y, Evap,                                     &
+         &               Niter=10, rad_sw=Rsw, rad_lw=Rlw T_s=SSST )
 
 &nbsp;
 
@@ -175,25 +175,34 @@ In AeroBulk, 5 different routines are available to compute the bulk transfer (_a
 Use `turb_coare3p0()` of module `mod_blk_coare3p0` (`mod_blk_coare3p0.f90`).
 Example of a call:
 
-              PROGRAM TEST_COEFF
-                  USE mod_const
-                  USE mod_blk_coare3p0
-                  ...
-                  !! Some global parameters that must be defined
-                  jpi    = Ni     ! x-shape of the 2D domain
-                  jpj    = Nj     ! y-shape of the 2D domain
-                  nitend = Nt  ! number of time steps to go (default is 1)
-                  ...
-                  CALL TURB_COARE3P0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cool_skin, l_use_warm_layer, &
-                  &                    Cd, Ch, Ce, t_zu, q_zu, U_blk             &
-                  &                   [ , Qsw=Rsw, rad_lw=Rlw, slp=P ]           &
-                  &                   [ , xz0=z0, xu_star=u_s, xL=L ] )
-                  ...  
-              END PROGRAM TEST_COEFF
+    PROGRAM TEST_COEFF
+        USE mod_const
+        USE mod_aerobulk, ONLY: AEROBULK_INIT, AEROBULK_BYE
+        USE mod_blk_coare3p0
+        ...
+        !! Initialization and sanity check:
+        CALL AEROBULK_INIT( Nt, 'coare3p0', T_s, t_zt, q_zt, Ux_zu, Uy_zy, P )
+        
+        ...
+        
+        q_s = 0.98 * q_sat( T_s, P ) ! spec. hum. of saturation at the air-sea interface (z=0) [kg/kg]
+        
+        ...
+        
+        CALL TURB_COARE3P0( jt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cool_skin, l_use_warm_layer, &
+        &                   Cd, Ch, Ce, t_zu, q_zu, U_blk             &
+        &                   [ , Qsw=Rsw, rad_lw=Rlw, slp=P ]          &
+        &                   [ , xz0=z0, xu_star=u_s, xL=L ] )
+        
+        ...
+        
+        CALL AEROBULK_BYE()
+        
+    END PROGRAM TEST_COEFF
 
 **INPUT ARGUMENTS:**
 
-*   `kt`  : (Sc,int) current time step (starts at 1 until `nitend`)
+*   `jt`  : (Sc,int) current time step (to go from 1 to `nitend==Nt`)
 *   `zt`  : (Sc,real) height for air temperature and humidity [m]
 *   `zu`  : (Sc,real) height for wind speed (generally 10m) [m]
 *   `t_zt`: (2D,real) POTENTIAL air temperature at zt [K]
@@ -234,39 +243,51 @@ Example of a call:
 
 **> Some Examples**
 
-Using COARE 3.6 without the cool-skin warm-layer parameterization, with air temperature and humidity provided at 2m and wind at 10m:
+Using COARE 3.6 without the use of the cool-skin & warm-layer schemes, with air temperature and humidity provided at 2m and wind at 10m:
 
-              PROGRAM TEST_COEFF
-                  USE mod_const
-                  USE mod_blk_coare3p6
-                  ...
-                  jpi = Ni ! x-shape of the 2D domain
-                  jpj = Nj ! y-shape of the 2D domain
-                  ...
-                  CALL TURB_COARE3P6( 1, 2., 10., Ts, t2, qs, q2, U10, .false., .false., &
-                  &                     Cd, Ch, Ce, t10, q10, U_blk )
-                  ...
-              END PROGRAM TEST_COEFF
+    PROGRAM TEST_COEFF
+        USE mod_const
+        USE mod_aerobulk, ONLY: AEROBULK_INIT, AEROBULK_BYE
+        USE mod_blk_coare3p0
+        ...
+        !! Initialization and sanity check:
+        CALL AEROBULK_INIT( Nt, 'coare3p6', Ts, t2, q2, U10, V10, P0,  l_cswl=.FALSE. )
+        ...
+        DO jt = 1, Nt
+            ...
+            qs = 0.98 * q_sat( Ts, P0 ) ! spec. hum. of saturation at the air-sea interface (z=0) [kg/kg]
+            ...
+            CALL TURB_COARE3P6( jt, 2., 10., Ts, t2, qs, q2, SQRT(U10*U10+V10*V10), .false., .false., &
+            &                   Cd, Ch, Ce, t10, q10, U_blk )
+            ...
+        END DO
+        ...
+    END PROGRAM TEST_COEFF
 
 In this case, `Ts` and `qs`, the surface temperature and saturation specific humidity won't be modified. The actual value of `qs` must be provided as an input.
 
-Now the same but using the cool-skin warm-layer parameterization:
+Now the same but using the cool-skin & warm-layer schemes:
 
-              PROGRAM TEST_COEFF
-                  USE mod_const
-                  USE mod_blk_coare3p6
-                  ...
-                  jpi = Ni ! x-shape of the 2D domain
-                  jpj = Nj ! y-shape of the 2D domain
-                  ...
-                  CALL TURB_COARE3P6( 1, 2., 10., Ts, t2, qs, q2, U10, .true., .true., &
-                  &                    Cd, Ch, Ce, t10, q10, U_blk,                     &
-                  &                    Qsw=Rsw, rad_lw=Rlw, slp=MSL 
-                  &                    isecday_utc=50400, plong=xlongitudes )
-                  ...
-              END PROGRAM TEST_COEFF
+    PROGRAM TEST_COEFF
+        USE mod_const
+        USE mod_aerobulk, ONLY: AEROBULK_INIT, AEROBULK_BYE
+        USE mod_blk_coare3p0
+        ...
+        !! Initialization and sanity check:
+        CALL AEROBULK_INIT( Nt, 'coare3p6', Ts, t2, q2, U10, V10, P0,  l_cswl=.TRUE. )
+        ...
+        DO jt = 1, Nt
+            ...
+            CALL TURB_COARE3P6( jt, 2., 10., Ts, t2, qs, q2, SQRT(U10*U10+V10*V10), .true., .true., &
+            &                   Cd, Ch, Ce, t10, q10, U_blk,                       &
+            &                   Qsw=Rsw, rad_lw=Rlw, slp=P0,                       &
+            &                   isecday_utc=50400, plong=xlongitudes )
+            ...
+        END DO
+        ...
+    END PROGRAM TEST_COEFF
 
-We provide arrays of the NET solar flux to the ocean (`Rsw`), downwelling longwave (infrared) flux (`Rlw`), sea-level atmospheric pressure (`MSL`), and longitudes (`xlongitudes`); as well as the current UTC time as seconds since 00:00 (here 2PM = 50400).
+We provide arrays of the NET solar flux to the ocean (`Rsw`), downwelling longwave (infrared) flux (`Rlw`), sea-level atmospheric pressure (`P0`), and longitudes (`xlongitudes`); as well as the current UTC time as seconds since 00:00 (here 2PM = 50400).
 Note: `Ts` is the bulk SST as an input and is updated to the skin temperature as an output! Value passed to `qs` as an input won't be used, however, as an output, `qs` is the saturation specific humidity at temperature `Ts`!
 
 
@@ -278,14 +299,14 @@ A selection of useful functions to estimate some atmospheric state variables in 
 
 Example for computing SSQ of Eq.(1) out of the SST and the SLP:
 
-              PROGRAM TEST_PHYMBL
-                  USE mod_const
-                  USE mod_phymbl
-                  ...
-    
-                  SSQ(:,:) = 0.98*q_sat(SST, SLP)
-                  ...
-              END PROGRAM TEST_PHYMBL
+    PROGRAM TEST_PHYMBL
+        USE mod_const
+        USE mod_phymbl
+        ...
+
+        SSQ(:,:) = 0.98*q_sat(SST, SLP)
+        ...
+    END PROGRAM TEST_PHYMBL
 
 
 

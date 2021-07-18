@@ -26,20 +26,21 @@ CONTAINS
 
    
    !==== C++ interface for using optional skin temperature shceme ====
-   SUBROUTINE aerobulk_cxx_skin( calgo, Nt, zt, zu, sst, t_zt, &
-      &                          hum_zt, U_zu, V_zu, slp,      &
-      &                          QL, QH, Tau_x, Tau_y, Evap,   &
-      &                          Niter, rad_sw, rad_lw, T_s,   &
+   SUBROUTINE aerobulk_cxx_skin( jt, Nt, calgo, zt, zu, sst, t_zt, &
+      &                          hum_zt, U_zu, V_zu, slp,          &
+      &                          QL, QH, Tau_x, Tau_y, Evap,       &
+      &                          Niter, rad_sw, rad_lw, T_s,       &
       &                          l, m ) BIND(c)
       
       ! Arguments
-      INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
+      INTEGER(c_int),                    INTENT(in)  :: jt, Nt
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
-      INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
-      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
-      REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
-      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: rad_sw, rad_lw
+      REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
+      REAL(c_double),    DIMENSION(m,1), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
+      INTEGER(c_int),                    INTENT(in)  :: Niter
+      REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: rad_sw, rad_lw
+      INTEGER(c_int),                    INTENT(in)  :: l, m
       
       ! Locals
       CHARACTER(len=l) :: calgo_fort
@@ -50,16 +51,9 @@ CONTAINS
          calgo_fort(i:i) = calgo(i)
       ENDDO
       
-      ! Check that the jpi and jpj are right
-      IF( jpi /= m .OR. jpj /= 1 ) THEN
-         l_1st_call_ab_init = .TRUE.
-      ENDIF
-
-      nitend = Nt
-      
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
-      CALL AEROBULK_MODEL( calgo_fort, zt, zu, sst, t_zt,                     &
+      CALL AEROBULK_MODEL( jt, Nt, calgo_fort, zt, zu, sst, t_zt,             &
          &                 hum_zt, U_zu, V_zu, slp,                           &
          &                 QL, QH, Tau_x, Tau_y, Evap,                        &
          &                 Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
@@ -68,18 +62,18 @@ CONTAINS
 
    
    !==== C++ interface without using optional skin temperature scheme ====
-   SUBROUTINE aerobulk_cxx_no_skin( calgo, Nt, zt, zu, sst, t_zt,  &
-      &                             hum_zt, U_zu, V_zu, slp,       &
-      &                             QL, QH, Tau_x, Tau_y, Evap,    &
+   SUBROUTINE aerobulk_cxx_no_skin( jt, Nt, calgo, zt, zu, sst, t_zt, &
+      &                             hum_zt, U_zu, V_zu, slp,          &
+      &                             QL, QH, Tau_x, Tau_y, Evap,       &
       &                             Niter, l, m ) BIND(c)
       
       ! Arguments
-      INTEGER(c_int),                    INTENT(in)  :: l, m, Niter
+      INTEGER(c_int),                    INTENT(in)  :: jt, Nt
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
-      INTEGER(c_int),                    INTENT(in)  :: Nt
       REAL(c_double),                    INTENT(in)  :: zt, zu
-      REAL(c_double), DIMENSION(m,1),    INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
-      REAL(c_double), DIMENSION(m,1),    INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
+      REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
+      REAL(c_double),    DIMENSION(m,1), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
+      INTEGER(c_int),                    INTENT(in)  :: Niter, l, m
       
       ! Locals
       CHARACTER(len=l) :: calgo_fort
@@ -90,17 +84,10 @@ CONTAINS
          calgo_fort(i:i) = calgo(i)
       ENDDO
       
-      ! Check that the jpi and jpj are right
-      IF( jpi /= m .OR. jpj /= 1 ) THEN
-         l_1st_call_ab_init = .TRUE.
-      ENDIF
-
-      nitend = Nt
-      
       ! Call the actual routine
       ! We could/should transpose the arrays, but it's not neccesary
-      CALL AEROBULK_MODEL( calgo_fort, zt, zu, sst, t_zt,         &
-         &                 hum_zt, U_zu, V_zu, slp,               &
+      CALL AEROBULK_MODEL( jt, Nt, calgo_fort, zt, zu, sst, t_zt,  &
+         &                 hum_zt, U_zu, V_zu, slp,                &
          &                 QL, QH, Tau_x, Tau_y, Evap, Niter=Niter )
       
    END SUBROUTINE aerobulk_cxx_no_skin

@@ -279,7 +279,7 @@ CONTAINS
 
 
 
-   
+
 
    !===============================================================================================
    FUNCTION virt_temp_sclr( pTa, pqa )
@@ -439,16 +439,16 @@ CONTAINS
       DO it = 1, 4
          zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, zTa, pqa ) ! pressure at z=`pz`
          zTa = abs_temp_sclr( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
-      END DO         
+      END DO
       T_from_z_P0_Theta_q_sclr = zTa
       !!
    END FUNCTION T_from_z_P0_Theta_q_sclr
 
    FUNCTION T_from_z_P0_Theta_q_vctr( pz, pslp, pThta, pqa )
-      REAL(wp),                     INTENT(in) :: pz               
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp             
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pThta            
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa              
+      REAL(wp),                     INTENT(in) :: pz
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pslp
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pThta
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pqa
       REAL(wp), DIMENSION(jpi,jpj)             :: T_from_z_P0_Theta_q_vctr
       INTEGER :: ji, jj
       DO jj = 1, jpj
@@ -461,7 +461,7 @@ CONTAINS
 
 
 
-   
+
 
    !   !===============================================================================================
    !   FUNCTION Pz_from_P0_sclr( pz, pslp, pqa, pThta, pTa, l_ice )
@@ -810,7 +810,7 @@ CONTAINS
    END FUNCTION Ri_bulk_vctr
    !===============================================================================================
 
-   
+
    !===============================================================================================
    FUNCTION e_sat_sclr( pTa )
       !!----------------------------------------------------------------------------------
@@ -1036,7 +1036,7 @@ CONTAINS
          &     slp         !: atmospheric pressure    [Pa]
       !!
       q_air_dp = MAX( e_sat(da) , 0._wp ) ! q_air_dp is e_sat !!!
-      q_air_dp = q_air_dp*reps0/MAX( slp - (1. - reps0)*q_air_dp, 1._wp )  ! MAX() are solely here to prevent NaN 
+      q_air_dp = q_air_dp*reps0/MAX( slp - (1. - reps0)*q_air_dp, 1._wp )  ! MAX() are solely here to prevent NaN
       !!                                                                   ! over masked regions with silly values
    END FUNCTION q_air_dp
 
@@ -2118,6 +2118,151 @@ CONTAINS
          &                            + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
       !!
    END FUNCTION psi_h_coare_sclr
+
+
+
+   !!
+   
+   SUBROUTINE check_unit_consitency( cfield, Xval, mask )
+
+      !! Ignore values where mask==0
+
+      CHARACTER(len=*),         INTENT(in) :: cfield
+      REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
+      INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
+
+      LOGICAL, DIMENSION(:,:), ALLOCATABLE :: lmask
+      INTEGER :: nx, ny
+      CHARACTER(len=64) :: cunit
+      REAL(wp) :: zmean, zmin, zmax
+      LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
+
+      nx = SIZE(mask,1)
+      ny = SIZE(mask,2)
+      ALLOCATE( lmask(nx,ny) )
+      lmask(:,:) = .FALSE.
+      WHERE( mask==1 ) lmask = .TRUE.
+
+      zmean = SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
+
+      !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
+
+      SELECT CASE (TRIM(cfield))
+
+      CASE('sst')
+         zmax = 313._wp
+         zmin = 270._wp
+         cunit = 'K'
+
+      CASE('t_air')
+         zmax = 323._wp
+         zmin = 200._wp
+         cunit = 'K'
+
+      CASE('q_air')
+         zmax = 0.08_wp
+         zmin = 0._wp
+         cunit = 'kg/kg'
+
+      CASE('slp')
+         zmax = 110000.
+         zmin =  80000.
+         cunit = 'Pa'
+
+      CASE('u10')
+         zmax = 50._wp
+         zmin =  0._wp
+         cunit = 'm/s'
+
+      CASE('v10')
+         zmax = 50._wp
+         zmin =  0._wp
+         cunit = 'm/s'
+
+      CASE('rad_sw')
+         zmax = 1500.0_wp
+         zmin =  0._wp
+         cunit = 'W/m^2'
+
+      CASE('rad_lw')
+         zmax = 700.0_wp
+         zmin =  0._wp
+         cunit = 'W/m^2'
+
+      CASE DEFAULT
+         WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): we do not know field ",a," !")') TRIM(cfield)
+         STOP
+      END SELECT
+
+      IF ( MAXVAL(Xval, MASK=lmask) > zmax )                   l_too_large    = .TRUE.
+      IF ( MINVAL(Xval, MASK=lmask) < zmin )                   l_too_small    = .TRUE.
+      IF ( (zmean < zmin) .OR. (zmean > zmax) ) l_mean_outside = .TRUE.
+
+      IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
+         WRITE(*,'(" *** ERROR (mod_aerobulk_compute.f90): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
+         WRITE(*,'(" min value = ", es10.3," max value = ", es10.3," mean value = ", es10.3)') MINVAL(Xval), MAXVAL(Xval), zmean
+         STOP
+      END IF
+
+      DEALLOCATE( lmask )
+   END SUBROUTINE check_unit_consitency
+
+
+   FUNCTION type_of_humidity( Xval, mask )
+      !!
+      !! Guess the type of humidity contained into array Xval
+      !! based on the mean, min and max values of the field!
+      !! Values where mask==0 are ignored !
+      !!
+      REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
+      INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
+      CHARACTER(len=2)                       :: type_of_humidity !: => 'sh', 'rh' or 'dp'
+
+      LOGICAL, DIMENSION(:,:), ALLOCATABLE :: lmask
+      INTEGER :: nx, ny
+      CHARACTER(len=64) :: cunit
+      REAL(wp) :: zmean, zmin, zmax
+      LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
+
+      nx = SIZE(mask,1)
+      ny = SIZE(mask,2)
+      ALLOCATE( lmask(nx,ny) )
+      lmask(:,:) = .FALSE.
+      WHERE( mask==1 ) lmask = .TRUE.
+
+      zmean =    SUM( Xval * REAL(mask,wp) ) / SUM( REAL(mask,wp) )
+      zmin  = MINVAL( Xval,  MASK=lmask )
+      zmax  = MAXVAL( Xval,  MASK=lmask )
+
+      !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
+      type_of_humidity = '00'
+
+      IF( (zmean >= 0._wp).AND.(zmean < 0.08_wp).AND.(zmin >= 0._wp).AND.(zmax < 0.08_wp) ) THEN
+         !! Specific humidity! [kg/kg]
+         type_of_humidity = 'sh'
+
+      ELSEIF( (zmean >= 150._wp).AND.(zmean < 325._wp).AND.(zmin >= 150._wp).AND.(zmax < 325._wp) ) THEN
+         !! Dew-point temperature [K]
+         type_of_humidity = 'dp'
+
+      ELSEIF( (zmean >= 0._wp).AND.(zmean <= 100._wp).AND.(zmin >= 0._wp).AND.(zmax <= 100._wp) ) THEN
+         !! Relative humidity [%]
+         type_of_humidity = 'rh'
+
+      ELSE
+         WRITE(6,*) 'ERROR: type_of_humidity()@mod_aerobulk_compute => un-identified humidity type!'
+         WRITE(6,*) '   ==> we could not identify the humidity type based on the mean, min & max of the field:'
+         WRITE(6,*) '     * mean =', REAL(zmean,4)
+         WRITE(6,*) '     * min  =', REAL(zmin, 4)
+         WRITE(6,*) '     * max  =', REAL(zmax, 4)
+         STOP
+      END IF
+
+      DEALLOCATE( lmask )
+
+   END FUNCTION type_of_humidity
+
+
 
 
 END MODULE mod_phymbl

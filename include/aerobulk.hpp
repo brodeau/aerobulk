@@ -29,13 +29,13 @@ namespace aerobulk
     //std::vector<double> l_vap(const std::vector<double> &sst);
     
     // Interface to aerobulk_model with rad_sw and rad_lw as inputs and T_s as output
-    void model(algorithm algo, const int Nt, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+    void model(const int jt, const int Nt, algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
                const std::vector<double> &hum_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
                std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
                const int Niter, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s);
-
+    
     // Interface to aerobulk_model without rad_sw, rad_lw, and T_s
-    void model(algorithm algo, const int Nt, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+    void model(const int jt, const int Nt, algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
                const std::vector<double> &hum_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
                std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
                const int Niter);

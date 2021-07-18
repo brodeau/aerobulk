@@ -36,10 +36,10 @@ int main(int argc, char** argv)
 
     std::cout << "\n\n *********** COARE 3.0 parameterization *****************" << std::endl;
 
-    aerobulk::model(aerobulk::algorithm::COARE3p0, 1, zt, zu, zsst, zt_zt,
-                    zq_zt, zU_zu, zV_zu, zslp,
-                    zQL, zQH, zTau_x, zTau_y, zE,
-                    nbiter, zRsw, zRlw, zT_s );
+    aerobulk::model( 1, 1, aerobulk::algorithm::COARE3p0, zt, zu, zsst, zt_zt,
+                     zq_zt, zU_zu, zV_zu, zslp,
+                     zQL, zQH, zTau_x, zTau_y, zE,
+                     nbiter, zRsw, zRlw, zT_s );
 
     std::cout
         << "  ==> results for COARE 3.0: \n"
@@ -58,11 +58,11 @@ int main(int argc, char** argv)
     /* ############################################################################################## */
 
     std::cout << "\n\n *********** COARE 3.6 parameterization *****************" << std::endl;
-    
-    aerobulk::model(aerobulk::algorithm::COARE3p6, 1, zt, zu, zsst, zt_zt,
-                    zq_zt, zU_zu, zV_zu, zslp,
-                    zQL, zQH, zTau_x, zTau_y, zE,
-                    nbiter, zRsw, zRlw, zT_s );
+
+    aerobulk::model( 1, 1, aerobulk::algorithm::COARE3p6, zt, zu, zsst, zt_zt,
+                     zq_zt, zU_zu, zV_zu, zslp,
+                     zQL, zQH, zTau_x, zTau_y, zE,
+                     nbiter, zRsw, zRlw, zT_s );
 
     std::cout
         << "  ==> results for COARE 3.6: \n"
@@ -78,11 +78,11 @@ int main(int argc, char** argv)
     /* ############################################################################################## */
 
     std::cout << "\n\n *********** ECMWF parameterization *****************\n" << std::endl;
-    
-    aerobulk::model(aerobulk::algorithm::ECMWF, 1, zt, zu, zsst, zt_zt,
-                    zq_zt, zU_zu, zV_zu, zslp,
-                    zQL, zQH, zTau_x, zTau_y, zE, nbiter,
-                    zRsw, zRlw, zT_s );
+
+    aerobulk::model( 1, 1, aerobulk::algorithm::ECMWF, zt, zu, zsst, zt_zt,
+                     zq_zt, zU_zu, zV_zu, zslp,
+                     zQL, zQH, zTau_x, zTau_y, zE, nbiter,
+                     zRsw, zRlw, zT_s );
 
     std::cout
         << "\n  ==> results for ECMWF: \n"
@@ -97,10 +97,10 @@ int main(int argc, char** argv)
     /* ############################################################################################## */
 
     std::cout << "\n\n *********** NCAR parameterization *****************\n" << std::endl;
-    
-    aerobulk::model(aerobulk::algorithm::NCAR, 1, zt, zu, zsst, zt_zt,
-                    zq_zt, zU_zu, zV_zu, zslp,
-                    zQL, zQH, zTau_x, zTau_y, zE, nbiter);
+
+    aerobulk::model( 1, 1, aerobulk::algorithm::NCAR, zt, zu, zsst, zt_zt,
+                     zq_zt, zU_zu, zV_zu, zslp,
+                     zQL, zQH, zTau_x, zTau_y, zE, nbiter );
 
     std::cout
         << "\n  ==> results for NCAR: \n"
@@ -115,10 +115,10 @@ int main(int argc, char** argv)
     /* ############################################################################################## */
 
     std::cout << "\n\n *********** ANDREAS parameterization *****************\n" << std::endl;
-    
-    aerobulk::model(aerobulk::algorithm::ANDREAS, 1, zt, zu, zsst, zt_zt,
-                    zq_zt, zU_zu, zV_zu, zslp,
-                    zQL, zQH, zTau_x, zTau_y, zE, nbiter);
+
+    aerobulk::model( 1, 1, aerobulk::algorithm::ANDREAS, zt, zu, zsst, zt_zt,
+                     zq_zt, zU_zu, zV_zu, zslp,
+                     zQL, zQH, zTau_x, zTau_y, zE, nbiter);
 
     std::cout
         << "\n  ==> results for ANDREAS: \n"
