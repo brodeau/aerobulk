@@ -24,7 +24,7 @@ FF += -std=f2008 -lstdc++
 
 
 # g++ compilation flags
-CXXFLAGS += -std=c++11 -O3
+CXXFLAGS += -std=c++11 -O3 -fPIC
 
 # Directory to install binaries :
 INSTALL_DIR = /usr/local

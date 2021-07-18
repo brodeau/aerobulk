@@ -34,13 +34,13 @@ CONTAINS
       
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: jt, Nt
+      INTEGER(c_int),                    INTENT(in)  :: l, m
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(c_double),    DIMENSION(m,1), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
       INTEGER(c_int),                    INTENT(in)  :: Niter
       REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: rad_sw, rad_lw
-      INTEGER(c_int),                    INTENT(in)  :: l, m
       
       ! Locals
       CHARACTER(len=l) :: calgo_fort
@@ -69,11 +69,12 @@ CONTAINS
       
       ! Arguments
       INTEGER(c_int),                    INTENT(in)  :: jt, Nt
+      INTEGER(c_int),                    INTENT(in)  :: l, m
       CHARACTER(c_char), DIMENSION(l+1), INTENT(in)  :: calgo
       REAL(c_double),                    INTENT(in)  :: zt, zu
       REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(c_double),    DIMENSION(m,1), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap
-      INTEGER(c_int),                    INTENT(in)  :: Niter, l, m
+      INTEGER(c_int),                    INTENT(in)  :: Niter
       
       ! Locals
       CHARACTER(len=l) :: calgo_fort
