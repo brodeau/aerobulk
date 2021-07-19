@@ -1253,23 +1253,23 @@ CONTAINS
       &                          pEvap, prhoa, l_ice )
       !!----------------------------------------------------------------------------------
       REAL(wp),                     INTENT(in)  :: pzu  ! height above the sea-level where all this takes place (normally 10m)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pts  ! water temperature at the air-sea interface [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pts   [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pThta  ! potential air temperature at z=pzu [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCd
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCh
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pCe
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pts  ! water temperature at the air-sea interface [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pqs  ! satur. spec. hum. at T=pts   [kg/kg]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pThta  ! potential air temperature at z=pzu [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pqa  ! specific humidity at z=pzu [kg/kg]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pCd
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pCh
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pCe
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pwnd ! wind speed module at z=pzu [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pUb  ! bulk wind speed at z=pzu (inc. pot. effect of gustiness etc) [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pslp ! sea-level atmospheric pressure [Pa]
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQsen !  [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pQlat !  [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pTau  ! module of the wind stress [N/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pQsen !  [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pQlat !  [W/m^2]
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
+      REAL(wp), DIMENSION(:,:), INTENT(out), OPTIONAL :: pEvap ! Evaporation [kg/m^2/s]
+      REAL(wp), DIMENSION(:,:), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!
       REAL(wp) :: zevap, zrho
@@ -1278,9 +1278,9 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       lice = PRESENT(l_ice)
       lrE  = PRESENT(pEvap)
-      lrR  = PRESENT(prhoa)
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      lrR  = PRESENT(prhoa)      
+      DO jj = 1, SIZE(pts,2)
+         DO ji = 1, SIZE(pts,1)
             CALL BULK_FORMULA_SCLR( pzu, pts(ji,jj), pqs(ji,jj), pThta(ji,jj), pqa(ji,jj), &
                &                    pCd(ji,jj), pCh(ji,jj), pCe(ji,jj),                  &
                &                    pwnd(ji,jj), pUb(ji,jj), pslp(ji,jj),                &

@@ -19,7 +19,7 @@ FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64
 ### Fortran compilation flags :
 
 # Production
-FF = -xHOST -O3 -r8 -i4 -module mod/
+FF = -xHOST -O0 -r8 -i4 -module mod/
 
 # Debugging:
 DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C

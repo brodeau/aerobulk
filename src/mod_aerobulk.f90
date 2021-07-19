@@ -133,7 +133,7 @@ CONTAINS
       
       !DEALLOCATE( ztmp )
 
-      STOP'mod_aerobulk.f90'
+      !STOP'mod_aerobulk.f90'
       
    END SUBROUTINE aerobulk_init
 
@@ -206,7 +206,7 @@ CONTAINS
 
       l_do_cswl = ( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) ! if theser 2 are provided we plan to use the CSWL schemes!
 
-      IF( jt<1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
+      IF( jt <1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
       
       IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_cswl=l_do_cswl )
 

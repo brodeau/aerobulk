@@ -73,10 +73,10 @@ CONTAINS
       INTEGER,                      INTENT(in)  :: jt
       CHARACTER(len=*),             INTENT(in)  :: calgo
       REAL(wp),                     INTENT(in)  :: zt, zu
-      REAL(wp),   DIMENSION(jpi,jpj), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
-      REAL(wp),   DIMENSION(jpi,jpj), INTENT(out) :: QL, QH, Tau_x, Tau_y
-      REAL(wp),   DIMENSION(jpi,jpj), INTENT(in), OPTIONAL :: rad_sw, rad_lw
-      REAL(wp),   DIMENSION(jpi,jpj), INTENT(out),OPTIONAL :: T_s, Evp
+      REAL(wp),   DIMENSION(:,:), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
+      REAL(wp),   DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y
+      REAL(wp),   DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
+      REAL(wp),   DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s, Evp
       !!
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
          &     zWzu,            & !: Scalar wind speed at zu m
@@ -89,6 +89,7 @@ CONTAINS
          &  zUblk,              & !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
          &  ztmp                  !: temporary array
       !
+      INTEGER          :: Ni, Nj
       CHARACTER(len=2) :: chum
       LOGICAL          :: l_use_skin
       !!------------------------------------------------------------------------------
@@ -96,12 +97,15 @@ CONTAINS
 
       l_use_skin = .FALSE.
 
-      ALLOCATE ( zWzu(jpi,jpj),  zSSQ(jpi,jpj), &
-         &       zCd(jpi,jpj),    zCh(jpi,jpj),    zCe(jpi,jpj),  &
-         &       zThtzt(jpi,jpj), zQzt(jpi,jpj),                  &
-         &       zThtzu(jpi,jpj), zQzu(jpi,jpj),                  &
-         &       zUblk(jpi,jpj),  zTs(jpi,jpj),    zqs(jpi,jpj),  &
-         &       zEvap(jpi,jpj),  zTaum(jpi,jpj),  ztmp(jpi,jpj)  )
+      Ni = SIZE(sst,1)
+      Nj = SIZE(sst,2)
+
+      ALLOCATE ( zWzu(Ni,Nj),  zSSQ(Ni,Nj), &
+         &       zCd(Ni,Nj),    zCh(Ni,Nj),    zCe(Ni,Nj),  &
+         &       zThtzt(Ni,Nj), zQzt(Ni,Nj),                  &
+         &       zThtzu(Ni,Nj), zQzu(Ni,Nj),                  &
+         &       zUblk(Ni,Nj),  zTs(Ni,Nj),    zqs(Ni,Nj),  &
+         &       zEvap(Ni,Nj),  zTaum(Ni,Nj),  ztmp(Ni,Nj)  )
 
       ! Conversion to specific humidity when needed:
       SELECT CASE(ctype_humidity)
