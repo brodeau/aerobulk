@@ -2155,26 +2155,36 @@ CONTAINS
       !! if no `mask` is passed as argument then nothing is masked...
       
       zmean = SUM( Xval * REAL(imask,wp) ) / SUM( REAL(imask,wp) )
-      PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
+      !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
 
       SELECT CASE (TRIM(cfield))
 
-      CASE('sst')
+      CASE('sst','SST','Ts')
          zmax = ref_sst_max
          zmin = ref_sst_min
          cunit = 'K'
 
-      CASE('t_air')
+      CASE('t_air','taa','t2m','T2M')
          zmax = ref_taa_max
          zmin = ref_taa_min
          cunit = 'K'
 
-      CASE('q_air')
+      CASE('q_air','sh','sha','q2m','Q2M')
          zmax = ref_sha_max
          zmin = ref_sha_min
          cunit = 'kg/kg'
 
-      CASE('slp')
+      CASE('rh_air','rh','RH','rlh','rha')
+         zmax = ref_rlh_max
+         zmin = ref_rlh_min
+         cunit = 'kg/kg'
+
+      CASE('dp_air','dp','d2m','D2M')
+         zmax = ref_dpt_max
+         zmin = ref_dpt_min
+         cunit = 'kg/kg'
+         
+      CASE('slp','mslp','MSL','msl','P')
          zmax = ref_slp_max
          zmin = ref_slp_min
          cunit = 'Pa'
@@ -2184,7 +2194,7 @@ CONTAINS
          zmin = ref_wnd_min
          cunit = 'm/s'
 
-      CASE('wnd')
+      CASE('wnd','wind','w10','W10')
          zmax = ref_wnd_max
          zmin = 0._wp
          cunit = 'm/s'
@@ -2200,7 +2210,7 @@ CONTAINS
          cunit = 'W/m^2'
 
       CASE DEFAULT
-         WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): we do not know field ",a," !")') TRIM(cfield)
+         WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): we do not know field `",a,"` !")') TRIM(cfield)
          STOP
       END SELECT
       
@@ -2209,12 +2219,12 @@ CONTAINS
       l_mean_outside = ( (zmean < zmin) .OR. (zmean > zmax) )
 
       IF ( l_too_large .OR. l_too_small .OR. l_mean_outside ) THEN
-         WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): field ",a," does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
+         WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): field `",a,"` does not seem to be in ",a," !")') TRIM(cfield), TRIM(cunit)
          WRITE(*,'(" min value = ", es10.3," max value = ", es10.3," mean value = ", es10.3)') MINVAL(Xval), MAXVAL(Xval), zmean
          STOP
       END IF
       DEALLOCATE( imask, lmask )
-      WRITE(*,'(" *** `check_unit_consistency@mod_phymbl`: field ",a," is okay! [",a,"]")') TRIM(cfield), TRIM(cunit)
+      !WRITE(*,'(" *** `check_unit_consistency@mod_phymbl`: field `",a,"` is okay! [",a,"]")') TRIM(cfield), TRIM(cunit)
       !!      
    END SUBROUTINE check_unit_consistency
 
