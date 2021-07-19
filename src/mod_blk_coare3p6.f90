@@ -43,7 +43,7 @@ MODULE mod_blk_coare3p6
 CONTAINS
 
 
-   SUBROUTINE coare3p6_init(l_use_cs, l_use_wl)
+   SUBROUTINE coare3p6_init(nx, ny, l_use_cs, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION coare3p6_init  ***
       !!
@@ -52,14 +52,15 @@ CONTAINS
       !!    * l_use_cs : use the cool-skin parameterization
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
-      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
-      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER, INTENT(in) :: nx, ny   ! shape of the domain
+      LOGICAL, INTENT(in) :: l_use_cs ! use the cool-skin parameterization
+      LOGICAL, INTENT(in) :: l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
       IF( l_use_wl ) THEN
          ierr = 0
-         ALLOCATE ( Tau_ac(jpi,jpj) , Qnt_ac(jpi,jpj), dT_wl(jpi,jpj), Hz_wl(jpi,jpj), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+         ALLOCATE ( Tau_ac(nx,ny) , Qnt_ac(nx,ny), dT_wl(nx,ny), Hz_wl(nx,ny), STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
          dT_wl(:,:)  = 0._wp
@@ -67,8 +68,8 @@ CONTAINS
       ENDIF
       IF( l_use_cs ) THEN
          ierr = 0
-         ALLOCATE ( dT_cs(jpi,jpj), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P6_INIT => allocation of dT_cs failed!' )
+         ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       ENDIF
    END SUBROUTINE coare3p6_init
@@ -102,7 +103,7 @@ CONTAINS
 
 
    SUBROUTINE turb_coare3p6( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                                 &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -178,39 +179,39 @@ CONTAINS
       INTEGER,  INTENT(in   )                     ::   kt       ! current time step
       REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   T_s      ! sea surface temperature                [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(inout), DIMENSION(jpi,jpj) ::   q_s      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   T_s      ! sea surface temperature                [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   t_zt     ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   q_s      ! sea surface specific humidity           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   U_zu     ! relative wind module at zu                [m/s]
       LOGICAL , INTENT(in   )                     ::   l_use_cs ! use the cool-skin parameterization
       LOGICAL , INTENT(in   )                     ::   l_use_wl ! use the warm-layer parameterization
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   Ubzu    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Cd       ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ubzu    ! bulk wind speed at zu                     [m/s]
       !
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   Qsw      !             [W/m^2]
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   rad_lw   !             [W/m^2]
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   slp      !             [Pa]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_cs
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   Qsw      !             [W/m^2]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   rad_lw   !             [W/m^2]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   slp      !             [Pa]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pdT_cs
       !
       INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
-      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(jpi,jpj) ::   plong    !             [deg.E]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pdT_wl   !             [K]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   pHz_wl   !             [m]
+      REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   plong    !             [deg.E]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pdT_wl   !             [K]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pHz_wl   !             [m]
       !
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: jit
+      INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
@@ -227,12 +228,15 @@ CONTAINS
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_coare3p6@mod_blk_coare3p6.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),  dq_zu(jpi,jpj),  &
-         &        znu_a(jpi,jpj),     z0(jpi,jpj),    z0t(jpi,jpj),  &
-         &        ztmp0(jpi,jpj),  ztmp1(jpi,jpj),  ztmp2(jpi,jpj) )
+      Ni = SIZE(T_s,1)
+      Nj = SIZE(T_s,2)
 
-      IF( kt == nit000 ) CALL COARE3P6_INIT(l_use_cs, l_use_wl)
+      ALLOCATE ( u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj),  &
+         &       zeta_u(Ni,Nj),  dt_zu(Ni,Nj),  dq_zu(Ni,Nj),  &
+         &        znu_a(Ni,Nj),     z0(Ni,Nj),    z0t(Ni,Nj),  &
+         &        ztmp0(Ni,Nj),  ztmp1(Ni,Nj),  ztmp2(Ni,Nj) )
+
+      IF( kt == nit000 ) CALL COARE3P6_INIT( Ni, Nj, l_use_cs, l_use_wl )
 
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
       IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
@@ -243,7 +247,7 @@ CONTAINS
       IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
-      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
+      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(Ni,Nj) )
 
       !! Initializations for cool skin and warm layer:
       IF( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
@@ -255,7 +259,7 @@ CONTAINS
          &   ' & plong to use warm-layer param!'  )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zsst(jpi,jpj) )
+         ALLOCATE ( zsst(Ni,Nj) )
          zsst = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
@@ -437,8 +441,8 @@ CONTAINS
       !!
       !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: charn_coare3p6
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwnd   ! neutral wind speed at 10m
+      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! neutral wind speed at 10m
+      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p6
       !
       REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
       !!-------------------------------------------------------------------
@@ -454,10 +458,10 @@ CONTAINS
       !!
       !! Author: L. Brodeau, October 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: charn_coare3p6_wave
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! friction velocity             [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwsh  ! significant wave height       [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pwps  ! phase speed of dominant waves [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)         :: pus   ! friction velocity             [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)         :: pwsh  ! significant wave height       [m]
+      REAL(wp), DIMENSION(:,:), INTENT(in)         :: pwps  ! phase speed of dominant waves [m/s]
+      REAL(wp), DIMENSION(SIZE(pus,1),SIZE(pus,2)) :: charn_coare3p6_wave
       !!-------------------------------------------------------------------
       charn_coare3p6_wave = ( pwsh*0.2_wp*(pus/pwps)**2.2_wp ) * grav/(pus*pus)
       !!
@@ -477,14 +481,14 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_m_coare
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_coare
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !
@@ -527,14 +531,14 @@ CONTAINS
       !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_h_coare
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_coare
       !
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
       !!----------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !

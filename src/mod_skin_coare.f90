@@ -66,17 +66,20 @@ CONTAINS
       !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!     *pQlat*      surface latent heat flux                       [K]
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pSST ! bulk SST [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQlat  ! latent heat flux [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pSST ! bulk SST [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pQlat  ! latent heat flux [W/m^2]
       !!---------------------------------------------------------------------
-      INTEGER  :: ji, jj, jc
+      INTEGER  :: Ni, Nj, ji, jj, jc
       REAL(wp) :: zQabs, zdelta, zfr
       !!---------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      Ni = SIZE(pSST,1)
+      Nj = SIZE(pSST,2)
+      !!
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             zQabs = pQnsol(ji,jj) ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
             !                     !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
@@ -112,15 +115,15 @@ CONTAINS
       !!     *isd*        current UTC time, counted in second since 00h of the current day
       !!     *iwait*      if /= 0 then wait before updating accumulated fluxes, we are within a converging itteration loop...
       !!---------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pTau     ! wind stress [N/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: plon     ! longitude [deg.E]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pTau     ! wind stress [N/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: plon     ! longitude [deg.E]
       INTEGER ,                     INTENT(in)  :: isd      ! current UTC time, counted in second since 00h of the current day
       INTEGER ,                     INTENT(in)  :: iwait    ! if /= 0 then wait before updating accumulated fluxes
       !!
-      INTEGER :: ji,jj
+      INTEGER :: Ni, Nj, ji,jj
       !
       REAL(wp) :: zdTwl, zHwl, zQabs, zfr
       REAL(wp) :: zqac, ztac
@@ -140,8 +143,11 @@ CONTAINS
       zQabs  = 0._wp       ! total heat flux absorped in warm layer
       zfr    = zfr0        ! initial value of solar flux absorption !LOLO: save it and use previous value !!!
 
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      Ni = SIZE(pSST,1)
+      Nj = SIZE(pSST,2)
+      
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             l_exit       = .FALSE.
             l_destroy_wl = .FALSE.

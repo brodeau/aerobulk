@@ -66,16 +66,18 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pSST ! bulk SST [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pSST ! bulk SST [K]
       !!---------------------------------------------------------------------
-      INTEGER  :: ji, jj, jc
+      INTEGER  :: Ni, Nj, ji, jj, jc
       REAL(wp) :: zQabs, zdelta, zfr
       !!---------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      Ni = SIZE(pSST,1)
+      Nj = SIZE(pSST,2)
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             zQabs = pQnsol(ji,jj) ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
             !                     !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
@@ -115,14 +117,14 @@ CONTAINS
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST  (taken at depth gdept_1d(1))         [K]
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pustar   ! friction velocity [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pustar   ! friction velocity [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: pSST     ! bulk SST at depth gdept_1d(1) [K]
       !!
-      REAL(wp), DIMENSION(jpi,jpj), OPTIONAL, INTENT(in) :: pustk ! surface Stokes velocity [m/s]
+      REAL(wp), DIMENSION(:,:), OPTIONAL, INTENT(in) :: pustk ! surface Stokes velocity [m/s]
       !
-      INTEGER :: ji, jj, jc
+      INTEGER :: Ni, Nj, ji, jj, jc
       !
       REAL(wp) :: &
          & zHwl,    &  !: thickness of the warm-layer [m]
@@ -138,12 +140,14 @@ CONTAINS
       !
       LOGICAL :: l_pustk_known
       !!---------------------------------------------------------------------
-
       l_pustk_known = .FALSE.
       IF ( PRESENT(pustk) ) l_pustk_known = .TRUE.
 
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      Ni = SIZE(pSST,1)
+      Nj = SIZE(pSST,2)
+      
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             zHwl = Hz_wl(ji,jj) ! first guess for warm-layer depth (and unique..., less advanced than COARE3p6 !)
             ! it is = rd0 (3m) in default Zeng & Beljaars case...
