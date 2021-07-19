@@ -123,18 +123,9 @@ CONTAINS
       IF((TRIM(calgo(1:4)) == 'coar').OR.(TRIM(calgo) == 'ecmwf')) THEN
          IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
             l_use_skin = .TRUE.
-            PRINT *, ' *** we use the cool-skin/warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
+            PRINT *, ' *** we use the cool-skin/warm-layer scheme of ', TRIM(calgo(1:5)), '!'
          END IF
-         !CALL check_unit_consistency( 'rad_sw', rad_sw, mask=imask )
-         !CALL check_unit_consistency( 'rad_lw', rad_lw, mask=imask )
       END IF
-
-      !CALL check_unit_consistency( 'sst',   sst,  mask=imask )
-      !CALL check_unit_consistency( 't_air', t_zt, mask=imask )
-      !CALL check_unit_consistency( 'q_air', zQzt, mask=imask )
-      !CALL check_unit_consistency( 'slp',   slp,  mask=imask )
-      !CALL check_unit_consistency( 'u10', ABS(U_zu), mask=imask )
-      !CALL check_unit_consistency( 'v10', ABS(V_zu), mask=imask )
 
       !! Scalar wind:
       zWzu = sqrt( U_zu*U_zu + V_zu*V_zu )

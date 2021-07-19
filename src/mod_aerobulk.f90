@@ -22,7 +22,7 @@ MODULE mod_aerobulk
 CONTAINS
 
 
-   SUBROUTINE aerobulk_init( Nt, calgo, psst, pta, pha, pU, pV, pslp,  l_cswl )
+   SUBROUTINE aerobulk_init( Nt, calgo, psst, pta, pha, pU, pV, pslp,  prsw, prlw )
       !!===================================================================================================================
       !! 1. Set the official 2D shape of the problem based on the `psst` array =>[jpi,jpj] (saved and shared via mod_const)
       !! 2. Check on size agreement between input arrays (must all be [jpi,jpj])
@@ -44,16 +44,18 @@ CONTAINS
       !! Output:
       !INTEGER(1), DIMENSION(:,:), INTENT(out) :: imask   !: mask array: masked=>0, elsewhere=>1
       !!
-      !! OPTIONAL Input:
-      LOGICAL,     OPTIONAL   , INTENT(in)  :: l_cswl
+      !! OPTIONAL Output
+      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prsw   !: downwelling shortwave radiation  [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prlw   !: downwelling  longwave radiation  [W/m^2]
+      !LOGICAL,     OPTIONAL   , INTENT(in)  :: l_cswl
       !!===================================================================================================================
       LOGICAL :: lcswl=.FALSE.
-      INTEGER :: Ni, Nj, nx, ny
+      INTEGER :: Ni, Nj, np
       INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask   !: mask array: masked=>0, elsewhere=>1
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: ztmp ! kitchen sink array...
       !!===================================================================================================================
 
-      IF( PRESENT(l_cswl) ) lcswl=l_cswl
+      lcswl = ( PRESENT(prsw) .AND. PRESENT(prlw) )
       
       WRITE(6,*)''
       WRITE(6,*)'==================================================================='
@@ -62,7 +64,8 @@ CONTAINS
       
       WRITE(6,*)'    *** Bulk parameterization to be used => "', TRIM(calgo), '"'
       ! 1.
-      Ni = SIZE(psst,1) ; Nj = SIZE(psst,2)
+      Ni = SIZE(psst,1)
+      Nj = SIZE(psst,2)
       
       ! 2.
       IF( ANY(SHAPE(pta) /=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and t_air arrays do not agree in shape!')
@@ -71,7 +74,11 @@ CONTAINS
       IF( ANY(SHAPE(pV)  /=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and V arrays do not agree in shape!')
       IF( ANY(SHAPE(pslp)/=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and SLP arrays do not agree in shape!')
       !IF( ANY(SHAPE(imask)/=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and SLP arrays do not agree in shape!')
-
+      IF( lcswl ) THEN
+         IF( ANY(SHAPE(prsw)/=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and Rad_SW arrays do not agree in shape!')
+         IF( ANY(SHAPE(prlw)/=(/Ni,Nj/)) ) CALL ctl_stop(' aerobulk_init => SST and Rad_LW arrays do not agree in shape!')
+      END IF
+      
       WRITE(6,*)'    *** Computational domain shape: Ni, Nj =', INT(Ni,2), ',', INT(Nj,2)
       
       nitend = Nt
@@ -97,21 +104,20 @@ CONTAINS
       WHERE( ( pta < ref_taa_min) .OR. (pta  > ref_taa_max) ) imask = 0 ! silly air temperature
       WHERE( (pslp < ref_slp_min) .OR. (pslp > ref_slp_max) ) imask = 0 ! silly atmospheric pressure
       WHERE(     SQRT( pU*pU + pV*pV )       > ref_wnd_max  ) imask = 0 ! silly scalar wind speed
+      IF( lcswl ) THEN
+         WHERE( ( prsw < ref_rsw_min) .OR. (prsw  > ref_rsw_max) ) imask = 0 ! silly air temperature
+         WHERE( ( prlw < ref_rlw_min) .OR. (prlw  > ref_rlw_max) ) imask = 0 ! silly air temperature
+      END IF
 
       
-      nx = SUM(imask)  ! number of valid points
-      IF( nx == Ni*Nj ) THEN
+      np = SUM(INT(imask,4))  ! number of valid points (convert to INT(4) before SUM otherwize SUM is INT(1) => overflow!!!)
+      IF( np == Ni*Nj ) THEN
          WRITE(6,*)'        ==> no points need to be masked! :)'
-      ELSEIF ( nx > 0 ) THEN
-         WRITE(6,*)'        ==> number of points we need to mask: ', Ni*Nj-nx, ' (out of ',Ni*Nj,')'
+      ELSEIF ( np > 0 ) THEN
+         WRITE(6,*)'        ==> number of points to mask: ', Ni*Nj-np, ' (out of ',Ni*Nj,')'
       ELSE
-         WRITE(6,*)'        ==> ERROR: the whole domain is masked!'
-         WRITE(6,*)'           ==> checking consistency of fields:'
-         CALL check_unit_consistency( 'sst',   psst )
-         CALL check_unit_consistency( 't_air', pta  )
-         CALL check_unit_consistency( 'slp',   pslp )
-         CALL check_unit_consistency( 'wnd',   SQRT( pU*pU + pV*pV ) )
-         STOP
+         CALL ctl_stop( 'the whole domain is masked!', 'check unit consistency of input fields')
+         !STOP
       END IF
       
       !ALLOCATE( ztmp(Ni,Nj) )
@@ -121,8 +127,18 @@ CONTAINS
       ctype_humidity = type_of_humidity( pha, mask=imask )
       WRITE(6,'("     *** Type of air humidity : `",a2,"`")') ctype_humidity
 
-      CALL check_unit_consistency( ctype_humidity, pha  ) ! check if humidity is in the correct unit / its type...
-      
+      ! 5. Check unit consistency of input fields:
+      CALL check_unit_consistency( 'sst',   psst, mask=imask )
+      CALL check_unit_consistency( 't_air', pta,  mask=imask )
+      CALL check_unit_consistency( 'slp',   pslp, mask=imask )
+      CALL check_unit_consistency( 'u10',   pU,   mask=imask )
+      CALL check_unit_consistency( 'v10',   pV,   mask=imask )
+      CALL check_unit_consistency( 'wnd',   SQRT(pU*pU + pV*pV), mask=imask )
+      CALL check_unit_consistency( ctype_humidity, pha,          mask=imask )
+      IF( lcswl ) THEN
+         CALL check_unit_consistency( 'rad_sw',   prsw, mask=imask )
+         CALL check_unit_consistency( 'rad_lw',   prlw, mask=imask )
+      END IF
       
       DEALLOCATE( imask )
       
@@ -183,11 +199,14 @@ CONTAINS
       !!    *  Tau_y  : zonal wind stress                                    [N/m^2]
       !!    *  Evap    : Evaporation                                          [mm/s] aka [kg/m^2/s] (usually <0, as ocean loses water!)
       !!
-      !! OPTIONAL :
-      !! ----------
+      !! OPTIONAL Input:
+      !! ---------------
       !!    *  Niter  : number of itterattions in the bulk algorithm (default is 4)
       !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
+      !!
+      !! OPTIONAL Output:
+      !! ---------------
       !!    *  T_s    : skin temperature                                      [K]
       !!
       !!============================================================================
@@ -207,34 +226,40 @@ CONTAINS
       l_do_cswl = ( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) ! if theser 2 are provided we plan to use the CSWL schemes!
 
       IF( jt <1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
-      
-      IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_cswl=l_do_cswl )
 
+      
       IF( l_do_cswl ) THEN
+
+         IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  prsw=rad_lw, prlw=rad_lw )
          
          CALL aerobulk_compute( jt, calgo, zt, zu, sst, t_zt, &
             &                   hum_zt, U_zu, V_zu, slp,    &
             &                   QL, QH, Tau_x, Tau_y,     &
             &                   rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
-
-         !WRITE(6,*)'LOLO DEBUG INTO mod_aerobulk after CALL aerobulk_compute !!! ', TRIM(calgo)
-         !WRITE(6,*)'LOLO: Ts =', T_s
-         !WRITE(6,*)'LOLO: (sst was) =', sst
-         !WRITE(6,*)'LOLO: Evap =', Evap*3600.*24., ' mm/day'
-         !WRITE(6,*)''
-
+         
       ELSE
-
+         
+         IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp )
+         
          CALL aerobulk_compute( jt, calgo, zt, zu, sst, t_zt, &
             &                   hum_zt, U_zu, V_zu, slp,  &
             &                   QL, QH, Tau_x, Tau_y,     &
             &                   Evp=Evap)
          
       END IF
-
+      
 
       IF( jt==Nt ) CALL aerobulk_bye()
       
    END SUBROUTINE AEROBULK_MODEL
 
+
+   !FUNCTION sum_mask( imsk )
+   !   INTEGER(1), DIMENSION(:,:), INTENT(in) :: imsk
+   !   INTEGER(1), DIMENSION(:,:), INTENT(in :: imsk
+   !   
+   !   INTEGER
+   !
+   !END FUNCTION sum_mask
+   
 END MODULE mod_aerobulk

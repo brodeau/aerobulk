@@ -26,10 +26,6 @@ MODULE mod_const
    CHARACTER(len=2),         SAVE :: ctype_humidity = 'sh' !: Default: spec. humidity [kg/kg ] => 'sh'
    !!                                                      !: * relative humidity         [%]  => 'rh'
    !!                                                      !: * dew-point temperature     [K]  => 'dp'
-
-   
-   !INTEGER(1), DIMENSION(:,:), ALLOCATABLE, SAVE :: imask   !: mask array: masked=>0, elsewhere=>1
-
    
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
