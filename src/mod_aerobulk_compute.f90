@@ -121,16 +121,16 @@ CONTAINS
             l_use_skin = .TRUE.
             PRINT *, ' *** we use the cool-skin/warm-layer scheme of ', TRIM(calgo(1:5)), '!'; !lilo
          END IF
-         CALL check_unit_consitency( 'rad_sw', rad_sw, mask )
-         CALL check_unit_consitency( 'rad_lw', rad_lw, mask )
+         !CALL check_unit_consistency( 'rad_sw', rad_sw, mask=imask )
+         !CALL check_unit_consistency( 'rad_lw', rad_lw, mask=imask )
       END IF
 
-      CALL check_unit_consitency( 'sst',   sst,  mask )
-      CALL check_unit_consitency( 't_air', t_zt, mask )
-      CALL check_unit_consitency( 'q_air', zQzt, mask )
-      CALL check_unit_consitency( 'slp',   slp,  mask )
-      CALL check_unit_consitency( 'u10', ABS(U_zu), mask )
-      CALL check_unit_consitency( 'v10', ABS(V_zu), mask )
+      !CALL check_unit_consistency( 'sst',   sst,  mask=imask )
+      !CALL check_unit_consistency( 't_air', t_zt, mask=imask )
+      !CALL check_unit_consistency( 'q_air', zQzt, mask=imask )
+      !CALL check_unit_consistency( 'slp',   slp,  mask=imask )
+      !CALL check_unit_consistency( 'u10', ABS(U_zu), mask=imask )
+      !CALL check_unit_consistency( 'v10', ABS(V_zu), mask=imask )
 
       !! Scalar wind:
       zWzu = sqrt( U_zu*U_zu + V_zu*V_zu )

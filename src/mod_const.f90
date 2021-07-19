@@ -28,7 +28,7 @@ MODULE mod_const
    !!                                                      !: * dew-point temperature     [K]  => 'dp'
 
    
-   INTEGER(1), DIMENSION(:,:), ALLOCATABLE, SAVE :: mask   !: mask array: masked=>0, elsewhere=>1
+   !INTEGER(1), DIMENSION(:,:), ALLOCATABLE, SAVE :: imask   !: mask array: masked=>0, elsewhere=>1
 
    
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
@@ -137,6 +137,21 @@ MODULE mod_const
 
 
 
+
+   !! For sanity check + guess of type of humidity we need an acceptable min and max for
+   !! each input field:
+
+   REAL(wp), PARAMETER :: ref_sst_min = 270._wp   , ref_sst_max = 320._wp    ! SST [K]
+   REAL(wp), PARAMETER :: ref_taa_min = 180._wp   , ref_taa_max = 330._wp    ! Absolute air temperature [K]
+   REAL(wp), PARAMETER :: ref_sha_min = 0._wp     , ref_sha_max = 0.08_wp    ! Specific humidity of air [kg/kg]
+   REAL(wp), PARAMETER :: ref_dpt_min = 150._wp   , ref_dpt_max = 330._wp    ! Dew-point temperature [K]
+   REAL(wp), PARAMETER :: ref_rlh_min = 0._wp     , ref_rlh_max = 100._wp    ! Relative humidity [%]
+   REAL(wp), PARAMETER :: ref_slp_min = 80000._wp , ref_slp_max = 110000._wp ! Sea-level atmospheric presssure [Pa]
+   REAL(wp), PARAMETER :: ref_wnd_min = -55._wp   , ref_wnd_max = 55._wp     ! Wind speed [m/s]
+   REAL(wp), PARAMETER :: ref_rsw_min = 0._wp     , ref_rsw_max = 1500.0_wp  ! Downwelling shortwave radiation [W/m^2]
+   REAL(wp), PARAMETER :: ref_rlw_min = 0._wp     , ref_rlw_max =  750.0_wp  ! Downwelling longwave  radiation [W/m^2]
+
+   
    !! IFS:
 
    !REAL(wp), PARAMETER :: &

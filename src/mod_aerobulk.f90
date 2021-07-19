@@ -10,7 +10,7 @@
 MODULE mod_aerobulk
 
    USE mod_const
-   USE mod_phymbl, ONLY: type_of_humidity
+   USE mod_phymbl, ONLY: type_of_humidity, check_unit_consistency
    USE mod_aerobulk_compute
 
    IMPLICIT NONE
@@ -22,12 +22,11 @@ MODULE mod_aerobulk
 CONTAINS
 
 
-
    SUBROUTINE aerobulk_init( Nt, calgo, psst, pta, pha, pU, pV, pslp,  l_cswl )
       !!
       !! 1. Set the official 2D shape of the problem based on the `psst` array =>[jpi,jpj] (saved and shared via mod_const)
       !! 2. Check on size agreement between input arrays (must all be [jpi,jpj])
-      !! 3. Allocate and fill the `mask` array to disregar "apparent problematic" regions...
+      !! 3. Allocate and fill the `imask` array to disregar "apparent problematic" regions...
       !! 4. Decide the type of humidity in use: specific? relative? dew-point? (saved and shared via mod_const)
       !!
       INTEGER,                  INTENT(in)  :: Nt    !: number of time records to go for...
@@ -43,8 +42,10 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in)  :: pslp   !: sea-level atmospheric pressure     [Pa]
       LOGICAL,     OPTIONAL   , INTENT(in)  :: l_cswl
 
+      INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask   !: mask array: masked=>0, elsewhere=>1
+      
       LOGICAL :: lcswl=.FALSE.
-      INTEGER :: ni, nj
+      INTEGER :: ni, nj, nx, ny
 
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: ztmp ! kitchen sink array...
       IF( PRESENT(l_cswl) ) lcswl=l_cswl
@@ -56,21 +57,21 @@ CONTAINS
 
       WRITE(6,*)'    *** Bulk parameterization to be used => "', TRIM(calgo), '"'
       ! 1.
-      jpi = SIZE(psst,1) ; jpj = SIZE(psst,2)
+      ni = SIZE(psst,1) ; nj = SIZE(psst,2)
 
       ! 2.
-      ni = SIZE(pta,1)  ; nj = SIZE(pta,2)      
-      IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and t_air arrays do not agree in shape!')
-      ni = SIZE(pha,1)  ; nj = SIZE(pha,2)
-      IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and hum_air arrays do not agree in shape!')
-      ni = SIZE(pU,1)  ; nj = SIZE(pU,2)
-      IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and U arrays do not agree in shape!')
-      ni = SIZE(pV,1)  ; nj = SIZE(pV,2)
-      IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and V arrays do not agree in shape!')
-      ni = SIZE(pslp,1)  ; nj = SIZE(pslp,2)
-      IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and SLP arrays do not agree in shape!')
+      nx = SIZE(pta,1)  ; nj = SIZE(pta,2)      
+      IF( (nx /= ni).OR.(ny /= nj) ) CALL ctl_stop(' aerobulk_init => SST and t_air arrays do not agree in shape!')
+      nx = SIZE(pha,1)  ; nj = SIZE(pha,2)
+      IF( (nx /= ni).OR.(ny /= nj) ) CALL ctl_stop(' aerobulk_init => SST and hum_air arrays do not agree in shape!')
+      nx = SIZE(pU,1)  ; nj = SIZE(pU,2)
+      IF( (nx /= ni).OR.(ny /= nj) ) CALL ctl_stop(' aerobulk_init => SST and U arrays do not agree in shape!')
+      nx = SIZE(pV,1)  ; nj = SIZE(pV,2)
+      IF( (nx /= ni).OR.(ny /= nj) ) CALL ctl_stop(' aerobulk_init => SST and V arrays do not agree in shape!')
+      nx = SIZE(pslp,1)  ; nj = SIZE(pslp,2)
+      IF( (nx /= ni).OR.(ny /= nj) ) CALL ctl_stop(' aerobulk_init => SST and SLP arrays do not agree in shape!')
 
-      WRITE(6,*)'    *** Computational domain shape: jpi, jpj =', INT(jpi,2), ',', INT(jpj,2)
+      WRITE(6,*)'    *** Computational domain shape: ni, nj =', INT(ni,2), ',', INT(nj,2)
       
       nitend = Nt
       WRITE(6,*)'    *** Number of time records that will be treated:', nitend      
@@ -87,31 +88,42 @@ CONTAINS
       END IF
       
       ! 3. Allocation and creation of the mask
-      WRITE(6,*)'    *** Allocating the `mask` array!'
-      ALLOCATE( mask(jpi,jpj) )
+      WRITE(6,*)'    *** Allocating the `imask` array!'
+      ALLOCATE( imask(ni,nj) )
       WRITE(6,*)'    *** Filling the `mask` array...'
-      mask(:,:) = 1
-      WHERE( (psst < 270._wp)   .OR. (psst > 320._wp)    ) mask = 0 ! silly SST
-      WHERE( ( pta < 180._wp)   .OR. (pta  > 330._wp)    ) mask = 0 ! silly air temperature
-      WHERE( (pslp < 80000._wp) .OR. (pslp > 110000._wp) ) mask = 0 ! silly atmospheric pressure
-      WHERE(     SQRT( pU*pU + pV*pV ) > 50._wp          ) mask = 0 ! silly scalar wind speed
+      imask(:,:) = 1
+      PRINT *, 'lolo before look at var: SUM(imask) =', SUM(imask)
       
-      ni = SUM(mask)  ! number of valid points
-      IF( ni == jpi*jpj ) THEN
-         WRITE(6,*)'        ==> no points need to be masked! :)'
-      ELSEIF( ni > 0 )    THEN
-         WRITE(6,*)'        ==> number of points we need to mask: ', jpi*jpj-ni, ' (out of ',jpi*jpj,')'
-      ELSE
-         WRITE(6,*)'        ==> the whole domain would be masked! :('
-         CALL ctl_stop(' one of your input fields must have the wrong unit!', 'check them and come back')
-      END IF
-      
-      !ALLOCATE( ztmp(jpi,jpj) )
-      !ztmp(:,:) = SQRT( pU(:,:)*pU(:,:) + pV(:,:)*pV(:,:) )
+      WHERE( (psst <  ref_sst_min) .OR. (psst > ref_sst_max) ) imask = 0 ! silly SST
+      WHERE( ( pta < ref_taa_min) .OR. (pta  > ref_taa_max) ) imask = 0 ! silly air temperature
+      WHERE( (pslp < ref_slp_min) .OR. (pslp > ref_slp_max) ) imask = 0 ! silly atmospheric pressure
+      WHERE(     SQRT( pU*pU + pV*pV )       > ref_wnd_max  ) imask = 0 ! silly scalar wind speed
+
+      PRINT *, 'lolo after look at var: SUM(imask) =', SUM(imask)
 
       
+      nx = SUM(imask)  ! number of valid points
+      IF( nx == ni*nj ) THEN
+         WRITE(6,*)'        ==> no points need to be masked! :)'
+      ELSE
+         IF ( nx > 0 ) THEN
+            WRITE(6,*)'        ==> number of points we need to mask: ', ni*nj-nx, ' (out of ',ni*nj,')'
+         ELSE
+            WRITE(6,*)'        ==> WARNING: the whole domain is masked!'
+            WRITE(6,*)'           ==> checking consistency of fields:'
+            CALL check_unit_consistency( 'sst',   psst )
+            CALL check_unit_consistency( 't_air', pta  )
+            CALL check_unit_consistency( 'slp',   pslp )
+            CALL check_unit_consistency( 'wnd',   SQRT( pU*pU + pV*pV ) )
+            WRITE(6,*)'           ==> okay then, this must be a land-processor in a MPI setup...'
+         END IF
+      END IF
+      
+      !ALLOCATE( ztmp(ni,nj) )
+      !ztmp(:,:) = SQRT( pU(:,:)*pU(:,:) + pV(:,:)*pV(:,:) )
+      
       ! 4. Type of humidity provided?
-      ctype_humidity = type_of_humidity( pha, mask )
+      ctype_humidity = type_of_humidity( pha, imask )
       WRITE(6,*)'    *** Air humidity type :   ctype_humidity  = ', ctype_humidity
       
       WRITE(6,*)'==================================================================='
@@ -120,6 +132,8 @@ CONTAINS
       !l_1st_call_ab_init = .FALSE.
       
       !DEALLOCATE( ztmp )
+
+      STOP'mod_aerobulk.f90'
       
    END SUBROUTINE aerobulk_init
 
@@ -128,7 +142,7 @@ CONTAINS
    SUBROUTINE aerobulk_bye()
       WRITE(6,*)'==================================================================='
       WRITE(6,*)'                   ----- AeroBulk_bye -----'
-      DEALLOCATE( mask )
+      DEALLOCATE( imask )
       WRITE(6,*)'==================================================================='
       WRITE(6,*)''
    END SUBROUTINE aerobulk_bye
@@ -191,6 +205,8 @@ CONTAINS
       IF( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       l_do_cswl = ( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) ! if theser 2 are provided we plan to use the CSWL schemes!
+
+      IF( jt<1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
       
       IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_cswl=l_do_cswl )
 

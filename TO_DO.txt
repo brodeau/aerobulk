@@ -1,0 +1,2 @@
+ Problem is the global jpi,jpj !!!
+ Better to make all functions and subroutine get it from the shape of their arguments ???
