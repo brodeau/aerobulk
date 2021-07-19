@@ -10,7 +10,11 @@ FC_PATH = /mnt/meom/workdir/brodeau/opt/intel/oneapi
 VERSION = latest
 DIR_FORT_LIB = $(FC_PATH)/compiler/$(VERSION)/linux/compiler/lib/intel64
 LNK_FORT_LIB = -lifcore
-FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64 ; # only for C++, to find module "iso_c_binding"
+
+# only for C++ to find module "iso_c_binding":
+FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64
+
+
 
 ### Fortran compilation flags :
 

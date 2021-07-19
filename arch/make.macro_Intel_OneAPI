@@ -11,6 +11,11 @@ VERSION = latest
 DIR_FORT_LIB = $(FC_PATH)/compiler/$(VERSION)/linux/compiler/lib/intel64
 LNK_FORT_LIB = -lifcore
 
+# only for C++ to find module "iso_c_binding":
+#FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64
+
+
+
 ### Fortran compilation flags :
 
 # Production
