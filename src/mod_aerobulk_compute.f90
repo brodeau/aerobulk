@@ -15,21 +15,14 @@ MODULE mod_aerobulk_compute
 
    PRIVATE
 
-   PUBLIC :: aerobulk_compute
+   PUBLIC :: AEROBULK_COMPUTE
 
 CONTAINS
    
-   SUBROUTINE aerobulk_compute( jt, calgo, zt, zu, sst, t_zt, &
+   SUBROUTINE AEROBULK_COMPUTE( jt, calgo, zt, zu, sst, t_zt, &
       &                         hum_zt, U_zu, V_zu, slp,  &
       &                         QL, QH, Tau_x, Tau_y,     &
       &                         rad_sw, rad_lw, T_s, Evp )
-      !!
-      !!******************************
-      !! 2015: L. Brodeau
-      !!  => all constants taken from mod_phymbl and mod_const must
-      !!     be done or used from NEMO constant bank...    ... vkarmn ... grav ...
-      !!******************************
-      !!
       !!======================================================================================
       !!
       !! INPUT :
@@ -235,6 +228,6 @@ CONTAINS
       DEALLOCATE ( zWzu, zSSQ, zCd, zCh, zCe, zThtzt, zQzt, zThtzu, zQzu, &
          &         zUblk, zTs, zqs, zEvap, zTaum, ztmp  )
       
-   END SUBROUTINE aerobulk_compute
+   END SUBROUTINE AEROBULK_COMPUTE
 
 END MODULE mod_aerobulk_compute

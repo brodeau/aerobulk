@@ -48,7 +48,7 @@ CONTAINS
 
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: ztmp ! kitchen sink array...
       IF( PRESENT(l_cswl) ) lcswl=l_cswl
-      
+
       WRITE(6,*)''
       WRITE(6,*)'==================================================================='
       WRITE(6,*)'                   ----- AeroBulk_init -----'
@@ -59,7 +59,7 @@ CONTAINS
       jpi = SIZE(psst,1) ; jpj = SIZE(psst,2)
 
       ! 2.
-      ni = SIZE(pta,1)  ; nj = SIZE(pta,2)      
+      ni = SIZE(pta,1)  ; nj = SIZE(pta,2)
       IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and t_air arrays do not agree in shape!')
       ni = SIZE(pha,1)  ; nj = SIZE(pha,2)
       IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and hum_air arrays do not agree in shape!')
@@ -71,10 +71,10 @@ CONTAINS
       IF( (ni /= jpi).OR.(ni /= jpi) ) CALL ctl_stop(' aerobulk_init => SST and SLP arrays do not agree in shape!')
 
       WRITE(6,*)'    *** Computational domain shape: jpi, jpj =', INT(jpi,2), ',', INT(jpj,2)
-      
+
       nitend = Nt
-      WRITE(6,*)'    *** Number of time records that will be treated:', nitend      
-      
+      WRITE(6,*)'    *** Number of time records that will be treated:', nitend
+
       WRITE(6,*)'    *** Number of iterations in bulk algos: nb_iter  =', INT(nb_iter,1)
 
       ! 4. Cool-skin/Warm-layer schemes ???
@@ -85,7 +85,7 @@ CONTAINS
       ELSE
          WRITE(6,*)'    *** Cool-skin/Warm-layer schemes will NOT be used!'
       END IF
-      
+
       ! 3. Allocation and creation of the mask
       WRITE(6,*)'    *** Allocating the `mask` array!'
       ALLOCATE( mask(jpi,jpj) )
@@ -95,7 +95,7 @@ CONTAINS
       WHERE( ( pta < 180._wp)   .OR. (pta  > 330._wp)    ) mask = 0 ! silly air temperature
       WHERE( (pslp < 80000._wp) .OR. (pslp > 110000._wp) ) mask = 0 ! silly atmospheric pressure
       WHERE(     SQRT( pU*pU + pV*pV ) > 50._wp          ) mask = 0 ! silly scalar wind speed
-      
+
       ni = SUM(mask)  ! number of valid points
       IF( ni == jpi*jpj ) THEN
          WRITE(6,*)'        ==> no points need to be masked! :)'
@@ -105,22 +105,20 @@ CONTAINS
          WRITE(6,*)'        ==> the whole domain would be masked! :('
          CALL ctl_stop(' one of your input fields must have the wrong unit!', 'check them and come back')
       END IF
-      
+
       !ALLOCATE( ztmp(jpi,jpj) )
       !ztmp(:,:) = SQRT( pU(:,:)*pU(:,:) + pV(:,:)*pV(:,:) )
 
-      
+
       ! 4. Type of humidity provided?
       ctype_humidity = type_of_humidity( pha, mask )
       WRITE(6,*)'    *** Air humidity type :   ctype_humidity  = ', ctype_humidity
-      
+
       WRITE(6,*)'==================================================================='
       !WRITE(6,*)''
 
-      !l_1st_call_ab_init = .FALSE.
-      
       !DEALLOCATE( ztmp )
-      
+
    END SUBROUTINE aerobulk_init
 
 
@@ -132,7 +130,7 @@ CONTAINS
       WRITE(6,*)'==================================================================='
       WRITE(6,*)''
    END SUBROUTINE aerobulk_bye
-   
+
 
 
 
@@ -191,21 +189,15 @@ CONTAINS
       IF( PRESENT(Niter) ) nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       l_do_cswl = ( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) ! if theser 2 are provided we plan to use the CSWL schemes!
-      
+
       IF( jt==1 ) CALL aerobulk_init( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_cswl=l_do_cswl )
 
       IF( l_do_cswl ) THEN
-         
+
          CALL aerobulk_compute( jt, calgo, zt, zu, sst, t_zt, &
             &                   hum_zt, U_zu, V_zu, slp,    &
             &                   QL, QH, Tau_x, Tau_y,     &
             &                   rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
-
-         !WRITE(6,*)'LOLO DEBUG INTO mod_aerobulk after CALL aerobulk_compute !!! ', TRIM(calgo)
-         !WRITE(6,*)'LOLO: Ts =', T_s
-         !WRITE(6,*)'LOLO: (sst was) =', sst
-         !WRITE(6,*)'LOLO: Evap =', Evap*3600.*24., ' mm/day'
-         !WRITE(6,*)''
 
       ELSE
 
@@ -213,12 +205,11 @@ CONTAINS
             &                   hum_zt, U_zu, V_zu, slp,  &
             &                   QL, QH, Tau_x, Tau_y,     &
             &                   Evp=Evap)
-         
+
       END IF
 
-
       IF( jt==Nt ) CALL aerobulk_bye()
-      
+
    END SUBROUTINE AEROBULK_MODEL
 
 END MODULE mod_aerobulk
