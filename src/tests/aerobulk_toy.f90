@@ -56,8 +56,8 @@ PROGRAM AEROBULK_TOY
    !                                       !:  => only in COARE and ECMWF
    !                                       !: warm-layer cannot be used in this simple test are there is not time integration possible !!!
 
-   jpi = lx ; jpj = ly
-
+   !! Global constants of mod_const.f90:
+   
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
 
