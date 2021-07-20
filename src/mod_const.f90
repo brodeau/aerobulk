@@ -22,6 +22,8 @@ MODULE mod_const
    INTEGER,  PARAMETER            :: nit000 = 1
    INTEGER,                  SAVE :: nitend = 1 !: time steps (aka # of calls) at which to end
 
+   LOGICAL, SAVE :: l_use_skin_schemes = .FALSE. !: do we use the cool-skin / warm-layer skin schemes ?
+   
    !! Type of air humidity in use:
    CHARACTER(len=2),         SAVE :: ctype_humidity = 'sh' !: Default: spec. humidity [kg/kg ] => 'sh'
    !!                                                      !: * relative humidity         [%]  => 'rh'
@@ -30,8 +32,6 @@ MODULE mod_const
    REAL(wp), DIMENSION(jpk), SAVE :: gdept_1d = (/ 1._wp /) !: depth at which SST is measured [m]
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
    INTEGER,                  SAVE :: nb_iter=5  !: number of itteration in the bulk algorithm
-
-   !LOGICAL, SAVE :: l_1st_call_ab_init=.TRUE. , l_last_call=.FALSE.
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 

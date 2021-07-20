@@ -31,8 +31,8 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
 
 
    zq_zt = 0.012         ! [kg/kg]
-   zU_zu = 4.            ! [m/s]
-   zV_zu = 9.            ! [m/s]
+   zU_zu = 5.            ! [m/s]
+   zV_zu = 0.            ! [m/s]
    zslp  = 101000.       ! [Pa]
 
    zRsw  = 0. ! (night)  ! [W/m^2]
@@ -44,7 +44,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    CALL aerobulk_model( 1, 1, 'coare3p6', zt, zu, zsst, zt_zt,     &
       &                 zq_zt, zU_zu, zV_zu, zslp,                  &
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
-      &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
+      &                 Niter=20, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
@@ -67,7 +67,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    CALL aerobulk_model( 1, 1, 'ecmwf', zt, zu, zsst, zt_zt,        &
       &                 zq_zt, zU_zu, zV_zu, zslp,                  & 
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
-      &                 Niter=20, rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
+      &                 Niter=20, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C' 

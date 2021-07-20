@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     double zt =  2.; // height of measurement for air temperature and humidity [m]
     double zu = 10.; // height of measurement for wind speed [m]
 
-    int nbiter = 12 ; // number of iterations...
+    int nbiter = 8 ; // number of iterations...
 
     double to_mm_p_day =  3600.*24.;
 
@@ -38,8 +38,8 @@ int main(int argc, char** argv)
 
     aerobulk::model( 1, 1, aerobulk::algorithm::COARE3p0, zt, zu, zsst, zt_zt,
                      zq_zt, zU_zu, zV_zu, zslp,
-                     zQL, zQH, zTau_x, zTau_y, zE,
-                     nbiter, zRsw, zRlw, zT_s );
+                     zQL, zQH, zTau_x, zTau_y, zE, 
+                     nbiter, true, zRsw, zRlw, zT_s );
 
     std::cout
         << "  ==> results for COARE 3.0: \n"
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     aerobulk::model( 1, 1, aerobulk::algorithm::COARE3p6, zt, zu, zsst, zt_zt,
                      zq_zt, zU_zu, zV_zu, zslp,
                      zQL, zQH, zTau_x, zTau_y, zE,
-                     nbiter, zRsw, zRlw, zT_s );
+                     nbiter, true, zRsw, zRlw, zT_s );
 
     std::cout
         << "  ==> results for COARE 3.6: \n"
@@ -81,8 +81,8 @@ int main(int argc, char** argv)
 
     aerobulk::model( 1, 1, aerobulk::algorithm::ECMWF, zt, zu, zsst, zt_zt,
                      zq_zt, zU_zu, zV_zu, zslp,
-                     zQL, zQH, zTau_x, zTau_y, zE, nbiter,
-                     zRsw, zRlw, zT_s );
+                     zQL, zQH, zTau_x, zTau_y, zE,
+                     nbiter, true, zRsw, zRlw, zT_s );
 
     std::cout
         << "\n  ==> results for ECMWF: \n"
@@ -100,7 +100,8 @@ int main(int argc, char** argv)
 
     aerobulk::model( 1, 1, aerobulk::algorithm::NCAR, zt, zu, zsst, zt_zt,
                      zq_zt, zU_zu, zV_zu, zslp,
-                     zQL, zQH, zTau_x, zTau_y, zE, nbiter );
+                     zQL, zQH, zTau_x, zTau_y, zE,
+                     nbiter );
 
     std::cout
         << "\n  ==> results for NCAR: \n"
@@ -118,7 +119,8 @@ int main(int argc, char** argv)
 
     aerobulk::model( 1, 1, aerobulk::algorithm::ANDREAS, zt, zu, zsst, zt_zt,
                      zq_zt, zU_zu, zV_zu, zslp,
-                     zQL, zQH, zTau_x, zTau_y, zE, nbiter);
+                     zQL, zQH, zTau_x, zTau_y, zE,
+                     nbiter);
 
     std::cout
         << "\n  ==> results for ANDREAS: \n"

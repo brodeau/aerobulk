@@ -7,13 +7,14 @@ extern "C"
     void aerobulk_cxx_skin(    const int *, const int *, const char *, const double *, const double *, const double *, const double *,
                                const double *, const double *, const double *, const double *,
                                double *, double *, double *, double *, double *,
-                               const int *, const double *, const double *, double *,
+                               const int *, const bool *, const double *, const double *, double *,
                                const int *, const int * );
 
     void aerobulk_cxx_no_skin( const int *, const int *, const char *, const double *, const double *, const double *, const double *,
                                const double *, const double *, const double *, const double *,
                                double *, double *, double *, double *, double *,
-                               const int *, const int *, const int * );
+                               const int *,
+                               const int *, const int * );
 
 }
 
@@ -82,7 +83,7 @@ int aerobulk::check_sizes(int count, ...)
 void aerobulk::model(const int jt, const int Nt, algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
                      const std::vector<double> &hum_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
                      std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
-                     const int Niter, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s)
+                     const int Niter, const bool l_use_skin, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s)
 
 {
     // Algorithm string and size
@@ -103,7 +104,7 @@ void aerobulk::model(const int jt, const int Nt, algorithm algo, double zt, doub
     // The actual function call - we need to sent the adresses/pointer because it's a C interface to a Fortran routine
     aerobulk_cxx_skin( &jt, &Nt, calgo.c_str(), &zt, &zu, &sst[0], &t_zt[0], &hum_zt[0], &U_zu[0], &V_zu[0], &slp[0],
                        &QL[0], &QH[0], &Tau_x[0], &Tau_y[0], &Evap[0],
-                       &Niter, &rad_sw[0], &rad_lw[0], &T_s[0],
+                       &Niter, &l_use_skin, &rad_sw[0], &rad_lw[0], &T_s[0],
                        &l, &m );
 }
 

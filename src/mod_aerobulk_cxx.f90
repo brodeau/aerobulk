@@ -29,7 +29,7 @@ CONTAINS
    SUBROUTINE aerobulk_cxx_skin( jt, Nt, calgo, zt, zu, sst, t_zt, &
       &                          hum_zt, U_zu, V_zu, slp,          &
       &                          QL, QH, Tau_x, Tau_y, Evap,       &
-      &                          Niter, rad_sw, rad_lw, T_s,       &
+      &                          Niter, l_skin, rad_sw, rad_lw, T_s,       &
       &                          l, m ) BIND(c)
       
       ! Arguments
@@ -40,6 +40,7 @@ CONTAINS
       REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(c_double),    DIMENSION(m,1), INTENT(out) :: QL, QH, Tau_x, Tau_y, Evap, T_s
       INTEGER(c_int),                    INTENT(in)  :: Niter
+      LOGICAL,                           INTENT(in)  :: l_skin
       REAL(c_double),    DIMENSION(m,1), INTENT(in)  :: rad_sw, rad_lw
       
       ! Locals
@@ -56,7 +57,7 @@ CONTAINS
       CALL AEROBULK_MODEL( jt, Nt, calgo_fort, zt, zu, sst, t_zt,             &
          &                 hum_zt, U_zu, V_zu, slp,                           &
          &                 QL, QH, Tau_x, Tau_y, Evap,                        &
-         &                 Niter=Niter, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
+         &                 Niter=Niter, l_use_skin=l_skin, rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s )
       
    END SUBROUTINE aerobulk_cxx_skin
 

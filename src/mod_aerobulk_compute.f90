@@ -23,13 +23,6 @@ CONTAINS
       &                         hum_zt, U_zu, V_zu, slp,  &
       &                         QL, QH, Tau_x, Tau_y,     &
       &                         rad_sw, rad_lw, T_s, Evp )
-      !!
-      !!******************************
-      !! 2015: L. Brodeau
-      !!  => all constants taken from mod_phymbl and mod_const must
-      !!     be done or used from NEMO constant bank...    ... vkarmn ... grav ...
-      !!******************************
-      !!
       !!======================================================================================
       !!
       !! INPUT :
@@ -49,8 +42,8 @@ CONTAINS
       !!    *  V_zu   : meridional wind speed at zu                            [m/s]
       !!    *  slp    : mean sea-level pressure                                [Pa] ~101000 Pa
       !!
-      !! OPTIONAL INPUT (will trigger l_use_skin=TRUE if present!):
-      !! ---------------
+      !! OPTIONAL INPUT
+      !! --------------  (these 2 are only needed when using CSWL schemes...)
       !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!
@@ -63,16 +56,16 @@ CONTAINS
       !!
       !! OPTIONAL OUTPUT
       !! ---------------
-      !!    *  T_s  : skin temperature    [K]    (only when l_use_skin=TRUE)
+      !!    *  T_s  : skin temperature    [K]    (only when l_use_skin_schemes=TRUE)
       !!    *  Evp : evaporation         [mm/s] aka [kg/m^2/s] (usually <0, as ocean loses water!)
       !!
       !!
       !!============================================================================
       !!
       !! I/O ARGUMENTS:
-      INTEGER,                      INTENT(in)  :: jt
-      CHARACTER(len=*),             INTENT(in)  :: calgo
-      REAL(wp),                     INTENT(in)  :: zt, zu
+      INTEGER,                    INTENT(in)  :: jt
+      CHARACTER(len=*),           INTENT(in)  :: calgo
+      REAL(wp),                   INTENT(in)  :: zt, zu
       REAL(wp),   DIMENSION(:,:), INTENT(in)  :: sst, t_zt, hum_zt, U_zu, V_zu, slp
       REAL(wp),   DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y
       REAL(wp),   DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
@@ -91,22 +84,18 @@ CONTAINS
       !
       INTEGER          :: Ni, Nj
       CHARACTER(len=2) :: chum
-      LOGICAL          :: l_use_skin
       !!------------------------------------------------------------------------------
-
-
-      l_use_skin = .FALSE.
 
       Ni = SIZE(sst,1)
       Nj = SIZE(sst,2)
 
-      ALLOCATE ( zWzu(Ni,Nj),  zSSQ(Ni,Nj), &
-         &       zCd(Ni,Nj),    zCh(Ni,Nj),    zCe(Ni,Nj),  &
-         &       zThtzt(Ni,Nj), zQzt(Ni,Nj),                  &
-         &       zThtzu(Ni,Nj), zQzu(Ni,Nj),                  &
+      ALLOCATE ( zWzu(Ni,Nj),   zSSQ(Ni,Nj),                &
+         &        zCd(Ni,Nj),    zCh(Ni,Nj),   zCe(Ni,Nj),  &
+         &       zThtzt(Ni,Nj), zQzt(Ni,Nj),                &
+         &       zThtzu(Ni,Nj), zQzu(Ni,Nj),                &
          &       zUblk(Ni,Nj),  zTs(Ni,Nj),    zqs(Ni,Nj),  &
          &       zEvap(Ni,Nj),  zTaum(Ni,Nj),  ztmp(Ni,Nj)  )
-
+      
       ! Conversion to specific humidity when needed:
       SELECT CASE(ctype_humidity)
       CASE('sh')
@@ -119,14 +108,6 @@ CONTAINS
          WRITE(6,*) 'ERROR: mod_aerobulk_compute.f90 => humidty type "',ctype_humidity,'" is unknown!!!' ; STOP
       END SELECT
       
-      ! Cool skin ?
-      IF((TRIM(calgo(1:4)) == 'coar').OR.(TRIM(calgo) == 'ecmwf')) THEN
-         IF( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) THEN
-            l_use_skin = .TRUE.
-            PRINT *, ' *** we use the cool-skin/warm-layer scheme of ', TRIM(calgo(1:5)), '!'
-         END IF
-      END IF
-
       !! Scalar wind:
       zWzu = sqrt( U_zu*U_zu + V_zu*V_zu )
 
@@ -149,7 +130,7 @@ CONTAINS
       SELECT CASE(TRIM(calgo))
          !!
       CASE('coare3p0')
-         IF( l_use_skin ) THEN
+         IF( l_use_skin_schemes ) THEN
             CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE., &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
                &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
@@ -159,7 +140,7 @@ CONTAINS
          END IF
          !!
       CASE('coare3p6')
-         IF( l_use_skin ) THEN
+         IF( l_use_skin_schemes ) THEN
             CALL TURB_COARE3P6 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE., &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
                &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
@@ -174,7 +155,7 @@ CONTAINS
          !!
          !!
       CASE('ecmwf')
-         IF( l_use_skin ) THEN
+         IF( l_use_skin_schemes ) THEN
             CALL TURB_ECMWF ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE.,  &
                &              zCd, zCh, zCe, zThtzu, zQzu, zUblk,      &
                &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
@@ -198,15 +179,8 @@ CONTAINS
 
 
       !! Skin temperature:
-      !! IF( l_use_skin ) => zTs and zqs have been updated from SST to skin temperature !
-
-
-      !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
-      !PRINT *, 'LOLO: Ts =', zTs
-      !PRINT *, 'LOLO: (sst was) =', sst
-      !PRINT *, ''
-
-
+      !! IF( l_use_skin_schemes ) => zTs and zqs have been updated from SST to skin temperature !
+      
       CALL BULK_FORMULA( zu, zTs, zqs, zThtzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
          &                                 zTaum, QH, QL, pEvap=zEvap )
 
