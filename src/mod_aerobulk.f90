@@ -94,7 +94,7 @@ CONTAINS
          IF( ANY(SHAPE(prlw)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and Rad_LW arrays do not agree in shape!')
       END IF
       
-      WRITE(6,'("     *** Computational domain shape: Ni x Nj = ",i4.4," x ",i4.4)'), Ni, Nj
+      WRITE(6,'("     *** Computational domain shape: Ni x Nj = ",i5.5," x ",i5.5)'), Ni, Nj
 
       nitend = Nt   ! important: nitend is a global variable shared by `mod_const.f90`
       WRITE(6,*)'    *** Number of time records that will be treated:', nitend
