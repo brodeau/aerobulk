@@ -55,25 +55,23 @@ CONTAINS
       !!============================================================================
 
 
-      CHARACTER(len=*), INTENT(in)                ::   calgo
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   U_N10       ! relative wind module at zu            [m/s]
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   CdN10       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   ChN10       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   pz0          ! roughness length [m]
-
-      INTEGER :: jit
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
-         &  u_star, &
-         &  z0t, z0q
-
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, Ub
-
-      ALLOCATE ( u_star(jpi,jpj), &
-         &     z0t(jpi,jpj), z0q(jpi,jpj), Ub(jpi,jpj),         &
-         &     ztmp0(jpi,jpj), ztmp1(jpi,jpj) )
+      CHARACTER(len=*),         INTENT(in)    ::   calgo
+      REAL(wp), DIMENSION(:,:), INTENT(in   ) ::   U_N10       ! relative wind module at zu            [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(  out) ::   CdN10       ! transfer coefficient for momentum         (tau)
+      REAL(wp), DIMENSION(:,:), INTENT(  out) ::   ChN10       ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), DIMENSION(:,:), INTENT(  out) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), DIMENSION(:,:), INTENT(  out) ::   pz0          ! roughness length [m]
       
+      INTEGER :: Ni, Nj, jit
+
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: u_star, z0t, z0q, Ub, ztmp0, ztmp1
+      !!===================================================================================
+
+      Ni = SIZE(U_N10,1)
+      Nj = SIZE(U_N10,2)
+      
+      ALLOCATE ( u_star(Ni,Nj),   z0t(Ni,Nj), z0q(Ni,Nj), Ub(Ni,Nj),  &
+         &        ztmp0(Ni,Nj), ztmp1(Ni,Nj) )
 
       Ub = MAX(U_N10, 0.1_wp)
 
@@ -118,8 +116,8 @@ CONTAINS
 
             CdN10 = vkarmn2 / ( ztmp0*ztmp0 )
 
-            !IF ( (jpi==1).AND.(jpj==1) ) PRINT *, '   *** CdN10 =', CdN10*1000.
-            IF ( (jpi==1).AND.(jpj==1) ) PRINT *, ''
+            !IF ( (Ni==1).AND.(Nj==1) ) PRINT *, '   *** CdN10 =', CdN10*1000.
+            IF ( (Ni==1).AND.(Nj==1) ) PRINT *, ''
 
          END DO
 

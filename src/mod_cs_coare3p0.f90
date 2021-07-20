@@ -36,18 +36,21 @@ CONTAINS
       !!
       !!  Cool-Skin Warm-Layer scheme according to Fairall et al. 1996
       !!
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pTzu, pqzu, psst, pslp, &
-         &                                           pU10, pus, pts, pqs
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: prhoa, pRlw, pQsw
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pdelta, pT_s, pq_s
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pTzu, pqzu, psst, pslp
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pU10, pus, pts, pqs
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: prhoa, pRlw, pQsw
+      REAL(wp), DIMENSION(:,:), INTENT(inout) :: pdelta, pT_s, pq_s
       !!---------------------------------------------------------------------
-      INTEGER  ::   ji, jj     ! dummy loop indices
+      INTEGER  :: Ni, Nj, ji, jj     ! dummy loop indices
       REAL(wp) :: zz0, zz1, zz2, zCe, zCh, zus, zQsen, zQlat, zQlw, zfr, &
          &        zdt, zdq, ztf, &
          &        zdelta, zlamb, zalpha, zQt
       !!---------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      Ni = SIZE(psst,1)
+      Nj = SIZE(psst,2)
+      
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             zdelta = pdelta(ji,jj)
 

@@ -72,14 +72,14 @@ CONTAINS
       !!             as output =>  new estimate of skin temperature
       !!
       !!------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQsw     ! net solar radiation into the sea [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pQnsol   ! net non-solar heat flux into the sea [W/m^2]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pustar
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)    :: pSST     ! bulk SST
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pQsw     ! net solar radiation into the sea [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pQnsol   ! net non-solar heat flux into the sea [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pustar
+      REAL(wp), DIMENSION(:,:), INTENT(in)    :: pSST     ! bulk SST
       !
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pTs
+      REAL(wp), DIMENSION(:,:), INTENT(inout) :: pTs
       !
-      INTEGER :: ji,jj
+      INTEGER :: Ni, Nj, ji,jj
       !
       REAL(wp) :: rmult, &
          & zRhoCp_w, &
@@ -90,7 +90,7 @@ CONTAINS
          & zus_a, &
          & zdt, zfs, zsgn
       !
-      REAL(wp), DIMENSION(jpi,jpj) :: &
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          &  zalpha_w, &       !: thermal expansion coefficient of seawater
          & zus_w, zus_w2, &   !: u* and u*^2 in water
          &       zdT_c,   &   !: cool skin temperature increment !lolo rm!
@@ -98,7 +98,11 @@ CONTAINS
       !
       INTEGER :: nbi, jwl
       !!------------------------------------------------------------------
-      !
+      Ni = SIZE(pSST,1)
+      Nj = SIZE(pSST,2)
+
+      ALLOCATE( zalpha_w(Ni,Nj), zus_w(Ni,Nj), zus_w2(Ni,Nj), zdT_c(Ni,Nj), zdT_w(Ni,Nj) )
+      
       !     1. Initialize constants for ocean warm layer and cool skin
       !
       !     1.1 General
@@ -132,8 +136,8 @@ CONTAINS
       !
       !  3. Cool skin (Fairall et al. 1996)
       !------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, Nj
+         DO ji = 1, Ni
             !
             ! Non-solar heat loss to the atmosphere:
             zQnsol = MAX( 1._wp , - pQnsol(ji,jj) )
@@ -171,8 +175,8 @@ CONTAINS
 
       DO jwl = 1, nbi  ! itteration to solve implicitely equation for warm layer
 
-         DO jj = 1, jpj
-            DO ji = 1, jpi
+         DO jj = 1, Nj
+            DO ji = 1, Ni
 
                ZDSST = pTs(ji,jj) - pSST(ji,jj) - zdT_c(ji,jj)
 
@@ -204,8 +208,8 @@ CONTAINS
                ZZ = SIGN( MAX(ABS(ZZ) , 1e-4_wp), ZZ )
                zdT_w(ji,jj) = MAX( 0._wp , (rmult*ZDSST + ZCON5*ZSRD*zdt)/ZZ )
 
-            END DO ! DO ji = 1, jpi
-         END DO ! DO jj = 1, jpj
+            END DO ! DO ji = 1, Ni
+         END DO ! DO jj = 1, Nj
 
          ! 3. Apply warm layer and cool skin effects
          !------------------------------------------
@@ -213,6 +217,9 @@ CONTAINS
 
       END DO  ! DO jwl = 1, nbi !: sub-itteration
 
+
+      DEALLOCATE( zalpha_w, zus_w, zus_w2, zdT_c, zdT_w )
+      
    END SUBROUTINE CSWL_ECMWF
 
    !!======================================================================

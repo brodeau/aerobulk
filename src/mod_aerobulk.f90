@@ -21,11 +21,10 @@ MODULE mod_aerobulk
 
 CONTAINS
 
-
    SUBROUTINE aerobulk_init( Nt, calgo, psst, pta, pha, pU, pV, pslp,  prsw, prlw )
-      !!===================================================================================================================
-      !! 1. Set the official 2D shape of the problem based on the `psst` array =>[jpi,jpj] (saved and shared via mod_const)
-      !! 2. Check on size agreement between input arrays (must all be [jpi,jpj])
+      !!===========================================================================================
+      !! 1. Set the official 2D shape of the problem based on the `psst` array =>[Ni,Nj]
+      !! 2. Check on size agreement between input arrays (must all be [Ni,Nj])
       !! 3. Allocate and fill the `imask` array to disregar "apparent problematic" regions...
       !! 4. Decide the type of humidity in use: specific? relative? dew-point? (saved and shared via mod_const)
       !!
@@ -48,12 +47,12 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prsw   !: downwelling shortwave radiation  [W/m^2]
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prlw   !: downwelling  longwave radiation  [W/m^2]
       !LOGICAL,     OPTIONAL   , INTENT(in)  :: l_cswl
-      !!===================================================================================================================
+      !!==================================================================================================
       LOGICAL :: lcswl=.FALSE.
       INTEGER :: Ni, Nj, np
       INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask   !: mask array: masked=>0, elsewhere=>1
       !REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: ztmp ! kitchen sink array...
-      !!===================================================================================================================
+      !!==================================================================================================
 
       lcswl = ( PRESENT(prsw) .AND. PRESENT(prlw) )
       
