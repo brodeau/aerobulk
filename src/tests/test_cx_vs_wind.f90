@@ -60,6 +60,8 @@ PROGRAM cx_vs_wind_test
       &   t_us, t_ts, t_qs, &
       &   t_ac, t_ublk, t_lo, t_un, t_ri
 
+   REAL(wp), DIMENSION(1,1) :: zTz, zQz
+   
    IF ( command_argument_count() /= 2 ) THEN
       PRINT *, 'USAGE: test_cx_vs_wind.x <algo (coare3p0/coare3p6/ncar/ecmwf/andreas)> <SST (deg.C)>'
       STOP
@@ -73,8 +75,6 @@ PROGRAM cx_vs_wind_test
 
    !! We want a large nb_iter !
    nb_iter = 20
-   jpi = 1
-   jpj = 1
 
    
    !nb_iter = 1
@@ -201,27 +201,30 @@ PROGRAM cx_vs_wind_test
          DO jh = 1, nrh
             !!
 
+            !! shape 1x1 array takes a scalar value:
+            zTz(:,:) = XT_a(jdt,jh)
+            zQz(:,:) = XQ_a(jdt,jh)
 
             IF ( TRIM(calgo) == 'coare3p0' ) &
-               CALL TURB_COARE3P0( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
+               CALL TURB_COARE3P0( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
                &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'coare3p6' ) &
-               CALL TURB_COARE3P6( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
+               CALL TURB_COARE3P6( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
                &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
 
             IF ( TRIM(calgo) == 'ncar' ) &
-               CALL TURB_NCAR( zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               CALL TURB_NCAR( zt, zu, sstk, zTz, qsat_sst, zQz, w10, &
                &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'ecmwf' ) &
-               CALL TURB_ECMWF( 1, zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, .false., .false., &
+               CALL TURB_ECMWF( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
                &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
             
             IF ( TRIM(calgo) == 'andreas' ) &
-               CALL TURB_ANDREAS(  zt, zu, sstk, XT_a(jdt,jh), qsat_sst, XQ_a(jdt,jh), w10, &
+               CALL TURB_ANDREAS(  zt, zu, sstk, zTz, qsat_sst, zQz, w10, &
                &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
-
+            
             !! Bulk Richardson number at zu:
             ri = Ri_bulk( zu, sstk, theta_zu, qsat_sst, q_zu, U_bulk )
             
@@ -389,24 +392,28 @@ PROGRAM cx_vs_wind_test
       !PRINT *, 't2, q2 =', v_tq(1,1)-rt0, 1000.*v_tq(2,1)
       !!
 
+      zTz(:,:) = v_tq(1,1)
+      zQz(:,:) = v_tq(2,1)
+
+      
       IF ( trim(calgo) == 'coare3p0' ) &
-         CALL TURB_COARE3P0(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
+         CALL TURB_COARE3P0(1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
          &               Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( TRIM(calgo) == 'coare3p6' ) &
-         CALL TURB_COARE3P6(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
+         CALL TURB_COARE3P6(1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
          &               Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'ncar' ) &
-         CALL TURB_NCAR(zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+         CALL TURB_NCAR(zt, zu, sstk, zTz, qsat_sst, zQz, w10, &
          &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'ecmwf' ) &
-         CALL TURB_ECMWF(1, zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, .false., .false., &
+         CALL TURB_ECMWF(1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
          &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
       IF ( trim(calgo) == 'andreas' ) &
-         CALL TURB_ANDREAS( zt, zu, sstk, v_tq(1,1), qsat_sst, v_tq(2,1), w10, &
+         CALL TURB_ANDREAS( zt, zu, sstk, zTz, qsat_sst, zQz, w10, &
          &             Cd, Ch, Ce, theta_zu, q_zu, U_bulk)
 
 
@@ -448,28 +455,25 @@ CONTAINS
       !!    t_ta_qa    array contening the nh couples possible   (K,kg/kg)
       !!
       !!#######################################################################
-
-
-
-      REAL(wp),    DIMENSION(jpi,jpj),  INTENT(in)  :: Ts
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: Ts
       REAL(wp),                     INTENT(in)  :: dvt
-      INTEGER, INTENT(in)                   :: nh
-      REAL(wp),    DIMENSION(nh)  , INTENT(in)  :: trh
-      REAL(wp),    DIMENSION(2,nh), INTENT(out) :: t_ta_qa
+      INTEGER,                      INTENT(in)  :: nh
+      REAL(wp), DIMENSION(nh)  ,    INTENT(in)  :: trh
+      REAL(wp), DIMENSION(2,nh),    INTENT(out) :: t_ta_qa
       !!
       REAL(wp), PARAMETER :: reps = 1.E-7
-
-
-      INTEGER :: jh, nitt
-
+      INTEGER :: Ni, Nj, jh, nitt
       REAL(wp) :: rdiff
-      REAL(wp), DIMENSION(jpi,jpj)  :: RH_a, T_a, q_a, Tv_a, T_old, zqsat_sst, sstv, zslp
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: RH_a, T_a, q_a, Tv_a, T_old, zqsat_sst, sstv, zslp
+      !!#######################################################################
 
-
-
+      Ni = SIZE(Ts,1)
+      Nj = SIZE(Ts,2)
+      ALLOCATE( RH_a(Ni,Nj),  T_a(Ni,Nj),  q_a(Ni,Nj), Tv_a(Ni,Nj), T_old(Ni,Nj), &
+         & zqsat_sst(Ni,Nj), sstv(Ni,Nj), zslp(Ni,Nj) )
 
       zslp = Patm
-
+      
       !! Virtual Sea Surface temperature:
       zqsat_sst = q_sat(Ts, zslp)
       sstv = Ts*(1. + rctv0*zqsat_sst) ! virtual SST (K)
@@ -506,7 +510,9 @@ CONTAINS
          t_ta_qa(2,jh) = q_a(1,1)
          !!
       END DO
-      !!
+      
+      DEALLOCATE( RH_a, T_a, q_a, Tv_a, T_old, zqsat_sst, sstv, zslp )
+      
    END SUBROUTINE FIND_COUPLES
    !!
    !!
