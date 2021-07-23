@@ -84,25 +84,25 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! drag coefficient over sea-ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfert coefficient for heat over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: t_zt  ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: q_zt  ! spec. air humidity at zt               [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: U_zu  ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Cd_i  ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ch_i  ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ce_i  ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ubzu ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CdN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: ChN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CeN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xL  ! zeta (zu/L)
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2      ! temporary stuff
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: z0, dt_zu, dq_zu
@@ -111,7 +111,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u, zeta_t           ! stability parameter at height zu
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: z0tq
       !!
-      INTEGER :: jit
+      INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE.
@@ -119,10 +119,13 @@ CONTAINS
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_an05@mod_blk_ice_an05.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( u_star(jpi,jpj), t_star(jpi,jpj),  q_star(jpi,jpj),  &
-         &       zeta_u(jpi,jpj),  dt_zu(jpi,jpj),   dq_zu(jpi,jpj),  &
-         &        znu_a(jpi,jpj),  ztmp1(jpi,jpj),   ztmp2(jpi,jpj),  &
-         &           z0(jpi,jpj),   z0tq(jpi,jpj,2), ztmp0(jpi,jpj)   )
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      
+      ALLOCATE ( u_star(Ni,Nj), t_star(Ni,Nj),  q_star(Ni,Nj),  &
+         &       zeta_u(Ni,Nj),  dt_zu(Ni,Nj),   dq_zu(Ni,Nj),  &
+         &        znu_a(Ni,Nj),  ztmp1(Ni,Nj),   ztmp2(Ni,Nj),  &
+         &           z0(Ni,Nj),   z0tq(Ni,Nj,2), ztmp0(Ni,Nj)   )
 
       lreturn_cdn   = PRESENT(CdN)
       lreturn_chn   = PRESENT(ChN)
@@ -133,7 +136,7 @@ CONTAINS
       lreturn_UN10  = PRESENT(xUN10)
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
-      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(jpi,jpj) )
+      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(Ni,Nj) )
 
       !! Scalar wind speed cannot be below 0.2 m/s
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
@@ -231,15 +234,15 @@ CONTAINS
       !!
       !! Author: L. Brodeau, January 2020 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: rough_leng_m      ! roughness length over sea-ice [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
+      REAL(wp), DIMENSION(SIZE(pus,1),SIZE(pus,2)) :: rough_leng_m      ! roughness length over sea-ice [m]
       !!
       INTEGER  :: ji, jj    ! dummy loop indices
       REAL(wp) :: zus, zz
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pus,2)
+         DO ji = 1, SIZE(pus,1)
             zus = MAX( pus(ji,jj) , 1.E-9_wp )
 
             zz = (zus - 0.18_wp) / 0.1_wp
@@ -257,17 +260,17 @@ CONTAINS
       !!
       !! Author: L. Brodeau, January 2020 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj,2)           :: rough_leng_tq     ! temp.,hum. roughness lengthes over sea-ice [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pz0   ! roughness length            [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pz0   ! roughness length            [m]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pus   ! u* = friction velocity    [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pnua  ! kinematic viscosity of air [m^2/s]
+      REAL(wp), DIMENSION(SIZE(pus,1),SIZE(pus,2),2)       :: rough_leng_tq     ! temp.,hum. roughness lengthes over sea-ice [m]
       !!
       INTEGER  :: ji, jj    ! dummy loop indices
       REAL(wp) :: zz0, zus, zre, zsmoot, ztrans, zrough
       REAL(wp) :: zb0, zb1, zb2, zlog, zlog2, zlog_z0s_on_z0
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pus,2)
+         DO ji = 1, SIZE(pus,1)
 
             zz0 = pz0(ji,jj)
             zus = MAX( pus(ji,jj) , 1.E-9_wp )
@@ -325,14 +328,14 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ice
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ice
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !
@@ -373,14 +376,14 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ice
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ice
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !

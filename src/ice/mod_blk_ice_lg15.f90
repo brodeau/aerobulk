@@ -115,33 +115,33 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: frice ! sea-ice concentration        (fraction)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! drag coefficient over sea-ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfert coefficient for heat over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu     ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: t_zt  ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: q_zt  ! spec. air humidity at zt               [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: U_zu  ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: frice ! sea-ice concentration        (fraction)
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Cd_i  ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ch_i  ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ce_i  ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ubzu     ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CdN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: ChN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CeN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xL  ! zeta (zu/L)
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zz0_s, zz0_f, RiB ! third dimensions (size=2):
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zCdN_s, zChN_s, zCdN_f, zChN_f
       !!
-      INTEGER :: jit
+      INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE.
@@ -149,10 +149,13 @@ CONTAINS
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15@mod_blk_ice_lg15.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( xtmp1(jpi,jpj),  xtmp2(jpi,jpj) )
-      ALLOCATE ( dt_zu(jpi,jpj),  dq_zu(jpi,jpj) )
-      ALLOCATE ( zz0_s(jpi,jpj),  zz0_f(jpi,jpj),    RiB(jpi,jpj), &
-         &      zCdN_s(jpi,jpj), zChN_s(jpi,jpj), zCdN_f(jpi,jpj), zChN_f(jpi,jpj) )
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      
+      ALLOCATE ( xtmp1(Ni,Nj),  xtmp2(Ni,Nj) )
+      ALLOCATE ( dt_zu(Ni,Nj),  dq_zu(Ni,Nj) )
+      ALLOCATE ( zz0_s(Ni,Nj),  zz0_f(Ni,Nj),    RiB(Ni,Nj), &
+         &      zCdN_s(Ni,Nj), zChN_s(Ni,Nj), zCdN_f(Ni,Nj), zChN_f(Ni,Nj) )
 
       lreturn_cdn   = PRESENT(CdN)
       lreturn_chn   = PRESENT(ChN)
