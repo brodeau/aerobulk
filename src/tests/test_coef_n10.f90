@@ -11,7 +11,7 @@ PROGRAM TEST_COEF_N10
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', 'ncar', 'ecmwf' /)
+   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', '  ncar  ', ' ecmwf  ' /)
 
    REAL(4), DIMENSION(nb_algos) :: vCdn10, vCen10, vChn10
 
@@ -54,8 +54,6 @@ PROGRAM TEST_COEF_N10
       &   t_w10, t_cdn10, t_cen10, t_chn10, t_z0
 
    OPEN(6, FORM='formatted', RECL=512)
-
-   jpi = lx ; jpj = ly
 
    nb_iter = 50  ! 50 itterations in bulk algorithm...
 
@@ -153,10 +151,6 @@ PROGRAM TEST_COEF_N10
    !WRITE(6,*) ''
 
    !! For all wind speeds:
-
-
-   jpi = n_w ; jpj = 1
-
 
    DO ialgo = 1, nb_algos
 

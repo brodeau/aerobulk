@@ -123,37 +123,37 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: frice ! sea-ice concentration        (fraction)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd_i  ! drag coefficient over sea-ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch_i  ! transfert coefficient for heat over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce_i  ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ubzu     ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: t_zt  ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: q_zt  ! spec. air humidity at zt               [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: U_zu  ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: frice ! sea-ice concentration        (fraction)
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Cd_i  ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ch_i  ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ce_i  ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: t_zu_i ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: q_zu_i ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ubzu     ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: Ts_w  ! water surface temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj), OPTIONAL :: qs_w  ! sat. spec. hum. at water/air interface  [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:), OPTIONAL :: Ts_w  ! water surface temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:), OPTIONAL :: qs_w  ! sat. spec. hum. at water/air interface  [kg/kg]
       !!                                                 
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN_frm  ! form drag
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Cd_w    ! drag coefficient over sea-ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Ch_w    ! transfert coefficient for heat over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: Ce_w    ! transfert coefficient for sublimation over ice
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: t_zu_w  ! pot. air temp. adjusted at zu over water    [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: q_zu_w  ! spec. humidity adjusted at zu over water [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CdN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: ChN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: CeN
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CdN_frm  ! form drag
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: Cd_w    ! drag coefficient over sea-ice
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: Ch_w    ! transfert coefficient for heat over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: Ce_w    ! transfert coefficient for sublimation over ice
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: t_zu_w  ! pot. air temp. adjusted at zu over water    [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: q_zu_w  ! spec. humidity adjusted at zu over water [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CdN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: ChN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: CeN
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xL  ! zeta (zu/L)
+      REAL(wp), INTENT(out), DIMENSION(:,:), OPTIONAL :: xUN10  ! Neutral wind at zu
       !!
-      INTEGER :: jit
+      INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !!
       REAL(wp), DIMENSION(:,:),   ALLOCATABLE :: xtmp1, xtmp2      ! temporary stuff
@@ -167,11 +167,13 @@ CONTAINS
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_lg15_io@mod_blk_ice_lg15_io.f90'
       !!----------------------------------------------------------------------------------
-      ALLOCATE ( xtmp1(jpi,jpj), xtmp2(jpi,jpj) )
-      ALLOCATE ( dt_zu(jpi,jpj,2), dq_zu(jpi,jpj,2), zt_zu(jpi,jpj,2), zq_zu(jpi,jpj,2) )
-      ALLOCATE ( zz0_s(jpi,jpj,2),  zz0_f(jpi,jpj,2),    RiB(jpi,jpj,2), &
-         &      zCdN_s(jpi,jpj,2), zChN_s(jpi,jpj,2), zCdN_f(jpi,jpj,2), zChN_f(jpi,jpj,2) )
-      ALLOCATE ( zCd(jpi,jpj,2), zCh(jpi,jpj,2) )
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      ALLOCATE ( xtmp1(Ni,Nj), xtmp2(Ni,Nj) )
+      ALLOCATE ( dt_zu(Ni,Nj,2), dq_zu(Ni,Nj,2), zt_zu(Ni,Nj,2), zq_zu(Ni,Nj,2) )
+      ALLOCATE ( zz0_s(Ni,Nj,2),  zz0_f(Ni,Nj,2),    RiB(Ni,Nj,2), &
+         &      zCdN_s(Ni,Nj,2), zChN_s(Ni,Nj,2), zCdN_f(Ni,Nj,2), zChN_f(Ni,Nj,2) )
+      ALLOCATE ( zCd(Ni,Nj,2), zCh(Ni,Nj,2) )
 
       lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
 
@@ -404,9 +406,9 @@ CONTAINS
    !!======================================================================
 
 !   FUNCTION mix_val_msh( pfld, pfri )
-!      REAL(wp), DIMENSION(jpi,jpj) :: mix_val_msh
-!      REAL(wp), DIMENSION(jpi,jpj,2), INTENT(in) :: pfld  ! field array to "water/ice average" on the mesh [ over ice=>(:,:,1), over water=>(:,:,2) ]
-!      REAL(wp), DIMENSION(jpi,jpj),   INTENT(in) :: pfri  ! sea-ice concentration (fraction)
+!      REAL(wp), DIMENSION(:,:) :: mix_val_msh
+!      REAL(wp), DIMENSION(:,:,2), INTENT(in) :: pfld  ! field array to "water/ice average" on the mesh [ over ice=>(:,:,1), over water=>(:,:,2) ]
+!      REAL(wp), DIMENSION(:,:),   INTENT(in) :: pfri  ! sea-ice concentration (fraction)
 !      mix_val_msh(:,:) = pfri(:,:) * pfld(:,:,1) + (1._wp - pfri(:,:)) * pfld(:,:,2)
 !   END FUNCTION mix_val_msh
 

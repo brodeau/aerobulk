@@ -42,8 +42,7 @@ PROGRAM test_psi_stab
    REAL(4),  DIMENSION(Nz,1,nalgos) :: vpsi_m, vpsi_h
 
    !! Aerobulk initialization:
-   jpi=Nz
-   jpj=1
+   !! ...
 
    !! Building zeta axis:
    dzeta = (zeta_max - zeta_min)/(Nz - 1)

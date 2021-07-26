@@ -43,7 +43,7 @@ MODULE mod_blk_ice_best
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_ice_best( kt, zt, zu, Ti_s, t_zt, qi_s, q_zt, U_zu, &
+   SUBROUTINE turb_ice_best( kt, zt, zu, Ts_i, t_zt, qi_s, q_zt, U_zu, &
       &                     Cd, Ch, Ce, t_zu, q_zu, U_blk,             &
       &                     xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------
@@ -59,9 +59,9 @@ CONTAINS
       !!    *  kt   : current time step (starts at 1)
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
-      !!    *  Ti_s  : surface temperature of sea-ice                         [K]
+      !!    *  Ts_i  : surface temperature of sea-ice                         [K]
       !!    *  t_zt : potential air temperature at zt                         [K]
-      !!    *  qi_s  : SSQ aka saturation specific humidity at temp. Ti_s     [kg/kg]
+      !!    *  qi_s  : SSQ aka saturation specific humidity at temp. Ts_i     [kg/kg]
       !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
       !!    *  U_zu : scalar wind speed at zu                                 [m/s]
       !!
@@ -86,24 +86,24 @@ CONTAINS
       INTEGER,  INTENT(in )                     ::   kt       ! current time step
       REAL(wp), INTENT(in )                     ::   zt       ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   Ti_s     ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   qi_s     ! specific humidity at ice/air interface  [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   q_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) ::   U_zu     ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Cd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   U_blk    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) ::   Ts_i     ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) ::   t_zt     ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) ::   qi_s     ! specific humidity at ice/air interface  [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) ::   q_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) ::   U_zu     ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   Cd       ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:) ::   U_blk    ! bulk wind speed at zu                     [m/s]
       !
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(:,:) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(:,:) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: jit
+      INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   Cx_n10        ! 10m neutral latent/sensible coefficient
@@ -115,10 +115,11 @@ CONTAINS
       LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_best@mod_blk_ice_best.f90'
       !!----------------------------------------------------------------------------------
-
-      ALLOCATE( Cx_n10(jpi,jpj), sqrtCdn10(jpi,jpj), &
-         &    zeta_u(jpi,jpj), sqrtCd(jpi,jpj),      &
-         &    ztmp0(jpi,jpj),  ztmp1(jpi,jpj), ztmp2(jpi,jpj) )
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      ALLOCATE( Cx_n10(Ni,Nj), sqrtCdn10(Ni,Nj), &
+         &    zeta_u(Ni,Nj), sqrtCd(Ni,Nj),      &
+         &    ztmp0(Ni,Nj),  ztmp1(Ni,Nj), ztmp2(Ni,Nj) )
 
       IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
       IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
@@ -135,7 +136,7 @@ CONTAINS
       t_zu = t_zt
       q_zu = q_zt
 
-      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ti_s, qi_s, Cd, Ch )
+      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ts_i, qi_s, Cd, Ch )
       Ce = Ch
       sqrtCd = SQRT( Cd )
       !LOLO:STOP
@@ -144,7 +145,7 @@ CONTAINS
       !! ITERATION BLOCK
       DO jit = 1, nb_iter
          !
-         ztmp1 = t_zu - Ti_s   ! Updating air/sea differences
+         ztmp1 = t_zu - Ts_i   ! Updating air/sea differences
          ztmp2 = q_zu - qi_s
 
          ! Updating turbulent scales :   (L&Y 2004 Eq. (7))
@@ -154,7 +155,7 @@ CONTAINS
 
          ! Estimate the inverse of Obukov length (1/L) at height zu:
          ztmp0 = One_on_L( t_zu, q_zu, ztmp0, ztmp1, ztmp2 )
-         !ztmp0 = One_on_L( 0.5*(t_zu + Ti_s), 0.5*(q_zu + qi_s), ztmp0, ztmp1, ztmp2 ) ! using an approximation of mean
+         !ztmp0 = One_on_L( 0.5*(t_zu + Ts_i), 0.5*(q_zu + qi_s), ztmp0, ztmp1, ztmp2 ) ! using an approximation of mean
          !                                                                ! theta & q in surface layer rather than values at zu...
 
          !! Stability parameters :
@@ -178,7 +179,7 @@ CONTAINS
          ztmp2 = psi_m_ice(zeta_u)
          ztmp0 = MAX( wspd_thrshld_ice , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
 
-         CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ti_s, qi_s, Cd, Cx_n10 )
+         CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ts_i, qi_s, Cd, Cx_n10 )
          sqrtCdn10 = sqrt(Cd)
 
          !! Update of transfer coefficients:
@@ -231,14 +232,14 @@ CONTAINS
       !!              - L. Brodeau (2020) AeroBulk
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), INTENT(in   )                   :: zu     ! reference height (height for Uo_zu)   [m]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: Ts_i   ! sea-ice surface temperature               [K]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pcd    ! momentum transfer coefficient
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(out) :: pch    ! heat transfer coefficient
+      REAL(wp),                 INTENT(in)  :: zu     ! reference height (height for Uo_zu)   [m]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: t_zu   ! potential air temperature              [Kelvin]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: q_zu   ! specific air humidity at zt             [kg/kg]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: Ui_zu  ! relative wind module at zu over ice    [m/s]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: Ts_i   ! sea-ice surface temperature               [K]
+      REAL(wp), DIMENSION(:,:), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pcd    ! momentum transfer coefficient
+      REAL(wp), DIMENSION(:,:), INTENT(out) :: pch    ! heat transfer coefficient
       !
       REAL(wp) ::   zfi, zfo
       REAL(wp) ::   zrib_i, ztmp
@@ -246,9 +247,11 @@ CONTAINS
       REAL(wp) ::   zChn_skin_ice, zChn_form_ice
       REAL(wp) ::   z0i, zfmi, zfhi
       REAL(wp) ::   zCdn_form_tmp, zwndspd_i
-      INTEGER  ::   ji, jj         ! dummy loop indices
+      INTEGER  ::   Ni, Nj, ji, jj         ! dummy loop indices
       !!----------------------------------------------------------------------
-
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      
       ! Momentum Neutral Transfer Coefficients (should be a constant)
       zCdn_form_tmp = zce10 * ( LOG( 10._wp / z0_form_ice + 1._wp ) / LOG( zu / z0_form_ice + 1._wp ) )**2   ! Eq. 46
       zCdn_skin_ice = ( vkarmn                                      / LOG( zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
@@ -258,8 +261,8 @@ CONTAINS
       ! Heat Neutral Transfer Coefficients
       zChn_skin_ice = vkarmn**2 / ( LOG( zu / z0_ice + 1._wp ) * LOG( zu * z1_alpha / z0_skin_ice + 1._wp ) )   ! Eq. 50 + Eq. 52
 
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
             zfi  = 1._wp  ! fraction of sea-ice
             zwndspd_i = MAX( 0.5, Ui_zu(ji,jj) )
@@ -306,14 +309,14 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_m_ice
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ice
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !
@@ -354,14 +357,14 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj) :: psi_h_ice
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ice
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zx, zpsi_u, zpsi_s, zstab
       !!----------------------------------------------------------------------------------
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
             !
             zta = pzeta(ji,jj)
             !

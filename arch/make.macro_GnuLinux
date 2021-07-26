@@ -16,7 +16,8 @@ LNK_FORT_LIB = -lgfortran
 # Production
 FF = -O3 -fdefault-real-8 -ffree-line-length-200 -J./mod -I./mod
 # These are needed for the C/C++ interface
-FF += -std=f2008 -lstdc++
+#FF += -std=f2008 -lstdc++
+FF += -std=gnu -lstdc++
 
 # Debugging:
 #DEBUG_FF = -g -w -fbounds-check

@@ -52,8 +52,6 @@ PROGRAM TEST_AEROBULK_ICE
       &     l_use_dp      = .FALSE. ,   &  !: ask for dew-point temperature rather than q for humidity
       &     l_force_neutral = .FALSE.      !: force air temp and humi at zt to yield perfectly neutral surface atmospheric layer
 
-   jpi = lx ; jpj = ly
-
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
    OPEN(6, FORM='formatted', RECL=512)

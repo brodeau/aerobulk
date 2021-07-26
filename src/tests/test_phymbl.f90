@@ -116,10 +116,6 @@ PROGRAM TEST_PHYMBL
    
    IF ( l_test_humi ) THEN
 
-
-      jpi = 1
-      jpj = ntemp
-
       dtime = (t_max - t_min)/(ntemp - 1)
 
       PRINT *, ' Temperature increment = ', dtime

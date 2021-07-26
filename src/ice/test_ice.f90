@@ -24,9 +24,6 @@ PROGRAM TEST_ICE
 
    CHARACTER(len=128) :: cfout1 !, cfout2
 
-   jpi = 1
-   jpj = nustar
-
    dus = (us_max - us_min)/(nustar - 1)
 
    PRINT *, ' Temperature increment = ', dus

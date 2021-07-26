@@ -122,8 +122,6 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
       STOP
    END IF
 
-   jpi = nx ; jpj = ny
-
    WRITE(6,*) ''
    WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', nx,ny,Nt
 

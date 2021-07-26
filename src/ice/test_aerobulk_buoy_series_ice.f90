@@ -143,10 +143,8 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
    PRINT *, ' *** Number of time records to treat: ', Nt
 
 
-   jpi = nx ; jpj = ny
-
    WRITE(6,*) ''
-   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', INT2( (/nx,ny,Nt/) )
+   WRITE(6,*) ' *** Allocating arrays according to nx,ny,Nt =', INT( (/nx,ny,Nt/),2 )
    ALLOCATE ( Ublk(nx,ny,Nt), zz0(nx,ny,Nt), zus(nx,ny,Nt), zL(nx,ny,Nt), zUN10(nx,ny,Nt), zCdN(nx,ny,Nt) )
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
    ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SLP(nx,ny,Nt), W10(nx,ny,Nt), t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &

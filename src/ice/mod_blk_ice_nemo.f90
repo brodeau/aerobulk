@@ -77,35 +77,38 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in )                     :: zt    ! height for t_zt and q_zt                    [m]
       REAL(wp), INTENT(in )                     :: zu    ! height for U_zu                             [m]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: Ts_i  ! ice surface temperature                [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: t_zt  ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: q_zt  ! spec. air humidity at zt               [kg/kg]
-      REAL(wp), INTENT(in ), DIMENSION(jpi,jpj) :: U_zu  ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Cd    ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ch    ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ce    ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: t_zu  ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: q_zu  ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) :: Ub ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: Ts_i  ! ice surface temperature                [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: t_zt  ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: q_zt  ! spec. air humidity at zt               [kg/kg]
+      REAL(wp), INTENT(in ), DIMENSION(:,:) :: U_zu  ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Cd    ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ch    ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ce    ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: t_zu  ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: q_zu  ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(out), DIMENSION(:,:) :: Ub ! bulk wind speed at zu                     [m/s]
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CdN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   ChN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   CeN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xz0  ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xu_star  ! u*, friction velocity
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xL  ! zeta (zu/L)
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(jpi,jpj) ::   xUN10  ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   ChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xz0  ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xu_star  ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
       !!
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu
-      !!
-      LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
+      INTEGER :: Ni, Nj
+      LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_nemo@mod_blk_ice_nemo.f90'
       !!----------------------------------------------------------------------------------
-      !u_star(jpi,jpj), t_star(jpi,jpj), q_star(jpi,jpj),  &
-      ALLOCATE ( dt_zu(jpi,jpj),  dq_zu(jpi,jpj) )
+      Ni = SIZE(Ts_i,1)
+      Nj = SIZE(Ts_i,2)
+      
+      !u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj),  &
+      ALLOCATE ( dt_zu(Ni,Nj),  dq_zu(Ni,Nj) )
       
       IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
       IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.

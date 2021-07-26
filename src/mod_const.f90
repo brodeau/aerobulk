@@ -15,7 +15,6 @@ MODULE mod_const
    ! Stupid values here to prevent to ommit to give them a value:
 
    !! Space dimmension:
-   INTEGER,                  SAVE :: jpi=0, jpj=0    !: 2D dimensions of array to be used in AeroBulk
    INTEGER,  PARAMETER            :: jpk = 1
 
    !! Time dimmension:

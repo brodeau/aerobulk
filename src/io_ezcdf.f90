@@ -2934,7 +2934,7 @@ CONTAINS
       PRINT *, ''
       WRITE(6,*) 'ERROR in ',TRIM(crout),' (io_ezcdf.f90): '
       WRITE(6,*) TRIM(cmess)
-      IF( PRESENT(ivect) ) WRITE(6,*) INT2(ivect(:))
+      IF( PRESENT(ivect) ) WRITE(6,*) INT(ivect(:),2)
       PRINT *, ''
       STOP
    END SUBROUTINE print_err
