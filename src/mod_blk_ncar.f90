@@ -235,8 +235,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
       REAL(wp)             :: cd_n10_ncar
+      REAL(wp), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
+      !!
       REAL(wp) :: zgt33, zw, zw6 ! local scalars
       !!----------------------------------------------------------------------------------
       zw  = pw10
@@ -259,10 +260,10 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (12)
-
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: ch_n10_ncar
       REAL(wp), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
+      REAL(wp)             :: ch_n10_ncar
+      !!
       REAL(wp), INTENT(in) :: pstab      ! stable ABL => 1 / unstable ABL => 0
       !!----------------------------------------------------------------------------------
       IF( (pstab < -0.00001).OR.(pstab >  1.00001) ) THEN
@@ -280,8 +281,8 @@ CONTAINS
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (13)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: ce_n10_ncar
       REAL(wp), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
+      REAL(wp)             :: ce_n10_ncar
       !!----------------------------------------------------------------------------------
       ce_n10_ncar = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , Cx_min )
       !
@@ -298,9 +299,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp) :: psi_m_ncar
       REAL(wp), INTENT(in) :: pzeta
-      !
+      REAL(wp)             :: psi_m_ncar
+      !!
       REAL(wp) :: zta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
       zta = pzeta
@@ -332,9 +333,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp) :: psi_h_ncar
       REAL(wp), INTENT(in) :: pzeta
-      !
+      REAL(wp)             :: psi_h_ncar
+      !!
       REAL(wp) :: zta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
       zta = pzeta
