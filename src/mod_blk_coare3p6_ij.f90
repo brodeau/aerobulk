@@ -31,10 +31,15 @@ MODULE mod_blk_coare3p6
    USE mod_skin_coare  !: cool-skin parameterization
 
    IMPLICIT NONE
+
+   INTERFACE charn_coare3p6
+      MODULE PROCEDURE charn_coare3p6_vctr, charn_coare3p6_sclr
+   END INTERFACE charn_coare3p6
+      
    PRIVATE
-
+   
    PUBLIC :: COARE3P6_INIT, TURB_COARE3P6, charn_coare3p6, psi_m_coare, psi_h_coare
-
+   
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.2_wp     ! gustiness parameter
@@ -214,7 +219,7 @@ CONTAINS
       INTEGER :: Ni, Nj, ji, jj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: Zsst     ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       !
       REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
       REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzta_u, zzta_t
@@ -251,8 +256,8 @@ CONTAINS
          &   ' & plong to use warm-layer param!'  )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( Zsst(Ni,Nj) )
-         Zsst = T_s ! backing up the bulk SST
+         ALLOCATE ( xSST(Ni,Nj) )
+         xSST = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
@@ -337,9 +342,9 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
                &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQnsol, zTau, Qlat=zQlat)
 
-            CALL CS_COARE( Qsw(ji,jj), zQnsol, zus, Zsst(ji,jj), zQlat )
+            CALL CS_COARE( ji, jj, Qsw(ji,jj), zQnsol, zus, xSST(ji,jj), zQlat )
 
-            T_s(ji,jj) = Zsst(ji,jj) + dT_cs(ji,jj)
+            T_s(ji,jj) = xSST(ji,jj) + dT_cs(ji,jj)
             IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
             q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
          ENDIF
@@ -349,10 +354,10 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
                &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zQnsol, zTau)
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw(ji,jj), zQnsol, zTau, Zsst, plong, isecday_utc, MOD(nb_iter,jit) )
+            CALL WL_COARE( ji, jj, Qsw(ji,jj), zQnsol, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, MOD(nb_iter,jit) )
 
             !! Updating T_s and q_s !!!
-            T_s(ji,jj) = Zsst(ji,jj) + dT_wl(ji,jj)
+            T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)
             IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + dT_cs(ji,jj)
             q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
          ENDIF
@@ -388,12 +393,12 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( Zsst )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
 
    END SUBROUTINE turb_coare3p6
 
-
-   FUNCTION charn_coare3p6( pwnd )
+   !!===============================================================================================
+   FUNCTION charn_coare3p6_sclr( pwnd )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
       !!  "wind speed dependent formulation"
@@ -402,14 +407,27 @@ CONTAINS
       !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pwnd   ! neutral wind speed at 10m
-      REAL(wp)             :: charn_coare3p6
+      REAL(wp)             :: charn_coare3p6_sclr
       !
       REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
       !!-------------------------------------------------------------------
-      charn_coare3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
+      charn_coare3p6_sclr = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
       !!
-   END FUNCTION charn_coare3p6
+   END FUNCTION charn_coare3p6_sclr
+   
+   FUNCTION charn_coare3p6_vctr( pwnd )
+      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! neutral wind speed at 10m
+      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p6_vctr
+      !
+      REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
+      !!-------------------------------------------------------------------
+      charn_coare3p6_vctr = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
+   END FUNCTION charn_coare3p6_vctr   
+   !!===============================================================================================
 
+
+
+   
    FUNCTION charn_coare3p6_wave( pus, pwsh, pwps )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of wave information and u*

@@ -143,42 +143,6 @@ MODULE mod_phymbl
    END INTERFACE first_guess_coare
 
 
-   !PUBLIC virt_temp
-   !PUBLIC rho_air
-   !PUBLIC visc_air
-   !PUBLIC L_vap
-   !PUBLIC cp_air
-   !!PUBLIC gamma_moist
-   !PUBLIC One_on_L
-   !PUBLIC Ri_bulk
-   !PUBLIC q_sat
-   !PUBLIC dq_sat_dt_ice
-   !PUBLIC e_sat
-   !PUBLIC e_sat_ice
-   !PUBLIC de_sat_dt_ice
-   !PUBLIC e_air
-   !PUBLIC rh_air
-   !PUBLIC rho_air_adv
-   !PUBLIC dry_static_energy
-   !PUBLIC q_air_rh
-   !PUBLIC q_air_dp
-   !PUBLIC q_sat_crude
-   !PUBLIC update_qnsol_tau
-   !PUBLIC alpha_sw
-   !PUBLIC bulk_formula
-   !PUBLIC qlw_net
-   !PUBLIC z0_from_Cd, z0_from_ustar
-   !PUBLIC Cd_from_z0
-   !PUBLIC f_m_louis, f_h_louis
-   !PUBLIC UN10_from_ustar
-   !PUBLIC UN10_from_CDN
-   !PUBLIC UN10_from_CD
-   !PUBLIC Re_rough_tq_LKB
-   !PUBLIC z0tq_LKB
-   !PUBLIC vmean, variance
-   !PUBLIC to_kelvin_3d
-
-
    !! P R I V A T E :
 
    REAL(wp), PARAMETER, PRIVATE :: &
