@@ -31,6 +31,26 @@ MODULE mod_blk_ncar
    IMPLICIT NONE
    PRIVATE
 
+   INTERFACE cd_n10_ncar
+      MODULE PROCEDURE cd_n10_ncar_vctr, cd_n10_ncar_sclr
+   END INTERFACE cd_n10_ncar
+
+   INTERFACE ch_n10_ncar
+      MODULE PROCEDURE ch_n10_ncar_vctr, ch_n10_ncar_sclr
+   END INTERFACE ch_n10_ncar
+
+   INTERFACE ce_n10_ncar
+      MODULE PROCEDURE ce_n10_ncar_vctr, ce_n10_ncar_sclr
+   END INTERFACE ce_n10_ncar
+
+   INTERFACE psi_m_ncar
+      MODULE PROCEDURE psi_m_ncar_vctr, psi_m_ncar_sclr
+   END INTERFACE psi_m_ncar
+
+   INTERFACE psi_h_ncar
+      MODULE PROCEDURE psi_h_ncar_vctr, psi_h_ncar_sclr
+   END INTERFACE psi_h_ncar
+
    PUBLIC :: TURB_NCAR, cd_n10_ncar, ch_n10_ncar, ce_n10_ncar, psi_m_ncar, psi_h_ncar
 
    !!----------------------------------------------------------------------
@@ -226,7 +246,8 @@ CONTAINS
    END SUBROUTINE turb_ncar
 
 
-   FUNCTION cd_n10_ncar( pw10 )
+   !!===============================================================================================
+   FUNCTION cd_n10_ncar_sclr( pw10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral drag coefficient at 10m as a function
       !! of neutral wind  speed at 10m
@@ -235,8 +256,8 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: cd_n10_ncar
       REAL(wp), INTENT(in) :: pw10           ! scalar wind speed at 10m (m/s)
+      REAL(wp)             :: cd_n10_ncar_sclr
       !!
       REAL(wp) :: zgt33, zw, zw6 ! local scalars
       !!----------------------------------------------------------------------------------
@@ -247,49 +268,71 @@ CONTAINS
       ! When wind speed > 33 m/s => Cyclone conditions => special treatment
       zgt33 = 0.5_wp + SIGN( 0.5_wp, (zw - 33._wp) )   ! If pw10 < 33. => 0, else => 1
       !
-      cd_n10_ncar = 1.e-3_wp * ( &
+      cd_n10_ncar_sclr = 1.e-3_wp * ( &
          &       (1._wp - zgt33)*( 2.7_wp/zw + 0.142_wp + zw/13.09_wp - 3.14807E-10_wp*zw6) & ! wind <  33 m/s
          &      +    zgt33   *      2.34_wp )                                                 ! wind >= 33 m/s
       !
-      cd_n10_ncar = MAX( cd_n10_ncar, Cx_min )
+      cd_n10_ncar_sclr = MAX( cd_n10_ncar_sclr, Cx_min )
       !
-   END FUNCTION cd_n10_ncar
+   END FUNCTION cd_n10_ncar_sclr
 
+   FUNCTION cd_n10_ncar_vctr( pw10 )
+      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pw10           ! scalar wind speed at 10m (m/s)
+      REAL(wp), DIMENSION(SIZE(pw10,1),SIZE(pw10,2)) :: cd_n10_ncar_vctr
+      !!----------------------------------------------------------------------------------
+      cd_n10_ncar_vctr = MAX( cd_n10_ncar_vctr, Cx_min )
+      !
+   END FUNCTION cd_n10_ncar_vctr
+   !!===============================================================================================
 
-   FUNCTION ch_n10_ncar( psqrtcdn10 , pstab )
+   !!===============================================================================================
+   FUNCTION ch_n10_ncar_sclr( psqrtcdn10 , pstab )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (12)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
-      REAL(wp)             :: ch_n10_ncar
-      !!
       REAL(wp), INTENT(in) :: pstab      ! stable ABL => 1 / unstable ABL => 0
+      REAL(wp)             :: ch_n10_ncar_sclr
       !!----------------------------------------------------------------------------------
       IF( (pstab < -0.00001).OR.(pstab >  1.00001) ) THEN
-         PRINT *, 'ERROR: ch_n10_ncar@mod_blk_ncar.f90: pstab ='
+         PRINT *, 'ERROR: ch_n10_ncar_sclr@mod_blk_ncar.f90: pstab ='
          PRINT *, pstab
          STOP
       END IF
-      !
-      ch_n10_ncar = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , Cx_min )   ! Eq. (9) & (12) Large & Yeager, 2008
-      !
-   END FUNCTION ch_n10_ncar
+      ch_n10_ncar_sclr = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , Cx_min )   ! Eq. (9) & (12) Large & Yeager, 2008
+   END FUNCTION ch_n10_ncar_sclr
 
-   FUNCTION ce_n10_ncar( psqrtcdn10 )
+   FUNCTION ch_n10_ncar_vctr( psqrtcdn10 , pstab )
+      REAL(wp), DIMENSION(:,:), INTENT(in)                       :: psqrtcdn10 ! sqrt( CdN10 )
+      REAL(wp), DIMENSION(:,:), INTENT(in)                       :: pstab      ! stable ABL => 1 / unstable ABL => 0
+      REAL(wp), DIMENSION(SIZE(psqrtcdn10,1),SIZE(psqrtcdn10,2)) :: ch_n10_ncar_vctr
+      ch_n10_ncar_vctr = MAX( 1.e-3_wp * psqrtcdn10*( 18._wp*pstab + 32.7_wp*(1._wp - pstab) )  , Cx_min )   ! Eq. (9) & (12) Large & Yeager, 2008
+   END FUNCTION ch_n10_ncar_vctr
+   !!===============================================================================================
+
+   !!===============================================================================================
+   FUNCTION ce_n10_ncar_sclr( psqrtcdn10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the neutral heat transfer coefficient at 10m      !!
       !! Origin: Large & Yeager 2008, Eq. (9) and (13)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: psqrtcdn10 ! sqrt( CdN10 )
-      REAL(wp)             :: ce_n10_ncar
+      REAL(wp)             :: ce_n10_ncar_sclr
       !!----------------------------------------------------------------------------------
-      ce_n10_ncar = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , Cx_min )
-      !
-   END FUNCTION ce_n10_ncar
+      ce_n10_ncar_sclr = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , Cx_min )
+   END FUNCTION ce_n10_ncar_sclr
+
+   FUNCTION ce_n10_ncar_vctr( psqrtcdn10 )
+      REAL(wp), DIMENSION(:,:), INTENT(in)                       :: psqrtcdn10 ! sqrt( CdN10 )
+      REAL(wp), DIMENSION(SIZE(psqrtcdn10,1),SIZE(psqrtcdn10,2)) :: ce_n10_ncar_vctr
+      ce_n10_ncar_vctr = MAX( 1.e-3_wp * ( 34.6_wp * psqrtcdn10 ) , Cx_min )
+   END FUNCTION ce_n10_ncar_vctr
+   !!===============================================================================================
 
 
-   FUNCTION psi_m_ncar( pzeta )
+   !!===============================================================================================
+   FUNCTION psi_m_ncar_sclr( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
@@ -300,7 +343,7 @@ CONTAINS
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_m_ncar
+      REAL(wp)             :: psi_m_ncar_sclr
       !!
       REAL(wp) :: zta, zx2, zx, zpsi_unst, zpsi_stab,  zstab   ! local scalars
       !!----------------------------------------------------------------------------------
@@ -317,13 +360,25 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_m_ncar =          zstab  * zpsi_stab &  ! (zta > 0) Stable
+      psi_m_ncar_sclr =          zstab  * zpsi_stab &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
-      !
-   END FUNCTION psi_m_ncar
+   END FUNCTION psi_m_ncar_sclr
 
+   FUNCTION psi_m_ncar_vctr( pzeta )
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ncar_vctr
+      INTEGER :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
+            psi_m_ncar_vctr(ji,jj) = psi_m_ncar_sclr(pzeta(ji,jj))
+         END DO
+      END DO
+   END FUNCTION psi_m_ncar_vctr
+   !!===============================================================================================
 
-   FUNCTION psi_h_ncar( pzeta )
+   !!===============================================================================================
+   FUNCTION psi_h_ncar_sclr( pzeta )
       !!----------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!    !! Psis, L&Y 2004, Eq. (8c), (8d), (8e)
@@ -334,7 +389,7 @@ CONTAINS
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_h_ncar
+      REAL(wp)             :: psi_h_ncar_sclr
       !!
       REAL(wp) :: zta, zx2, zpsi_unst, zpsi_stab, zstab  ! local scalars
       !!----------------------------------------------------------------------------------
@@ -348,10 +403,22 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_h_ncar =          zstab  * zpsi_stab &  ! (zta > 0) Stable
+      psi_h_ncar_sclr =          zstab  * zpsi_stab &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
       !
-   END FUNCTION psi_h_ncar
+   END FUNCTION psi_h_ncar_sclr
 
-   !!======================================================================
+   FUNCTION psi_h_ncar_vctr( pzeta )
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ncar_vctr
+      INTEGER :: ji, jj
+      !!----------------------------------------------------------------------------------
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
+            psi_h_ncar_vctr(ji,jj) = psi_h_ncar_sclr(pzeta(ji,jj))
+         END DO
+      END DO
+   END FUNCTION psi_h_ncar_vctr
+   !!===============================================================================================
+
 END MODULE mod_blk_ncar
