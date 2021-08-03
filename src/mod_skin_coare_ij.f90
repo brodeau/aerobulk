@@ -25,23 +25,25 @@ MODULE mod_skin_coare
    PRIVATE
 
    PUBLIC :: CS_COARE, WL_COARE
-
-   !! Cool-skin related parameters:
+   
+   !! Cool-skin related arrays:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_cs         !: dT due to cool-skin effect => temperature difference between air-sea interface (z=0) and right below viscous layer (z=delta)
-
-   !! Warm-layer related parameters:
+      &                        dT_cs         !: dT due to cool-skin effect => temperature difference between air-sea interface (z=0)
+   !!                                        !: and right below the viscous layer (z=delta)
+   
+   !! Warm-layer related arrays:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_wl,     &  !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta) and depth of bulk SST (z=gdept_1d(1))
+      &                        dT_wl,     &  !: dT due to warm-layer effect => difference between "almost surface (right below viscous layer, z=delta)
+      !!                                     !: and depth of bulk SST (z=gdept_1d(1))
       &                        Hz_wl,     &  !: depth of warm-layer [m]
       &                        Qnt_ac,    &  !: time integral / accumulated heat stored by the warm layer Qxdt => [J/m^2] (reset to zero every midnight)
       &                        Tau_ac        !: time integral / accumulated momentum Tauxdt => [N.s/m^2] (reset to zero every midnight)
 
    REAL(wp), PARAMETER, PUBLIC :: Hwl_max = 20._wp    !: maximum depth of warm layer (adjustable)
    !
-   REAL(wp), PARAMETER :: rich   = 0.65_wp   !: critical Richardson number
+   REAL(wp), PARAMETER :: Rich0   = 0.65_wp   !: critical Richardson number
    !
-   REAL(wp), PARAMETER :: zfr0   = 0.5_wp    !: initial value of solar flux absorption
+   REAL(wp), PARAMETER :: zfr0   = 0.5_wp     !: initial value of solar flux absorption
    !
    !!----------------------------------------------------------------------
 
@@ -69,28 +71,27 @@ CONTAINS
       INTEGER , INTENT(in) :: ki, kj
       REAL(wp), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
       REAL(wp), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
-      REAL(wp), INTENT(in) :: pustar  ! friction velocity, temperature and humidity (u*,t*,q*)
-      REAL(wp), INTENT(in) :: pSST ! bulk SST [K]
+      REAL(wp), INTENT(in) :: pustar ! friction velocity, temperature and humidity (u*,t*,q*)
+      REAL(wp), INTENT(in) :: pSST   ! bulk SST [K]
       REAL(wp), INTENT(in) :: pQlat  ! latent heat flux [W/m^2]
       !!---------------------------------------------------------------------
       INTEGER  :: jc
       REAL(wp) :: zQabs, zdelta, zfr
       !!---------------------------------------------------------------------
-
       zQabs = pQnsol ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
-      !                     !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
+      !              !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
 
       zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pQlat, pustar )
 
       DO jc = 1, 4 ! because implicit in terms of zdelta...
          zfr = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.16 (Fairall al. 1996b)
-         !!                                                                                                 !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
+         !!                                                     !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
          zQabs = pQnsol + zfr*pQsw
          zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pQlat, pustar )
       END DO
-
+      
       dT_cs(ki,kj) = zQabs*zdelta/rk0_w   ! temperature increment, yes dT_cs can actually > 0, if Qabs > 0 (rare but possible!)
-
+      
    END SUBROUTINE CS_COARE
 
 
@@ -124,7 +125,6 @@ CONTAINS
       REAL(wp) :: zdTwl, zHwl, zQabs, zfr
       REAL(wp) :: zqac, ztac
       REAL(wp) :: zalpha, zcd1, zcd2, flg
-      !!---------------------------------------------------------------------
       REAL(wp) :: rlag_gw_h, &  ! local solar time lag in hours   / Greenwich meridian (lon==0) => ex: ~ -10.47 hours for Hawai
          &        rhr_sol       ! local solar time in hours since midnight
       INTEGER  :: ilag_gw_s, &  ! local solar time LAG in seconds / Greenwich meridian (lon==0) => ex: ~ INT( -10.47*3600. ) seconds for Hawai
@@ -136,7 +136,7 @@ CONTAINS
       !! INITIALIZATION:
       zQabs  = 0._wp       ! total heat flux absorped in warm layer
       zfr    = zfr0        ! initial value of solar flux absorption !LOLO: save it and use previous value !!!
-
+      
       l_exit       = .FALSE.
       l_destroy_wl = .FALSE.
 
@@ -156,8 +156,8 @@ CONTAINS
       !*****  variables for warm layer  ***
       zalpha = alpha_sw( pSST ) ! thermal expansion coefficient of sea-water (SST accurate enough!)
 
-      zcd1 = SQRT(2._wp*rich*rCp0_w/(zalpha*grav*rho0_w))        !mess-o-constants 1
-      zcd2 = SQRT(2._wp*zalpha*grav/(rich*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
+      zcd1 = SQRT(2._wp*Rich0*rCp0_w/(zalpha*grav*rho0_w))        !mess-o-constants 1
+      zcd2 = SQRT(2._wp*zalpha*grav/(Rich0*rho0_w))/(rCp0_w**1.5) !mess-o-constants 2
 
 
       IF ( (rhr_sol > 4._wp).AND.(rhr_sol <= 6.5_wp) ) THEN
@@ -216,7 +216,7 @@ CONTAINS
          !PRINT *, '#LBD: updated absorption and WL depth=',  REAL(zfr,4), REAL(zHwl,4)
          !PRINT *, '#LBD: updated value for Qabs=',  REAL(zQabs,4), 'W/m2'
          !PRINT *, '#LBD: updated value for Qac =',  REAL(zqac,4), 'J'
-
+         
          IF ( zqac <= 0._wp ) THEN
             l_destroy_wl = .TRUE.
             l_exit       = .TRUE.
@@ -229,7 +229,7 @@ CONTAINS
          END IF
 
       END IF !IF ( .NOT. l_exit)
-
+      
       IF ( l_destroy_wl ) THEN
          zdTwl = 0._wp
          zfr   = 0.75_wp

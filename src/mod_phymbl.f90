@@ -1266,8 +1266,8 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             ::   alpha_sw_sclr   ! thermal expansion coefficient of sea-water [1/K]
       REAL(wp), INTENT(in) ::   psst   ! sea-water temperature                   [K]
+      REAL(wp)             ::   alpha_sw_sclr   ! thermal expansion coefficient of sea-water [1/K]
       !!----------------------------------------------------------------------------------
       alpha_sw_sclr = 2.1e-5_wp * MAX( psst - rt0 + 3.2_wp , 0._wp )**0.79_wp
       !!
@@ -1845,6 +1845,7 @@ CONTAINS
 
    SUBROUTINE FIRST_GUESS_COARE_SCLR( zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
       &                               pus, pts, pqs, t_zu, q_zu, Ubzu,  pz0 )
+      !! LOLO: fix better guess of `t_zu` and `q_zu` !!!
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  FIRST_GUESS_COARE_SCLR  ***
       !!
@@ -1906,11 +1907,11 @@ CONTAINS
       !!----------------------------------------------------------------------------------
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
-
+      
       !! First guess of temperature and humidity at height zu:
       t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
       q_zu = MAX( q_zt , 1.e-6_wp )   !               "
-
+      
       zz0 = 0.0001
 
       !! Constants:
@@ -1959,21 +1960,25 @@ CONTAINS
       !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
       !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
       !STOP
-
+      ! What needs to be done if zt /= zu:
+      ! LOLO: should we do a better first guess of t and q at zu (better than sticking to t_zt and q_zt) ???
+      !IF( .NOT. l_zt_equal_zu ) THEN
+      !   !! First update of values at zu (or zt for wind)
+      !   zeta_t = zt*zeta_u/zu
+      !   ztmp0 = psi_h_coare(zeta_u) - psi_h_coare(zeta_t)
+      !   ztmp1 = LOG(zt/zu) + ztmp0
+      !   t_zu = t_zt - t_star/vkarmn*ztmp1
+      !   q_zu = q_zt - q_star/vkarmn*ztmp1
+      !   q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
+      !   !
+      !   zdt = t_zu - T_s  ; zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+      !   zdq = q_zu - q_s  ; zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      !ENDIF
+      
       zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
       ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
       zts  = zdt*ztmp
       zqs  = zdq*ztmp
-
-      ! What needs to be done if zt /= zu:
-      IF( .NOT. l_zt_equal_zu ) THEN
-         !! First update of values at zu (or zt for wind)
-         !lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
-         t_zu = t_zt - zts/vkarmn*zprof
-         q_zu = q_zt - zqs/vkarmn*zprof
-         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
-         !
-      ENDIF
 
       pus  = zus
       pts  = zts
@@ -1981,7 +1986,6 @@ CONTAINS
       Ubzu = zub
 
       zz0 = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
-      !PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE_SCLR" => z0 =', REAL(zz0,4)
 
       IF( PRESENT(pz0) ) THEN
          !! Again, because new zus:
@@ -1994,6 +1998,7 @@ CONTAINS
 
    SUBROUTINE FIRST_GUESS_COARE_VCTR( zt, zu, psst, t_zt, pssq, q_zt, U_zu, pcharn, &
       &                               pus, pts, pqs, t_zu, q_zu, Ubzu,  pz0 )
+      !! LOLO: fix better guess of `t_zu` and `q_zu` !!!
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  FIRST_GUESS_COARE_VCTR  ***
       !!
@@ -2112,21 +2117,29 @@ CONTAINS
             !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
             !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
             !STOP
+      !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
+      !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
+      !STOP
+      ! What needs to be done if zt /= zu:
+      ! LOLO: should we do a better first guess of t and q at zu (better than sticking to t_zt and q_zt) ???
+      !IF( .NOT. l_zt_equal_zu ) THEN
+      !   !! First update of values at zu (or zt for wind)
+      !   zeta_t = zt*zeta_u/zu
+      !   ztmp0 = psi_h_coare(zeta_u) - psi_h_coare(zeta_t)
+      !   ztmp1 = LOG(zt/zu) + ztmp0
+      !   t_zu = t_zt - t_star/vkarmn*ztmp1
+      !   q_zu = q_zt - q_star/vkarmn*ztmp1
+      !   q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
+      !   !
+      !   zdt = t_zu - T_s  ; zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+      !   zdq = q_zu - q_s  ; zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      !ENDIF
+
 
             zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
             ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
             zts  = zdt*ztmp
             zqs  = zdq*ztmp
-
-            ! What needs to be done if zt /= zu:
-            IF( .NOT. l_zt_equal_zu ) THEN
-               !! First update of values at zu (or zt for wind)
-               !lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
-               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof
-               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof
-               q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
-               !
-            ENDIF
 
             pus(ji,jj)  = zus
             pts(ji,jj)  = zts
@@ -2134,7 +2147,6 @@ CONTAINS
             Ubzu(ji,jj) = zub
 
             zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
-            PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE_VCTR" => z0 =', REAL(zz0,4)
 
             IF( PRESENT(pz0) ) THEN
                !! Again, because new zus:
