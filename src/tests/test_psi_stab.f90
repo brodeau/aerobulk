@@ -23,7 +23,7 @@ PROGRAM test_psi_stab
    USE io_ezcdf
 
    USE mod_blk_ncar,     ONLY: psi_m_ncar,    psi_h_ncar
-   USE mod_blk_coare3p6, ONLY: psi_m_coare,   psi_h_coare
+   USE mod_common_coare, ONLY: psi_m_coare,   psi_h_coare
    USE mod_blk_ecmwf,    ONLY: psi_m_ecmwf,   psi_h_ecmwf
    USE mod_blk_andreas,  ONLY: psi_m_andreas, psi_h_andreas
 

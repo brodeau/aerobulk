@@ -26,9 +26,10 @@ MODULE mod_blk_coare3p6
    !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
-   USE mod_const       !: physical and othe constants
-   USE mod_phymbl      !: thermodynamics
-   USE mod_skin_coare  !: cool-skin parameterization
+   USE mod_const        !: physical and othe constants
+   USE mod_phymbl       !: thermodynamics
+   USE mod_common_coare !: common stuff across COARE versions...
+   USE mod_skin_coare   !: cool-skin parameterization
 
    IMPLICIT NONE
 
@@ -38,7 +39,7 @@ MODULE mod_blk_coare3p6
 
    PRIVATE
 
-   PUBLIC :: TURB_COARE3P6, charn_coare3p6, psi_m_coare, psi_h_coare
+   PUBLIC :: TURB_COARE3P6, charn_coare3p6
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -309,7 +310,7 @@ CONTAINS
                ENDIF
 
                !! Adjustment the wind at 10m (not needed in the current algo form):
-               !IF( zu \= 10._wp ) U10 = U_zu + zus/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*z1oL) + psi_m_coare_sclr(zzta_u))
+               !IF( zu \= 10._wp ) U10 = U_zu + zus/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*z1oL) + psi_m_coare(zzta_u))
 
                !! Roughness lengthes z0, z0t (z0q = z0t) :
                zUn10 = zus/vkarmn*(zlog_10 - zlog_z0)       ! Neutral wind speed at 10m
@@ -322,16 +323,16 @@ CONTAINS
                zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
 
                !! Turbulent scales at zu :
-               ztmp0   = psi_h_coare_sclr(zzta_u)
-               ztmp1   = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare_sclr(zzta_t) rather than psi_h_coare_sclr(zzta_t) ???
+               ztmp0   = psi_h_coare(zzta_u)
+               ztmp1   = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zzta_t) rather than psi_h_coare(zzta_t) ???
 
                zts = zdt*ztmp1
                zqs = zdq*ztmp1
-               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare_sclr(zzta_u)) , 1.E-9 )
+               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare(zzta_u)) , 1.E-9 )
 
                IF( .NOT. l_zt_equal_zu ) THEN
                   !! Re-updating temperature and humidity at zu if zt /= zu :
-                  ztmp1 = zlog_zt - zlog_zu + ztmp0 - psi_h_coare_sclr(zzta_t)
+                  ztmp1 = zlog_zt - zlog_zu + ztmp0 - psi_h_coare(zzta_t)
                   t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*ztmp1
                   q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*ztmp1
                ENDIF
@@ -446,102 +447,6 @@ CONTAINS
       charn_coare3p6_wave = ( pwsh*0.2_wp*(pus/pwps)**2.2_wp ) * grav/(pus*pus)
       !!
    END FUNCTION charn_coare3p6_wave
-
-
-   FUNCTION psi_m_coare( pzeta )
-      !!----------------------------------------------------------------------------------
-      !! ** Purpose: compute the universal profile stability function for momentum
-      !!             COARE 3.0, Fairall et al. 2003
-      !!             pzeta : stability paramenter, z/L where z is altitude
-      !!                     measurement and L is M-O length
-      !!       Stability function for wind speed and scalars matching Kansas and free
-      !!       convection forms with weighting f convective form, follows Fairall et
-      !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !!       form from Beljaars and Holtslag (1991)
-      !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_coare
-      !
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = pzeta(ji,jj)
-            !
-            zphi_m = ABS(1. - 15.*zta)**.25    !!Kansas unstable
-            !
-            zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
-               & - 2.*ATAN(zphi_m) + 0.5*rpi
-            !
-            zphi_c = ABS(1. - 10.15*zta)**.3333                   !!Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp, 0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
-            !
-            psi_m_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
-               &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
-               &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )  !     "
-         END DO
-      END DO
-   END FUNCTION psi_m_coare
-
-
-   FUNCTION psi_h_coare( pzeta )
-      !!---------------------------------------------------------------------
-      !! Universal profile stability function for temperature and humidity
-      !! COARE 3.0, Fairall et al. 2003
-      !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
-      !!
-      !! Stability function for wind speed and scalars matching Kansas and free
-      !! convection forms with weighting f convective form, follows Fairall et
-      !! al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !! form from Beljaars and Holtslag (1991)
-      !!
-      !! Author: L. Brodeau, June 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_coare
-      !
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = pzeta(ji,jj)
-            !
-            zphi_h = (ABS(1. - 15.*zta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
-            !
-            zpsi_k = 2.*LOG((1. + zphi_h)/2.)
-            !
-            zphi_c = (ABS(1. - 34.15*zta))**.3333   !! Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp,0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
-            !
-            psi_h_coare(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-               &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
-               &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
-         END DO
-      END DO
-   END FUNCTION psi_h_coare
 
    !!======================================================================
 END MODULE mod_blk_coare3p6
