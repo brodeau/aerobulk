@@ -21,12 +21,12 @@ LIB = -L./lib -laerobulk
 
 LIB_SRC = src/mod_const.f90 \
 	  src/mod_phymbl.f90 \
-          src/mod_skin_coare_ij.f90 \
-          src/mod_skin_ecmwf.f90 \
-	  src/mod_blk_coare3p0_ij.f90 \
-	  src/mod_blk_coare3p6_ij.f90 \
+          src/mod_skin_coare.f90 \
+          src/mod_skin_ecmwf_ij.f90 \
+	  src/mod_blk_coare3p0.f90 \
+	  src/mod_blk_coare3p6.f90 \
           src/mod_blk_ncar.f90 \
-	  src/mod_blk_ecmwf.f90 \
+	  src/mod_blk_ecmwf_ij.f90 \
           src/mod_blk_andreas.f90 \
 	  src/mod_blk_neutral_10m.f90 \
           src/mod_aerobulk_compute.f90 \
@@ -78,9 +78,9 @@ bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
 	@mkdir -p bin
 	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
 
-bin/example_call_aerobulk.x: src/tests/example_call_aerobulk_ij.f90 lib/libaerobulk.a
+bin/example_call_aerobulk.x: src/tests/example_call_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/tests/example_call_aerobulk_ij.f90 -o bin/example_call_aerobulk.x $(LIB)
+	$(FC) $(FF) src/tests/example_call_aerobulk.f90 -o bin/example_call_aerobulk.x $(LIB)
 
 bin/test_coef_n10.x: src/tests/test_coef_n10.f90 lib/libaerobulk.a
 	@mkdir -p bin

@@ -31,9 +31,14 @@ MODULE mod_blk_coare3p0
    USE mod_skin_coare  !: cool-skin parameterization
 
    IMPLICIT NONE
+
+   INTERFACE charn_coare3p0
+      MODULE PROCEDURE charn_coare3p0_vctr, charn_coare3p0_sclr
+   END INTERFACE charn_coare3p0
+
    PRIVATE
 
-   PUBLIC :: COARE3P0_INIT, TURB_COARE3P0, charn_coare3p0, psi_m_coare, psi_h_coare
+   PUBLIC :: TURB_COARE3P0, charn_coare3p0, psi_m_coare, psi_h_coare
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -43,7 +48,7 @@ MODULE mod_blk_coare3p0
 CONTAINS
 
 
-   SUBROUTINE coare3p0_init(nx, ny, l_use_cs, l_use_wl)
+   SUBROUTINE COARE3P0_INIT(nx, ny, l_use_cs, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION coare3p0_init  ***
       !!
@@ -72,9 +77,9 @@ CONTAINS
          IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
          dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       ENDIF
-   END SUBROUTINE coare3p0_init
+   END SUBROUTINE COARE3P0_INIT
 
-   SUBROUTINE coare3p0_exit(l_use_cs, l_use_wl)
+   SUBROUTINE COARE3P0_EXIT(l_use_cs, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION coare3p0_exit  ***
       !!
@@ -97,12 +102,12 @@ CONTAINS
          DEALLOCATE ( dT_cs, STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of dT_cs failed!' )
       ENDIF
-   END SUBROUTINE coare3p0_exit
+   END SUBROUTINE COARE3P0_EXIT
 
 
 
 
-   SUBROUTINE turb_coare3p0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+   SUBROUTINE TURB_COARE3P0( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
       &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      isecday_utc, plong, pdT_wl, pHz_wl,                         & ! optionals for warm-layer only
@@ -176,16 +181,16 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in   )                     ::   kt       ! current time step
-      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
-      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
+      INTEGER,  INTENT(in   )                 ::   kt       ! current time step
+      REAL(wp), INTENT(in   )                 ::   zt       ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in   )                 ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(inout), DIMENSION(:,:) ::   T_s      ! sea surface temperature                [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   t_zt     ! potential air temperature              [Kelvin]
       REAL(wp), INTENT(inout), DIMENSION(:,:) ::   q_s      ! sea surface specific humidity           [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   U_zu     ! relative wind module at zu                [m/s]
-      LOGICAL , INTENT(in   )                     ::   l_use_cs ! use the cool-skin parameterization
-      LOGICAL , INTENT(in   )                     ::   l_use_wl ! use the warm-layer parameterization
+      LOGICAL , INTENT(in   )                 ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in   )                 ::   l_use_wl ! use the warm-layer parameterization
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
@@ -211,18 +216,16 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: Ni, Nj, jit
+      INTEGER :: Ni, Nj, ji, jj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
-         &  u_star, t_star, q_star, &
-         &  dt_zu, dq_zu,    &
-         &  znu_a,           & !: Nu_air, Viscosity of air
-         &  z0, z0t
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_u        ! stability parameter at height zu
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zeta_t        ! stability parameter at height zt
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: ztmp0, ztmp1, ztmp2
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst     ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
+      !
+      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
+      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzta_u, zzta_t
+      REAL(wp) :: zlog_z0, zlog_10, zlog_zu, zlog_zt, zlog_ztu
+      REAL(wp) :: zQnsol, zQlat, zTau
+      REAL(wp) :: ztmp0, ztmp1, ztmp2
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -231,23 +234,17 @@ CONTAINS
       Ni = SIZE(T_s,1)
       Nj = SIZE(T_s,2)
 
-      ALLOCATE ( u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj),  &
-         &       zeta_u(Ni,Nj),  dt_zu(Ni,Nj),  dq_zu(Ni,Nj),  &
-         &        znu_a(Ni,Nj),     z0(Ni,Nj),    z0t(Ni,Nj),  &
-         &        ztmp0(Ni,Nj),  ztmp1(Ni,Nj),  ztmp2(Ni,Nj) )
-
       IF( kt == nit000 ) CALL COARE3P0_INIT( Ni, Nj, l_use_cs, l_use_wl )
 
-      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
-      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
-      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
+      lreturn_cdn   =  PRESENT(CdN)
+      lreturn_chn   =  PRESENT(ChN)
+      lreturn_cen   =  PRESENT(CeN)
+      lreturn_z0    =  PRESENT(xz0)
+      lreturn_ustar =  PRESENT(xu_star)
+      lreturn_L     =  PRESENT(xL)
+      lreturn_UN10  =  PRESENT(xUN10)
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
-      IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(Ni,Nj) )
 
       !! Initializations for cool skin and warm layer:
       IF( l_use_cs .AND. (.NOT.(PRESENT(Qsw) .AND. PRESENT(rad_lw) .AND. PRESENT(slp))) ) &
@@ -259,181 +256,150 @@ CONTAINS
          &   ' & plong to use warm-layer param!'  )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zsst(Ni,Nj) )
-         zsst = T_s ! backing up the bulk SST
+         ALLOCATE ( xSST(Ni,Nj) )
+         xSST = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
 
-      !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
+      !! Constants:
+      zlog_10  = LOG(10._wp)
+      zlog_zt  = LOG(zt)
+      zlog_zu  = LOG(zu)
+      zlog_ztu = LOG(zt/zu)
 
-      !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
-      znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+            zUzu = U_zu(ji,jj)
 
-      Ubzu = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+            CALL FIRST_GUESS_COARE( zt, zu, T_s(ji,jj), t_zt(ji,jj), q_s(ji,jj), q_zt(ji,jj), zUzu, &
+               &                    charn_coare3p0(zUzu),  zus, zts, zqs, &
+               &                    t_zu(ji,jj), q_zu(ji,jj), Ubzu(ji,jj),  pz0=zz0 )
 
-      ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
-      ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
-      u_star = 0.035_wp*Ubzu*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+            zlog_z0 = LOG(zz0)
+            znu_a   = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      z0     = charn_coare3p0(U_zu)*u_star*u_star/grav + 0.11_wp*znu_a/u_star
-      z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-
-      z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-
-      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )    ! first guess of Cd
-
-      ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
-
-      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ubzu ) ! Bulk Richardson Number (BRN)
-
-      !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
-      ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
-      zeta_u = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
-         &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
-
-      !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-      ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_coare(zeta_u))
-
-      u_star = MAX ( Ubzu*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
-      t_star = dt_zu*ztmp0
-      q_star = dq_zu*ztmp0
-
-      ! What needs to be done if zt /= zu:
-      IF( .NOT. l_zt_equal_zu ) THEN
-         !! First update of values at zu (or zt for wind)
-         zeta_t = zt*zeta_u/zu
-         ztmp0 = psi_h_coare(zeta_u) - psi_h_coare(zeta_t)
-         ztmp1 = LOG(zt/zu) + ztmp0
-         t_zu = t_zt - t_star/vkarmn*ztmp1
-         q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
-         !
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-      ENDIF
-
-      !! ITERATION BLOCK
-      DO jit = 1, nb_iter
-
-         !!Inverse of Obukov length (1/L) :
-         ztmp0 = One_on_L(t_zu, q_zu, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
-         ztmp0 = SIGN( MIN(ABS(ztmp0),200._wp), ztmp0 ) ! 1/L (prevents FPE from stupid values from masked region later on...)
-
-         ztmp1 = u_star*u_star   ! u*^2
-
-         !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
-         ztmp2 = Beta0*Beta0*ztmp1*(MAX(-zi0*ztmp0/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, ztmp2 == Ug^2
-         !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
-         Ubzu = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
-         ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
-
-         !! Stability parameters:
-         zeta_u = zu*ztmp0
-         zeta_u = SIGN( MIN(ABS(zeta_u),zeta_abs_max), zeta_u )
-         IF( .NOT. l_zt_equal_zu ) THEN
-            zeta_t = zt*ztmp0
-            zeta_t = SIGN( MIN(ABS(zeta_t),zeta_abs_max), zeta_t )
-         ENDIF
-
-         !! Adjustment the wind at 10m (not needed in the current algo form):
-         !IF( zu \= 10._wp ) U10 = U_zu + u_star/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*ztmp0) + psi_m_coare(zeta_u))
-
-         !! Roughness lengthes z0, z0t (z0q = z0t) :
-         ztmp2 = u_star/vkarmn*LOG(10./z0)                                 ! Neutral wind speed at 10m
-         z0    = charn_coare3p0(ztmp2)*ztmp1/grav + 0.11_wp*znu_a/u_star   ! Roughness length (eq.6) [ ztmp1==u*^2 ]
-         z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-
-         ztmp1 = ( znu_a / (z0*u_star) )**0.6_wp    ! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
-         z0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 ) ! Scalar roughness for both theta and q (eq.28) #LB: some use 1.15 not 1.1 !!!
-         z0t   = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
-
-         !! Turbulent scales at zu :
-         ztmp0   = psi_h_coare(zeta_u)
-         ztmp1   = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zeta_t) rather than psi_h_coare(zeta_t) ???
-
-         t_star = dt_zu*ztmp1
-         q_star = dq_zu*ztmp1
-         u_star = MAX( Ubzu*vkarmn/(LOG(zu) - LOG(z0) - psi_m_coare(zeta_u)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
-
-         IF( .NOT. l_zt_equal_zu ) THEN
-            !! Re-updating temperature and humidity at zu if zt /= zu :
-            ztmp1 = LOG(zt/zu) + ztmp0 - psi_h_coare(zeta_t)
-            t_zu = t_zt - t_star/vkarmn*ztmp1
-            q_zu = q_zt - q_star/vkarmn*ztmp1
-         ENDIF
-
-         IF( l_use_cs ) THEN
-            !! Cool-skin contribution
-
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-               &                   ztmp1, zeta_u,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> zeta_u
-
-            CALL CS_COARE( Qsw, ztmp1, u_star, zsst, ztmp2 )  ! ! Qnsol -> ztmp1 / Qlat -> ztmp2
-
-            T_s(:,:) = zsst(:,:) + dT_cs(:,:)
-            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
-            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         ENDIF
-
-         IF( l_use_wl ) THEN
-            !! Warm-layer contribution
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-               &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
-            !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, plong, isecday_utc, MOD(nb_iter,jit) )
-
-            !! Updating T_s and q_s !!!
-            T_s(:,:) = zsst(:,:) + dT_wl(:,:)
-            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
-            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         ENDIF
-
-         IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
-            dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-            dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-         ENDIF
-
-      END DO !DO jit = 1, nb_iter
-
-      ! compute transfer coefficients at zu :
-      ztmp0 = u_star/Ubzu
-      Cd   = MAX( ztmp0*ztmp0        , Cx_min )
-      Ch   = MAX( ztmp0*t_star/dt_zu , Cx_min )
-      Ce   = MAX( ztmp0*q_star/dq_zu , Cx_min )
+            !! Pot. temp. difference (and we don't want it to be 0!)
+            zdt = t_zu(ji,jj) - T_s(ji,jj) ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+            zdq = q_zu(ji,jj) - q_s(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
 
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
-      IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+            !! ITERATION BLOCK
+            DO jit = 1, nb_iter
 
-      IF( lreturn_z0 )    xz0     = z0
-      IF( lreturn_ustar ) xu_star = u_star
-      IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, u_star, t_star, q_star)
-      IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
+               zus2    = zus*zus   ! u*^2
 
-      DEALLOCATE ( u_star, t_star, q_star, zeta_u, dt_zu, dq_zu, z0, z0t, znu_a, ztmp0, ztmp1, ztmp2 )
-      IF( .NOT. l_zt_equal_zu ) DEALLOCATE( zeta_t )
+               !!Inverse of Obukov length (1/L) :
+               z1oL = One_on_L(t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs)  ! 1/L == 1/[Obukhov length]
+               z1oL = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! 1/L (prevents FPE from stupid values from masked region later on...)
+
+               !! Update wind at zu with convection-related wind gustiness in unstable conditions (Fairall et al. 2003, Eq.8):
+               zgust2 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution, zgust2 == Ug^2
+               !!   ! Only true when unstable (L<0) => when z1oL < 0 => explains "-" before zi0
+               Ubzu(ji,jj) = MAX(SQRT(zUzu*zUzu + zgust2), 0.2_wp)        ! include gustiness in bulk wind speed
+               ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
+
+               !! Stability parameters:
+               zzta_u = zu*z1oL
+               zzta_u = SIGN( MIN(ABS(zzta_u),zeta_abs_max), zzta_u )
+               IF( .NOT. l_zt_equal_zu ) THEN
+                  zzta_t = zt*z1oL
+                  zzta_t = SIGN( MIN(ABS(zzta_t),zeta_abs_max), zzta_t )
+               ENDIF
+
+               !! Adjustment the wind at 10m (not needed in the current algo form):
+               !IF( zu \= 10._wp ) U10 = U_zu + zus/vkarmn*(LOG(10._wp/zu) - psi_m_coare_sclr(10._wp*z1oL) + psi_m_coare_sclr(zzta_u))
+
+               !! Roughness lengthes z0, z0t (z0q = z0t) :
+               zUn10 = zus/vkarmn*(zlog_10 - zlog_z0)       ! Neutral wind speed at 10m
+               zz0    = charn_coare3p0(zUn10)*zus2/grav + 0.11_wp*znu_a/zus ! Roughness length (eq.6)
+               zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )  ! (prevents FPE from stupid values from masked region later on)
+               zlog_z0 = LOG(zz0)
+
+               ztmp1 = ( znu_a / (zz0*zus) )**0.6_wp         ! (1./Re_r)^0.6 (Re_r: roughness Reynolds number) COARE 3.0 - specific!
+               zz0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 )   ! Scalar roughness for temp. and q (eq.28) #LB: some use 1.15 not 1.1 !!!
+               zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
+
+               !! Turbulent scales at zu :
+               ztmp0   = psi_h_coare_sclr(zzta_u)
+               ztmp1   = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare_sclr(zzta_t) rather than psi_h_coare_sclr(zzta_t) ???
+
+               zts = zdt*ztmp1
+               zqs = zdq*ztmp1
+               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare_sclr(zzta_u)) , 1.E-9 )
+
+               IF( .NOT. l_zt_equal_zu ) THEN
+                  !! Re-updating temperature and humidity at zu if zt /= zu :
+                  ztmp1 = zlog_zt - zlog_zu + ztmp0 - psi_h_coare_sclr(zzta_t)
+                  t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*ztmp1
+                  q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*ztmp1
+               ENDIF
+
+               IF( l_use_cs ) THEN
+                  !! Cool-skin contribution
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
+                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQnsol, zTau, Qlat=zQlat)
+
+                  CALL CS_COARE( ji, jj, Qsw(ji,jj), zQnsol, zus, xSST(ji,jj), zQlat )
+
+                  T_s(ji,jj) = xSST(ji,jj) + dT_cs(ji,jj)
+                  IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
+               ENDIF
+
+               IF( l_use_wl ) THEN
+                  !! Warm-layer contribution
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
+                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zQnsol, zTau)
+                  !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
+                  CALL WL_COARE( ji, jj, Qsw(ji,jj), zQnsol, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, MOD(nb_iter,jit) )
+
+                  !! Updating T_s and q_s !!!
+                  T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)
+                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + dT_cs(ji,jj)
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
+               ENDIF
+
+               IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
+                  zdt = t_zu(ji,jj) - T_s(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+                  zdq = q_zu(ji,jj) - q_s(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+               ENDIF
+
+            END DO !DO jit = 1, nb_iter
+
+            ! compute transfer coefficients at zu :
+            ztmp0 = zus/Ubzu(ji,jj)
+            Cd(ji,jj)   = MAX( ztmp0*ztmp0   , Cx_min )
+            Ch(ji,jj)   = MAX( ztmp0*zts/zdt , Cx_min )
+            Ce(ji,jj)   = MAX( ztmp0*zqs/zdq , Cx_min )
+
+         END DO
+      END DO
+
+
+      !IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
+      !IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
+      !IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+      !IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
+
+      !IF( lreturn_z0 )    xz0     = z0
+      !IF( lreturn_ustar ) xu_star = zu_star
+      !IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, Zu_star, Zt_star, Zq_star)
+      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
       IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
 
-      IF( kt == nitend ) CALL COARE3P0_EXIT(l_use_cs, l_use_wl)
+      IF( kt == nitend ) CALL COARE3P0_EXIT( l_use_cs, l_use_wl )
 
-   END SUBROUTINE turb_coare3p0
+   END SUBROUTINE TURB_COARE3P0
 
-
-   FUNCTION charn_coare3p0( pwnd )
+   !!===============================================================================================
+   FUNCTION charn_coare3p0_sclr( pwnd )
       !!-------------------------------------------------------------------
       !! Compute the Charnock parameter as a function of the wind speed
       !!
@@ -445,28 +411,34 @@ CONTAINS
       !!
       !! Author: L. Brodeau, June 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! wind speed
-      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p0
+      REAL(wp), INTENT(in) :: pwnd   ! wind speed
+      REAL(wp) :: charn_coare3p0_sclr
       !
-      INTEGER  ::   ji, jj         ! dummy loop indices
       REAL(wp) :: zw, zgt10, zgt18
       !!-------------------------------------------------------------------
+      zw = pwnd   ! wind speed
+      !!
+      !! Charnock's constant, increases with the wind :
+      zgt10 = 0.5_wp + SIGN(0.5_wp,(zw - 10._wp))  ! If zw<10. --> 0, else --> 1
+      zgt18 = 0.5_wp + SIGN(0.5_wp,(zw - 18._wp))  ! If zw<18. --> 0, else --> 1
+      !
+      charn_coare3p0_sclr =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
+         &                  + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
+         &                   *(zw - 10.)/(18. - 10.)) + zgt18*( 0.018 ) )    ! Hare et al. (1999)
+      !!
+   END FUNCTION charn_coare3p0_sclr
+
+   FUNCTION charn_coare3p0_vctr( pwnd )
+      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! wind speed
+      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p0_vctr
+      INTEGER  :: ji, jj
       DO jj = 1, SIZE(pwnd,2)
          DO ji = 1, SIZE(pwnd,1)
-            !
-            zw = pwnd(ji,jj)   ! wind speed
-            !
-            ! Charnock's constant, increases with the wind :
-            zgt10 = 0.5 + SIGN(0.5_wp,(zw - 10))  ! If zw<10. --> 0, else --> 1
-            zgt18 = 0.5 + SIGN(0.5_wp,(zw - 18.)) ! If zw<18. --> 0, else --> 1
-            !
-            charn_coare3p0(ji,jj) =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
-               &     + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
-               &      *(zw - 10.)/(18. - 10.)) + zgt18*( 0.018 ) )    ! Hare et al. (1999)
-            !
+            charn_coare3p0_vctr(ji,jj) = charn_coare3p0_sclr( pwnd(ji,jj) )
          END DO
       END DO
-   END FUNCTION charn_coare3p0
+   END FUNCTION charn_coare3p0_vctr
+   !!===============================================================================================
 
 
    FUNCTION psi_m_coare( pzeta )

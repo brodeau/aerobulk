@@ -49,36 +49,36 @@ CONTAINS
       INTEGER :: Ni, Nj, np
       CHARACTER(len=64) :: chum_ln
       INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask   !: mask array: masked=>0, elsewhere=>1
-      !!==================================================================================================      
+      !!==================================================================================================
       lsrad = .FALSE.
       lsrad = ( PRESENT(prsw) .AND. PRESENT(prlw) )
 
       lskin = .FALSE.
       IF( PRESENT(l_use_skin) ) lskin = l_use_skin
-      
+
       WRITE(6,*)''
       WRITE(6,*)'==================================================================='
-      WRITE(6,*)'                   ----- AEROBULK_INIT -----'
+      WRITE(6,*)'                   ----- AeroBulk_init -----'
       WRITE(6,*)''
 
       WRITE(6,*)'    *** Bulk parameterization to be used => "', TRIM(calgo), '"'
 
       ! 1. Check if scheme use compatible with chosen algorithm and presence of radiative fields
       IF( lskin ) THEN
-         
+
          IF( .NOT.((TRIM(calgo(1:4)) == 'coar').OR.(TRIM(calgo) == 'ecmwf')) ) &
             & CALL ctl_stop(' AEROBULK_INIT => Only `COARE*` and `ECMWF` algorithms support cool-skin & warm/layer schemes')
-         
+
          IF( .NOT.(lsrad) ) CALL ctl_stop(' AEROBULK_INIT => provide SW and LW rad. input if you want to use skin schemes')
 
          l_use_skin_schemes = .TRUE. ! if we go here it's fine!
          WRITE(6,*)'       ==> will use the Cool-skin & Warm-ayer scheme of `'//TRIM(calgo)//'` !'
 
       ELSE
-         WRITE(6,*)'    *** Cool-skin & Warm-layer schemes will NOT be used!'         
+         WRITE(6,*)'    *** Cool-skin & Warm-layer schemes will NOT be used!'
       END IF
 
-      
+
       ! 2.
       Ni = SIZE(psst,1)
       Nj = SIZE(psst,2)
@@ -93,7 +93,7 @@ CONTAINS
          IF( ANY(SHAPE(prsw)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and Rad_SW arrays do not agree in shape!')
          IF( ANY(SHAPE(prlw)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and Rad_LW arrays do not agree in shape!')
       END IF
-      
+
       WRITE(6,'("     *** Computational domain shape: Ni x Nj = ",i5.5," x ",i5.5)') Ni, Nj
 
       nitend = Nt   ! important: nitend is a global variable shared by `mod_const.f90`
@@ -136,7 +136,7 @@ CONTAINS
          CALL ctl_stop( ' AEROBULK_INIT => humidty type "',ctype_humidity,'" is unknown!!!' )
       END SELECT
 
-      
+
       WRITE(6,'("     *** Type of prescribed air humidity  `",a,"`")') TRIM(chum_ln)
 
       ! 6. Check unit consistency of input fields:
@@ -232,7 +232,7 @@ CONTAINS
       !! Local:
       LOGICAL :: lskin, lsrad
       !!====================================================================================================
-      
+
       IF( PRESENT(Niter) )      nb_iter = Niter  ! Updating number of itterations (define in mod_const)
 
       lskin = .FALSE.
@@ -242,11 +242,11 @@ CONTAINS
       lsrad = ( PRESENT(rad_sw) .AND. PRESENT(rad_lw) ) ! if theser 2 are provided we NORMALLY plan to use the CSWL schemes!
 
       IF( jt <1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
-      
+
       IF( lsrad ) THEN
-         
+
          IF( jt==1 ) CALL AEROBULK_INIT( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_use_skin=lskin, prsw=rad_lw, prlw=rad_lw )
-         
+
          CALL AEROBULK_COMPUTE( jt, calgo, zt, zu, sst, t_zt, &
             &                   hum_zt, U_zu, V_zu, slp,      &
             &                   QL, QH, Tau_x, Tau_y,         &
@@ -267,5 +267,5 @@ CONTAINS
       IF( jt==Nt ) CALL AEROBULK_BYE()
 
    END SUBROUTINE AEROBULK_MODEL
-   
+
 END MODULE mod_aerobulk
