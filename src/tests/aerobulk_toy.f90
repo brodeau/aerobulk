@@ -524,7 +524,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) '      C_E_N   =   ', REAL(vCeN ,4) , ' [10^-3]'
    WRITE(6,*) '      C_H_N   =   ', REAL(vChN ,4) , ' [10^-3]'
    WRITE(6,*) ''
-   WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
+  !lolo WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
    WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]', ' ( MEAN =', VMEAN(vTau), 'RMS =', VARIANCE(vTau), ')'
    WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]', ' ( MEAN =', VMEAN(vEvap),'RMS =', VARIANCE(vEvap),')'

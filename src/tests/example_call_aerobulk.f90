@@ -11,7 +11,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
 
    INTEGER, PARAMETER :: nx = 2, &
       &                  ny = 1, &
-      &                Nbit = 20  ! number of itteration in bulk algorithms...
+      &                Nbit = 50  ! number of itteration in bulk algorithms...
 
    REAL(wp), PARAMETER :: zt = 2.  , & ! ref. height for T and q
       &                   zu = 10.     ! ref. height for wind
