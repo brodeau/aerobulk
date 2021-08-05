@@ -1914,24 +1914,23 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, May 2021 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in)                     ::   zt
-      REAL(wp), INTENT(in)                     ::   zu
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   psst
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   t_zt
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   pssq
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   q_zt
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   U_zu
-      REAL(wp), INTENT(in),  DIMENSION(jpi,jpj) ::   pcharn
+      REAL(wp), INTENT(in)  ::   zt
+      REAL(wp), INTENT(in)  ::   zu
+      REAL(wp), INTENT(in)  ::   psst
+      REAL(wp), INTENT(in)  ::   t_zt
+      REAL(wp), INTENT(in)  ::   pssq
+      REAL(wp), INTENT(in)  ::   q_zt
+      REAL(wp), INTENT(in)  ::   U_zu
+      REAL(wp), INTENT(in)  ::   pcharn
       !!
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pus
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pts
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   pqs
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   t_zu
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   q_zu
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj) ::   Ubzu
-      REAL(wp), INTENT(out), DIMENSION(jpi,jpj), OPTIONAL :: pz0    ! roughness length [m]
+      REAL(wp), INTENT(out) ::   pus
+      REAL(wp), INTENT(out) ::   pts
+      REAL(wp), INTENT(out) ::   pqs
+      REAL(wp), INTENT(out) ::   t_zu
+      REAL(wp), INTENT(out) ::   q_zu
+      REAL(wp), INTENT(out) ::   Ubzu
+      REAL(wp), INTENT(out), OPTIONAL :: pz0    ! roughness length [m]
       !
-      INTEGER :: ji, jj
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
       REAL(wp) :: zdt, zdq, zUb, zCd, zus, zts, zqs, zNu_a, zRib
@@ -1961,79 +1960,73 @@ CONTAINS
       zc_a = 0.035_wp*LOG(10._wp/zz0)/LOG(zu/zz0)   !       "                    "               "
       zc_b = 0.004_wp*zzi0*zBeta0*zBeta0*zBeta0
 
-      DO jj = 1, jpj
-         DO ji = 1, jpi
+      !! Air-sea differences (and we don't want them to be 0...)
+      zdt = t_zu - psst ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+      zdq = q_zu - pssq ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
 
-            !! Air-sea differences (and we don't want them to be 0...)
-            zdt = t_zu(ji,jj) - psst(ji,jj) ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-            zdq = q_zu(ji,jj) - pssq(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      zNu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-            zNu_a = visc_air(t_zu(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+      zUb = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
 
-            zUb = SQRT(U_zu(ji,jj)*U_zu(ji,jj) + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+      zus = zc_a*zUb
 
-            zus = zc_a*zUb
+      !! Roughness length:
+      zz0     = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus
+      zz0     = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
+      zlog_z0 = LOG(zz0)
 
-            !! Roughness length:
-            zz0     = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus
-            zz0     = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
-            zlog_z0 = LOG(zz0)
+      zCd          = (vkarmn/(zlog_zu - zlog_z0))**2     ! first guess of Cd
+      z1_o_sqrt_Cd10 =       (zlog_10 - zlog_z0)/vkarmn  ! sum less costly than product: log(a/b) == log(a) - log(b)
 
-            zCd          = (vkarmn/(zlog_zu - zlog_z0))**2     ! first guess of Cd
-            z1_o_sqrt_Cd10 =       (zlog_10 - zlog_z0)/vkarmn  ! sum less costly than product: log(a/b) == log(a) - log(b)
+      !! theta,q roughness length:
+      zz0t  = 10._wp / EXP( vkarmn/( 0.00115*z1_o_sqrt_Cd10 ) )
+      zz0t    = MIN( MAX(ABS(zz0t), 1.E-8) , 1._wp )         ! (prevents FPE from stupid values from masked region later on)
+      zlog_z0t = LOG(zz0t)
 
-            !! theta,q roughness length:
-            zz0t  = 10._wp / EXP( vkarmn/( 0.00115*z1_o_sqrt_Cd10 ) )
-            zz0t    = MIN( MAX(ABS(zz0t), 1.E-8) , 1._wp )         ! (prevents FPE from stupid values from masked region later on)
-            zlog_z0t = LOG(zz0t)
+      zRib = Ri_bulk( zu, psst, t_zu, pssq, q_zu, zUb ) ! Bulk Richardson Number (BRN)
 
-            zRib = Ri_bulk( zu, psst(ji,jj), t_zu(ji,jj), pssq(ji,jj), q_zu(ji,jj), zUb ) ! Bulk Richardson Number (BRN)
+      !! First estimate of zeta_u, depending on the stability, ie sign of BRN (zRib):
+      zcc = vkarmn2/(zCd*(zlog_zt - zlog_z0t))
+      zcc_ri  = zcc*zRib
+      z1_o_Ribcu = -zc_b/zu
+      zstab   = 0.5 + SIGN( 0.5_wp , zRib )
+      zzeta_u = (1._wp - zstab) *   zcc_ri / (1._wp + zRib*z1_o_Ribcu) & !  Ri_bulk < 0, Unstable
+         &  +        zstab      * ( zcc_ri + 27._wp/9._wp*zRib*zRib )    !  Ri_bulk > 0, Stable
 
-            !! First estimate of zeta_u, depending on the stability, ie sign of BRN (zRib):
-            zcc = vkarmn2/(zCd*(zlog_zt - zlog_z0t))
-            zcc_ri  = zcc*zRib
-            z1_o_Ribcu = -zc_b/zu
-            zstab   = 0.5 + SIGN( 0.5_wp , zRib )
-            zzeta_u = (1._wp - zstab) *   zcc_ri / (1._wp + zRib*z1_o_Ribcu) & !  Ri_bulk < 0, Unstable
-               &  +        zstab      * ( zcc_ri + 27._wp/9._wp*zRib*zRib )    !  Ri_bulk > 0, Stable
+      !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
 
-            !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
+      !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
+      !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
+      !STOP
 
-            !PRINT *, 'LOLO STOP: need to have generic psi functions available into mod_phymbl.f90 !'
-            !PRINT *, ' => preferably those of COARE, because it s a COARE first gues...'
-            !STOP
+      zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
+      ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
+      zts  = zdt*ztmp
+      zqs  = zdq*ztmp
 
-            zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare_sclr(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
-            ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare_sclr(zzeta_u))
-            zts  = zdt*ztmp
-            zqs  = zdq*ztmp
+      ! What needs to be done if zt /= zu:
+      IF( .NOT. l_zt_equal_zu ) THEN
+         !! First update of values at zu (or zt for wind)
+         !lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
+         t_zu = t_zt - zts/vkarmn*zprof
+         q_zu = q_zt - zqs/vkarmn*zprof
+         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
+         !
+      ENDIF
 
-            ! What needs to be done if zt /= zu:
-            IF( .NOT. l_zt_equal_zu ) THEN
-               !! First update of values at zu (or zt for wind)
-               !lolo               zprof = zlog_zt_o_zu + psi_h_ij(zzeta_u) - psi_h_ij(zt*zzeta_u/zu)   ! zt*zzeta_u/zu == zeta_t
-               t_zu(ji,jj) = t_zt(ji,jj) - zts/vkarmn*zprof
-               q_zu(ji,jj) = q_zt(ji,jj) - zqs/vkarmn*zprof
-               q_zu(ji,jj) = (0.5_wp + SIGN(0.5_wp,q_zu(ji,jj)))*q_zu(ji,jj) !Makes it impossible to have negative humidity :
-               !
-            ENDIF
+      pus  = zus
+      pts  = zts
+      pqs  = zqs
+      Ubzu = zub
 
-            pus(ji,jj)  = zus
-            pts(ji,jj)  = zts
-            pqs(ji,jj)  = zqs
-            Ubzu(ji,jj) = zub
+      zz0 = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
+      !PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE" => z0 =', REAL(zz0,4)
 
-            zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus ! LOLO rm !
-            PRINT *, 'LOLO: mod_phymbl.f90 end of "FIRST_GUESS_COARE" => z0 =', REAL(zz0,4)
-
-            IF( PRESENT(pz0) ) THEN
-               !! Again, because new zus:
-               zz0        = pcharn(ji,jj)*zus*zus/grav + 0.11_wp*zNu_a/zus
-               pz0(ji,jj) = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
-            END IF
-
-         END DO
-      END DO
+      IF( PRESENT(pz0) ) THEN
+         !! Again, because new zus:
+         zz0 = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus
+         pz0 = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
+      END IF
 
    END SUBROUTINE FIRST_GUESS_COARE
 
@@ -2122,7 +2115,7 @@ CONTAINS
 
 
    !!
-   
+
    SUBROUTINE check_unit_consitency( cfield, Xval, mask )
 
       !! Ignore values where mask==0

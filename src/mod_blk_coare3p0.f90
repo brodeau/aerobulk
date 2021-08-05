@@ -424,7 +424,7 @@ CONTAINS
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
 
-      IF( kt == nitend ) CALL COARE3P0_EXIT(l_use_cs, l_use_wl)
+      IF( kt == nitend ) CALL COARE3P0_EXIT( l_use_cs, l_use_wl )
 
    END SUBROUTINE turb_coare3p0
 
