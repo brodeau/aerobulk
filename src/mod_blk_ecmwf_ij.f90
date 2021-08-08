@@ -73,12 +73,12 @@ CONTAINS
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
-         dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
+      !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+      !ENDIF
    END SUBROUTINE ecmwf_init
 
    SUBROUTINE ecmwf_exit(l_use_cs, l_use_wl)
@@ -99,11 +99,11 @@ CONTAINS
          DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         DEALLOCATE ( dT_cs, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
-      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   DEALLOCATE ( dT_cs, STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
+      !ENDIF
    END SUBROUTINE ecmwf_exit
 
 
@@ -214,7 +214,7 @@ CONTAINS
       INTEGER :: Ni, Nj, jit, ji, jj
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zSST     ! to back up the initial bulk SST
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zu_star, zt_star, zq_star
       !
       REAL(wp) :: zdt, zdq, zus, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
@@ -249,8 +249,8 @@ CONTAINS
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use warm-layer param!' )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zSST(Ni,Nj) )
-         zSST = T_s ! backing up the bulk SST
+         ALLOCATE ( xSST(Ni,Nj) )
+         xSST = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! Crude first guess for skin correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
@@ -388,9 +388,9 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
                &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0
 
-            CALL CS_ECMWF( Qsw, ztmp1, u_star, zSST )  ! Qnsol -> ztmp1
+            CALL CS_ECMWF( Qsw, ztmp1, u_star, xSST, zdT_cs )  ! Qnsol -> ztmp1
 
-            T_s(:,:) = zSST(:,:) + dT_cs(:,:)
+            T_s(:,:) = xSST(:,:) + zdT_cs
             IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
 
@@ -400,9 +400,9 @@ CONTAINS
             !! Warm-layer contribution
             CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
                &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
-            CALL WL_ECMWF( Qsw, ztmp1, u_star, zSST )
+            CALL WL_ECMWF( Qsw, ztmp1, u_star, xSST )
             !! Updating T_s and q_s !!!
-            T_s(:,:) = zSST(:,:) + dT_wl(:,:)
+            T_s(:,:) = xSST(:,:) + dT_wl(:,:)
             IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
             q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
          ENDIF
@@ -436,7 +436,7 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zSST )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
 
       IF( kt == nitend ) CALL ECMWF_EXIT(l_use_cs, l_use_wl)
 

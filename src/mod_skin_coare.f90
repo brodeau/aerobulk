@@ -22,14 +22,10 @@ MODULE mod_skin_coare
    USE mod_phymbl  !: thermodynamics
 
    IMPLICIT NONE
+
    PRIVATE
 
    PUBLIC :: CS_COARE, WL_COARE
-
-   !! Cool-skin related arrays:
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
-      &                        dT_cs         !: dT due to cool-skin effect => temperature difference between air-sea interface (z=0)
-   !!                                        !: and right below the viscous layer (z=delta)
 
    !! Warm-layer related arrays:
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:), PUBLIC :: &
@@ -48,8 +44,8 @@ MODULE mod_skin_coare
    !!----------------------------------------------------------------------
 
 CONTAINS
-
-   SUBROUTINE CS_COARE( ki, kj, pQsw, pQnsol, pustar, pSST, pQlat )
+   
+   SUBROUTINE CS_COARE( pQsw, pQnsol, pustar, pSST, pQlat, pdT_cs )
       !!---------------------------------------------------------------------
       !!
       !! Cool-skin parameterization, based on Fairall et al., 1996, revisited for COARE 3.6 (Fairall et al., 2019)
@@ -68,12 +64,13 @@ CONTAINS
       !!     *pSST*       bulk SST (taken at depth gdept_1d(1))          [K]
       !!     *pQlat*      surface latent heat flux                       [K]
       !!------------------------------------------------------------------
-      INTEGER , INTENT(in) :: ki, kj
       REAL(wp), INTENT(in) :: pQsw   ! net solar a.k.a shortwave radiation into the ocean (after albedo) [W/m^2]
       REAL(wp), INTENT(in) :: pQnsol ! non-solar heat flux to the ocean [W/m^2]
       REAL(wp), INTENT(in) :: pustar ! friction velocity, temperature and humidity (u*,t*,q*)
       REAL(wp), INTENT(in) :: pSST   ! bulk SST [K]
       REAL(wp), INTENT(in) :: pQlat  ! latent heat flux [W/m^2]
+      REAL(wp), INTENT(out):: pdT_cs !: dT due to cool-skin effect => temperature difference between 
+      !!                             !: air-sea interface (z=0) and right below viscous layer (z=delta)
       !!---------------------------------------------------------------------
       INTEGER  :: jc
       REAL(wp) :: zQabs, zdelta, zfr
@@ -81,20 +78,19 @@ CONTAINS
       zQabs = pQnsol ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
       !              !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
 
-      zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pQlat, pustar )
+      zdelta = delta_skin_layer_sclr( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
 
       DO jc = 1, 4 ! because implicit in terms of zdelta...
-         zfr = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp ) ! Solar absorption, Eq.16 (Fairall al. 1996b)
-         !!                                                     !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
+         ! Solar absorption, Eq.16 (Fairall al. 1996b):
+         zfr = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp )
+         !!              !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
          zQabs = pQnsol + zfr*pQsw
-         zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pQlat, pustar )
+         zdelta = delta_skin_layer_sclr( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
       END DO
 
-      dT_cs(ki,kj) = zQabs*zdelta/rk0_w   ! temperature increment, yes dT_cs can actually > 0, if Qabs > 0 (rare but possible!)
+      pdT_cs = zQabs*zdelta/rk0_w   ! temperature increment, yes dT_cs can actually > 0, if Qabs > 0 (rare but possible!)
 
    END SUBROUTINE CS_COARE
-
-
 
 
 
@@ -252,46 +248,6 @@ CONTAINS
       END IF
 
    END SUBROUTINE WL_COARE
-
-
-
-
-   FUNCTION delta_skin_layer( palpha, pQd, pQlat, pustar_a )
-      !!---------------------------------------------------------------------
-      !! Computes the thickness (m) of the viscous skin layer.
-      !! Based on Fairall et al., 1996
-      !!
-      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
-      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
-      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
-      !! doi:10.1029/95JC03190.
-      !!
-      !! L. Brodeau, october 2019
-      !!---------------------------------------------------------------------
-      REAL(wp)                :: delta_skin_layer
-      REAL(wp), INTENT(in)    :: palpha   ! thermal expansion coefficient of sea-water (SST accurate enough!)
-      REAL(wp), INTENT(in)    :: pQd    ! < 0 !!! part of the net heat flux actually absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
-      REAL(wp), INTENT(in)    :: pQlat    ! latent heat flux [W/m^2]
-      REAL(wp), INTENT(in)    :: pustar_a ! friction velocity in the air (u*) [m/s]
-      !!---------------------------------------------------------------------
-      REAL(wp) :: zusw, zusw2, zlamb, zQd, ztf, ztmp
-      !!---------------------------------------------------------------------
-
-      zQd = pQd + 0.026*MIN(pQlat,0._wp)*rCp0_w/rLevap/palpha   ! LOLO: Double check sign + division by palpha !!! units are okay!
-
-      ztf = 0.5_wp + SIGN(0.5_wp, zQd)  ! Qabs < 0 => cooling of the viscous layer => ztf = 0 (regular case)
-      !                                 ! Qabs > 0 => warming of the viscous layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
-      !
-      zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
-      zusw2 = zusw*zusw
-      !
-      zlamb = 6._wp*( 1._wp + MAX(palpha*rcst_cs/(zusw2*zusw2)*zQd, 0._wp)**0.75 )**(-1./3.) ! see Eq.(14) in Fairall et al., 1996
-      !  => zlamb is not used when Qd > 0, and since rcst_cs < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
-      !
-      ztmp = rnu0_w/zusw
-      delta_skin_layer = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
-         &               +   ztf     * MIN(6._wp*ztmp , 0.007_wp)  ! when Qd > 0
-   END FUNCTION delta_skin_layer
 
    !!======================================================================
 END MODULE mod_skin_coare

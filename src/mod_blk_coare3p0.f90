@@ -39,7 +39,7 @@ MODULE mod_blk_coare3p0
 
    PRIVATE
 
-   PUBLIC :: TURB_COARE3P0, charn_coare3p0, psi_m_coare, psi_h_coare
+   PUBLIC :: TURB_COARE3P0, charn_coare3p0
 
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
@@ -72,12 +72,12 @@ CONTAINS
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = Hwl_max
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
-         dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
+      !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+      !ENDIF
    END SUBROUTINE COARE3P0_INIT
 
    SUBROUTINE COARE3P0_EXIT(l_use_cs, l_use_wl)
@@ -98,11 +98,11 @@ CONTAINS
          DEALLOCATE ( Tau_ac , Qnt_ac, dT_wl, Hz_wl, STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         DEALLOCATE ( dT_cs, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of dT_cs failed!' )
-      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   DEALLOCATE ( dT_cs, STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of dT_cs failed!' )
+      !ENDIF
    END SUBROUTINE COARE3P0_EXIT
 
 
@@ -342,9 +342,9 @@ CONTAINS
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
                      &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQnsol, zTau, Qlat=zQlat)
 
-                  CALL CS_COARE( ji, jj, Qsw(ji,jj), zQnsol, zus, xSST(ji,jj), zQlat )
-
-                  T_s(ji,jj) = xSST(ji,jj) + dT_cs(ji,jj)
+                  CALL CS_COARE( Qsw(ji,jj), zQnsol, zus, xSST(ji,jj), zQlat, zdT_cs )
+                  IF( PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
+                  T_s(ji,jj) = xSST(ji,jj) + zdT_cs
                   IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
                   q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
                ENDIF
@@ -358,7 +358,7 @@ CONTAINS
 
                   !! Updating T_s and q_s !!!
                   T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)
-                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + dT_cs(ji,jj)
+                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + zdT_cs
                   q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
                ENDIF
 
@@ -389,7 +389,7 @@ CONTAINS
       !IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, Zu_star, Zt_star, Zq_star)
       !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
 
-      IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
+      !
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 

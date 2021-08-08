@@ -1235,7 +1235,7 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       lice = PRESENT(l_ice)
       lrE  = PRESENT(pEvap)
-      lrR  = PRESENT(prhoa)      
+      lrR  = PRESENT(prhoa)
       DO jj = 1, SIZE(pts,2)
          DO ji = 1, SIZE(pts,1)
             CALL BULK_FORMULA_SCLR( pzu, pts(ji,jj), pqs(ji,jj), pThta(ji,jj), pqa(ji,jj), &
@@ -1845,7 +1845,7 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:),           INTENT(in) :: Xval
       INTEGER(1), DIMENSION(:,:), OPTIONAL, INTENT(in) :: mask
 
-      INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask      
+      INTEGER(1), DIMENSION(:,:), ALLOCATABLE :: imask
       LOGICAL,    DIMENSION(:,:), ALLOCATABLE :: lmask
       INTEGER :: nx, ny
       CHARACTER(len=64) :: cunit
@@ -1857,7 +1857,7 @@ CONTAINS
       ALLOCATE( lmask(nx,ny), imask(nx,ny) )
       imask(:,:) =   1
       lmask(:,:) = .TRUE.
-      
+
       IF( PRESENT(mask) ) THEN
          IF( (SIZE(mask,1) /= nx).OR.(SIZE(mask,2) /= ny) ) THEN
             WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): shape of `mask` does not agree with array of field ",a," !")') TRIM(cfield)
@@ -1867,7 +1867,7 @@ CONTAINS
          WHERE( mask==0 ) lmask = .FALSE.
       END IF
       !! if no `mask` is passed as argument then nothing is masked...
-      
+
       zmean = SUM( Xval * REAL(imask,wp) ) / SUM( REAL(imask,wp) )
       !PRINT *, 'LOLO, zmean of '//TRIM(cfield)//' =>', zmean
 
@@ -1897,7 +1897,7 @@ CONTAINS
          zmax = ref_dpt_max
          zmin = ref_dpt_min
          cunit = 'kg/kg'
-         
+
       CASE('slp','mslp','MSL','msl','P')
          zmax = ref_slp_max
          zmin = ref_slp_min
@@ -1927,7 +1927,7 @@ CONTAINS
          WRITE(*,'(" *** ERROR (check_unit_consistency@mod_phymbl): we do not know field `",a,"` !")') TRIM(cfield)
          STOP
       END SELECT
-      
+
       l_too_large     = ( MAXVAL(Xval, MASK=lmask) > zmax )
       l_too_small    = ( MINVAL(Xval, MASK=lmask) < zmin )
       l_mean_outside = ( (zmean < zmin) .OR. (zmean > zmax) )
@@ -1939,7 +1939,7 @@ CONTAINS
       END IF
       DEALLOCATE( imask, lmask )
       !WRITE(*,'(" *** `check_unit_consistency@mod_phymbl`: field `",a,"` is okay! [",a,"]")') TRIM(cfield), TRIM(cunit)
-      !!      
+      !!
    END SUBROUTINE check_unit_consistency
 
 
@@ -1997,6 +1997,44 @@ CONTAINS
 
    END FUNCTION type_of_humidity
 
+   
+   FUNCTION delta_skin_layer_sclr( palpha, pQd, pustar_a,  Qlat )
+      !!---------------------------------------------------------------------
+      !! Computes the thickness (m) of the viscous skin layer.
+      !! Based on Fairall et al., 1996
+      !!
+      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
+      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
+      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
+      !! doi:10.1029/95JC03190.
+      !!
+      !! L. Brodeau, october 2019
+      !!---------------------------------------------------------------------
+      REAL(wp),           INTENT(in) :: palpha   ! thermal expansion coefficient of sea-water (SST accurate enough!)
+      REAL(wp),           INTENT(in) :: pQd   ! (<0!) part of `Qnet` absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
+      REAL(wp),           INTENT(in) :: pustar_a ! friction velocity in the air (u*) [m/s]
+      REAL(wp), OPTIONAL, INTENT(in) :: Qlat    ! latent heat flux [W/m^2]
+      REAL(wp)                       :: delta_skin_layer_sclr
+      !!---------------------------------------------------------------------
+      REAL(wp) :: zusw, zusw2, zlamb, zQd, ztf, ztmp
+      !!---------------------------------------------------------------------
+      zQd = pQd
+      IF( PRESENT(Qlat) ) zQd = pQd + 0.026*MIN(Qlat,0._wp)*rCp0_w/rLevap/palpha ! LOLO: Double check sign + division by palpha !!! units are okay!
+
+      ztf = 0.5_wp + SIGN(0.5_wp, zQd)  ! Qabs < 0 => cooling of the viscous layer => ztf = 0 (regular case)
+      !                                 ! Qabs > 0 => warming of the viscous layer => ztf = 1 (ex: weak evaporation and strong positive sensible heat flux)
+      !
+      zusw  = MAX(pustar_a, 1.E-4_wp) * sq_radrw    ! u* in the water
+      zusw2 = zusw*zusw
+      !
+      zlamb = 6._wp*( 1._wp + MAX(palpha*rcst_cs/(zusw2*zusw2)*zQd, 0._wp)**0.75 )**(-1./3.) ! see Eq.(14) in Fairall et al., 1996
+      !  => zlamb is not used when Qd > 0, and since rcst_cs < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
+      !
+      ztmp = rnu0_w/zusw
+      delta_skin_layer_sclr = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
+         &               +   ztf     * MIN(6._wp*ztmp , 0.007_wp)  ! when Qd > 0
+      !!
+   END FUNCTION delta_skin_layer_sclr
 
 
 
