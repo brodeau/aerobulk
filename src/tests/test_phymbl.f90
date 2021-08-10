@@ -31,7 +31,7 @@ PROGRAM TEST_PHYMBL
       &   t_min =  -5. , &
       &   t_max =  35.
 
-   REAL(wp) :: zslp, zzt, zta, zqa, zqsat, zP_zt, zCp, zRm, ztpa
+   REAL(wp) :: zslp, zzt, zta, zqa, zqsat, zP_zt, ztpa
    
    INTEGER :: jt
 

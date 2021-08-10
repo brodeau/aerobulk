@@ -13,7 +13,7 @@ PROGRAM TEST_COEF_N10
 
    CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', '  ncar  ', ' ecmwf  ' /)
 
-   REAL(4), DIMENSION(nb_algos) :: vCdn10, vCen10, vChn10
+   !REAL(4), DIMENSION(nb_algos) :: vCdn10, vCen10, vChn10
 
    REAL(wp), PARAMETER ::   &
       &   wind_max = 60.,  &
@@ -34,14 +34,14 @@ PROGRAM TEST_COEF_N10
    INTEGER :: jarg, ialgo, jw
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   REAL(wp),    DIMENSION(lx,ly) :: zz0, zus
+   !REAL(wp),    DIMENSION(lx,ly) :: zz0, zus
 
-   REAL(wp), DIMENSION(lx,ly) :: SLP, &
-      &  U_N10
+   REAL(wp), DIMENSION(lx,ly) :: SLP
+   !REAL(wp), DIMENSION(lx,ly) ::  U_N10
 
    REAL(wp) :: dw0, dw
 
-   REAL(wp), DIMENSION(lx,ly) :: Cdn10, Cen10, Chn10
+   !REAL(wp), DIMENSION(lx,ly) :: Cdn10, Cen10, Chn10
 
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
@@ -176,35 +176,25 @@ PROGRAM TEST_COEF_N10
 
    END DO
 
-
-
    WRITE(6,*) ''
    CLOSE(6)
 
+   
+CONTAINS
+
+   SUBROUTINE usage_test()
+      !!
+      PRINT *,''
+      PRINT *,'   List of command line options:'
+      PRINT *,''
+      PRINT *,' -p   => ask for sea-level pressure, otherwize assume 1010 hPa'
+      PRINT *,''
+      PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
+      PRINT *,''
+      PRINT *,' -h   => Show this message'
+      PRINT *,''
+      STOP
+      !!
+   END SUBROUTINE usage_test
+
 END PROGRAM TEST_COEF_N10
-
-
-
-
-
-
-
-
-
-
-
-SUBROUTINE usage_test()
-   !!
-   PRINT *,''
-   PRINT *,'   List of command line options:'
-   PRINT *,''
-   PRINT *,' -p   => ask for sea-level pressure, otherwize assume 1010 hPa'
-   PRINT *,''
-   PRINT *,' -r   => Ask for relative humidity rather than specific humidity'
-   PRINT *,''
-   PRINT *,' -h   => Show this message'
-   PRINT *,''
-   STOP
-   !!
-END SUBROUTINE usage_test
-!!

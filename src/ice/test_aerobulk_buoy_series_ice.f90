@@ -33,7 +33,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    CHARACTER(len=2) :: car
 
-   INTEGER :: jj, jt, jarg, ialgo, jq, info, ifi=0, ivi=0
+   INTEGER :: jt, jarg, ialgo, jq, info
 
    INTEGER, PARAMETER :: nx = 1, ny = 1
 
@@ -107,7 +107,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       CASE('-r')
          l_hum_rh = .TRUE.
 
-      CASE('-w')         
+      CASE('-w')
          l_wndspd = .TRUE.
 
       CASE DEFAULT
@@ -215,7 +215,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
       !! "2D (3x3) + t" NEMO convention:
       !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      
+
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
 
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
@@ -522,25 +522,22 @@ CONTAINS
       END IF
    END FUNCTION DISP_DEBUG
 
+   SUBROUTINE usage_test()
+      !!
+      PRINT *,''
+      PRINT *,'   List of command line options:'
+      PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+      PRINT *,''
+      PRINT *,' -f <file>  => NetCDF file containing input data'
+      PRINT *,''
+      PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
+      PRINT *,''
+      PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
+      PRINT *,''
+      PRINT *,' -h         => Show this message'
+      PRINT *,''
+      STOP
+      !!
+   END SUBROUTINE usage_test
+
 END PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
-
-
-
-SUBROUTINE usage_test()
-   !!
-   PRINT *,''
-   PRINT *,'   List of command line options:'
-   PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-   PRINT *,''
-   PRINT *,' -f <file>  => NetCDF file containing input data'
-   PRINT *,''
-   PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
-   PRINT *,''
-   PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
-   PRINT *,''
-   PRINT *,' -h         => Show this message'
-   PRINT *,''
-   STOP
-   !!
-END SUBROUTINE usage_test
-!!

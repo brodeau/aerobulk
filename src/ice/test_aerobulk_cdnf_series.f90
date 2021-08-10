@@ -9,7 +9,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    USE mod_phymbl
 
    USE io_ezcdf     !* routines for netcdf input/output (par of SOSIE package)
-   
+
    USE mod_cdn_form_ice
 
    IMPLICIT NONE
@@ -19,7 +19,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    REAL(wp), PARAMETER :: rz0_w_s_0 = 3.27E-4      ! fixed roughness length over water (paragraph below Eq.36)
 
 
-   
+
    LOGICAL, PARAMETER :: lverbose = .TRUE.
    LOGICAL, PARAMETER :: ldebug   = .FALSE.
    INTEGER, PARAMETER :: jtdbg    = 1   ! if (ldebug) that's the time step we'll start from...
@@ -127,9 +127,9 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
 
 
    ALLOCATE ( ctime(Nt), cdate(Nt), clock(Nt), chh(Nt), cmn(Nt), cldate(Nt), idate(Nt), vtime(Nt), vlon(nx) )
-   ALLOCATE ( z0_ice(nx,ny), z0_oce(nx,ny), tmp(nx,ny) )   
+   ALLOCATE ( z0_ice(nx,ny), z0_oce(nx,ny), tmp(nx,ny) )
    !ALLOCATE ( Ublk(nx,ny,Nt), zUN10(nx,ny,Nt) )
-   
+
    !ALLOCATE ( SIT(nx,ny,Nt), SST(nx,ny,Nt), SKT(nx,ny,Nt), SLP(nx,ny,Nt), , t_zt(nx,ny,Nt), theta_zt(nx,ny,Nt), q_zt(nx,ny,Nt),  &
    !   &       rad_sw(nx,ny,Nt), rad_lw(nx,ny,Nt), SIC(nx,ny,Nt) )
    !ALLOCATE ( t_zu(nx,ny,Nt), theta_zu(nx,ny,Nt), q_zu(nx,ny,Nt), rho_zt(nx,ny,Nt), rho_zu(nx,ny,Nt), dummy(nx,ny,Nt) )
@@ -137,7 +137,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    !   &       RiB_zt(nx,ny,Nt), RiB_zu(nx,ny,Nt), TAU(nx,ny,Nt), SBLM(nx,ny,Nt) )
 
    ALLOCATE ( SIC(nx,ny,Nt), dummy(nx,ny,Nt), W10(nx,ny,Nt), CdNFi(nx,ny,Nt) )
-   
+
    WRITE(6,*) ' *** Allocation completed!'
    WRITE(6,*) ''
 
@@ -153,7 +153,7 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    CALL GETVAR_1D(cf_data, 'siconc',   SIC  )  ; ! sea-ice concentration (0-1)
 
    PRINT *, 'LOLO2'
-   
+
    !CALL GETVAR_1D(cf_data, 'istl1',    SIT  )  ; ! istl1 is in K !
 
    !CALL GETVAR_1D(cf_data, 'sst',    SST  )  ; ! sst is in K !
@@ -229,10 +229,10 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
    z0_ice(:,:) = rz0_i_s_0
    z0_oce(:,:) = rz0_w_s_0
 
-   
+
    jt0 = 1
    IF( ldebug .AND. (jt>0) ) jt0 = jtdbg
-   
+
    !! Time loop:
    DO jt = jt0, Nt
 
@@ -262,36 +262,36 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
 
       CASE ( 'LU12' )
          CdNFi(:,:,jt) = CdN10_f_LU12(          SIC(:,:,jt), z0_oce(:,:) ) !!!,  pSc, phf, pDi  )
-         
+
       CASE ( 'LU12l' )
          CdNFi(:,:,jt) = CdN_f_LU12_eq36(  zu, SIC(:,:,jt)       )
-         
+
       CASE ( 'LU13' )
          CdNFi(:,:,jt) = CdN10_f_LU13(          SIC(:,:,jt)       )
-         
+
       CASE ( 'LG15' )
          CdNFi(:,:,jt) = CdN_f_LG15(       zu, SIC(:,:,jt), z0_ice(:,:) ) !!! ,  pSc, phf, pDi  )
-         
+
       CASE ( 'LG15l' )
          CdNFi(:,:,jt) = CdN_f_LG15_light( zu, SIC(:,:,jt), z0_oce(:,:) )
-         
+
       CASE DEFAULT
          PRINT *, 'UNKNOWN algo: '//TRIM(calgo)//' !!!'
          STOP
       END SELECT
-      
+
    END DO !DO jt = 1, Nt
 
 
 
-   
+
    CALL PT_SERIES(vtime(:), REAL(SIC(1,1,:),4), 'CDN'//TRIM(czu)//'_form_'//TRIM(calgo)//'.nc', 'time', &
       &           'A', '[0-1]', 'Sea-ice concentration', -9999._4, &
       &           ct_unit=TRIM(cunit_t), ct_clnd=TRIM(clndr_t), &
       &           vdt02=REAL(  W10(1,1,:),4), cv_dt02='Wind',   cun02='m/s',   cln02='Module of Wind Speed',   &
       &           vdt03=REAL( 1000.*CdNFi(1,1,:),4), cv_dt03='CdN_f_i', cun03='',  cln03='Drag coefficient due to form / sea-ice'  &
       &           )
-   
+
    WRITE(6,*) ''; WRITE(6,*) ''
    CLOSE(6)
 
@@ -312,20 +312,17 @@ CONTAINS
       END IF
    END FUNCTION DISP_DEBUG
 
+   SUBROUTINE usage_test()
+      !!
+      PRINT *,''
+      PRINT *,'   List of command line options:'
+      PRINT *,''
+      PRINT *,' -f <netcdf_file>  => file containing data'
+      PRINT *,''
+      PRINT *,' -h   => Show this message'
+      PRINT *,''
+      STOP
+      !!
+   END SUBROUTINE usage_test
+
 END PROGRAM TEST_AEROBULK_CDNF_SERIES
-
-
-
-SUBROUTINE usage_test()
-   !!
-   PRINT *,''
-   PRINT *,'   List of command line options:'
-   PRINT *,''
-   PRINT *,' -f <netcdf_file>  => file containing data'
-   PRINT *,''
-   PRINT *,' -h   => Show this message'
-   PRINT *,''
-   STOP
-   !!
-END SUBROUTINE usage_test
-

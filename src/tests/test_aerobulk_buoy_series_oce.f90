@@ -24,9 +24,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
    IMPLICIT NONE
 
    !INTEGER :: DISP_DEBUG
-   
 
-   
+
+
    LOGICAL, PARAMETER :: lverbose = .TRUE.
    LOGICAL, PARAMETER :: ldebug   = .TRUE.
 
@@ -73,7 +73,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: Cd, Ce, Ch, QH, QL, Qsw, QNS, Qlw, EVAP, RiB, TAU
 
-   REAL(wp) :: zt, zu, rlon, ztmp
+   REAL(wp) :: zt, zu, rlon
 
    CHARACTER(len=3) :: czt, czu
 
@@ -118,7 +118,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       CASE('-r')
          l_hum_rh = .TRUE.
 
-      CASE('-w')         
+      CASE('-w')
          l_wndspd = .TRUE.
 
       CASE DEFAULT
@@ -183,7 +183,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
 
    CALL set_variable_names_default()
-   
+
    IF( .NOT. l_3x3_ts ) THEN
 
       !! "1D + t" AeroBulk convention:
@@ -198,7 +198,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       DEALLOCATE( vlon )
 
       CALL GETVAR_1D(cf_data, cv_sst,    SST  )
-      
+
       CALL GETVAR_1D(cf_data, cv_patm,    SLP  ) ; ! must be in [Pa]
 
       IF ( l_wndspd ) THEN
@@ -208,10 +208,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
          CALL GETVAR_1D(cf_data, cv_v_wnd, dummy  )
          W10 = SQRT ( W10*W10 + dummy*dummy )
       END IF
-         
+
       CALL GETVAR_1D(cf_data, cv_t_air,  t_zt ) ; ! must be in [deg.C]
       CALL TO_KELVIN_3D(t_zt, cname=TRIM(cv_t_air) )
-      
+
       IF ( l_hum_rh ) THEN
          !! Relative humidity is read:
          CALL GETVAR_1D(cf_data, cv_rh_air, dummy)
@@ -237,9 +237,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       !! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       !CALL GETVAR_1D_R8_3x3_to_1x1
-      
+
       CALL set_variable_names_ecmwf()  ! ECMWF !
-      
+
       ALLOCATE( X3(3,3) )
       CALL GETVAR_2D( ifi, ivi, cf_data, 'nav_lon', 1, 0, 0, X3 )
       xlon(:,:) = X3(2,2)
@@ -257,7 +257,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
          CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_v_wnd, dummy  )
          W10 = SQRT ( W10*W10 + dummy*dummy )
       END IF
-      
+
       CALL GETVAR_1D_R8_3x3_to_1x1(cf_data, cv_v_wnd, dummy  )
       W10 = SQRT ( W10*W10 + dummy*dummy )
 
@@ -287,11 +287,11 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    END IF !IF( .NOT. l_3x3_ts )
 
-   
+
    CALL TO_KELVIN_3D(SST, cname=TRIM(cv_sst) )
 
 
-   
+
    PRINT *, ' *** Longitude of station: ', rlon
 
    WRITE(6,*) ''
@@ -383,7 +383,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       END IF
 
       info = DISP_DEBUG(lverbose, 'SST', SST(:,:,jt)-rt0, '[degC]')
-      
+
       info = DISP_DEBUG(lverbose, 'atmospheric pressure', SLP(:,:,jt), '[Pa]' )
 
       info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
@@ -392,7 +392,7 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
-      
+
       theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
 
@@ -602,29 +602,27 @@ CONTAINS
       END IF
    END FUNCTION DISP_DEBUG
 
+   SUBROUTINE usage_test()
+      !!
+      PRINT *,''
+      PRINT *,'   List of command line options:'
+      PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+      PRINT *,''
+      PRINT *,' -f <file>  => NetCDF file containing input data'
+      PRINT *,''
+      PRINT *,' -n <name>  => name/label for the experiment'
+      PRINT *,''
+      PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
+      PRINT *,''
+      PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
+      PRINT *,''
+      PRINT *,' -w         => wind speed read in NetCDF file rather than "u" and "v"'
+      PRINT *,''
+      PRINT *,' -h         => Show this message'
+      PRINT *,''
+      STOP
+      !!
+   END SUBROUTINE usage_test
+
+
 END PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
-
-
-
-SUBROUTINE usage_test()
-   !!
-   PRINT *,''
-   PRINT *,'   List of command line options:'
-   PRINT *, '  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-   PRINT *,''
-   PRINT *,' -f <file>  => NetCDF file containing input data'
-   PRINT *,''
-   PRINT *,' -n <name>  => name/label for the experiment'
-   PRINT *,''
-   PRINT *,' -3         => fields in input netcdf are 3x3 in space (those of NEMO/tests/STATION_ASF!)'
-   PRINT *,''
-   PRINT *,' -r         => humidity in NetCDF file is Relative Humidity [%]'
-   PRINT *,''
-   PRINT *,' -w         => wind speed read in NetCDF file rather than "u" and "v"'
-   PRINT *,''
-   PRINT *,' -h         => Show this message'
-   PRINT *,''
-   STOP
-   !!
-END SUBROUTINE usage_test
-!!
