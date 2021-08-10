@@ -49,17 +49,15 @@ MODULE mod_blk_coare3p6
 CONTAINS
 
 
-   SUBROUTINE COARE3P6_INIT(nx, ny, l_use_cs, l_use_wl)
+   SUBROUTINE COARE3P6_INIT(nx, ny, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION coare3p6_init  ***
       !!
       !! INPUT :
       !! -------
-      !!    * l_use_cs : use the cool-skin parameterization
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) :: nx, ny   ! shape of the domain
-      LOGICAL, INTENT(in) :: l_use_cs ! use the cool-skin parameterization
       LOGICAL, INTENT(in) :: l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
@@ -80,16 +78,14 @@ CONTAINS
       !ENDIF
    END SUBROUTINE COARE3P6_INIT
 
-   SUBROUTINE COARE3P6_EXIT(l_use_cs, l_use_wl)
+   SUBROUTINE COARE3P6_EXIT(l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION coare3p6_exit  ***
       !!
       !! INPUT :
       !! -------
-      !!    * l_use_cs : use the cool-skin parameterization
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
-      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
       LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
@@ -222,11 +218,11 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       !
-      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs, zNu_a, zRib, z1oL, zpsi_m_u, zpsi_h_u, zpsi_h_t, zdT_cs, zgust2
-      REAL(wp) :: zz0, zz0t, zz0q, zprof_m, zprof_h, zpsi_h_z0t, zpsi_h_z0q, zzta_u, zzta_t
+      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs
+      REAL(wp) :: zNu_a, z1oL, zdT_cs, zgust2, zz0, zz0t, zzta_u, zzta_t
       REAL(wp) :: zlog_z0, zlog_10, zlog_zu, zlog_zt, zlog_ztu
       REAL(wp) :: zQnsol, zQlat, zTau
-      REAL(wp) :: ztmp0, ztmp1, ztmp2
+      REAL(wp) :: ztmp0, ztmp1
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -235,7 +231,7 @@ CONTAINS
       Ni = SIZE(T_s,1)
       Nj = SIZE(T_s,2)
 
-      IF( kt == nit000 ) CALL COARE3P6_INIT( Ni, Nj, l_use_cs, l_use_wl )
+      IF( kt == nit000 ) CALL COARE3P6_INIT( Ni, Nj,  l_use_wl )
 
       lreturn_cdn   =  PRESENT(CdN)
       lreturn_chn   =  PRESENT(ChN)
@@ -318,7 +314,7 @@ CONTAINS
                zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )  ! (prevents FPE from stupid values from masked region later on)
                zlog_z0 = LOG(zz0)
 
-               ztmp1 = ( znu_a / (zz0*zus) )**0.72_wp     ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
+               ztmp1 = ( znu_a / (zz0*zus) )**0.72_wp        ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
                zz0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
                zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
 
@@ -375,30 +371,31 @@ CONTAINS
             Ch(ji,jj)   = MAX( ztmp0*zts/zdt , Cx_min )
             Ce(ji,jj)   = MAX( ztmp0*zqs/zdq , Cx_min )
 
+            !! Optional output
+            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/zz0)
+            IF( lreturn_cdn )   CdN(ji,jj) = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
+            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/LOG(zu/zz0t)
+            IF( lreturn_chn )   ChN(ji,jj) = MAX( ztmp1 , Cx_min )
+            IF( lreturn_cen )   CeN(ji,jj) = MAX( ztmp1 , Cx_min )
+            
+            IF( lreturn_z0 )        xz0(ji,jj) = zz0
+            IF( lreturn_ustar ) xu_star(ji,jj) = zus
+            IF( lreturn_L )          xL(ji,jj) = 1._wp / One_on_L(t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs)
+            IF( lreturn_UN10 )    xUN10(ji,jj) =   zus / vkarmn*LOG(10._wp/zz0)
+            
          END DO
       END DO
 
-
-      !IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      !IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
-      !IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      !IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-
-      !IF( lreturn_z0 )    xz0     = z0
-      !IF( lreturn_ustar ) xu_star = zu_star
-      !IF( lreturn_L )     xL      = 1./One_on_L(t_zu, q_zu, Zu_star, Zt_star, Zq_star)
-      !IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
-
-      !
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
       IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
 
-      IF( kt == nitend ) CALL COARE3P6_EXIT( l_use_cs, l_use_wl )
+      IF( kt == nitend ) CALL COARE3P6_EXIT( l_use_wl )
 
    END SUBROUTINE TURB_COARE3P6
 
+   
    !!===============================================================================================
    FUNCTION charn_coare3p6_sclr( pwnd )
       !!-------------------------------------------------------------------

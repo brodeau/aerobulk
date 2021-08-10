@@ -299,7 +299,7 @@ CONTAINS
       LOGICAL , INTENT(in), OPTIONAL :: l_ice            ! sea-ice presence
       REAL(wp)                       :: Pz_from_P0_tz_qz_sclr  ! pressure at `pz` m above sea level [Pa]
       !!
-      REAL(wp)           :: ztpa, zpa, zxm, zmask, zqsat, zf
+      REAL(wp)           :: zpa, zxm, zqsat, zf
       INTEGER            :: it
       LOGICAL            :: lice = .FALSE. ! sea-ice presence
       INTEGER, PARAMETER :: niter = 3      ! iteration indice and number
@@ -728,7 +728,7 @@ CONTAINS
       REAL(wp), INTENT(in), OPTIONAL :: pTa_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
       REAL(wp), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
       LOGICAL  :: l_ptqa_l_prvd = .FALSE.
-      REAL(wp) :: zqa, zdthv, ztv, zsstv  ! local scalars
+      REAL(wp) :: zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
       IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       !
@@ -1952,13 +1952,11 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:), INTENT(in) :: Xval
       INTEGER(1), DIMENSION(:,:), INTENT(in) :: mask
       CHARACTER(len=2)                       :: type_of_humidity !: => 'sh', 'rh' or 'dp'
-
+      !!
       LOGICAL, DIMENSION(:,:), ALLOCATABLE :: lmask
       INTEGER :: nx, ny
-      CHARACTER(len=64) :: cunit
       REAL(wp) :: zmean, zmin, zmax
-      LOGICAL  :: l_too_large=.FALSE., l_too_small=.FALSE., l_mean_outside=.FALSE.
-
+      !!
       nx = SIZE(mask,1)
       ny = SIZE(mask,2)
       ALLOCATE( lmask(nx,ny) )

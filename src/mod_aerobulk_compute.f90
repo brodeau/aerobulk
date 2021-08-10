@@ -83,7 +83,6 @@ CONTAINS
          &  ztmp                  !: temporary array
       !
       INTEGER          :: Ni, Nj
-      CHARACTER(len=2) :: chum
       !!------------------------------------------------------------------------------
 
       Ni = SIZE(sst,1)
