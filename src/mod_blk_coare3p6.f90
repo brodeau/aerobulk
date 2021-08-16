@@ -218,10 +218,10 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       !
-      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs
-      REAL(wp) :: zNu_a, z1oL, zdT_cs, zgust2, zz0, zz0t, zzta_u, zzta_t
+      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zts, zqs, zNu_a, z1oL, zdT_cs
+      REAL(wp) :: zUn10, zgust2, zz0, zz0t, zzta_u, zzta_t
       REAL(wp) :: zlog_z0, zlog_10, zlog_zu, zlog_zt, zlog_ztu
-      REAL(wp) :: zQnsol, zQlat, zTau
+      REAL(wp) :: zQns, zQlat, zTau
       REAL(wp) :: ztmp0, ztmp1
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
@@ -336,9 +336,9 @@ CONTAINS
                IF( l_use_cs ) THEN
                   !! Cool-skin contribution
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
-                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQnsol, zTau, Qlat=zQlat)
+                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQns, zTau, Qlat=zQlat )
 
-                  CALL CS_COARE( Qsw(ji,jj), zQnsol, zus, xSST(ji,jj), zQlat, zdT_cs )
+                  CALL CS_COARE( Qsw(ji,jj), zQns, zus, xSST(ji,jj), zQlat, zdT_cs )
                   IF( PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
                   T_s(ji,jj) = xSST(ji,jj) + zdT_cs
                   IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
@@ -348,9 +348,9 @@ CONTAINS
                IF( l_use_wl ) THEN
                   !! Warm-layer contribution
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
-                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zQnsol, zTau)
+                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zQns, zTau)
                   !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-                  CALL WL_COARE( ji, jj, Qsw(ji,jj), zQnsol, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, MOD(nb_iter,jit) )
+                  CALL WL_COARE( ji, jj, Qsw(ji,jj), zQns, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, MOD(nb_iter,jit) )
 
                   !! Updating T_s and q_s !!!
                   T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)
@@ -367,9 +367,9 @@ CONTAINS
 
             ! compute transfer coefficients at zu :
             ztmp0 = zus/Ubzu(ji,jj)
-            Cd(ji,jj)   = MAX( ztmp0*ztmp0   , Cx_min )
-            Ch(ji,jj)   = MAX( ztmp0*zts/zdt , Cx_min )
-            Ce(ji,jj)   = MAX( ztmp0*zqs/zdq , Cx_min )
+            Cd(ji,jj) = MAX( ztmp0*ztmp0   , Cx_min )
+            Ch(ji,jj) = MAX( ztmp0*zts/zdt , Cx_min )
+            Ce(ji,jj) = MAX( ztmp0*zqs/zdq , Cx_min )
 
             !! Optional output
             IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/zz0)
@@ -377,11 +377,11 @@ CONTAINS
             IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/LOG(zu/zz0t)
             IF( lreturn_chn )   ChN(ji,jj) = MAX( ztmp1 , Cx_min )
             IF( lreturn_cen )   CeN(ji,jj) = MAX( ztmp1 , Cx_min )
-            
+
             IF( lreturn_z0 )        xz0(ji,jj) = zz0
             IF( lreturn_ustar ) xu_star(ji,jj) = zus
-            IF( lreturn_L )          xL(ji,jj) = 1._wp / One_on_L(t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs)
-            IF( lreturn_UN10 )    xUN10(ji,jj) =   zus / vkarmn*LOG(10._wp/zz0)
+            IF( lreturn_L )          xL(ji,jj) = 1._wp / z1oL
+            IF( lreturn_UN10 )    xUN10(ji,jj) = zus/vkarmn*LOG(10./zz0)
             
          END DO
       END DO
@@ -395,7 +395,7 @@ CONTAINS
 
    END SUBROUTINE TURB_COARE3P6
 
-   
+
    !!===============================================================================================
    FUNCTION charn_coare3p6_sclr( pwnd )
       !!-------------------------------------------------------------------

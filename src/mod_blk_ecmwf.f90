@@ -32,8 +32,18 @@ MODULE mod_blk_ecmwf
    USE mod_phymbl      !: thermodynamics
    USE mod_skin_ecmwf  !: cool-skin & warm-layer parameterizations of
    !                   !: Zeng and Beljaars, 1995 WITH update from Takaya et al. 2010...
+   USE mod_common_coare, ONLY : FIRST_GUESS_COARE
 
    IMPLICIT NONE
+
+   INTERFACE psi_m_ecmwf
+      MODULE PROCEDURE psi_m_ecmwf_vctr, psi_m_ecmwf_sclr
+   END INTERFACE psi_m_ecmwf
+
+   INTERFACE psi_h_ecmwf
+      MODULE PROCEDURE psi_h_ecmwf_vctr, psi_h_ecmwf_sclr
+   END INTERFACE psi_h_ecmwf
+   
    PRIVATE
 
    PUBLIC :: ECMWF_INIT, TURB_ECMWF, psi_m_ecmwf, psi_h_ecmwf
@@ -52,17 +62,15 @@ MODULE mod_blk_ecmwf
 CONTAINS
 
 
-   SUBROUTINE ecmwf_init(nx, ny, l_use_cs, l_use_wl)
+   SUBROUTINE ECMWF_INIT(nx, ny, l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION ecmwf_init  ***
       !!
       !! INPUT :
       !! -------
-      !!    * l_use_cs : use the cool-skin parameterization
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) :: nx, ny   ! shape of the domain
-      LOGICAL, INTENT(in) :: l_use_cs ! use the cool-skin parameterization
       LOGICAL, INTENT(in) :: l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
@@ -73,24 +81,22 @@ CONTAINS
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
-         dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      ENDIF
-   END SUBROUTINE ecmwf_init
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
+      !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+      !ENDIF
+   END SUBROUTINE ECMWF_INIT
 
-   SUBROUTINE ecmwf_exit(l_use_cs, l_use_wl)
+   SUBROUTINE ECMWF_EXIT(l_use_wl)
       !!---------------------------------------------------------------------
       !!                  ***  FUNCTION ecmwf_exit  ***
       !!
       !! INPUT :
       !! -------
-      !!    * l_use_cs : use the cool-skin parameterization
       !!    * l_use_wl : use the warm-layer parameterization
       !!---------------------------------------------------------------------
-      LOGICAL , INTENT(in) ::   l_use_cs ! use the cool-skin parameterization
       LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
       INTEGER :: ierr
       !!---------------------------------------------------------------------
@@ -99,16 +105,18 @@ CONTAINS
          DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
          IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
       ENDIF
-      IF( l_use_cs ) THEN
-         ierr = 0
-         DEALLOCATE ( dT_cs, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
-      ENDIF
-   END SUBROUTINE ecmwf_exit
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   DEALLOCATE ( dT_cs, STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
+      !ENDIF
+   END SUBROUTINE ECMWF_EXIT
 
 
-   SUBROUTINE turb_ecmwf( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl,    &
-      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                                 &
+
+
+   SUBROUTINE TURB_ECMWF( kt, zt, zu, T_s, t_zt, q_s, q_zt, U_zu, l_use_cs, l_use_wl, &
+      &                      Cd, Ch, Ce, t_zu, q_zu, Ubzu,                               &
       &                      Qsw, rad_lw, slp, pdT_cs,                                   & ! optionals for cool-skin (and warm-layer)
       &                      pdT_wl, pHz_wl,                                             & ! optionals for warm-layer only
       &                      CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
@@ -187,8 +195,8 @@ CONTAINS
       REAL(wp), INTENT(inout), DIMENSION(:,:) ::   q_s      ! sea surface specific humidity           [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   q_zt     ! specific air humidity at zt             [kg/kg]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   U_zu     ! relative wind module at zu                [m/s]
-      LOGICAL , INTENT(in   )                     ::   l_use_cs ! use the cool-skin parameterization
-      LOGICAL , INTENT(in   )                     ::   l_use_wl ! use the warm-layer parameterization
+      LOGICAL , INTENT(in   )                 ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in   )                 ::   l_use_wl ! use the warm-layer parameterization
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Cd       ! transfer coefficient for momentum         (tau)
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
@@ -211,20 +219,17 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
       !
-      INTEGER :: Ni, Nj, jit
+      INTEGER :: Ni, Nj, ji, jj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE  ::  &
-         &  u_star, t_star, q_star, &
-         &  dt_zu, dq_zu,    &
-         &  znu_a,           & !: Nu_air, Viscosity of air
-         &  Linv,            & !: 1/L (inverse of Obukhov length...
-         &  z0, z0t, z0q
+      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE :: zsst  ! to back up the initial bulk SST
-      !
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   func_m, func_h
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
+      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zts, zqs, zNu_a, z1oL, zdT_cs
+      REAL(wp) :: zRib, zpsi_m_u, zpsi_h_u, zpsi_h_t
+      REAL(wp) :: zz0, zz0t, zz0q, zpsi_h_z0t, zpsi_h_z0q, zpsi_m_z0, zzeta_u, zzeta_t
+      REAL(wp) :: zlog_10, zlog_ztu, zlog_z0, zlog_zu, zlog_z0t, zlog_z0q
+      REAL(wp) :: zFm, zFh, zFq, zQns
+      REAL(wp) :: ztmp0, ztmp1
       !
       LOGICAL ::  lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
@@ -233,22 +238,15 @@ CONTAINS
       Ni = SIZE(T_s,1)
       Nj = SIZE(T_s,2)
 
-      ALLOCATE ( u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj), &
-         &     func_m(Ni,Nj), func_h(Ni,Nj),  &
-         &     dt_zu(Ni,Nj), dq_zu(Ni,Nj),    &
-         &     znu_a(Ni,Nj), Linv(Ni,Nj),   &
-         &     z0(Ni,Nj), z0t(Ni,Nj), z0q(Ni,Nj), &
-         &     ztmp0(Ni,Nj), ztmp1(Ni,Nj), ztmp2(Ni,Nj) )
+      IF( kt == nit000 ) CALL ECMWF_INIT( Ni, Nj,  l_use_wl )
 
-      IF( kt == nit000 ) CALL ECMWF_INIT( Ni, Nj, l_use_cs, l_use_wl )
-
-      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
-      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
-      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
+      lreturn_cdn   =  PRESENT(CdN)
+      lreturn_chn   =  PRESENT(ChN)
+      lreturn_cen   =  PRESENT(CeN)
+      lreturn_z0    =  PRESENT(xz0)
+      lreturn_ustar =  PRESENT(xu_star)
+      lreturn_L     =  PRESENT(xL)
+      lreturn_UN10  =  PRESENT(xUN10)
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
 
@@ -260,202 +258,177 @@ CONTAINS
          &   CALL ctl_stop( '['//TRIM(crtnm)//'] => ' , 'you need to provide Qsw, rad_lw & slp to use warm-layer param!' )
 
       IF( l_use_cs .OR. l_use_wl ) THEN
-         ALLOCATE ( zsst(Ni,Nj) )
-         zsst = T_s ! backing up the bulk SST
+         ALLOCATE ( xSST(Ni,Nj) )
+         xSST = T_s ! backing up the bulk SST
          IF( l_use_cs ) T_s = T_s - 0.25_wp   ! First guess of correction
          q_s    = rdct_qsat_salt*q_sat(MAX(T_s, 200._wp), slp) ! First guess of q_s
       ENDIF
 
+      !! Constants:
+      zlog_10  = LOG(10._wp)
+      zlog_zu  = LOG(zu)
+      zlog_ztu = LOG(zt/zu)
 
-      ! Identical first gess as in COARE, with IFS parameter values though...
-      !
-      !! First guess of temperature and humidity at height zu:
-      t_zu = MAX( t_zt ,  180._wp )   ! who knows what's given on masked-continental regions...
-      q_zu = MAX( q_zt , 1.e-6_wp )   !               "
+      DO jj = 1, Nj
+         DO ji = 1, Ni
 
-      !! Pot. temp. difference (and we don't want it to be 0!)
-      dt_zu = t_zu - T_s ;   dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-      dq_zu = q_zu - q_s ;   dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
+            zUzu = U_zu(ji,jj)
 
-      znu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
+            CALL FIRST_GUESS_COARE( zt, zu, T_s(ji,jj), t_zt(ji,jj), q_s(ji,jj), q_zt(ji,jj), zUzu, &
+               &                    charn0_ecmwf,  zus, zts, zqs, &
+               &                    t_zu(ji,jj), q_zu(ji,jj), Ubzu(ji,jj),  pz0=zz0 )
 
-      Ubzu = SQRT(U_zu*U_zu + 0.5_wp*0.5_wp) ! initial guess for wind gustiness contribution
+            zlog_z0 = LOG(zz0)
+            znu_a   = visc_air(t_zt(ji,jj)) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
-      ztmp0   = LOG(    zu*10000._wp) ! optimization: 10000. == 1/z0 (with z0 first guess == 0.0001)
-      ztmp1   = LOG(10._wp*10000._wp) !       "                    "               "
-      u_star = 0.035_wp*Ubzu*ztmp1/ztmp0       ! (u* = 0.035*Un10)
+            !! Pot. temp. difference (and we don't want it to be 0!)
+            zdt = t_zu(ji,jj) - T_s(ji,jj) ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+            zdq = q_zu(ji,jj) - q_s(ji,jj) ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
 
-      z0     = charn0_ecmwf*u_star*u_star/grav + 0.11_wp*znu_a/u_star
-      z0     = MIN( MAX(ABS(z0), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+            !! First guess of inverse of Obukov length (1/L) :
+            z1oL    = One_on_L( t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs )
+            zzeta_u = zu*z1oL
+            zzeta_t = zt*z1oL
 
-      z0t    = 1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/(vkarmn/ztmp1))) )
-      z0t    = MIN( MAX(ABS(z0t), 1.E-9) , 1._wp )                      ! (prevents FPE from stupid values from masked region later on)
+            zz0t    = MIN( MAX(ABS(  1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/( vkarmn/(zlog_10-zlog_z0) ))) )   ), 1.E-9) , 1._wp )
+            zlog_z0t = LOG(zz0t)
 
-      Cd     = MAX( (vkarmn/ztmp0)**2 , Cx_min )    ! first guess of Cd
+            !! Functions such as  u* = Ubzu*vkarmn/zFm
+            zFm = zlog_zu - zlog_z0  - psi_m_ecmwf_sclr(zzeta_u) + psi_m_ecmwf_sclr( zz0*z1oL)
+            zpsi_h_u = psi_h_ecmwf_sclr(zzeta_u)
+            zFh = zlog_zu - zlog_z0t - zpsi_h_u + psi_h_ecmwf_sclr(zz0t*z1oL)
 
-      ztmp0 = vkarmn2/LOG(zt/z0t)/Cd
+            !! ITERATION BLOCK
+            DO jit = 1, nb_iter
 
-      ztmp2 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ubzu ) ! Bulk Richardson Number (BRN)
+               !! Bulk Richardson Number at z=zu (Eq. 3.25)
+               zRib = Ri_bulk( zu, T_s(ji,jj), t_zu(ji,jj), q_s(ji,jj), q_zu(ji,jj), Ubzu(ji,jj) ) ! Bulk Richardson Number (BRN)
 
-      !! First estimate of zeta_u, depending on the stability, ie sign of BRN (ztmp2):
-      ztmp1 = 0.5 + SIGN( 0.5_wp , ztmp2 )
-      func_h = (1._wp - ztmp1) *   ztmp0*ztmp2 / (1._wp - ztmp2*zi0*0.004_wp*Beta0**3/zu) & !  BRN < 0
-         &  +       ztmp1      * ( ztmp0*ztmp2 + 27._wp/9._wp*ztmp2*ztmp2 )                 !  BRN > 0
+               !! New estimate of the inverse of the Obukhon length (z1oL == zeta/zu) :
+               z1oL = zRib*zFm*zFm/zFh / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
+               !! Note: it is slightly different that the L we would get with the usual
+               z1oL   = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! (prevent FPE from stupid values from masked region later on...)
 
-      !! First guess M-O stability dependent scaling params.(u*,t*,q*) to estimate z0 and z/L
-      ztmp0  = vkarmn/(LOG(zu/z0t) - psi_h_ecmwf(func_h))
+               zzeta_u  = zu*z1oL
+               zpsi_m_u = psi_m_ecmwf_sclr(zzeta_u)
+               zpsi_h_u = psi_h_ecmwf_sclr(zzeta_u)
 
-      u_star = MAX ( Ubzu*vkarmn/(LOG(zu) - LOG(z0)  - psi_m_ecmwf(func_h)) , 1.E-9 )  !  (MAX => prevents FPE from stupid values from masked region later on)
-      t_star = dt_zu*ztmp0
-      q_star = dq_zu*ztmp0
+               zzeta_t  = zt*z1oL
+               zpsi_h_t = psi_h_ecmwf_sclr(zzeta_t)
 
-      ! What needs to be done if zt /= zu:
-      IF( .NOT. l_zt_equal_zu ) THEN
-         !! First update of values at zu (or zt for wind)
-         ztmp0 = psi_h_ecmwf(func_h) - psi_h_ecmwf(zt*func_h/zu)    ! zt*func_h/zu == zeta_t
-         ztmp1 = LOG(zt/zu) + ztmp0
-         t_zu = t_zt - t_star/vkarmn*ztmp1
-         q_zu = q_zt - q_star/vkarmn*ztmp1
-         q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu !Makes it impossible to have negative humidity :
-         !
-         dt_zu = t_zu - T_s  ; dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-         dq_zu = q_zu - q_s  ; dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-      ENDIF
+               !! Update zFm with new z1oL:
+               zFm = zlog_zu -zlog_z0 - zpsi_m_u + psi_m_ecmwf_sclr(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
 
+               !! Need to update roughness lengthes:
+               zus = Ubzu(ji,jj)*vkarmn/zFm
+               zus2  = zus*zus
+               ztmp0  = znu_a/zus
+               zz0     = MIN( ABS( alpha_M*ztmp0 + charn0_ecmwf*zus2/grav ) , 0.001_wp)
+               zz0t    = MIN( ABS( alpha_H*ztmp0                           ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
+               zz0q    = MIN( ABS( alpha_Q*ztmp0                           ) , 0.001_wp)
 
-      !! => that was same first guess as in COARE...
+               zlog_z0  = LOG(zz0 )
+               zlog_z0t = LOG(zz0t)
+               zlog_z0q = LOG(zz0q)
 
-
-      !! First guess of inverse of Obukov length (1/L) :
-      Linv = One_on_L( t_zu, q_zu, u_star, t_star, q_star )
-
-      !! Functions such as  u* = Ubzu*vkarmn/func_m
-      ztmp0 = zu*Linv
-      func_m = LOG(zu) - LOG(z0)  - psi_m_ecmwf(ztmp0) + psi_m_ecmwf( z0*Linv)
-      func_h = LOG(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
-
-      !! ITERATION BLOCK
-      DO jit = 1, nb_iter
-
-         !! Bulk Richardson Number at z=zu (Eq. 3.25)
-         ztmp0 = Ri_bulk( zu, T_s, t_zu, q_s, q_zu, Ubzu ) ! Bulk Richardson Number (BRN)
-
-         !! New estimate of the inverse of the Obukhon length (Linv == zeta/zu) :
-         Linv = ztmp0*func_m*func_m/func_h / zu     ! From Eq. 3.23, Chap.3.2.3, IFS doc - Cy40r1
-         !! Note: it is slightly different that the L we would get with the usual
-         Linv = SIGN( MIN(ABS(Linv),200._wp), Linv ) ! (prevent FPE from stupid values from masked region later on...)
-
-         !! Update func_m with new Linv:
-         func_m = LOG(zu) -LOG(z0) - psi_m_ecmwf(zu*Linv) + psi_m_ecmwf(z0*Linv) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
-
-         !! Need to update roughness lengthes:
-         u_star = Ubzu*vkarmn/func_m
-         ztmp2  = u_star*u_star
-         ztmp1  = znu_a/u_star
-         z0     = MIN( ABS( alpha_M*ztmp1 + charn0_ecmwf*ztmp2/grav ) , 0.001_wp)
-         z0t    = MIN( ABS( alpha_H*ztmp1                           ) , 0.001_wp)   ! eq.3.26, Chap.3, p.34, IFS doc - Cy31r1
-         z0q    = MIN( ABS( alpha_Q*ztmp1                           ) , 0.001_wp)
-
-         !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
-         ztmp2 = Beta0*Beta0*ztmp2*(MAX(-zi0*Linv/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
-         !!   ! Only true when unstable (L<0) => when ztmp0 < 0 => explains "-" before zi0
-         Ubzu = MAX(SQRT(U_zu*U_zu + ztmp2), 0.2_wp)        ! include gustiness in bulk wind speed
-         ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
+               zpsi_m_z0   = psi_m_ecmwf_sclr(zz0 *z1oL)  ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
+               zpsi_h_z0t  = psi_h_ecmwf_sclr(zz0t*z1oL)  !              "                           "
+               zpsi_h_z0q  = psi_h_ecmwf_sclr(zz0q*z1oL)  !              "                           "
 
 
-         !! Need to update "theta" and "q" at zu in case they are given at different heights
-         !! as well the air-sea differences:
-         IF( .NOT. l_zt_equal_zu ) THEN
-            !! Arrays func_m and func_h are free for a while so using them as temporary arrays...
-            func_h = psi_h_ecmwf(zu*Linv) ! temporary array !!!
-            func_m = psi_h_ecmwf(zt*Linv) ! temporary array !!!
-
-            ztmp2  = psi_h_ecmwf(z0t*Linv)
-            ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0t) - ztmp0)
-            t_star = dt_zu*ztmp1
-            ztmp2  = ztmp0 - func_m + ztmp2
-            ztmp1  = LOG(zt/zu) + ztmp2
-            t_zu   = t_zt - t_star/vkarmn*ztmp1
-
-            ztmp2  = psi_h_ecmwf(z0q*Linv)
-            ztmp0  = func_h - ztmp2
-            ztmp1  = vkarmn/(LOG(zu) - LOG(z0q) - ztmp0)
-            q_star = dq_zu*ztmp1
-            ztmp2  = ztmp0 - func_m + ztmp2
-            ztmp1  = LOG(zt/zu) + ztmp2
-            q_zu   = q_zt - q_star/vkarmn*ztmp1
-         ENDIF
-
-         !! Updating because of updated z0 and z0t and new Linv...
-         ztmp0 = zu*Linv
-         func_m = log(zu) - LOG(z0 ) - psi_m_ecmwf(ztmp0) + psi_m_ecmwf(z0 *Linv)
-         func_h = log(zu) - LOG(z0t) - psi_h_ecmwf(ztmp0) + psi_h_ecmwf(z0t*Linv)
+               !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
+               ztmp0 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
+               !!   ! Only true when unstable (L<0) => when zRib < 0 => explains "-" before zi0
+               Ubzu(ji,jj) = MAX(SQRT(U_zu(ji,jj)*U_zu(ji,jj) + ztmp0), 0.2_wp)        ! include gustiness in bulk wind speed
+               ! => 0.2 prevents Ubzu to be 0 in stable case when U_zu=0.
 
 
-         IF( l_use_cs ) THEN
-            !! Cool-skin contribution
+               !! Need to update "theta" and "q" at zu in case they are given at different heights
+               !! as well the air-sea differences:
+               IF( .NOT. l_zt_equal_zu ) THEN
+                  ztmp0  = zpsi_h_u - zpsi_h_z0t
+                  ztmp1  = vkarmn/(zlog_zu - zlog_z0t - ztmp0)
+                  zts = zdt*ztmp1
+                  ztmp1  = zlog_ztu + ztmp0 - zpsi_h_t + zpsi_h_z0t
+                  t_zu(ji,jj)   = t_zt(ji,jj) - zts/vkarmn*ztmp1
 
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-               &                   ztmp1, ztmp0,  Qlat=ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp0
+                  zpsi_h_z0q  = zpsi_h_z0q
+                  ztmp0  = zpsi_h_u - zpsi_h_z0q
+                  ztmp1  = vkarmn/(zlog_zu - zlog_z0q - ztmp0)
+                  zqs = zdq*ztmp1
+                  ztmp1  = zlog_ztu + ztmp0 - zpsi_h_t + zpsi_h_z0q
+                  q_zu(ji,jj)   = q_zt(ji,jj) - zqs/vkarmn*ztmp1
+               ENDIF
 
-            CALL CS_ECMWF( Qsw, ztmp1, u_star, zsst )  ! Qnsol -> ztmp1
+               !! Updating because of updated z0 and z0t and new z1oL...
+               zFm = zlog_zu - zlog_z0  - zpsi_m_u + zpsi_m_z0
+               zFh = zlog_zu - zlog_z0t - zpsi_h_u + zpsi_h_z0t
 
-            T_s(:,:) = zsst(:,:) + dT_cs(:,:)
-            IF( l_use_wl ) T_s(:,:) = T_s(:,:) + dT_wl(:,:)
-            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
+               IF( l_use_cs ) THEN
+                  !! Cool-skin contribution
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
+                     &                   U_zu(ji,jj), Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQns, ztmp0 )  ! Tau -> ztmp0
 
-         ENDIF
+                  CALL CS_ECMWF( Qsw(ji,jj), zQns, zus, xSST(ji,jj), zdT_cs )
+                  IF( PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
+                  T_s(ji,jj) = xSST(ji,jj) + zdT_cs
+                  IF( l_use_wl ) T_s(ji,jj) = T_s(ji,jj) + dT_wl(ji,jj)
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
+               ENDIF
 
-         IF( l_use_wl ) THEN
-            !! Warm-layer contribution
-            CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, &
-               &                   ztmp1, ztmp2)  ! Qnsol -> ztmp1 / Tau -> ztmp2
-            CALL WL_ECMWF( Qsw, ztmp1, u_star, zsst )
-            !! Updating T_s and q_s !!!
-            T_s(:,:) = zsst(:,:) + dT_wl(:,:)
-            IF( l_use_cs ) T_s(:,:) = T_s(:,:) + dT_cs(:,:)
-            q_s(:,:) = rdct_qsat_salt*q_sat(MAX(T_s(:,:), 200._wp), slp(:,:))
-         ENDIF
+               IF( l_use_wl ) THEN
+                  !! Warm-layer contribution
+                  CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, U_zu(ji,jj), Ubzu(ji,jj), &
+                     &                   slp(ji,jj), rad_lw(ji,jj), zQns, ztmp0)  ! Tau -> ztmp0
+                  CALL WL_ECMWF( ji, jj, Qsw(ji,jj), zQns, zus, xSST(ji,jj) )
+                  !! Updating T_s and q_s !!!
+                  T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)
+                  IF( l_use_cs ) T_s(ji,jj) = T_s(ji,jj) + zdT_cs
+                  q_s(ji,jj) = rdct_qsat_salt*q_sat(MAX(T_s(ji,jj), 200._wp), slp(ji,jj))
+               ENDIF
 
-         IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
-            dt_zu = t_zu - T_s ;  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu )
-            dq_zu = q_zu - q_s ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-         ENDIF
+               IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
+                  zdt = t_zu(ji,jj) - T_s(ji,jj) ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
+                  zdq = q_zu(ji,jj) - q_s(ji,jj) ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+               ENDIF
 
-      END DO !DO jit = 1, nb_iter
+            END DO !DO jit = 1, nb_iter
 
-      Cd = MAX( vkarmn2/(func_m*func_m) , Cx_min )
-      Ch = MAX( vkarmn2/(func_m*func_h) , Cx_min )
-      ztmp2 = LOG(zu/z0q) - psi_h_ecmwf(zu*Linv) + psi_h_ecmwf(z0q*Linv)   ! func_q
-      Ce = MAX( vkarmn2/(func_m*ztmp2)  , Cx_min )
+            ! compute transfer coefficients at zu :
+            zFq = zlog_zu - zlog_z0q - zpsi_h_u + zpsi_h_z0q
 
-      IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN = MAX( vkarmn2*ztmp0*ztmp0       , Cx_min )
-      IF( lreturn_chn )   ChN = MAX( vkarmn2*ztmp0/LOG(zu/z0t) , Cx_min )
-      IF( lreturn_cen )   CeN = MAX( vkarmn2*ztmp0/LOG(zu/z0q) , Cx_min )
+            Cd(ji,jj) = MAX( vkarmn2/(zFm*zFm) , Cx_min )
+            Ch(ji,jj) = MAX( vkarmn2/(zFm*zFh) , Cx_min )
+            Ce(ji,jj) = MAX( vkarmn2/(zFm*zFq) , Cx_min )
 
-      IF( lreturn_z0 )    xz0     = z0
-      IF( lreturn_ustar ) xu_star = u_star
-      IF( lreturn_L )     xL      = 1./Linv
-      IF( lreturn_UN10 )  xUN10   = u_star/vkarmn*LOG(10./z0)
+            !! Optional output
+            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/zz0)
+            IF( lreturn_cdn )   CdN(ji,jj) = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
+            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/LOG(zu/zz0t)
+            IF( lreturn_chn )   ChN(ji,jj) = MAX( ztmp1 , Cx_min )
+            IF( lreturn_cen )   CeN(ji,jj) = MAX( ztmp1 , Cx_min )
 
-      DEALLOCATE ( u_star, t_star, q_star, func_m, func_h, &
-         &       dt_zu, dq_zu, z0, z0t, z0q, znu_a, Linv, ztmp0, ztmp1, ztmp2 )
+            IF( lreturn_z0 )        xz0(ji,jj) = zz0
+            IF( lreturn_ustar ) xu_star(ji,jj) = zus
+            IF( lreturn_L )          xL(ji,jj) = 1._wp / z1oL
+            IF( lreturn_UN10 )    xUN10(ji,jj) = zus/vkarmn*LOG(10./zz0)
+            
+         END DO
+      END DO
 
-      IF( l_use_cs .AND. PRESENT(pdT_cs) ) pdT_cs = dT_cs
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( zsst )
+      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
 
-      IF( kt == nitend ) CALL ECMWF_EXIT(l_use_cs, l_use_wl)
+      IF( kt == nitend ) CALL ECMWF_EXIT( l_use_wl )
 
    END SUBROUTINE turb_ecmwf
 
 
-   FUNCTION psi_m_ecmwf( pzeta )
-      !!----------------------------------------------------------------------------------
+   !!===============================================================================================
+   FUNCTION psi_m_ecmwf_sclr( pzeta )
+      !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!     ECMWF / as in IFS cy31r1 documentation, available online
       !!     at ecmwf.int
@@ -464,13 +437,40 @@ CONTAINS
       !!         and L is M-O length
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ecmwf
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: pzeta
+      REAL(wp)             :: psi_m_ecmwf_sclr
+      !!
+      REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
+      !!--------------------------------------------------------------------------------------------
+      zc = 5._wp/0.35_wp
       !
+      zta = MIN( pzeta , 5._wp ) !! Very stable conditions (L positif and big!):
+
+      ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
+      zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
+      zx  = SQRT(zx2)                        ! (1 - 16z)^0.25
+      ztmp = 1._wp + zx
+      zpsi_unst = LOG( 0.125_wp*ztmp*ztmp*(1._wp + zx2) ) - 2._wp*ATAN( zx ) + 0.5_wp*rpi
+
+      ! *** Stable                   [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
+      zpsi_stab = -2._wp/3._wp*(zta - zc)*EXP(-0.35_wp*zta) &
+         &        - zta - 2._wp/3._wp*zc
+      !
+      zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
+      !
+      psi_m_ecmwf_sclr =         zstab    * zpsi_stab &  ! (zta > 0) Stable
+         &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
+      !
+   END FUNCTION psi_m_ecmwf_sclr
+
+   FUNCTION psi_m_ecmwf_vctr( pzeta )
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ecmwf_vctr
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
-      !!----------------------------------------------------------------------------------
+      !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
       !
       DO jj = 1, SIZE(pzeta,2)
@@ -490,16 +490,17 @@ CONTAINS
             !
             zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_m_ecmwf(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
+            psi_m_ecmwf_vctr(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
                &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
-            !
          END DO
       END DO
-   END FUNCTION psi_m_ecmwf
+   END FUNCTION psi_m_ecmwf_vctr
+   !!===============================================================================================
 
 
-   FUNCTION psi_h_ecmwf( pzeta )
-      !!----------------------------------------------------------------------------------
+   !!===============================================================================================
+   FUNCTION psi_h_ecmwf_sclr( pzeta )
+      !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!     ECMWF / as in IFS cy31r1 documentation, available online
       !!     at ecmwf.int
@@ -508,13 +509,39 @@ CONTAINS
       !!         and L is M-O length
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ecmwf
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: pzeta
+      REAL(wp)             :: psi_h_ecmwf_sclr
+      !!
+      REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
+      !!--------------------------------------------------------------------------------------------
+      zc = 5._wp/0.35_wp
       !
+      zta = MIN(pzeta , 5._wp)   ! Very stable conditions (L positif and big!):
+      !
+      ! *** Unstable (Paulson 1970)   [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
+      zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
+      zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
+      !
+      ! *** Stable [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
+      zpsi_stab = -2._wp/3._wp*(zta - zc)*EXP(-0.35_wp*zta) &
+         &       - ABS(1._wp + 2._wp/3._wp*zta)**1.5_wp - 2._wp/3._wp*zc + 1._wp
+      !! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
+      !
+      zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
+      !
+      psi_h_ecmwf_sclr =        zstab     * zpsi_stab   &  ! (zta > 0) Stable
+         &              + (1._wp - zstab) * zpsi_unst      ! (zta < 0) Unstable
+      !
+   END FUNCTION psi_h_ecmwf_sclr
+
+   FUNCTION psi_h_ecmwf_vctr( pzeta )
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ecmwf_vctr
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
-      !!----------------------------------------------------------------------------------
+      !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
       !
       DO jj = 1, SIZE(pzeta,2)
@@ -534,12 +561,12 @@ CONTAINS
             !
             zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
             !
-            psi_h_ecmwf(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
+            psi_h_ecmwf_vctr(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
                &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
-            !
          END DO
       END DO
-   END FUNCTION psi_h_ecmwf
+   END FUNCTION psi_h_ecmwf_vctr
+   !!===============================================================================================
 
 
    !!======================================================================

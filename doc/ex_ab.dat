@@ -10,7 +10,7 @@
         ==> will use the Cool-skin & Warm-ayer scheme of `coare3p0` !
      *** Computational domain shape: Ni x Nj = 00002 x 00001
      *** Number of time records that will be treated:           1
-     *** Number of iterations in bulk algos: nb_iter  =   20
+     *** Number of iterations in bulk algos: nb_iter  =   50
      *** Filling the `mask` array...
          ==> no points need to be masked! :)
      *** Type of prescribed air humidity  `specific humidity [kg/kg]`
@@ -25,13 +25,13 @@
   Abs. temperature at zt =   20.00000       25.00000      deg.C
   Pot. temperature at zt =   20.01341       25.01502      deg.C
  
-  Sensible heat flux: QH =  -15.15530       17.83543      W/m**2
-   Latent  heat flux: QL =  -81.38902      -50.81591      W/m**2
-   Evaporation:     Evap =  -2.870772      -1.792452      mm/day
-  Skin temperature: SSST =   21.72196       21.75754      deg.C
-  Tau_x =  3.5784740E-02  1.7337987E-02  N/m**2
+  Sensible heat flux: QH =  -15.15451       17.84016      W/m**2
+   Latent  heat flux: QL =  -81.38467      -50.83000      W/m**2
+   Evaporation:     Evap =  -2.870619      -1.792949      mm/day
+  Skin temperature: SSST =   21.72197       21.75757      deg.C
+  Tau_x =  3.5783499E-02  1.7346080E-02  N/m**2
   Tau_y =  0.0000000E+00  0.0000000E+00  N/m**2
-  Tau   =  3.5784740E-02  1.7337987E-02  N/m**2
+  Tau   =  3.5783499E-02  1.7346080E-02  N/m**2
  
  
  
@@ -44,7 +44,7 @@
         ==> will use the Cool-skin & Warm-ayer scheme of `coare3p6` !
      *** Computational domain shape: Ni x Nj = 00002 x 00001
      *** Number of time records that will be treated:           1
-     *** Number of iterations in bulk algos: nb_iter  =   20
+     *** Number of iterations in bulk algos: nb_iter  =   50
      *** Filling the `mask` array...
          ==> no points need to be masked! :)
      *** Type of prescribed air humidity  `specific humidity [kg/kg]`
@@ -59,13 +59,13 @@
   Abs. temperature at zt =   20.00000       25.00000      deg.C
   Pot. temperature at zt =   20.01341       25.01502      deg.C
  
-  Sensible heat flux: QH =  -15.38700       17.07207      W/m**2
-   Latent  heat flux: QL =  -83.08118      -48.41230      W/m**2
-   Evaporation:     Evap =  -2.930413      -1.707654      mm/day
-  Skin temperature: SSST =   21.70580       21.74844      deg.C
-  Tau_x =  3.2183707E-02  1.5129811E-02  N/m**2
+  Sensible heat flux: QH =  -15.38655       17.08068      W/m**2
+   Latent  heat flux: QL =  -83.07884      -48.43779      W/m**2
+   Evaporation:     Evap =  -2.930330      -1.708553      mm/day
+  Skin temperature: SSST =   21.70580       21.74849      deg.C
+  Tau_x =  3.2181785E-02  1.5142991E-02  N/m**2
   Tau_y =  0.0000000E+00  0.0000000E+00  N/m**2
-  Tau   =  3.2183707E-02  1.5129811E-02  N/m**2
+  Tau   =  3.2181785E-02  1.5142991E-02  N/m**2
  
  
  
@@ -78,7 +78,7 @@
         ==> will use the Cool-skin & Warm-ayer scheme of `ecmwf` !
      *** Computational domain shape: Ni x Nj = 00002 x 00001
      *** Number of time records that will be treated:           1
-     *** Number of iterations in bulk algos: nb_iter  =   20
+     *** Number of iterations in bulk algos: nb_iter  =   50
      *** Filling the `mask` array...
          ==> no points need to be masked! :)
      *** Type of prescribed air humidity  `specific humidity [kg/kg]`
@@ -97,9 +97,9 @@
    Latent  heat flux: QL =  -80.29590      -52.46112      W/m**2
    Evaporation:     Evap =  -2.832244      -1.850494      mm/day
   Skin temperature: SSST =   21.73254       21.76303      deg.C
-  Tau_x =  3.8438912E-02  1.9324519E-02  N/m**2
+  Tau_x =  3.8438912E-02  1.9324517E-02  N/m**2
   Tau_y =  0.0000000E+00  0.0000000E+00  N/m**2
-  Tau   =  3.8438912E-02  1.9324519E-02  N/m**2
+  Tau   =  3.8438912E-02  1.9324517E-02  N/m**2
  
  
  
@@ -112,7 +112,7 @@
      *** Cool-skin & Warm-layer schemes will NOT be used!
      *** Computational domain shape: Ni x Nj = 00002 x 00001
      *** Number of time records that will be treated:           1
-     *** Number of iterations in bulk algos: nb_iter  =   20
+     *** Number of iterations in bulk algos: nb_iter  =   50
      *** Filling the `mask` array...
          ==> no points need to be masked! :)
      *** Type of prescribed air humidity  `specific humidity [kg/kg]`
@@ -145,7 +145,7 @@
      *** Cool-skin & Warm-layer schemes will NOT be used!
      *** Computational domain shape: Ni x Nj = 00002 x 00001
      *** Number of time records that will be treated:           1
-     *** Number of iterations in bulk algos: nb_iter  =   20
+     *** Number of iterations in bulk algos: nb_iter  =   50
      *** Filling the `mask` array...
          ==> no points need to be masked! :)
      *** Type of prescribed air humidity  `specific humidity [kg/kg]`
