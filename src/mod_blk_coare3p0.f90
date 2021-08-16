@@ -218,9 +218,9 @@ CONTAINS
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
       !
-      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zUn10, zts, zqs
-      REAL(wp) :: zNu_a, z1oL, zdT_cs, zgust2, zz0, zz0t, zzta_u, zzta_t
-      REAL(wp) :: zlog_z0, zlog_10, zlog_zu, zlog_zt, zlog_ztu
+      REAL(wp) :: zdt, zdq, zus, zus2, zUzu, zts, zqs, zNu_a, z1oL, zdT_cs
+      REAL(wp) :: zUn10, zgust2, zz0, zz0t, zzta_u, zzta_t
+      REAL(wp) :: zlog_10, zlog_zu, zlog_zt, zlog_ztu, zlog_z0, zlog_z0t
       REAL(wp) :: zQns, zQlat, zTau
       REAL(wp) :: ztmp0, ztmp1
       !
@@ -317,10 +317,11 @@ CONTAINS
                ztmp1 = ( znu_a / (zz0*zus) )**0.6_wp         ! (1./Re_r)^0.6 (Re_r: roughness Reynolds number) COARE 3.0 - specific!
                zz0t   = MIN( 1.1E-4_wp , 5.5E-5_wp*ztmp1 )   ! Scalar roughness for temp. and q (eq.28) #LB: some use 1.15 not 1.1 !!!
                zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
+               zlog_z0t = LOG(zz0t)
 
                !! Turbulent scales at zu :
                ztmp0   = psi_h_coare(zzta_u)
-               ztmp1   = vkarmn/(zlog_zu - LOG(zz0t) - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zzta_t) rather than psi_h_coare(zzta_t) ???
+               ztmp1   = vkarmn/(zlog_zu - zlog_z0t - ztmp0) ! #LB: in ztmp0, some use psi_h_coare(zzta_t) rather than psi_h_coare(zzta_t) ???
 
                zts = zdt*ztmp1
                zqs = zdq*ztmp1
@@ -336,7 +337,7 @@ CONTAINS
                IF( l_use_cs ) THEN
                   !! Cool-skin contribution
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
-                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQns, zTau, Qlat=zQlat)
+                     &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj), zQns, zTau, Qlat=zQlat )
 
                   CALL CS_COARE( Qsw(ji,jj), zQns, zus, xSST(ji,jj), zQlat, zdT_cs )
                   IF( PRESENT(pdT_cs) ) pdT_cs(ji,jj) = zdT_cs
@@ -367,22 +368,22 @@ CONTAINS
 
             ! compute transfer coefficients at zu :
             ztmp0 = zus/Ubzu(ji,jj)
-            Cd(ji,jj)   = MAX( ztmp0*ztmp0   , Cx_min )
-            Ch(ji,jj)   = MAX( ztmp0*zts/zdt , Cx_min )
-            Ce(ji,jj)   = MAX( ztmp0*zqs/zdq , Cx_min )
+            Cd(ji,jj) = MAX( ztmp0*ztmp0   , Cx_min )
+            Ch(ji,jj) = MAX( ztmp0*zts/zdt , Cx_min )
+            Ce(ji,jj) = MAX( ztmp0*zqs/zdq , Cx_min )
 
             !! Optional output
-            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/zz0)
+            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/(zlog_zu - zlog_z0)
             IF( lreturn_cdn )   CdN(ji,jj) = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
-            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/LOG(zu/zz0t)
+            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/(zlog_zu - zlog_z0t)
             IF( lreturn_chn )   ChN(ji,jj) = MAX( ztmp1 , Cx_min )
             IF( lreturn_cen )   CeN(ji,jj) = MAX( ztmp1 , Cx_min )
-            
+
             IF( lreturn_z0 )        xz0(ji,jj) = zz0
             IF( lreturn_ustar ) xu_star(ji,jj) = zus
-            IF( lreturn_L )          xL(ji,jj) = 1._wp / One_on_L(t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs)
-            IF( lreturn_UN10 )    xUN10(ji,jj) =   zus / vkarmn*LOG(10._wp/zz0)
-            
+            IF( lreturn_L )          xL(ji,jj) = 1._wp / z1oL
+            IF( lreturn_UN10 )    xUN10(ji,jj) = zus/vkarmn*(zlog_10 - zlog_z0)
+
          END DO
       END DO
 
@@ -395,7 +396,7 @@ CONTAINS
 
    END SUBROUTINE TURB_COARE3P0
 
-   
+
    !!===============================================================================================
    FUNCTION charn_coare3p0_sclr( pwnd )
       !!-------------------------------------------------------------------

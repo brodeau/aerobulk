@@ -43,7 +43,7 @@ MODULE mod_blk_ecmwf
    INTERFACE psi_h_ecmwf
       MODULE PROCEDURE psi_h_ecmwf_vctr, psi_h_ecmwf_sclr
    END INTERFACE psi_h_ecmwf
-   
+
    PRIVATE
 
    PUBLIC :: ECMWF_INIT, TURB_ECMWF, psi_m_ecmwf, psi_h_ecmwf
@@ -402,17 +402,17 @@ CONTAINS
             Ce(ji,jj) = MAX( vkarmn2/(zFm*zFq) , Cx_min )
 
             !! Optional output
-            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/zz0)
+            IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/(zlog_zu - zlog_z0)
             IF( lreturn_cdn )   CdN(ji,jj) = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
-            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/LOG(zu/zz0t)
+            IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = vkarmn2*ztmp0/(zlog_zu - zlog_z0t)
             IF( lreturn_chn )   ChN(ji,jj) = MAX( ztmp1 , Cx_min )
             IF( lreturn_cen )   CeN(ji,jj) = MAX( ztmp1 , Cx_min )
 
             IF( lreturn_z0 )        xz0(ji,jj) = zz0
             IF( lreturn_ustar ) xu_star(ji,jj) = zus
             IF( lreturn_L )          xL(ji,jj) = 1._wp / z1oL
-            IF( lreturn_UN10 )    xUN10(ji,jj) = zus/vkarmn*LOG(10./zz0)
-            
+            IF( lreturn_UN10 )    xUN10(ji,jj) = zus/vkarmn*(zlog_10 - zlog_z0)
+
          END DO
       END DO
 
