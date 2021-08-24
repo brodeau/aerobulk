@@ -9,22 +9,25 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
 
    IMPLICIT NONE
 
+   !! 2D shape of the problem:
    INTEGER, PARAMETER :: nx = 2, &
-      &                  ny = 1, &
-      &                Nbit = 50  ! number of itteration in bulk algorithms...
+      &                  ny = 1
+
+   INTEGER, PARAMETER :: Nbit = 10  ! number of iterations to use in bulk algorithms...
 
    REAL(wp), PARAMETER :: zt = 2.  , & ! ref. height for T and q
       &                   zu = 10.     ! ref. height for wind
 
-   REAL(wp), DIMENSION(nx,ny) :: zsst, zt_zt, zq_zt, zU_zu, zV_zu, zslp, &
-      &                         zRsw, zRlw,           &
-      &                         zQL, zQH, zTau_x, zTau_y, zE, zTs, ztmp
+   !! Data input and output fields arrays:
+   REAL(wp), DIMENSION(nx,ny) :: zsst, zt_zt, zq_zt, zU_zu, zV_zu, zSLP, &
+      &                          zRsw, zRlw,                             &
+      &                          zQL, zQH, zTau_x, zTau_y, zE, zTs, ztmp
 
 
    PRINT *, ''
 
+   !! Filling input arrays with realistic values:
    zsst = 22.
-   PRINT *, ' *** SST = ', zsst, ' deg.C'
    zsst  = zsst + rt0  ! [K]
 
    zt_zt(1,1) = rt0 + 20.  ! [K]
@@ -34,7 +37,7 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    zq_zt = 0.012         ! [kg/kg]
    zU_zu = 5.            ! [m/s]
    zV_zu = 0.            ! [m/s]
-   zslp  = 101000.       ! [Pa]
+   zSLP  = 101000.       ! [Pa]
 
    zRsw  = 0. ! (night)  ! [W/m^2]
    zRlw  = 350.          ! [W/m^2]
@@ -43,14 +46,14 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ''
    PRINT *, ' *********** COARE 3.0 *****************'
    CALL aerobulk_model( 1, 1, 'coare3p0', zt, zu, zsst, zt_zt,     &
-      &                 zq_zt, zU_zu, zV_zu, zslp,                  &
+      &                 zq_zt, zU_zu, zV_zu, zSLP,                  &
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
-   ztmp = Theta_from_z_P0_T_q( zt, zslp, zt_zt, zq_zt ) - rt0
+   ztmp = Theta_from_z_P0_T_q( zt, zSLP, zt_zt, zq_zt ) - rt0
    PRINT *, ' Pot. temperature at zt =', REAL(ztmp,4), ' deg.C'  ; PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
@@ -65,14 +68,14 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ''
    PRINT *, ' *********** COARE 3.6 *****************'
    CALL aerobulk_model( 1, 1, 'coare3p6', zt, zu, zsst, zt_zt,     &
-      &                 zq_zt, zU_zu, zV_zu, zslp,                  &
+      &                 zq_zt, zU_zu, zV_zu, zSLP,                  &
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
-   ztmp = Theta_from_z_P0_T_q( zt, zslp, zt_zt, zq_zt ) - rt0
+   ztmp = Theta_from_z_P0_T_q( zt, zSLP, zt_zt, zq_zt ) - rt0
    PRINT *, ' Pot. temperature at zt =', REAL(ztmp,4), ' deg.C'  ; PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
@@ -88,14 +91,14 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ''
    PRINT *, ' *********** ECMWF *****************'
    CALL aerobulk_model( 1, 1, 'ecmwf', zt, zu, zsst, zt_zt,        &
-      &                 zq_zt, zU_zu, zV_zu, zslp,                  &
+      &                 zq_zt, zU_zu, zV_zu, zSLP,                  &
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
-   ztmp = Theta_from_z_P0_T_q( zt, zslp, zt_zt, zq_zt ) - rt0
+   ztmp = Theta_from_z_P0_T_q( zt, zSLP, zt_zt, zq_zt ) - rt0
    PRINT *, ' Pot. temperature at zt =', REAL(ztmp,4), ' deg.C'  ; PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
@@ -110,14 +113,14 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ''
    PRINT *, ' *********** NCAR *****************'
    CALL aerobulk_model( 1, 1, 'ncar', zt, zu, zsst, zt_zt, &
-      &                 zq_zt, zU_zu, zV_zu, zslp,          &
+      &                 zq_zt, zU_zu, zV_zu, zSLP,          &
       &                 zQL, zQH, zTau_x, zTau_y, zE,       &
       &                 Niter=Nbit )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
-   ztmp = Theta_from_z_P0_T_q( zt, zslp, zt_zt, zq_zt ) - rt0
+   ztmp = Theta_from_z_P0_T_q( zt, zSLP, zt_zt, zq_zt ) - rt0
    PRINT *, ' Pot. temperature at zt =', REAL(ztmp,4), ' deg.C'  ; PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
@@ -132,14 +135,14 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ''
    PRINT *, ' *********** ANDREAS *****************'
    CALL aerobulk_model( 1, 1, 'andreas', zt, zu, zsst, zt_zt, &
-      &                 zq_zt, zU_zu, zV_zu, zslp,          &
+      &                 zq_zt, zU_zu, zV_zu, zSLP,          &
       &                 zQL, zQH, zTau_x, zTau_y, zE,       &
       &                 Niter=Nbit )
    PRINT *, ''
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
-   ztmp = Theta_from_z_P0_T_q( zt, zslp, zt_zt, zq_zt ) - rt0
+   ztmp = Theta_from_z_P0_T_q( zt, zSLP, zt_zt, zq_zt ) - rt0
    PRINT *, ' Pot. temperature at zt =', REAL(ztmp,4), ' deg.C'  ; PRINT *, ''
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
