@@ -17,18 +17,18 @@ MODULE mod_blk_neutral_10m
    USE mod_blk_coare3p0, ONLY: charn_coare3p0
    USE mod_blk_coare3p6, ONLY: charn_coare3p6
    USE mod_blk_ecmwf,    ONLY: charn0_ecmwf
-   
+
    IMPLICIT NONE
 
    PRIVATE
-   
+
    PUBLIC :: TURB_NEUTRAL_10M
-   
+
    REAL(wp), PARAMETER :: zu  = 10._wp     ! we're at 10m !
-   
+
 
 CONTAINS
-   
+
    SUBROUTINE turb_neutral_10m( calgo, U_N10, CdN10, ChN10, CeN10, pz0 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_neutral_10m  ***
@@ -61,7 +61,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::   ChN10       ! transfer coefficient for sensible heat (Q_sens)
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::   pz0          ! roughness length [m]
-      
+
       INTEGER :: Ni, Nj, jit
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: u_star, z0t, z0q, Ub, ztmp0, ztmp1
@@ -69,18 +69,16 @@ CONTAINS
 
       Ni = SIZE(U_N10,1)
       Nj = SIZE(U_N10,2)
-      
+
       ALLOCATE ( u_star(Ni,Nj),   z0t(Ni,Nj), z0q(Ni,Nj), Ub(Ni,Nj),  &
          &        ztmp0(Ni,Nj), ztmp1(Ni,Nj) )
 
       Ub = MAX(U_N10, 0.1_wp)
 
-
       IF ( (TRIM(calgo) == 'coare3p0').OR.(TRIM(calgo) == 'coare3p6').OR.(TRIM(calgo) == 'ecmwf') ) THEN
-         
+
          !! First guess of CdN10
          CdN10 = 8.575E-5*Ub + 0.657E-3  ! from my curves
-
 
          !! ITERATION BLOCK
          DO jit = 1, nb_iter
@@ -94,17 +92,17 @@ CONTAINS
             !! ------------------
             IF (     TRIM(calgo) == 'coare3p6' ) THEN
                ztmp0 = charn_coare3p6(Ub)
-               
+
             ELSEIF ( TRIM(calgo) == 'coare3p0' ) THEN
                ztmp0 = charn_coare3p0(Ub)
-               
+
             ELSEIF ( TRIM(calgo) == 'ecmwf' ) THEN
                ztmp0 = charn0_ecmwf
 
             ELSE
                PRINT *, TRIM(calgo)//' => Unknow algo !' ; STOP
             END IF
-            
+
             !! Roughness lengthes z0, momentum: z0t (z0q = z0t) :
             pz0   = ztmp0*u_star*u_star/grav + 0.11*rnu0_air/u_star ! Roughness length (eq.6)
 
@@ -155,9 +153,9 @@ CONTAINS
 
 
 
-         
+
          PRINT *, ' *** Algo = ',trim(calgo)
-         
+
          ztmp1 = LOG(zu/z0t)
          ChN10 = vkarmn2 / ( ztmp0*ztmp1 )     ! (ztmp0 = LOG(zu/z0))
 
@@ -169,28 +167,29 @@ CONTAINS
       ELSEIF ( TRIM(calgo) == 'ncar' ) THEN
 
          PRINT *, ' *** Algo = ',TRIM(calgo)
-         
+
          Ub = MAX(U_N10, 0.5_wp)
 
          CdN10  = CD_N10_NCAR( Ub )
 
          ztmp0 = SQRT(CdN10)
-         
+
          ChN10 = CH_N10_NCAR( ztmp0 , Ub*0. ) ! 0 => UNSTABLE CASE !!!      L&Y 2004 eq. (6c-6d)
          CeN10 = CE_N10_NCAR( ztmp0 )
 
-         pz0    = z0_from_Cd( 10._wp , CdN10 )
-         
+         pz0    = MAX( z0_from_Cd( 10._wp , CdN10 ) , 0.0001_wp )
+         pz0    = MIN( pz0, 0.1_wp )
+
       ELSE
-         
+
          PRINT *, 'ERROR: algorithm '//TRIM(calgo)//' is not supported yet!'
          PRINT *, ''
          STOP
 
       END IF
-      
+
       DEALLOCATE ( u_star, z0t, z0q, Ub, ztmp0, ztmp1 )
-      
+
    END SUBROUTINE turb_neutral_10m
 
 END MODULE mod_blk_neutral_10m

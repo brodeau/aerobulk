@@ -11,12 +11,10 @@ PROGRAM TEST_COEF_N10
 
    INTEGER, PARAMETER :: nb_algos = 4
 
-   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', '  ncar  ', ' ecmwf  ' /)
-
-   !REAL(4), DIMENSION(nb_algos) :: vCdn10, vCen10, vChn10
+   CHARACTER(len=10), DIMENSION(nb_algos), PARAMETER :: vca = (/ 'coare3p0' , 'coare3p6', 'ecmwf   ', 'ncar    ' /)
 
    REAL(wp), PARAMETER ::   &
-      &   wind_max = 60.,  &
+      &   wind_max = 60.,   &
       &   zu  = 10.
 
    INTEGER, PARAMETER ::   &
@@ -30,19 +28,13 @@ PROGRAM TEST_COEF_N10
 
    CHARACTER(len=100) :: calgob
 
-
    INTEGER :: jarg, ialgo, jw
 
    INTEGER, PARAMETER :: lx=1, ly=1
-   !REAL(wp),    DIMENSION(lx,ly) :: zz0, zus
 
    REAL(wp), DIMENSION(lx,ly) :: SLP
-   !REAL(wp), DIMENSION(lx,ly) ::  U_N10
 
    REAL(wp) :: dw0, dw
-
-   !REAL(wp), DIMENSION(lx,ly) :: Cdn10, Cen10, Chn10
-
 
    LOGICAL :: l_ask_for_slp = .FALSE. , &  !: ask for SLP, otherwize assume SLP = 1010 hPa
       &     l_use_rh      = .FALSE.      !: ask for RH rather than q for humidity
@@ -94,7 +86,7 @@ PROGRAM TEST_COEF_N10
 
    !!
    !! Table of wind speeds from 0 to wind_max  m/s :
-   dw0 = wind_max/(n_w - 1)
+   dw0 = wind_max/REAL(n_w-1, wp)
    !FORALL (jw = 1:n_ew)  t_w10(jw) = (jw-1)*dw
    !WRITE(6,*) 'dw0 =', dw0 ; STOP
    !!
@@ -107,49 +99,6 @@ PROGRAM TEST_COEF_N10
    END DO
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   !WRITE(6,*) 'Give neutral wind speed at 10m (m/s):'
-   !READ(*,*) U_N10
-   !WRITE(6,*) ''
-
-
-   !DO ialgo = 1, nb_algos!
-   !   calgob = trim(vca(ialgo))
-   !   zz0 = 0.
-   !   zus = 0.
-   !   CALL TURB_NEUTRAL_10M(calgob, U_N10, CdN10, ChN10, Cen10) !,    xz0=zz0, xu_star=zus)
-   !   vCdn10(ialgo) = REAL(1000.*Cdn10(1,1) ,4)
-   !   vChn10(ialgo) = REAL(1000.*Chn10(1,1) ,4)
-   !   vCen10(ialgo) = REAL(1000.*Cen10(1,1) ,4)
-   !END DO
-
-
-   !WRITE(6,*) ''; WRITE(6,*) ''
-   !WRITE(6,*) ''
-   !WRITE(6,*) '   *** Bulk Transfer Coefficients:'
-   !WRITE(6,*) '======================================================================================'
-   !WRITE(6,*) ' Algorithm:     ',TRIM(vca(1)) ,'    |    ',TRIM(vca(2)),'       |    ',TRIM(vca(3)),'       |    ',TRIM(vca(4))
-   !WRITE(6,*) '====================================================================================='
-   !          '  C_D_N10   =      1.032523      0.9227015       1.063966       1.109307     [10^-3]
-   !WRITE(6,*) '  C_D_N10   =   ', vCdn10        , '[10^-3]'
-   !WRITE(6,*) '  C_E_N10   =   ', vCen10        , '[10^-3]'
-   !WRITE(6,*) '  C_H_N10   =   ', vChn10        , '[10^-3]'
-   !WRITE(6,*) ''
-   !WRITE(6,*) ''
-
    !! For all wind speeds:
 
    DO ialgo = 1, nb_algos
@@ -157,7 +106,6 @@ PROGRAM TEST_COEF_N10
       calgob = TRIM(vca(ialgo))
 
       CALL TURB_NEUTRAL_10M(calgob, t_w10, t_CdN10, t_ChN10, t_Cen10, t_z0)
-
 
       cf_out = 'dat/Neutral_coeff_U10N_'//TRIM(calgob)//'.dat'
 
@@ -179,7 +127,7 @@ PROGRAM TEST_COEF_N10
    WRITE(6,*) ''
    CLOSE(6)
 
-   
+
 CONTAINS
 
    SUBROUTINE usage_test()

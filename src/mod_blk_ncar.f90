@@ -279,9 +279,13 @@ CONTAINS
    FUNCTION cd_n10_ncar_vctr( pw10 )
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pw10           ! scalar wind speed at 10m (m/s)
       REAL(wp), DIMENSION(SIZE(pw10,1),SIZE(pw10,2)) :: cd_n10_ncar_vctr
+      INTEGER :: ji, jj
       !!----------------------------------------------------------------------------------
-      cd_n10_ncar_vctr = MAX( cd_n10_ncar_vctr, Cx_min )
-      !
+      DO jj = 1, SIZE(pw10,2)
+         DO ji = 1, SIZE(pw10,1)
+            cd_n10_ncar_vctr(ji,jj) = cd_n10_ncar_sclr(pw10(ji,jj))
+         END DO
+      END DO
    END FUNCTION cd_n10_ncar_vctr
    !!===============================================================================================
 
