@@ -10,10 +10,10 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   height="576pt"
+   height="580pt"
    version="1.1"
-   viewBox="0 0 1155 576"
-   width="1155pt"
+   viewBox="0 0 1159 580"
+   width="1159pt"
    id="svg437"
    sodipodi:docname="Comparaison_Psi.svg"
    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)">
@@ -43,16 +43,16 @@
      id="namedview439"
      showgrid="false"
      inkscape:zoom="0.61458333"
-     inkscape:cx="581.65023"
-     inkscape:cy="442.99731"
+     inkscape:cx="584.3169"
+     inkscape:cy="445.66398"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg437"
-     fit-margin-top="0"
-     fit-margin-left="0"
-     fit-margin-right="0"
-     fit-margin-bottom="0" />
+     fit-margin-top="2"
+     fit-margin-left="2"
+     fit-margin-right="2"
+     fit-margin-bottom="2" />
   <defs
      id="defs4"
      style="stroke-linecap:butt;stroke-linejoin:round">
@@ -403,8 +403,9 @@
        style="stroke-linecap:butt;stroke-linejoin:round" />
   </defs>
   <g
-     id="figure_1"
-     style="stroke-linecap:butt;stroke-linejoin:round">
+     id="g5457"
+     style="stroke-linecap:butt;stroke-linejoin:round"
+     transform="translate(2,2)">
     <g
        id="g2454"
        style="stroke-linecap:butt;stroke-linejoin:round">
