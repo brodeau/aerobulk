@@ -62,7 +62,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
   <img width="600" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_CxN10.svg">
 </p>
 
-*Fig 2/ Comparison of the neutral drag (thick lines) and evaopration coefficients (thinner lines) as a function of the neutral wind speed at 10m.*
+*Fig 2/ Comparison of the neutral drag (thick lines) and evaporation coefficients (thinner lines) as a function of the neutral wind speed at 10m.*
 
 <!--
 -->
