@@ -50,7 +50,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 <!-- ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg) -->
 
 <p align="center">
-<img width="900" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg">
+<img width="800" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg">
 </p>
 
 *Comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
