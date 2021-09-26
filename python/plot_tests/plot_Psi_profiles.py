@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 
 # AeroBulk, 2020, L. Brodeau
@@ -15,9 +15,6 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-
-reload(sys)
-sys.setdefaultencoding('utf8')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 AEROBULK_HOME = getenv('AEROBULK_HOME')
@@ -33,11 +30,11 @@ if not path.isdir(fig_dir):
     try:
         mkdir(fig_dir)
     except OSError:
-        print ("Creation of the directory %s failed" % fig_dir)
+        print("Creation of the directory %s failed" % fig_dir)
     else:
-        print ("Successfully created the directory %s " % fig_dir)
+        print("Successfully created the directory %s " % fig_dir)
 
-fig_ext='png'
+fig_ext='svg'
 size_fig=(8,8)
 
 clr_red = '#AD0000'
@@ -57,7 +54,7 @@ nb_algos = len(L_ALGOS) ; print(nb_algos)
 # Getting arguments:
 narg = len(sys.argv)
 if narg != 2:
-    print 'Usage: '+sys.argv[0]+' <output_from_test_psi_stab.x>.nc'; sys.exit(0)
+    print('Usage: '+sys.argv[0]+' <output_from_test_psi_stab.x>.nc'); sys.exit(0)
 cf_in = sys.argv[1]
 
 
