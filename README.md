@@ -43,9 +43,7 @@ Beside bulk algorithms, AeroBulk also provides a collection of functions (module
 
 The focus in AeroBulk is readability, efficiency, and portability towards modern ocean & atmosphere GCMs (Fortran 90, set of modules and a library).
 
-&nbsp;
-
-*Example of a set of figures generated with one of AeroBulk diagnostic Python scripts:*
+**Example of a set of figures generated with one of AeroBulk diagnostic Python scripts:**
 
 <!-- ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg) -->
 
