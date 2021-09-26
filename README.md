@@ -54,8 +54,9 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 <!--![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_CxN10.svg)-->
 
 <p align="center">
-  <img width="300" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_CxN10.svg">
+  <img width="600" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_CxN10.svg">
 </p>
+
 *Example of a set of figures generated with one of AeroBulk diagnostic Python scripts: comparison of the neutral drag (thick lines) and evaopration coefficients (thinner lines) as a function of the neutral wind speed at 10m.*
 
 <!--
