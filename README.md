@@ -45,8 +45,19 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 &nbsp;
 
+*Example of a set of figures generated with one of AeroBulk diagnostic Python scripts:*
+
 ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)
-*Example of a set of figures generated with one of AeroBulk diagnostic Python scripts: comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
+*Comparison of the stability correction profiles Psi(zeta) as used in 4 different bulk algorithms.*
+
+![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_CxN10.svg)
+*Example of a set of figures generated with one of AeroBulk diagnostic Python scripts: comparison of the neutral drag (thick lines) and evaopration coefficients (thinner lines) as a function of the neutral wind speed at 10m.*
+
+<!--
+<p align="center">
+  <img width="300" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg">
+</p>
+-->
 
 &nbsp;
 
