@@ -17,6 +17,7 @@ MODULE mod_blk_neutral_10m
    USE mod_blk_coare3p0, ONLY: charn_coare3p0
    USE mod_blk_coare3p6, ONLY: charn_coare3p6
    USE mod_blk_ecmwf,    ONLY: charn0_ecmwf
+   USE mod_blk_andreas,  ONLY: u_star_andreas
 
    IMPLICIT NONE
 
@@ -179,6 +180,17 @@ CONTAINS
 
          pz0    = MAX( z0_from_Cd( 10._wp , CdN10 ) , 0.0001_wp )
          pz0    = MIN( pz0, 0.1_wp )
+
+
+      ELSEIF ( TRIM(calgo) == 'andreas' ) THEN
+
+         PRINT *, ' *** Algo = ',TRIM(calgo)
+
+         Ub = MAX(U_N10, 0.5_wp)
+         ztmp0 = u_star_andreas( Ub ) ; ! => u*
+
+         PRINT *, ' ===> YET TO BE CODED!!!!'
+         STOP
 
       ELSE
 

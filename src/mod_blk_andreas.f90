@@ -45,6 +45,11 @@ MODULE mod_blk_andreas
    IMPLICIT NONE
    PRIVATE
 
+   INTERFACE u_star_andreas
+      MODULE PROCEDURE u_star_andreas_vctr, u_star_andreas_sclr
+   END INTERFACE u_star_andreas
+
+   
    !! Important (Brodeau fix):
    REAL(wp), PARAMETER :: rRi_max = 0.15_wp   ! Bulk Ri above which the algorithm fucks up!
    !                                          ! (increasing (>0) Ri means that surface layer increasingly stable and/or wind increasingly weak)
@@ -52,8 +57,8 @@ MODULE mod_blk_andreas
 
    !INTEGER, PARAMETER :: iverbose = 1
    INTEGER, PARAMETER :: iverbose = 0
-   
-   PUBLIC :: TURB_ANDREAS, psi_m_andreas, psi_h_andreas
+
+   PUBLIC :: TURB_ANDREAS, u_star_andreas, psi_m_andreas, psi_h_andreas
 
    !!----------------------------------------------------------------------
 CONTAINS
@@ -138,19 +143,19 @@ CONTAINS
       !!----------------------------------------------------------------------------------
       Ni = SIZE(sst,1)
       Nj = SIZE(sst,2)
-      
+
       ALLOCATE( u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj), z0(Ni,Nj), &
          &        UN10(Ni,Nj), UN10_old(Ni,Nj), zeta_u(Ni,Nj), RiB(Ni,Nj), &
          &       ztmp0(Ni,Nj),  ztmp1(Ni,Nj),  ztmp2(Ni,Nj) )
-      
-      lreturn_cdn   = PRESENT(CdN)   
-      lreturn_chn   = PRESENT(ChN)   
-      lreturn_cen   = PRESENT(CeN)   
-      lreturn_z0    = PRESENT(xz0)   
+
+      lreturn_cdn   = PRESENT(CdN)
+      lreturn_chn   = PRESENT(ChN)
+      lreturn_cen   = PRESENT(CeN)
+      lreturn_z0    = PRESENT(xz0)
       lreturn_ustar = PRESENT(xu_star)
-      lreturn_L     = PRESENT(xL)    
-      lreturn_UN10  = PRESENT(xUN10) 
-      
+      lreturn_L     = PRESENT(xL)
+      lreturn_UN10  = PRESENT(xUN10)
+
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp ) ! testing "zu == zt" is risky with double precision
 
       Ubzu = MAX( 0.25_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
@@ -178,20 +183,17 @@ CONTAINS
          IF(iverbose==1) PRINT *, 'LOLO'
 
          IF(iverbose==1) PRINT *, 'LOLO *** RiB =', RiB, jit
-         
+
          WHERE ( RiB < rRi_max )
             !! Normal condition case:
-            u_star = U_STAR_ANDREAS( UN10 )
+            u_star = u_star_andreas( UN10 )
          ELSEWHERE
             !! Extremely stable + weak wind !!!
             !!  => for we force u* to be consistent with minimum value for CD:
             !!  (otherwize algorithm becomes nonsense...)
             u_star = SQRT(Cx_min) * Ubzu     ! Cd does not go below Cx_min !
          ENDWHERE
-         
 
-
-         
          IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, jit
          IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, jit
          IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, jit
@@ -200,23 +202,23 @@ CONTAINS
 
          !! Stability parameter :
          zeta_u = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! zu * 1/L
-         
+
          IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, jit
          IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, jit
-         IF(iverbose==1) PRINT *, 'LOLO *** Ubzu =', Ubzu, jit         
+         IF(iverbose==1) PRINT *, 'LOLO *** Ubzu =', Ubzu, jit
 
          !! Drag coefficient:
          ztmp0 = u_star/Ubzu
 
          Cd = MAX( ztmp0*ztmp0 , Cx_min )
-         
+
          IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, jit
 
          !! Roughness length:
          z0 = MIN( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) ) , z0_sea_max )
          IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, jit
          IF(iverbose==1) PRINT *, 'LOLO'
-         
+
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
          ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
          ztmp1 = z0tq_LKB( 1, ztmp0, z0 )     ! z0t
@@ -254,7 +256,7 @@ CONTAINS
       ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
       Ch   = MAX( ztmp0*t_star/ztmp1 , rCs_min )
       Ce   = MAX( ztmp0*q_star/ztmp2 , rCs_min )
-      
+
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
       IF( lreturn_cdn )   CdN     = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
 
@@ -273,8 +275,8 @@ CONTAINS
 
    END SUBROUTINE turb_andreas
 
-
-   FUNCTION U_STAR_ANDREAS( pun10 )
+   
+   FUNCTION u_star_andreas_sclr( pun10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the friction velocity as a function of the neutral-stability wind
       !! speed at at 10m
@@ -283,21 +285,27 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, April 2020 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pun10          !: neutral-stability scalar wind speed at 10m (m/s)
-      REAL(wp), DIMENSION(SIZE(pun10,1),SIZE(pun10,2))             :: u_star_andreas !: friction velocity    [m/s]
+      REAL(wp), INTENT(in) :: pun10          !: neutral-stability scalar wind speed at 10m (m/s)
+      REAL(wp)             :: u_star_andreas_sclr !: friction velocity    [m/s]
       !
-      INTEGER  ::     ji, jj ! dummy loop indices
-      REAL(wp) :: za, zt, zw ! local scalars
+      REAL(wp) :: za, zt ! local scalars
       !!----------------------------------------------------------------------------------
+      za = pun10 - 8.271_wp
+      zt = za + SQRT( 0.12_wp*za*za + 0.181_wp )
+      u_star_andreas_sclr = 0.239_wp + 0.0433_wp * zt
+      !!
+   END FUNCTION u_star_andreas_sclr
+   !!
+   FUNCTION u_star_andreas_vctr( pun10 )
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pun10               !: neutral-stability scalar wind speed at 10m (m/s)
+      REAL(wp), DIMENSION(SIZE(pun10,1),SIZE(pun10,2)) :: u_star_andreas_vctr !: friction velocity    [m/s]
+      INTEGER  ::     ji, jj ! dummy loop indices
       DO jj = 1, SIZE(pun10,2)
          DO ji = 1, SIZE(pun10,1)
-            zw  = pun10(ji,jj)
-            za = zw - 8.271_wp
-            zt = za + SQRT( 0.12_wp*za*za + 0.181_wp )
-            u_star_andreas(ji,jj) =   0.239_wp + 0.0433_wp * zt
+            u_star_andreas_vctr(ji,jj) = u_star_andreas_sclr( pun10(ji,jj) )
          END DO
       END DO
-   END FUNCTION U_STAR_ANDREAS
+   END FUNCTION u_star_andreas_vctr
 
 
    FUNCTION psi_m_andreas( pzeta )

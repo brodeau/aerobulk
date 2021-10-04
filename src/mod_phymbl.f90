@@ -162,6 +162,7 @@ CONTAINS
    !===============================================================================================
    FUNCTION pot_temp_sclr( pTa, pPz,  pPref )
       !!------------------------------------------------------------------------
+      !!                           ***  FUNCTION pot_temp  ***
       !!
       !! Poisson equation to obtain potential temperature from absolute temperature, pressure, and
       !! the reference (sea-level) pressure.
