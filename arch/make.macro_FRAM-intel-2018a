@@ -1,0 +1,41 @@
+# Makefile for AeroBulk with the Intel suite of Compilers on `fram.sigma2.no`
+# ===========================================================================
+
+# Fortran compiler :
+FC  = ifort
+CXX = icpc
+
+# Libraries of Fortran compiler
+VERSION = 2018.1.163
+FC_PATH = /cluster/software/ifort/$(VERSION)-GCC-6.4.0-2.28
+DIR_FORT_LIB = $(FC_PATH)/compilers_and_libraries_$(VERSION)/linux/compiler/lib/intel64
+LNK_FORT_LIB = -lifcore
+
+# only for C++ to find module "iso_c_binding":
+#FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64
+
+
+
+### Fortran compilation flags :
+
+# Production
+FF = -xHOST -O3 -r8 -i4 -module mod/
+
+# Debugging:
+DEBUG_FF = -g -check all -fpe0 -warn all -traceback -debug extended -C
+DEBUG_FF = -g -fpe0 -traceback -CB
+#FF = -xHOST -O0 -r8 -i4 $(DEBUG_FF) -module mod/
+
+CXXFLAGS = -traceback
+
+# Directory to install binaries :
+INSTALL_DIR = ${HOME}/local
+
+# Root directory for Netcdf:
+NETCDF_DIR = /cluster/software/netCDF-Fortran/4.4.4-intel-2018a-HDF5-1.8.19
+
+# Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
+L_NCDF = -lnetcdff
+
+###-L/cluster/software/netCDF/4.4.1.1-intel-2018a-HDF5-1.8.19
+
