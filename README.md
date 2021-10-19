@@ -74,7 +74,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 # **> Compilation of AeroBulk**
 
-Normally AeroBulk should compile fine with GNU `gfortran` (version 7 and above) and Intel `ifort`.
+Normally, AeroBulk should compile fine with GNU `gfortran` (version 7 and above) and Intel `ifort`.
 Prior to typing `make`, make sure that a file or symbolic link named `make.macro`, which contains architecture specific compilation paths and options, is present in the root directory of AeroBulk. Template examples for `make.macro` can be found in the `arch/` directory.
 
 Compile the library and basic executables:
@@ -91,21 +91,21 @@ Compile the C++ interface:
 
 #### GCMs written in Fortran
 
-Include compilation flag for the compiler to locate the `*.mod` module files:
+*Include* compilation flag for the compiler to locate the `*.mod` module files:
 
 ```$ $(FC) $(FFLAGS) -I<path_to_aerobulk>/mod ...```
 
 Linking to AeroBulk's library:
-```-L<path_to_aerobulk>/lib -laerobulk```
+```... -L<path_to_aerobulk>/lib -laerobulk```
 
 #### GCMs written in C++
 
-Include compilation flag for the compiler to locate the `*.hpp` header file:
+*Include* compilation flag for the compiler to locate the `*.hpp` header file:
 
 ```$ $(CXX) $(CXXLAGS) -I<path_to_aerobulk>/include ...```
 
 Linking to AeroBulk's library:
-```-L<path_to_aerobulk>/lib -laerobulk_cxx```
+```... -L<path_to_aerobulk>/lib -laerobulk_cxx```
 
 
 
