@@ -94,9 +94,9 @@ MODULE mod_phymbl
       MODULE PROCEDURE L_vap_vctr, L_vap_sclr
    END INTERFACE L_vap
 
-   INTERFACE rho_air
-      MODULE PROCEDURE rho_air_vctr, rho_air_sclr
-   END INTERFACE rho_air
+   !INTERFACE rho_air
+   !   MODULE PROCEDURE rho_air_vctr, rho_air_sclr
+   !END INTERFACE rho_air
 
    INTERFACE cp_air
       MODULE PROCEDURE cp_air_vctr, cp_air_sclr
@@ -521,9 +521,9 @@ CONTAINS
 
 
    !===============================================================================================
-   FUNCTION rho_air_sclr( pTa, pqa, pslp )
+   ELEMENTAL FUNCTION rho_air( pTa, pqa, pslp )
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION rho_air_sclr  ***
+      !!                           ***  FUNCTION rho_air  ***
       !!
       !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
       !!
@@ -532,20 +532,11 @@ CONTAINS
       REAL(wp), INTENT(in) :: pTa           ! absolute air temperature             [K]
       REAL(wp), INTENT(in) :: pqa            ! air specific humidity   [kg/kg]
       REAL(wp), INTENT(in) :: pslp           ! pressure in                [Pa]
-      REAL(wp)             :: rho_air_sclr   ! density of moist air   [kg/m^3]
+      REAL(wp)             :: rho_air   ! density of moist air   [kg/m^3]
       !!-------------------------------------------------------------------------------
-      rho_air_sclr = MAX( pslp / (R_dry*pTa * ( 1._wp + rctv0*pqa )) , 0.8_wp )
+      rho_air = MAX( pslp / (R_dry*pTa * ( 1._wp + rctv0*pqa )) , 0.8_wp )
       !!
-   END FUNCTION rho_air_sclr
-   !!
-   FUNCTION rho_air_vctr( pTa, pqa, pslp )
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pTa         ! absolute air temperature             [K]
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pqa          ! air specific humidity   [kg/kg]
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pslp          ! pressure in                [Pa]
-      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             :: rho_air_vctr ! density of moist air   [kg/m^3]
-      !!-------------------------------------------------------------------------------
-      rho_air_vctr = MAX( pslp / (R_dry*pTa * ( 1._wp + rctv0*pqa )) , 0.8_wp )
-   END FUNCTION rho_air_vctr
+   END FUNCTION rho_air
 
    !===============================================================================================
    FUNCTION visc_air_sclr(pTa)
