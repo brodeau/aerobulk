@@ -105,7 +105,7 @@ Linking to AeroBulk's library:
 ```$ $(CXX) $(CXXLAGS) -I<path_to_aerobulk>/include ...```
 
 Linking to AeroBulk's library:
-```... -L<path_to_aerobulk>/lib -laerobulk_cxx```
+```... -L<path_to_aerobulk>/lib -laerobulk_cxx -laerobulk```
 
 
 
