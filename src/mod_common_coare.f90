@@ -18,14 +18,6 @@ MODULE mod_common_coare
       MODULE PROCEDURE first_guess_coare_vctr, first_guess_coare_sclr
    END INTERFACE first_guess_coare
 
-   INTERFACE psi_m_coare
-      MODULE PROCEDURE psi_m_coare_vctr, psi_m_coare_sclr
-   END INTERFACE psi_m_coare
-
-   INTERFACE psi_h_coare
-      MODULE PROCEDURE psi_h_coare_vctr, psi_h_coare_sclr
-   END INTERFACE psi_h_coare
-
 CONTAINS
 
 
@@ -148,7 +140,7 @@ CONTAINS
       ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare(zzeta_u))
       zts  = zdt*ztmp
       zqs  = zdq*ztmp
-      
+
       !! Adjustment of theta and q from zt to zu if relevant:
       IF( .NOT. l_zt_equal_zu ) THEN
          zzeta_t = zt*zzeta_u/zu
@@ -163,7 +155,7 @@ CONTAINS
          zts = zdt*ztmp
          zqs = zdq*ztmp
       ENDIF
-      
+
       !! Output result:
       pus  = zus
       pts  = zts
@@ -213,8 +205,9 @@ CONTAINS
 
 
 
+
    !!==============================================================================================
-   FUNCTION psi_m_coare_sclr( pzeta )
+   ELEMENTAL FUNCTION psi_m_coare( pzeta )
       !!----------------------------------------------------------------------------------
       !! ** Purpose: compute the universal profile stability function for momentum
       !!             COARE 3.0, Fairall et al. 2003
@@ -227,7 +220,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp) :: psi_m_coare_sclr
+      REAL(wp) :: psi_m_coare
       REAL(wp), INTENT(in) :: pzeta
       !!
       REAL(wp) :: zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstb
@@ -247,62 +240,16 @@ CONTAINS
       zc = MIN(50._wp, 0.35_wp*pzeta)
       zstb = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_m_coare_sclr = (1. - zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
+      psi_m_coare = (1. - zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (pzeta < 0)
          &           -   zstb  * ( 1. + 1.*pzeta     &                ! (pzeta > 0)
          &                          + 0.6667*(pzeta - 14.28)/EXP(zc) + 8.525 )  !     "
       !!
-   END FUNCTION psi_m_coare_sclr
-
-   FUNCTION psi_m_coare_vctr( pzeta )
-      !!----------------------------------------------------------------------------------
-      !! ** Purpose: compute the universal profile stability function for momentum
-      !!             COARE 3.0, Fairall et al. 2003
-      !!             pzeta : stability paramenter, z/L where z is altitude
-      !!                     measurement and L is M-O length
-      !!       Stability function for wind speed and scalars matching Kansas and free
-      !!       convection forms with weighting f convective form, follows Fairall et
-      !!       al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !!       form from Beljaars and Holtslag (1991)
-      !!
-      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_coare_vctr
-      !
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zphi_m, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------------------------
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = pzeta(ji,jj)
-            !
-            zphi_m = ABS(1. - 15.*zta)**.25    !!Kansas unstable
-            !
-            zpsi_k = 2.*LOG((1. + zphi_m)/2.) + LOG((1. + zphi_m*zphi_m)/2.)   &
-               & - 2.*ATAN(zphi_m) + 0.5*rpi
-            !
-            zphi_c = ABS(1. - 10.15*zta)**.3333                   !!Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &     - 1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp, 0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
-            !
-            psi_m_coare_vctr(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) & ! (zta < 0)
-               &                -   zstab     * ( 1. + 1.*zta     &                ! (zta > 0)
-               &                         + 0.6667*(zta - 14.28)/EXP(zc) + 8.525 )  !     "
-         END DO
-      END DO
-   END FUNCTION psi_m_coare_vctr
+   END FUNCTION psi_m_coare
    !!==============================================================================================
 
 
    !!==============================================================================================
-   FUNCTION psi_h_coare_sclr( pzeta )
+   ELEMENTAL FUNCTION psi_h_coare( pzeta )
       !!---------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !! COARE 3.0, Fairall et al. 2003
@@ -318,7 +265,7 @@ CONTAINS
       !! Author: L. Brodeau, June 2016 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------
-      REAL(wp) :: psi_h_coare_sclr
+      REAL(wp) :: psi_h_coare
       REAL(wp), INTENT(in) :: pzeta
       !!
       REAL(wp) :: zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstb
@@ -337,59 +284,11 @@ CONTAINS
       zc = MIN(50._wp,0.35_wp*pzeta)
       zstb = 0.5 + SIGN(0.5_wp, pzeta)
       !
-      psi_h_coare_sclr = (1.-zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
+      psi_h_coare = (1.-zstb) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
          &                  -zstb  * ( (ABS(1. + 2.*pzeta/3.))**1.5     &
          &                            + .6667*(pzeta - 14.28)/EXP(zc) + 8.525 )
       !!
-   END FUNCTION psi_h_coare_sclr
-
-   FUNCTION psi_h_coare_vctr( pzeta )
-      !!---------------------------------------------------------------------
-      !! Universal profile stability function for temperature and humidity
-      !! COARE 3.0, Fairall et al. 2003
-      !!
-      !! pzeta : stability paramenter, z/L where z is altitude measurement
-      !!         and L is M-O length
-      !!
-      !! Stability function for wind speed and scalars matching Kansas and free
-      !! convection forms with weighting f convective form, follows Fairall et
-      !! al (1996) with profile constants from Grachev et al (2000) BLM stable
-      !! form from Beljaars and Holtslag (1991)
-      !!
-      !! Author: L. Brodeau, June 2016 / AeroBulk
-      !!         (https://github.com/brodeau/aerobulk/)
-      !!----------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_coare_vctr
-      !
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) :: zta, zphi_h, zphi_c, zpsi_k, zpsi_c, zf, zc, zstab
-      !!----------------------------------------------------------------
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = pzeta(ji,jj)
-            !
-            zphi_h = (ABS(1. - 15.*zta))**.5  !! Kansas unstable   (zphi_h = zphi_m**2 when unstable, zphi_m when stable)
-            !
-            zpsi_k = 2.*LOG((1. + zphi_h)/2.)
-            !
-            zphi_c = (ABS(1. - 34.15*zta))**.3333   !! Convective
-            !
-            zpsi_c = 1.5*LOG((1. + zphi_c + zphi_c*zphi_c)/3.) &
-               &    -1.7320508*ATAN((1. + 2.*zphi_c)/1.7320508) + 1.813799447
-            !
-            zf = zta*zta
-            zf = zf/(1. + zf)
-            zc = MIN(50._wp,0.35_wp*zta)
-            zstab = 0.5 + SIGN(0.5_wp, zta)
-            !
-            psi_h_coare_vctr(ji,jj) = (1. - zstab) * ( (1. - zf)*zpsi_k + zf*zpsi_c ) &
-               &                -   zstab     * ( (ABS(1. + 2.*zta/3.))**1.5     &
-               &                           + .6667*(zta - 14.28)/EXP(zc) + 8.525 )
-         END DO
-      END DO
-   END FUNCTION psi_h_coare_vctr
+   END FUNCTION psi_h_coare
    !!==============================================================================================
 
 END MODULE mod_common_coare

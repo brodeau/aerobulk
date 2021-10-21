@@ -1988,7 +1988,7 @@ CONTAINS
    END FUNCTION type_of_humidity
 
    
-   FUNCTION delta_skin_layer_sclr( palpha, pQd, pustar_a,  Qlat )
+   ELEMENTAL FUNCTION delta_skin_layer( palpha, pQd, pustar_a,  Qlat )
       !!---------------------------------------------------------------------
       !! Computes the thickness (m) of the viscous skin layer.
       !! Based on Fairall et al., 1996
@@ -2004,7 +2004,7 @@ CONTAINS
       REAL(wp),           INTENT(in) :: pQd   ! (<0!) part of `Qnet` absorbed in the WL [W/m^2] => term "Q + Rs*fs" in eq.6 of Fairall et al. 1996
       REAL(wp),           INTENT(in) :: pustar_a ! friction velocity in the air (u*) [m/s]
       REAL(wp), OPTIONAL, INTENT(in) :: Qlat    ! latent heat flux [W/m^2]
-      REAL(wp)                       :: delta_skin_layer_sclr
+      REAL(wp)                       :: delta_skin_layer
       !!---------------------------------------------------------------------
       REAL(wp) :: zusw, zusw2, zlamb, zQd, ztf, ztmp
       !!---------------------------------------------------------------------
@@ -2021,10 +2021,10 @@ CONTAINS
       !  => zlamb is not used when Qd > 0, and since rcst_cs < 0, we just use this "MAX" to prevent FPE errors (something_negative)**0.75
       !
       ztmp = rnu0_w/zusw
-      delta_skin_layer_sclr = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
+      delta_skin_layer = (1._wp-ztf) *     zlamb*ztmp           &  ! regular case, Qd < 0, see Eq.(12) in Fairall et al., 1996
          &               +   ztf     * MIN(6._wp*ztmp , 0.007_wp)  ! when Qd > 0
       !!
-   END FUNCTION delta_skin_layer_sclr
+   END FUNCTION delta_skin_layer
 
 
 

@@ -33,10 +33,6 @@ MODULE mod_blk_coare3p6
 
    IMPLICIT NONE
 
-   INTERFACE charn_coare3p6
-      MODULE PROCEDURE charn_coare3p6_vctr, charn_coare3p6_sclr
-   END INTERFACE charn_coare3p6
-
    PRIVATE
 
    PUBLIC :: TURB_COARE3P6, charn_coare3p6
@@ -398,7 +394,7 @@ CONTAINS
 
 
    !!===============================================================================================
-   FUNCTION charn_coare3p6_sclr( pwnd )
+   ELEMENTAL FUNCTION charn_coare3p6( pwnd )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of the Neutral wind speed at 10m
       !!  "wind speed dependent formulation"
@@ -407,28 +403,19 @@ CONTAINS
       !! Author: L. Brodeau, July 2019 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pwnd   ! neutral wind speed at 10m
-      REAL(wp)             :: charn_coare3p6_sclr
+      REAL(wp)             :: charn_coare3p6
       !
       REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
       !!-------------------------------------------------------------------
-      charn_coare3p6_sclr = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
+      charn_coare3p6 = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
       !!
-   END FUNCTION charn_coare3p6_sclr
-
-   FUNCTION charn_coare3p6_vctr( pwnd )
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! neutral wind speed at 10m
-      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p6_vctr
-      !
-      REAL(wp), PARAMETER :: charn0_max = 0.028  !: value above which the Charnock parameter levels off for winds > 18 m/s
-      !!-------------------------------------------------------------------
-      charn_coare3p6_vctr = MAX( MIN( 0.0017_wp*pwnd - 0.005_wp , charn0_max) , 0._wp )
-   END FUNCTION charn_coare3p6_vctr
+   END FUNCTION charn_coare3p6
    !!===============================================================================================
 
 
 
 
-   FUNCTION charn_coare3p6_wave( pus, pwsh, pwps )
+   ELEMENTAL FUNCTION charn_coare3p6_wave( pus, pwsh, pwps )
       !!-------------------------------------------------------------------
       !! Computes the Charnock parameter as a function of wave information and u*
       !!

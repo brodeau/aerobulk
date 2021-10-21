@@ -78,14 +78,14 @@ CONTAINS
       zQabs = pQnsol ! first guess of heat flux absorbed within the viscous sublayer of thicknes delta,
       !              !   => we DO not miss a lot assuming 0 solar flux absorbed in the tiny layer of thicknes zdelta...
 
-      zdelta = delta_skin_layer_sclr( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
+      zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
 
       DO jc = 1, 4 ! because implicit in terms of zdelta...
          ! Solar absorption, Eq.16 (Fairall al. 1996b):
          zfr = MAX( 0.137_wp + 11._wp*zdelta - 6.6E-5_wp/zdelta*(1._wp - EXP(-zdelta/8.E-4_wp)) , 0.01_wp )
          !!              !LB: why 0.065 and not 0.137 like in the paper??? Beljaars & Zeng use 0.065, not 0.137 !
          zQabs = pQnsol + zfr*pQsw
-         zdelta = delta_skin_layer_sclr( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
+         zdelta = delta_skin_layer( alpha_sw(pSST), zQabs, pustar,  Qlat=pQlat )
       END DO
 
       pdT_cs = zQabs*zdelta/rk0_w   ! temperature increment, yes dT_cs can actually > 0, if Qabs > 0 (rare but possible!)

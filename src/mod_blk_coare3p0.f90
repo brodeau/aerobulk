@@ -33,10 +33,6 @@ MODULE mod_blk_coare3p0
 
    IMPLICIT NONE
 
-   INTERFACE charn_coare3p0
-      MODULE PROCEDURE charn_coare3p0_vctr, charn_coare3p0_sclr
-   END INTERFACE charn_coare3p0
-
    PRIVATE
 
    PUBLIC :: TURB_COARE3P0, charn_coare3p0
@@ -398,7 +394,7 @@ CONTAINS
 
 
    !!===============================================================================================
-   FUNCTION charn_coare3p0_sclr( pwnd )
+   ELEMENTAL FUNCTION charn_coare3p0( pwnd )
       !!-------------------------------------------------------------------
       !! Compute the Charnock parameter as a function of the wind speed
       !!
@@ -411,7 +407,7 @@ CONTAINS
       !! Author: L. Brodeau, June 2016 / AeroBulk  (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pwnd   ! wind speed
-      REAL(wp) :: charn_coare3p0_sclr
+      REAL(wp) :: charn_coare3p0
       !
       REAL(wp) :: zw, zgt10, zgt18
       !!-------------------------------------------------------------------
@@ -421,22 +417,11 @@ CONTAINS
       zgt10 = 0.5_wp + SIGN(0.5_wp,(zw - 10._wp))  ! If zw<10. --> 0, else --> 1
       zgt18 = 0.5_wp + SIGN(0.5_wp,(zw - 18._wp))  ! If zw<18. --> 0, else --> 1
       !
-      charn_coare3p0_sclr =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
+      charn_coare3p0 =  (1. - zgt10)*0.011    &    ! wind is lower than 10 m/s
          &                  + zgt10*((1. - zgt18)*(0.011 + (0.018 - 0.011) &
          &                   *(zw - 10.)/(18. - 10.)) + zgt18*( 0.018 ) )    ! Hare et al. (1999)
       !!
-   END FUNCTION charn_coare3p0_sclr
-
-   FUNCTION charn_coare3p0_vctr( pwnd )
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pwnd   ! wind speed
-      REAL(wp), DIMENSION(SIZE(pwnd,1),SIZE(pwnd,2)) :: charn_coare3p0_vctr
-      INTEGER  :: ji, jj
-      DO jj = 1, SIZE(pwnd,2)
-         DO ji = 1, SIZE(pwnd,1)
-            charn_coare3p0_vctr(ji,jj) = charn_coare3p0_sclr( pwnd(ji,jj) )
-         END DO
-      END DO
-   END FUNCTION charn_coare3p0_vctr
-
+   END FUNCTION charn_coare3p0
    !!======================================================================
+   
 END MODULE mod_blk_coare3p0
