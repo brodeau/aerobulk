@@ -1187,7 +1187,7 @@ CONTAINS
 
       zUrho = pUb*MAX(zrho, 1._wp)     ! rho*U10
 
-      pTau = zUrho * pCd * pwnd ! Wind stress module
+      pTau = zUrho * pCd * pwnd ! Wind stress module ( `pwnd` here because `pUb` already in `zUrho`
 
       zevap = zUrho * pCe * (pqa - pqs)
       pQsen = zUrho * pCh * (pThta - pts) * cp_air(pqa)
@@ -1233,6 +1233,7 @@ CONTAINS
       REAL(wp) :: zevap, zrho
       LOGICAL  :: lice=.FALSE., lrE=.FALSE., lrR=.FALSE.
       INTEGER  :: ji, jj
+      CHARACTER(len=256) :: cmsg
       !!----------------------------------------------------------------------------------
       lice = PRESENT(l_ice)
       lrE  = PRESENT(pEvap)
@@ -1246,6 +1247,17 @@ CONTAINS
                &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
             IF( lrE ) pEvap(ji,jj) = zevap
             IF( lrR ) prhoa(ji,jj) = zrho
+            
+            !!LOLO/alpha: sanity check on computed fluxes:
+            IF( pTau(ji,jj) > ref_tau_max ) THEN
+               WRITE(cmsg,'(" => ",f8.2," N/m^2 ! At ji, jj = ", i4.4,", ",i4.4)') pTau(ji,jj), ji, jj
+               CALL ctl_stop( 'BULK_FORMULA_VCTR()@mod_phymbl: wind stress too strong!', cmsg )
+            END IF
+            !IF( pwnd(ji,jj) < 1.E-3 ) THEN
+            !   WRITE(cmsg,'(" => ",f8.2," m/s ! At ji, jj = ", i4.4,", ",i4.4)') pwnd(ji,jj), ji, jj
+            !   CALL ctl_stop( 'BULK_FORMULA_VCTR()@mod_phymbl: scalar wind speed to close to 0!', cmsg )
+            !END IF
+            
          END DO
       END DO
    END SUBROUTINE BULK_FORMULA_VCTR
@@ -1905,13 +1917,13 @@ CONTAINS
          cunit = 'Pa'
 
       CASE('u10','v10')
-         zmax = ref_wnd_max
-         zmin = ref_wnd_min
+         zmax =   ref_wnd_max
+         zmin = - ref_wnd_max
          cunit = 'm/s'
 
       CASE('wnd','wind','w10','W10')
          zmax = ref_wnd_max
-         zmin = 0._wp
+         zmin = ref_wnd_min
          cunit = 'm/s'
 
       CASE('rad_sw')

@@ -183,8 +183,14 @@ CONTAINS
       CALL BULK_FORMULA( zu, zTs, zqs, zThtzu, zQzu, zCd, zCh, zCe, zWzu, zUblk, slp, &
          &                                 zTaum, QH, QL, pEvap=zEvap )
 
-      Tau_x = zTaum / zWzu * U_zu
-      Tau_y = zTaum / zWzu * V_zu
+      !! Wind stress vector from wind stress module
+      !!    (zTaum = rho * Cd * zUblk * zWzu)
+      Tau_x(:,:) = 0._wp
+      Tau_y(:,:) = 0._wp
+      WHERE( zWzu > 1.E-3 )
+         Tau_x = zTaum / zWzu * U_zu
+         Tau_y = zTaum / zWzu * V_zu
+      END WHERE
 
       !PRINT *, 'LOLO DEBUG INTO mod_aerobulk_compute !!! ', TRIM(calgo)
       !PRINT *, 'zCe =', zCe
