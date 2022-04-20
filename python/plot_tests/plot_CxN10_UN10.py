@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 
 l_multi_fig = False
 
-#fig_ext = 'png' ; lshow_xylabs = True
-fig_ext = 'svg' ; lshow_xylabs = True
+fig_ext = 'png' ; lshow_xylabs = True
+#fig_ext = 'svg' ; lshow_xylabs = True
 
 AEROBULK_HOME = getenv('AEROBULK_HOME')
 if AEROBULK_HOME is None:
@@ -121,7 +121,9 @@ for ja in range(nb_algo):
 # x/y-axis range and increment:
 
 vu_rng   = [ 0., 35., 1. ]
+#vu_rng   = [ 0., 50., 2. ]
 cd_u_rng = [0.8, 3. , 0.2]
+#cd_u_rng = [0.8, 5. , 0.2]
 ch_u_rng = [0.8, 1.8, 0.2]
 ce_u_rng = [0.8, 1.8, 0.2]
 
@@ -181,9 +183,11 @@ def plot_var( nba, cvar_nm, vun10, xCd, xCe, valg_dn, x_rng=None, y_rng=None, is
         #
     if nmp.shape(x_rng) == (3,):
         vx_ticks = nmp.arange(x_rng[0], x_rng[1]+x_rng[2], x_rng[2])
+        plt.xticks( vx_ticks )
         ax1.set_xlim(x_rng[0], x_rng[1])
     if nmp.shape(y_rng) == (3,):
-        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2]) ; plt.yticks( vy_ticks )
+        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2])
+        plt.yticks( vy_ticks )
         ax1.set_ylim(y_rng[0], y_rng[1])
     #
     ctit = r'$C_{D}^{N10}$, $C_{E}^{N10}$'
