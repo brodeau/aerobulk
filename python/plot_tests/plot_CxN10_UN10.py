@@ -118,16 +118,19 @@ for ja in range(nb_algo):
     xce_u[:,:,ja] = read_ascii_column(cdir_in+'/Neutral_coeff_U10N_'+valgo_nm[ja]+'.dat', [0,3])
 
 
-# x/y-axis range and increment:
-
+# x/y-axis range and increments:
 vu_rng   = [ 0., 35., 1. ]
-#vu_rng   = [ 0., 50., 2. ]
 cd_u_rng = [0.8, 3. , 0.2]
-#cd_u_rng = [0.8, 5. , 0.2]
 ch_u_rng = [0.8, 1.8, 0.2]
 ce_u_rng = [0.8, 1.8, 0.2]
 
-
+# Zoom calm:
+#vu_rng   = [ 2., 10., 1. ]
+#cd_u_rng = [0.9, 1.7 , 0.1]
+#
+# Hurricane:
+#vu_rng   = [ 0., 50., 2. ]
+#cd_u_rng = [0.8, 5. , 0.2]
 
 DPI_FIG = 100
 
