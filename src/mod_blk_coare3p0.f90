@@ -8,9 +8,15 @@
 !
 !
 MODULE mod_blk_coare3p0
-   !!====================================================================================
-   !!       Computes turbulent components of surface fluxes
-   !!         according to Fairall et al. 2018 (COARE v3.6)
+   !!======================================================================================================================
+   !!           COARE 3.0
+   !!           +++++++++
+   !!       Computes turbulent bulk transfer coefficients according to:
+   !!           * Fairall et al., 2003
+   !!
+   !!======================================================================================================================
+   !!
+   !!
    !!         "THE TOGA-COARE BULK AIR-SEA FLUX ALGORITHM"
    !!
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
@@ -41,6 +47,8 @@ MODULE mod_blk_coare3p0
 
    PUBLIC :: TURB_COARE3P0, charn_coare3p0
 
+   CHARACTER(len=8), PARAMETER :: clbl = 'COARE3P0'
+   
    !! COARE own values for given constants:
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.25_wp    ! gustiness parameter
@@ -64,7 +72,7 @@ CONTAINS
       IF( l_use_wl ) THEN
          ierr = 0
          ALLOCATE ( Tau_ac(nx,ny) , Qnt_ac(nx,ny), dT_wl(nx,ny), Hz_wl(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
          Tau_ac(:,:) = 0._wp
          Qnt_ac(:,:) = 0._wp
          dT_wl(:,:)  = 0._wp
@@ -73,7 +81,7 @@ CONTAINS
       !IF( l_use_cs ) THEN
       !   ierr = 0
       !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_INIT => allocation of dT_cs failed!' )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of dT_cs failed!' )
       !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       !ENDIF
    END SUBROUTINE COARE3P0_INIT
@@ -92,12 +100,12 @@ CONTAINS
       IF( l_use_wl ) THEN
          ierr = 0
          DEALLOCATE ( Tau_ac , Qnt_ac, dT_wl, Hz_wl, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
       ENDIF
       !IF( l_use_cs ) THEN
       !   ierr = 0
       !   DEALLOCATE ( dT_cs, STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' COARE3P0_EXIT => deallocation of dT_cs failed!' )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of dT_cs failed!' )
       !ENDIF
    END SUBROUTINE COARE3P0_EXIT
 

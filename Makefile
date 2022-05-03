@@ -75,9 +75,9 @@ lib/libaerobulk_cxx.a: $(LIB_OBJ) $(LIB_OBJ_CXX)
 	ranlib lib/libaerobulk_cxx.a
 	@echo ""
 
-bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
+bin/aerobulk_toy.x: src/tests/aerobulk_toy.F90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
+	$(FC) $(FF) src/tests/aerobulk_toy.F90 -o bin/aerobulk_toy.x $(LIB)
 
 bin/example_call_aerobulk.x: src/tests/example_call_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
