@@ -32,7 +32,7 @@ The following figure provides a schematic view on the way turbulent fluxes are c
 Currently, in AeroBulk, 5 bulk algorithm parameterizations are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
 *   COARE v3.0 ([Fairall *et al.*, 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
-*   COARE v3.6 ([Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1) + Fairall, *private communication*, 2016)
+*   COARE v3.6 ([Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1) + Chris Fairall, *private communication*, 2016)
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
 *   ANDREAS ([Andreas *et al.*, 2015](https://dx.doi.org/10.1002/qj.2424))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
