@@ -58,7 +58,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pfrice ! ice concentration [fraction]  => at_i_b  ! NOT USED if pSc, phf and pDi all provided...
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pz0w   ! roughness length over water  [m]
-      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pSc    ! shletering function [0-1] (Sc->1 for large distance between floes, ->0 for small distances)
+      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pSc    ! sheltering function [0-1] (Sc->1 for large distance between floes, ->0 for small distances)
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: phf    ! mean freeboard of floes    [m]
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pDi    ! cross wind dimension of the floe (aka effective edge length for form drag)   [m]
       REAL(wp), DIMENSION(SIZE(pfrice,1),SIZE(pfrice,2))                       :: CdN10_f_LU12  ! neutral FORM drag coefficient contribution over sea-ice
@@ -67,9 +67,9 @@ CONTAINS
       REAL(wp) :: ztmp, zrlog, zfri, zfrw, zSc, zhf, zDi
       INTEGER  :: ji, jj
       !!----------------------------------------------------------------------
-      l_known_Sc    = PRESENT(pSc)
-      l_known_hf    = PRESENT(phf)
-      l_known_Di    = PRESENT(pDi)
+      l_known_Sc = PRESENT(pSc)
+      l_known_hf = PRESENT(phf)
+      l_known_Di = PRESENT(pDi)
 
       DO jj = 1, SIZE(pfrice,2)
          DO ji = 1, SIZE(pfrice,1)
@@ -82,7 +82,7 @@ CONTAINS
             ELSE
                !! Sc parameterized in terms of A (ice fraction):
                zSc = zfrw**(1._wp / ( 10._wp * rBeta_0 ))   ! Eq.(31)
-               PRINT *, 'LOLO: Sc PARAMETERIZED !!! =>', zSc
+               !PRINT *, 'LOLO: Sc PARAMETERIZED !!! =>', zSc
             END IF
 
             IF(l_known_hf) THEN
@@ -90,7 +90,7 @@ CONTAINS
             ELSE
                !! hf parameterized in terms of A (ice fraction):
                zhf = rhmax_0*zfri + rhmin_0*zfrw  ! Eq.(25)
-               PRINT *, 'LOLO: hf PARAMETERIZED !!! =>', zhf
+               !PRINT *, 'LOLO: hf PARAMETERIZED !!! =>', zhf
             END IF
 
             IF(l_known_Di) THEN
@@ -99,20 +99,21 @@ CONTAINS
                !! Di parameterized in terms of A (ice fraction):
                ztmp = 1._wp / ( 1._wp - (rDmin_0/rDmax_0)**(1._wp/rBeta_0) )   ! A* Eq.(27)
                zDi =  rDmin_0 * ( ztmp/(ztmp - zfri) )**rBeta_0                !    Eq.(26)
-               PRINT *, 'LOLO: Di PARAMETERIZED !!! =>', zDi
+               !PRINT *, 'LOLO: Di PARAMETERIZED !!! =>', zDi
             END IF
 
             ztmp  = 1._wp/pz0w(ji,jj)
             zrlog = LOG(zhf*ztmp) / LOG(10._wp*ztmp)
 
-            CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(22)
+            !#bug reported by V. Guemas: CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(22)
+            CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(22)
             !!                   1/2      Ce
 
          END DO
       END DO
    END FUNCTION CdN10_f_LU12
 
-   
+
    FUNCTION CdN_f_LU12_eq36( pzu, pfrice )
       REAL(wp),                 INTENT(in) :: pzu    ! reference height                       [m]
       REAL(wp), DIMENSION(:,:), INTENT(in) :: pfrice ! ice concentration [fraction]  => at_i_b  ! NOT USED if pSc, phf and pDi all provided...
@@ -236,7 +237,7 @@ CONTAINS
             ELSE
                !! Sc parameterized in terms of A (ice fraction):
                zSc = zfrw**(1._wp / ( 10._wp * rBeta_0 ))   ! Eq.(31)
-               PRINT *, 'LOLO: Sc PARAMETERIZED !!! =>', zSc
+               !PRINT *, 'LOLO: Sc PARAMETERIZED !!! =>', zSc
             END IF
 
             IF(l_known_hf) THEN
@@ -244,7 +245,7 @@ CONTAINS
             ELSE
                !! hf parameterized in terms of A (ice fraction):
                zhf = rhmax_0*zfri + rhmin_0*zfrw  ! Eq.(25)
-               PRINT *, 'LOLO: hf PARAMETERIZED !!! =>', zhf
+               !PRINT *, 'LOLO: hf PARAMETERIZED !!! =>', zhf
             END IF
 
             IF(l_known_Di) THEN
@@ -253,15 +254,15 @@ CONTAINS
                !! Di parameterized in terms of A (ice fraction):
                ztmp = 1._wp / ( 1._wp - (rDmin_0/rDmax_0)**(1._wp/rBeta_0) )   ! A* Eq.(27)
                zDi =  rDmin_0 * ( ztmp/(ztmp - zfri) )**rBeta_0                !    Eq.(26)
-               PRINT *, 'LOLO: Di PARAMETERIZED !!! =>', zDi
+               !PRINT *, 'LOLO: Di PARAMETERIZED !!! =>', zDi
             END IF
 
             ztmp  = 1._wp/pz0i(ji,jj)
             zrlog = LOG(zhf*ztmp/2.718_wp) / LOG(pzu*ztmp)  !LOLO: adding number "e" !!!
 
-            CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
+            !#bug reported by V. Guemas: CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
+            CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
             !!                   1/2      Ce
-
          END DO
       END DO
    END FUNCTION CdN_f_LG15
