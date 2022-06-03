@@ -72,7 +72,7 @@ CONTAINS
          IF( .NOT.(lsrad) ) CALL ctl_stop(' AEROBULK_INIT => provide SW and LW rad. input if you want to use skin schemes')
 
          l_use_skin_schemes = .TRUE. ! if we go here it's fine!
-         WRITE(6,*)'       ==> will use the Cool-skin & Warm-ayer scheme of `'//TRIM(calgo)//'` !'
+         WRITE(6,*)'       ==> will use the Cool-skin & Warm-layer scheme of `'//TRIM(calgo)//'` !'
 
       ELSE
          WRITE(6,*)'    *** Cool-skin & Warm-layer schemes will NOT be used!'
