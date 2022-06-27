@@ -52,7 +52,7 @@ CONTAINS
       !!    *  QL     : Latent heat flux                                     [W/m^2]
       !!    *  QH     : Sensible heat flux                                   [W/m^2]
       !!    *  Tau_x  : zonal wind stress                                    [N/m^2]
-      !!    *  Tau_y  : zonal wind stress                                    [N/m^2]
+      !!    *  Tau_y  : meridional wind stress                               [N/m^2]
       !!
       !! OPTIONAL OUTPUT
       !! ---------------
