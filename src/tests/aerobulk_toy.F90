@@ -60,9 +60,9 @@ PROGRAM AEROBULK_TOY
    
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
-
+#ifdef ifort
    OPEN(6, FORM='formatted', RECL=512)
-
+#endif
 
 
    CALL usage_test(1)
@@ -144,10 +144,10 @@ PROGRAM AEROBULK_TOY
       SLP = SLP*100.
    ELSE
       SLP = Patm
-      WRITE(6,*) 'Using a sea-level pressure of ', Patm
    END IF
-   WRITE(6,*) ''
+   CALL prtcol( 6, 'Sea-level atmospheric pressure', Patm, 'Pa' )
 
+   
    WRITE(6,*) 'Give SST (deg. C):'
    READ(*,*) sst
    sst = sst + rt0

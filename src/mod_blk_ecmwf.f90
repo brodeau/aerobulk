@@ -9,8 +9,10 @@
 !
 MODULE mod_blk_ecmwf
    !!====================================================================================
-   !!       Computes turbulent components of surface fluxes
-   !!         according to IFS of the ECMWF
+   !!           ECMWF
+   !!           +++++++++
+   !!       Computes turbulent bulk transfer coefficients according to:
+   !!          * Integrated Forecast System (IFS) of the ECMWF
    !!
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
    !!
@@ -39,6 +41,8 @@ MODULE mod_blk_ecmwf
    PRIVATE
 
    PUBLIC :: ECMWF_INIT, TURB_ECMWF, psi_m_ecmwf, psi_h_ecmwf
+
+   CHARACTER(len=8), PARAMETER :: clbl = 'ECMWF'
 
    !! ECMWF own values for given constants, taken form IFS documentation...
    REAL(wp), PARAMETER, PUBLIC :: charn0_ecmwf = 0.018_wp    ! Charnock constant (pretty high value here !!!
@@ -69,14 +73,14 @@ CONTAINS
       IF( l_use_wl ) THEN
          ierr = 0
          ALLOCATE ( dT_wl(nx,ny), Hz_wl(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_wl & Hz_wl failed!' )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
          dT_wl(:,:)  = 0._wp
          Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
       ENDIF
       !IF( l_use_cs ) THEN
       !   ierr = 0
       !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_INIT => allocation of dT_cs failed!' )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of dT_cs failed!' )
       !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
       !ENDIF
    END SUBROUTINE ECMWF_INIT
@@ -95,12 +99,12 @@ CONTAINS
       IF( l_use_wl ) THEN
          ierr = 0
          DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
       ENDIF
       !IF( l_use_cs ) THEN
       !   ierr = 0
       !   DEALLOCATE ( dT_cs, STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' ECMWF_EXIT => deallocation of dT_cs failed!' )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of dT_cs failed!' )
       !ENDIF
    END SUBROUTINE ECMWF_EXIT
 

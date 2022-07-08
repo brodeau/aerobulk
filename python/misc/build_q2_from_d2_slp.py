@@ -75,15 +75,26 @@ elif cv_d2=='d2m':
     cv_p0='msl'
     cv_q2='q2m'
 
+lcoor_2d = False
+if cv_lon in ['nav_lon','glamt'] and cv_lat in ['nav_lat','gphit']: lcoor_2d = True
+    
+
 cunt_lon='unknown' ; clnm_lon='Longitude'
-vlon    = f_d2_in.variables[cv_lon][:]
+if lcoor_2d:
+    vlon    = f_d2_in.variables[cv_lon][:,:]
+else:
+    vlon    = f_d2_in.variables[cv_lon][:]
+#
 lst_att = f_d2_in.variables[cv_lon].ncattrs()
 if 'units'     in lst_att: cunt_lon = f_d2_in.variables[cv_lon].units
 if 'long_name' in lst_att: clnm_lon = f_d2_in.variables[cv_lon].long_name
 print('LONGITUDE: ', cunt_lon, clnm_lon)
 #
 cunt_lat='unknown' ; clnm_lat='Latitude'
-vlat    = f_d2_in.variables[cv_lat][:]
+if lcoor_2d:
+    vlat    = f_d2_in.variables[cv_lat][:,:]
+else:
+    vlat    = f_d2_in.variables[cv_lat][:]
 lst_att = f_d2_in.variables[cv_lat].ncattrs()
 if 'units'     in lst_att: cunt_lat = f_d2_in.variables[cv_lat].units
 if 'long_name' in lst_att: clnm_lat = f_d2_in.variables[cv_lat].long_name
@@ -168,19 +179,31 @@ for jt in range(Nt):
         f_out = Dataset(cf_q2, 'w', format='NETCDF4')
     
         # Dimensions:
-        f_out.createDimension(cv_lon, ni)
-        f_out.createDimension(cv_lat, nj)
+        if lcoor_2d:
+            cd_lat='y'
+            cd_lon='x'
+        else:
+            cd_lat=cv_lat
+            cd_lon=cv_lon
+
+        f_out.createDimension(cd_lat, nj)
+        f_out.createDimension(cd_lon, ni)
         f_out.createDimension(cv_time, None)
     
         # Variables
-        id_lon = f_out.createVariable(cv_lon,'f4',(cv_lon,),               zlib=True)
-        id_lat = f_out.createVariable(cv_lat,'f4',(cv_lat,),               zlib=True)
-        id_tim = f_out.createVariable(cv_time,'f4',(cv_time,),               zlib=True)
+        if lcoor_2d:
+            id_lon = f_out.createVariable(cv_lon,'f4',(cd_lat,cd_lon,),           zlib=True)
+            id_lat = f_out.createVariable(cv_lat,'f4',(cd_lat,cd_lon,),           zlib=True)
+        else:
+            id_lon = f_out.createVariable(cv_lon,'f4',(cd_lon,),            zlib=True)
+            id_lat = f_out.createVariable(cv_lat,'f4',(cd_lat,),            zlib=True)
+
+        id_tim = f_out.createVariable(cv_time,'f4',(cv_time,),              zlib=True)
         
         if l_mask:
-            id_q2  = f_out.createVariable(cv_q2, 'f4',(cv_time,cv_lat,cv_lon,), zlib=True, fill_value=rmiss)
+            id_q2  = f_out.createVariable(cv_q2, 'f4',(cv_time,cd_lat,cd_lon,), zlib=True, fill_value=rmiss)
         else:
-            id_q2  = f_out.createVariable(cv_q2, 'f4',(cv_time,cv_lat,cv_lon,), zlib=True)
+            id_q2  = f_out.createVariable(cv_q2, 'f4',(cv_time,cd_lat,cd_lon,), zlib=True)
 
         # Attributes
         id_tim.units    = cunt_time
@@ -202,8 +225,13 @@ for jt in range(Nt):
         f_out.About = 'Created with "build_q2_from_d2_slp.py" of AeroBulk, using '+cv_p0+' and '+cv_d2+'. [https://github.com/brodeau/aerobulk]'
     
         # Filling variables:
-        id_lat[:] = vlat[:]
-        id_lon[:] = vlon[:]
+        if lcoor_2d:
+            id_lat[:,:] = vlat[:,:]
+            id_lon[:,:] = vlon[:,:]
+        else:
+            id_lat[:] = vlat[:]
+            id_lon[:] = vlon[:]
+
         
     id_tim[jt]     = vtime[jt]
     id_q2[jt,:,:]  = xq2[:,:] 

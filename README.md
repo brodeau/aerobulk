@@ -9,7 +9,7 @@
 
 **AeroBulk** is a FORTRAN90-based library and suite of tools (including a C++ interface) that feature *state of the art* parameterizations to estimate turbulent air-sea fluxes by means of the traditional **aerodynamic bulk formulae**.
 
-These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity.
+These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity. If the *cool-skin/warm-layer* schemes need to be called to estimate the skin temperature, downwelling shortwave and longwave radiation are also required.
 
 <!-- ![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg) -->
 <p align="center">
@@ -32,7 +32,7 @@ The following figure provides a schematic view on the way turbulent fluxes are c
 Currently, in AeroBulk, 5 bulk algorithm parameterizations are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
 *   COARE v3.0 ([Fairall *et al.*, 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
-*   COARE v3.6 (Fairall *et al.*, 2018 + [Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1))
+*   COARE v3.6 ([Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1) + Chris Fairall, *private communication*, 2016)
 *   ECMWF ([IFS (Cy40) documentation](https://software.ecmwf.int/wiki/display/IFS/CY40R1+Official+IFS+Documentation))
 *   ANDREAS ([Andreas *et al.*, 2015](https://dx.doi.org/10.1002/qj.2424))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
@@ -42,6 +42,7 @@ In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and
 Beside bulk algorithms, AeroBulk also provides a collection of functions (module `mod_phymbl.f90`) to accurately estimate relevant atmospheric parameters such as: density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, *Obukhov* length, bulk *Richardson* number, wind gustiness, etc...
 
 The focus in AeroBulk is readability, efficiency, and portability towards modern ocean & atmosphere GCMs (Fortran 90, set of modules and a library).
+
 
 **Example of a set of figures generated with one of AeroBulk diagnostic Python scripts:**
 

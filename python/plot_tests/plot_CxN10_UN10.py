@@ -53,7 +53,6 @@ if not path.isdir(fig_dir):
 
 valgo_nm    = [ 'ncar'   ,  'ecmwf' , 'coare3p0' , 'coare3p6'  ]
 valgo_DN    = [ 'NCAR'   ,  'ECMWF' , 'COARE 3.0', 'COARE 3.6' ]
-#vcolor     = [ '#3465a4', '#58FAAC', '#D9344F'  ,    'k'      ]
 vcolor =      [  '0.6'   , '#008ab8', '#ffed00'  , '#C46637'   ]
 vlines      = [   '-'    ,    '-'   ,    '--'    ,    '-'      ]
 
@@ -62,8 +61,23 @@ vlines      = [   '-'    ,    '-'   ,    '--'    ,    '-'      ]
 #vcolor      = [ '#3465a4',    'k'     , '#58FAAC' ]
 #vlines      = [   '-'    ,    '-'     ,    '-'    ]
 
-
 nb_algo = len(valgo_nm)
+
+
+# x/y-axis range and increments:
+vu_rng   = [ 0., 34., 2. ]
+cd_u_rng = [0.8, 3. , 0.2]
+ch_u_rng = [0.8, 1.8, 0.2]
+ce_u_rng = [0.8, 1.8, 0.2]
+#
+# Zoom calm:
+#vu_rng   = [ 2., 10., 1. ]
+#cd_u_rng = [0.9, 1.7 , 0.1]
+#
+# Hurricane:
+#vu_rng   = [ 0., 50., 2. ]
+#cd_u_rng = [0.8, 5. , 0.2]
+
 
 
 
@@ -116,14 +130,6 @@ for ja in range(nb_algo):
 xce_u = nmp.zeros((2,nU,nb_algo))
 for ja in range(nb_algo):
     xce_u[:,:,ja] = read_ascii_column(cdir_in+'/Neutral_coeff_U10N_'+valgo_nm[ja]+'.dat', [0,3])
-
-
-# x/y-axis range and increment:
-
-vu_rng   = [ 0., 35., 1. ]
-cd_u_rng = [0.8, 3. , 0.2]
-ch_u_rng = [0.8, 1.8, 0.2]
-ce_u_rng = [0.8, 1.8, 0.2]
 
 
 
@@ -181,9 +187,11 @@ def plot_var( nba, cvar_nm, vun10, xCd, xCe, valg_dn, x_rng=None, y_rng=None, is
         #
     if nmp.shape(x_rng) == (3,):
         vx_ticks = nmp.arange(x_rng[0], x_rng[1]+x_rng[2], x_rng[2])
+        plt.xticks( vx_ticks )
         ax1.set_xlim(x_rng[0], x_rng[1])
     if nmp.shape(y_rng) == (3,):
-        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2]) ; plt.yticks( vy_ticks )
+        vy_ticks = nmp.arange(y_rng[0], y_rng[1]+y_rng[2], y_rng[2])
+        plt.yticks( vy_ticks )
         ax1.set_ylim(y_rng[0], y_rng[1])
     #
     ctit = r'$C_{D}^{N10}$, $C_{E}^{N10}$'
@@ -192,7 +200,7 @@ def plot_var( nba, cvar_nm, vun10, xCd, xCe, valg_dn, x_rng=None, y_rng=None, is
     if not cunit=='': plt.ylabel(r''+cunit, **font_ylb)
     plt.xlabel(r'$U_{N10}$ [m/s]',     **font_xlb)
     #plt.legend(bbox_to_anchor=(0.34, 0.16), ncol=3, shadow=False, fancybox=True)
-    plt.legend(bbox_to_anchor=(0.15, 0.63), ncol=1, shadow=False, fancybox=True)
+    plt.legend(bbox_to_anchor=(0.15, 0.63), ncol=1, shadow=False, fancybox=True, framealpha=1.) # don't want transparency !!!
     #
     plt.savefig(fig_dir+'/'+cvar_nm+'.'+fig_ext, dpi=DPI_FIG, facecolor='w', edgecolor='w', orientation='portrait')
     plt.close(1)

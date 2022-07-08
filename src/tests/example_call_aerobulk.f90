@@ -50,6 +50,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
+   PRINT *, '---------------------------------------------------------------------'
+   PRINT *, '    Parameter           | Unstable ASL |  Stable ASL  | units '
+   PRINT *, '---------------------------------------------------------------------'
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
@@ -59,9 +62,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
    PRINT *, '  Evaporation:     Evap =', REAL(zE*3600.*24.,4), ' mm/day'
    PRINT *, ' Skin temperature: SSST =', REAL(zTs-rt0,4), ' deg.C'
-   PRINT *, ' Tau_x =', REAL(zTau_x,4), ' N/m**2'
-   PRINT *, ' Tau_y =', REAL(zTau_y,4), ' N/m**2'
-   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
+   PRINT *, ' Tau_x                  =', REAL(zTau_x,4), ' N/m**2'
+   PRINT *, ' Tau_y                  =', REAL(zTau_y,4), ' N/m**2'
+   PRINT *, ' Tau                    =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
    PRINT *, ''
 
 
@@ -72,6 +75,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
+      PRINT *, '---------------------------------------------------------------------'
+   PRINT *, '    Parameter           | Unstable ASL |  Stable ASL  | units '
+   PRINT *, '---------------------------------------------------------------------'
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
@@ -81,9 +87,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
    PRINT *, '  Evaporation:     Evap =', REAL(zE*3600.*24.,4), ' mm/day'
    PRINT *, ' Skin temperature: SSST =', REAL(zTs-rt0,4), ' deg.C'
-   PRINT *, ' Tau_x =', REAL(zTau_x,4), ' N/m**2'
-   PRINT *, ' Tau_y =', REAL(zTau_y,4), ' N/m**2'
-   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
+   PRINT *, ' Tau_x                  =', REAL(zTau_x,4), ' N/m**2'
+   PRINT *, ' Tau_y                  =', REAL(zTau_y,4), ' N/m**2'
+   PRINT *, ' Tau                    =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
    PRINT *, ''
 
 
@@ -95,6 +101,10 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
       &                 zQL, zQH, zTau_x, zTau_y, zE,               &
       &                 Niter=Nbit, l_use_skin=.TRUE., rad_sw=zRsw, rad_lw=zRlw, T_s=zTs )
    PRINT *, ''
+      PRINT *, '---------------------------------------------------------------------'
+   PRINT *, '    Parameter           | Unstable ASL |  Stable ASL  | units '
+   PRINT *, '---------------------------------------------------------------------'
+
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
@@ -104,9 +114,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
    PRINT *, '  Evaporation:     Evap =', REAL(zE*3600.*24.,4), ' mm/day'
    PRINT *, ' Skin temperature: SSST =', REAL(zTs-rt0,4), ' deg.C'
-   PRINT *, ' Tau_x =', REAL(zTau_x,4), ' N/m**2'
-   PRINT *, ' Tau_y =', REAL(zTau_y,4), ' N/m**2'
-   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
+   PRINT *, ' Tau_x                  =', REAL(zTau_x,4), ' N/m**2'
+   PRINT *, ' Tau_y                  =', REAL(zTau_y,4), ' N/m**2'
+   PRINT *, ' Tau                    =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
    PRINT *, ''
 
    !l_1st_call_ab_init=.TRUE.
@@ -117,6 +127,10 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
       &                 zQL, zQH, zTau_x, zTau_y, zE,       &
       &                 Niter=Nbit )
    PRINT *, ''
+      PRINT *, '---------------------------------------------------------------------'
+   PRINT *, '    Parameter           | Unstable ASL |  Stable ASL  | units '
+   PRINT *, '---------------------------------------------------------------------'
+
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
@@ -125,9 +139,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
    PRINT *, '  Evaporation:     Evap =', REAL(zE*3600.*24.,4), ' mm/day'
-   PRINT *, ' Tau_x =', REAL(zTau_x,4), ' N/m**2'
-   PRINT *, ' Tau_y =', REAL(zTau_y,4), ' N/m**2'
-   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
+   PRINT *, ' Tau_x                  =', REAL(zTau_x,4), ' N/m**2'
+   PRINT *, ' Tau_y                  =', REAL(zTau_y,4), ' N/m**2'
+   PRINT *, ' Tau                    =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
    PRINT *, ''
 
 
@@ -139,6 +153,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
       &                 zQL, zQH, zTau_x, zTau_y, zE,       &
       &                 Niter=Nbit )
    PRINT *, ''
+   PRINT *, '---------------------------------------------------------------------'
+   PRINT *, '    Parameter           | Unstable ASL |  Stable ASL  | units '
+   PRINT *, '---------------------------------------------------------------------'
    PRINT *, ' Wind speed at zu       =', REAL(SQRT(zU_zu*zU_zu + zV_zu*zV_zu),4), ' m/s'
    PRINT *, '    SST                 =', REAL(zsst-rt0,4), ' deg.C'
    PRINT *, ' Abs. temperature at zt =', REAL(zt_zt-rt0,4), ' deg.C'
@@ -147,9 +164,9 @@ PROGRAM EXAMPLE_CALL_AEROBULK_COMPUTE
    PRINT *, ' Sensible heat flux: QH =', REAL(zQH,4), ' W/m**2'
    PRINT *, '  Latent  heat flux: QL =', REAL(zQL,4), ' W/m**2'
    PRINT *, '  Evaporation:     Evap =', REAL(zE*3600.*24.,4), ' mm/day'
-   PRINT *, ' Tau_x =', REAL(zTau_x,4), ' N/m**2'
-   PRINT *, ' Tau_y =', REAL(zTau_y,4), ' N/m**2'
-   PRINT *, ' Tau   =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
+   PRINT *, ' Tau_x                  =', REAL(zTau_x,4), ' N/m**2'
+   PRINT *, ' Tau_y                  =', REAL(zTau_y,4), ' N/m**2'
+   PRINT *, ' Tau                    =', REAL(SQRT(zTau_x*zTau_x + zTau_y*zTau_y),4), ' N/m**2' ; PRINT *, ''
    PRINT *, ''
 
 
