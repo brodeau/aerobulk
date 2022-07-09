@@ -30,17 +30,17 @@ MODULE mod_phymbl
 
    IMPLICIT NONE
 
-   INTERFACE pot_temp
-      MODULE PROCEDURE pot_temp_vctr, pot_temp_sclr
-   END INTERFACE pot_temp
+   !INTERFACE pot_temp
+   !   MODULE PROCEDURE pot_temp_vctr, pot_temp_sclr
+   !END INTERFACE pot_temp
 
-   INTERFACE abs_temp
-      MODULE PROCEDURE abs_temp_vctr, abs_temp_sclr
-   END INTERFACE abs_temp
+   !INTERFACE abs_temp
+   !   MODULE PROCEDURE abs_temp_vctr, abs_temp_sclr
+   !END INTERFACE abs_temp
 
-   INTERFACE virt_temp
-      MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
-   END INTERFACE virt_temp
+   !INTERFACE virt_temp
+   !   MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
+   !END INTERFACE virt_temp
 
    INTERFACE Pz_from_P0_tz_qz
       MODULE PROCEDURE Pz_from_P0_tz_qz_vctr, Pz_from_P0_tz_qz_sclr
@@ -54,9 +54,9 @@ MODULE mod_phymbl
       MODULE PROCEDURE T_from_z_P0_Theta_q_vctr, T_from_z_P0_Theta_q_sclr
    END INTERFACE T_from_z_P0_Theta_q
 
-   INTERFACE visc_air
-      MODULE PROCEDURE visc_air_vctr, visc_air_sclr
-   END INTERFACE visc_air
+   !INTERFACE visc_air
+   !   MODULE PROCEDURE visc_air_vctr, visc_air_sclr
+   !END INTERFACE visc_air
 
    INTERFACE gamma_moist
       MODULE PROCEDURE gamma_moist_vctr, gamma_moist_sclr
@@ -90,17 +90,17 @@ MODULE mod_phymbl
       MODULE PROCEDURE dq_sat_dt_ice_vctr, dq_sat_dt_ice_sclr
    END INTERFACE dq_sat_dt_ice
 
-   INTERFACE L_vap
-      MODULE PROCEDURE L_vap_vctr, L_vap_sclr
-   END INTERFACE L_vap
+   !INTERFACE L_vap
+   !   MODULE PROCEDURE L_vap_vctr, L_vap_sclr
+   !END INTERFACE L_vap
 
    !INTERFACE rho_air
    !   MODULE PROCEDURE rho_air_vctr, rho_air_sclr
    !END INTERFACE rho_air
 
-   INTERFACE cp_air
-      MODULE PROCEDURE cp_air_vctr, cp_air_sclr
-   END INTERFACE cp_air
+   !INTERFACE cp_air
+   !   MODULE PROCEDURE cp_air_vctr, cp_air_sclr
+   !END INTERFACE cp_air
 
    INTERFACE alpha_sw
       MODULE PROCEDURE alpha_sw_vctr, alpha_sw_sclr
@@ -160,7 +160,7 @@ MODULE mod_phymbl
 CONTAINS
 
    !===============================================================================================
-   FUNCTION pot_temp_sclr( pTa, pPz,  pPref )
+   ELEMENTAL FUNCTION pot_temp( pTa, pPz,  pPref )
       !!------------------------------------------------------------------------
       !!                           ***  FUNCTION pot_temp  ***
       !!
@@ -177,32 +177,19 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pTa            !: absolute air temperature at `z` m above sea level  [K]
       REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: pot_temp_sclr  !: potential air temperature at `z` m above sea level [K]
-      !!
-      REAL(wp) :: zPref = Patm
-      !!-------------------------------------------------------------------
-      IF( PRESENT(pPref) ) zPref = pPref
-      pot_temp_sclr = pTa * ( zPref / pPz )**rpoiss_dry
-      !!
-   END FUNCTION pot_temp_sclr
-
-   FUNCTION pot_temp_vctr( pTa, pPz,  pPref )
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pTa
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pPz
-      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pPref
-      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))                       :: pot_temp_vctr
+      REAL(wp)                       :: pot_temp  !: potential air temperature at `z` m above sea level [K]
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
-         pot_temp_vctr = pTa * ( pPref / pPz )**rpoiss_dry
+         pot_temp = pTa * ( pPref / pPz )**rpoiss_dry
       ELSE
-         pot_temp_vctr = pTa * ( Patm  / pPz )**rpoiss_dry
+         pot_temp = pTa * ( Patm  / pPz )**rpoiss_dry
       END IF
-   END FUNCTION pot_temp_vctr
+   END FUNCTION pot_temp
    !===============================================================================================
 
 
    !===============================================================================================
-   FUNCTION abs_temp_sclr( pThta, pPz,  pPref )
+   ELEMENTAL FUNCTION abs_temp( pThta, pPz,  pPref )
       !!------------------------------------------------------------------------
       !!
       !! Poisson equation to obtain absolute temperature from potential temperature, pressure, and
@@ -218,35 +205,20 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pThta          !: potential air temperature at `z` m above sea level  [K]
       REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: abs_temp_sclr  !: potential air temperature at `z` m above sea level [K]
-      !!
-      REAL(wp) :: zPref = Patm
-      !!-------------------------------------------------------------------
-      IF( PRESENT(pPref) ) zPref = pPref
-      abs_temp_sclr = pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
-      !!
-   END FUNCTION abs_temp_sclr
-
-   FUNCTION abs_temp_vctr( pThta, pPz,  pPref )
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pThta
-      REAL(wp), DIMENSION(:,:), INTENT(in)           :: pPz
-      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pPref
-      REAL(wp), DIMENSION(SIZE(pThta,1),SIZE(pThta,2))                       :: abs_temp_vctr
+      REAL(wp)                       :: abs_temp  !: potential air temperature at `z` m above sea level [K]
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
-         abs_temp_vctr = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
+         abs_temp = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
       ELSE
-         abs_temp_vctr = pThta / MAX ( ( Patm  / pPz )**rpoiss_dry, 1.E-9_wp )
+         abs_temp = pThta / MAX ( ( Patm  / pPz )**rpoiss_dry, 1.E-9_wp )
       END IF
-   END FUNCTION abs_temp_vctr
+   END FUNCTION abs_temp
    !===============================================================================================
 
 
 
-
-
    !===============================================================================================
-   FUNCTION virt_temp_sclr( pTa, pqa )
+   ELEMENTAL FUNCTION virt_temp( pTa, pqa )
       !!------------------------------------------------------------------------
       !!
       !! Compute the (absolute/potential) VIRTUAL temperature, based on the
@@ -258,24 +230,17 @@ CONTAINS
       !! Author: L. Brodeau, June 2019 / AeroBulk
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
-      REAL(wp)             :: virt_temp_sclr !: virtual temperature [K]
+      REAL(wp)             :: virt_temp !: virtual temperature [K]
       REAL(wp), INTENT(in) :: pTa       !: absolute or potential air temperature [K]
       REAL(wp), INTENT(in) :: pqa       !: specific humidity of air   [kg/kg]
       !!-------------------------------------------------------------------
-      virt_temp_sclr = pTa * (1._wp + rctv0*pqa)
+      virt_temp = pTa * (1._wp + rctv0*pqa)
       !!
       !! This is exactly the same thing as:
-      !! virt_temp_sclr = pTa * ( pwa + reps0) / (reps0*(1.+pwa))
+      !! virt_temp = pTa * ( pwa + reps0) / (reps0*(1.+pwa))
       !! with wpa (mixing ration) defined as : pwa = pqa/(1.-pqa)
       !!
-   END FUNCTION virt_temp_sclr
-   !!
-   FUNCTION virt_temp_vctr( pTa, pqa )
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pTa !: absolute or potential air temperature [K]
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pqa !: specific humidity of air   [kg/kg]
-      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             :: virt_temp_vctr !: virtual temperature [K]
-      virt_temp_vctr(:,:) = pTa(:,:) * (1._wp + rctv0*pqa(:,:))
-   END FUNCTION virt_temp_vctr
+   END FUNCTION virt_temp
    !===============================================================================================
 
 
@@ -362,7 +327,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, pTa, pqa ) ! pressure at z=`pz`
       !!
-      Theta_from_z_P0_T_q_sclr = pot_temp_sclr( pTa, zPz,  pPref=pslp )
+      Theta_from_z_P0_T_q_sclr = pot_temp( pTa, zPz,  pPref=pslp )
       !!
    END FUNCTION Theta_from_z_P0_T_q_sclr
 
@@ -373,7 +338,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in) :: pqa
       REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             :: Theta_from_z_P0_T_q_vctr
       !!-------------------------------------------------------------------------------
-      Theta_from_z_P0_T_q_vctr = pot_temp_vctr( pTa, Pz_from_P0_tz_qz_vctr( pz, pslp, pTa, pqa ),  pPref=pslp )
+      Theta_from_z_P0_T_q_vctr = pot_temp( pTa, Pz_from_P0_tz_qz_vctr( pz, pslp, pTa, pqa ),  pPref=pslp )
    END FUNCTION Theta_from_z_P0_T_q_vctr
    !===============================================================================================
 
@@ -402,7 +367,7 @@ CONTAINS
       !!
       DO it = 1, 4
          zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, zTa, pqa ) ! pressure at z=`pz`
-         zTa = abs_temp_sclr( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
+         zTa = abs_temp( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
       END DO
       T_from_z_P0_Theta_q_sclr = zTa
       !!
@@ -539,80 +504,56 @@ CONTAINS
    END FUNCTION rho_air
 
    !===============================================================================================
-   FUNCTION visc_air_sclr(pTa)
+   ELEMENTAL FUNCTION visc_air(pTa)
       !!----------------------------------------------------------------------------------
       !! Air kinetic viscosity (m^2/s) given from air temperature in Kelvin
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: visc_air_sclr   ! kinetic viscosity (m^2/s)
+      REAL(wp)             :: visc_air   ! kinetic viscosity (m^2/s)
       REAL(wp), INTENT(in) :: pTa       ! absolute air temperature in [K]
-      REAL(wp) ::   ztc, ztc2   ! local scalar
       !!----------------------------------------------------------------------------------
-      ztc  = pTa - rt0   ! absolute air temp, in deg. C
-      ztc2 = ztc*ztc
-      visc_air_sclr = 1.326e-5*(1. + 6.542E-3*ztc + 8.301e-6*ztc2 - 4.84e-9*ztc2*ztc)
+      visc_air = 1.326e-5*(                                                    &
+         &                  1. + 6.542E-3*(pTa - rt0)                          &
+         &                     + 8.301e-6*(pTa - rt0)*(pTa - rt0)              &
+         &                     -  4.84e-9*(pTa - rt0)*(pTa - rt0)*(pTa - rt0)   )
       !!
-   END FUNCTION visc_air_sclr
-   !!
-   FUNCTION visc_air_vctr(pTa)
-      REAL(wp), DIMENSION(:,:), INTENT(in) ::   pTa       ! absolute air temperature in [K]
-      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             ::   visc_air_vctr   ! kinetic viscosity (m^2/s)
-      INTEGER  ::   ji, jj      ! dummy loop indices
-      DO jj = 1, SIZE(pTa,2)
-         DO ji = 1, SIZE(pTa,1)
-            visc_air_vctr(ji,jj) = visc_air_sclr( pTa(ji,jj) )
-         END DO
-      END DO
-   END FUNCTION visc_air_vctr
+   END FUNCTION visc_air
    !===============================================================================================
 
 
    !===============================================================================================
-   FUNCTION L_vap_sclr( psst )
+   ELEMENTAL FUNCTION L_vap( psst )
       !!---------------------------------------------------------------------------------
-      !!                           ***  FUNCTION L_vap_sclr  ***
+      !!                           ***  FUNCTION L_vap  ***
       !!
       !! ** Purpose : Compute the latent heat of vaporization of water from temperature
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp)             :: L_vap_sclr  ! latent heat of vaporization   [J/kg]
+      REAL(wp)             :: L_vap  ! latent heat of vaporization   [J/kg]
       REAL(wp), INTENT(in) :: psst        ! water temperature               [K]
       !!----------------------------------------------------------------------------------
-      L_vap_sclr = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
+      L_vap = (  2.501_wp - 0.00237_wp * ( psst - rt0)  ) * 1.e6_wp
       !!
-   END FUNCTION L_vap_sclr
-
-   FUNCTION L_vap_vctr( psst )
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: psst        ! water temperature             [K]
-      REAL(wp), DIMENSION(SIZE(psst,1),SIZE(psst,2))             :: L_vap_vctr  ! latent heat of vaporization [J/kg]
-      L_vap_vctr = (  2.501_wp - 0.00237_wp * ( psst(:,:) - rt0)  ) * 1.e6_wp
-   END FUNCTION L_vap_vctr
+   END FUNCTION L_vap
    !===============================================================================================
 
 
    !===============================================================================================
-   FUNCTION cp_air_sclr( pqa )
+   ELEMENTAL FUNCTION cp_air( pqa )
       !!-------------------------------------------------------------------------------
-      !!                           ***  FUNCTION cp_air_sclr  ***
+      !!                           ***  FUNCTION cp_air  ***
       !!
       !! ** Purpose : Compute specific heat (Cp) of moist air
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
-      REAL(wp), INTENT(in) :: pqa           ! air specific humidity         [kg/kg]
-      REAL(wp)             :: cp_air_sclr   ! specific heat of moist air   [J/K/kg]
+      REAL(wp)             :: cp_air   ! specific heat of moist air   [J/K/kg]      
+      REAL(wp), INTENT(in) :: pqa           ! air specific humidity    [kg/kg]
       !!-------------------------------------------------------------------------------
-      cp_air_sclr = rCp_dry + rCp_vap * pqa
-      !!
-   END FUNCTION cp_air_sclr
-   !!
-   FUNCTION cp_air_vctr( pqa )
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pqa      ! air specific humidity         [kg/kg]
-      REAL(wp), DIMENSION(SIZE(pqa,1),SIZE(pqa,2))             :: cp_air_vctr   ! specific heat of moist air   [J/K/kg]
-      cp_air_vctr = rCp_dry + rCp_vap * pqa
-   END FUNCTION cp_air_vctr
+      cp_air = rCp_dry + rCp_vap * pqa
+   END FUNCTION cp_air
    !===============================================================================================
 
 
@@ -635,7 +576,7 @@ CONTAINS
       !!
       zwa = zqa / (1._wp - zqa)   ! w is mixing ratio w = q/(1-q) | q = w/(1+w)
       ziRT = 1._wp / (R_dry*zta)    ! 1/RT
-      zLvap = L_vap_sclr( pTa )
+      zLvap = L_vap( pTa )
       !!
       gamma_moist_sclr = grav * ( 1._wp + zLvap*zwa*ziRT ) / ( rCp_dry + zLvap*zLvap*zwa*reps0*ziRT/zta )
       !!
@@ -724,15 +665,15 @@ CONTAINS
       !!-------------------------------------------------------------------
       IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
       !
-      zsstv = virt_temp_sclr( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
+      zsstv = virt_temp( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
       !
-      zdthv = virt_temp_sclr( pThta, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
+      zdthv = virt_temp( pThta, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
       !
       !! ztv: estimate of the ABSOLUTE virtual temp. within the layer
       IF( l_ptqa_l_prvd ) THEN
-         ztv = virt_temp_sclr( pTa_layer, pqa_layer )
+         ztv = virt_temp( pTa_layer, pqa_layer )
       ELSE
-         ztv = 0.5_wp*( zsstv + virt_temp_sclr( pThta-rgamma_dry*pz, pqa ) )
+         ztv = 0.5_wp*( zsstv + virt_temp( pThta-rgamma_dry*pz, pqa ) )
       END IF
       !
       Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )      ! the usual definition of Ri_bulk_sclr
