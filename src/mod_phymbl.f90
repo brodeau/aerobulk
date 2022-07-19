@@ -12,7 +12,7 @@
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 
 
-MODULE mod_phymbl
+MODULE MOD_PHYMBL
 
    !!   pot_temp      : potential temperature
    !!   virt_temp     : virtual (aka sensible) temperature (potential or absolute)
@@ -164,8 +164,8 @@ CONTAINS
       !!------------------------------------------------------------------------
       !!                           ***  FUNCTION pot_temp  ***
       !!
-      !! Poisson equation to obtain potential temperature from absolute temperature, pressure, and
-      !! the reference (sea-level) pressure.
+      !! Poisson's equation to obtain potential temperature from absolute temperature, pressure,
+      !! and the reference (sea-level) pressure.
       !!
       !! Air parcel is at height `z` m above sea-level where the pressure is `ppz`,
       !! its absolute temperature is `pTa`.
@@ -177,7 +177,7 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pTa            !: absolute air temperature at `z` m above sea level  [K]
       REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: pot_temp  !: potential air temperature at `z` m above sea level [K]
+      REAL(wp)                       :: pot_temp       !: potential air temperature at `z` m above sea level [K]
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
          pot_temp = pTa * ( pPref / pPz )**rpoiss_dry
@@ -192,8 +192,8 @@ CONTAINS
    ELEMENTAL FUNCTION abs_temp( pThta, pPz,  pPref )
       !!------------------------------------------------------------------------
       !!
-      !! Poisson equation to obtain absolute temperature from potential temperature, pressure, and
-      !! the reference (sea-level) pressure.
+      !! Poisson's equation to obtain absolute temperature from potential temperature, pressure,
+      !! and the reference (sea-level) pressure.
       !!
       !! Air parcel is at height `z` m above sea-level where the pressure is `ppz`,
       !! its potential temperature is `pThta`.
@@ -203,9 +203,9 @@ CONTAINS
       !!         (https://github.com/brodeau/aerobulk/)
       !!------------------------------------------------------------------------
       REAL(wp), INTENT(in)           :: pThta          !: potential air temperature at `z` m above sea level  [K]
-      REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
-      REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: abs_temp  !: potential air temperature at `z` m above sea level [K]
+      REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                   [Pa]
+      REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                      [Pa]
+      REAL(wp)                       :: abs_temp       !: absolute air temperature at `z` m above sea level   [K]
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
          abs_temp = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
@@ -549,7 +549,7 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, june 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!-------------------------------------------------------------------------------
-      REAL(wp)             :: cp_air   ! specific heat of moist air   [J/K/kg]      
+      REAL(wp)             :: cp_air   ! specific heat of moist air   [J/K/kg]
       REAL(wp), INTENT(in) :: pqa           ! air specific humidity    [kg/kg]
       !!-------------------------------------------------------------------------------
       cp_air = rCp_dry + rCp_vap * pqa
@@ -825,9 +825,8 @@ CONTAINS
       REAL(wp), INTENT(in) :: pslp  !: atmospheric pressure        [Pa]
       LOGICAL,  INTENT(in), OPTIONAL :: l_ice  !: we are above ice
       REAL(wp) :: ze_s
-      LOGICAL  :: lice
+      LOGICAL  :: lice = .FALSE.
       !!----------------------------------------------------------------------------------
-      lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
       IF( lice ) THEN
          ze_s = e_sat_ice( pTa )
@@ -1179,7 +1178,7 @@ CONTAINS
                &                    pEvap=zevap, prhoa=zrho, l_ice=lice )
             IF( lrE ) pEvap(ji,jj) = zevap
             IF( lrR ) prhoa(ji,jj) = zrho
-            
+
             !!LOLO/alpha: sanity check on computed fluxes:
             IF( pTau(ji,jj) > ref_tau_max ) THEN
                WRITE(cmsg,'(" => ",f8.2," N/m^2 ! At ji, jj = ", i4.4,", ",i4.4)') pTau(ji,jj), ji, jj
@@ -1189,7 +1188,7 @@ CONTAINS
             !   WRITE(cmsg,'(" => ",f8.2," m/s ! At ji, jj = ", i4.4,", ",i4.4)') pwnd(ji,jj), ji, jj
             !   CALL ctl_stop( 'BULK_FORMULA_VCTR()@mod_phymbl: scalar wind speed to close to 0!', cmsg )
             !END IF
-            
+
          END DO
       END DO
    END SUBROUTINE BULK_FORMULA_VCTR
@@ -1940,7 +1939,7 @@ CONTAINS
 
    END FUNCTION type_of_humidity
 
-   
+
    ELEMENTAL FUNCTION delta_skin_layer( palpha, pQd, pustar_a,  Qlat )
       !!---------------------------------------------------------------------
       !! Computes the thickness (m) of the viscous skin layer.
@@ -1981,4 +1980,6 @@ CONTAINS
 
 
 
-END MODULE mod_phymbl
+
+END MODULE MOD_PHYMBL
+
