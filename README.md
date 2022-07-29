@@ -21,7 +21,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 # **> Bulk formula and their parameterizations**
 
-Aerobulk relies on the following tradition bulk formula to estimate turbulent air-sea fluxes:
+Aerobulk relies on the following traditional set of bulk formula to estimate turbulent fluxes at the air-sea interface\theta_z:
 
 $$ \vec{\tau} = \rho\  C_D \  \vec{U}_z  \  U_B $$
 
@@ -31,7 +31,7 @@ $$ E   = \rho \ C_E \     \big[    q_s   - q_z \big]  \  U_B $$
 
 $$ Q_L = -L_v \  E $$
 
-The $z$ subscript relates to the reference heigt above the air-sea interface (generally $z=10m$).
+The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
 $\vec{U}_z$ is the wind speed vector at the reference height.
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air, respectively, at height $z$ above the air-sea interface.
 $\theta_s$ and $q_s$ are the potential temperature and specific humidity of air, respectively, (immediately) at the air-sea interface ($z=0$). If the _cool-skin_/_warm-layer_ scheme is used these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
