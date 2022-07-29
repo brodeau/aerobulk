@@ -25,11 +25,11 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 $$ \vec{\tau} = \rho\  C_D \  \vec{U}_z  \  U_B $$
 
-$$ Q_H = \rho \ C_H \ C_P \ \big[ \theta_z - T_s \big] \  U_B  $$
-
 $$ E   = \rho \ C_E \     \big[    q_s   - q_z \big]  \  U_B $$
 
 $$ Q_L = -L_v \  E $$
+
+$$ Q_H = \rho \ C_H \ C_P \ \big[ \theta_z - T_s \big] \  U_B  $$
 
 where $\rho$ is the density of air. The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
 $\vec{U}_z$ is the wind speed vector at the reference height.
