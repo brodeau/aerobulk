@@ -18,7 +18,9 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 
 
-The following figure provides a schematic view on the way turbulent fluxes are computed in AeroBulk:
+# **> Bulk formula and their parameterizations **
+
+The following figure provides a schematic overview on the way turbulent fluxes are computed in AeroBulk:
 
 <!-- ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg) -->
 
@@ -26,6 +28,8 @@ The following figure provides a schematic view on the way turbulent fluxes are c
   <img width="700" src="https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg">
 </p>
 
+
+$$ \rho~C_H~C_P~\big[ \theta_z - T_s \big] ~ U_B       $$
 
 &nbsp;
 
