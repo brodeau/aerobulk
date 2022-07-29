@@ -19,7 +19,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 -->
 
 
-# **> Bulk formula and their parameterizations **
+# **> Bulk formula and their parameterizations**
 
 Aerobulk relies on the following tradition bulk formula to estimate turbulent air-sea fluxes:
 
