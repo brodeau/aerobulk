@@ -20,6 +20,10 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 # **> Bulk formula and their parameterizations **
 
+$$ Q_H = \rho\, C_H C_P \big[ \theta_z - T_s \big]  U_B  $$
+$$ E   = \rho C_E     \big[    q_s   - q_z \big]   U_B $$
+
+
 The following figure provides a schematic overview on the way turbulent fluxes are computed in AeroBulk:
 
 <!-- ![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/fig_bulk_model_f2p.svg) -->
@@ -29,7 +33,7 @@ The following figure provides a schematic overview on the way turbulent fluxes a
 </p>
 
 
-$$ Q_H = \rho\, C_H C_P \big[ \theta_z - T_s \big]  U_B  $$
+
 
 &nbsp;
 
