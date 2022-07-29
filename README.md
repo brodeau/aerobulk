@@ -21,7 +21,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 # **> Bulk formula and their parameterizations**
 
-Aerobulk relies on the following traditional set of bulk formula to estimate turbulent fluxes at the air-sea interface\theta_z:
+Aerobulk relies on the following traditional set of bulk formula to estimate turbulent fluxes at the air-sea interface:
 
 $$ \vec{\tau} = \rho\  C_D \  \vec{U}_z  \  U_B $$
 
