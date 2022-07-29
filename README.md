@@ -33,7 +33,7 @@ $$ Q_L = -L_v \  E $$
 
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air, respectively,  at height $z$ above the air-sea interface.
 
-$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air, respectively, (immediately) at the air-sea interface ($z=0$). If the _cool-skin_/_warm-layer_ scheme is used these to are deduced from the skin temperature, otherwize they are deduced from the bulk SST.
+$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air, respectively, (immediately) at the air-sea interface ($z=0$). If the _cool-skin_/_warm-layer_ scheme is used these two are deduced from the skin temperature, otherwize they are deduced from the bulk SST (default).
 
 
 The following figure provides a schematic overview on the way turbulent fluxes are computed in AeroBulk:
