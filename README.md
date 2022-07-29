@@ -29,7 +29,7 @@ The following figure provides a schematic overview on the way turbulent fluxes a
 </p>
 
 
-$$ \rho C_H C_P \big[ \theta_z - T_s \big]  U_B  $$
+$$ Q_H = \rho\, C_H C_P \big[ \theta_z - T_s \big]  U_B  $$
 
 &nbsp;
 
