@@ -31,7 +31,7 @@ $$ E   = \rho \ C_E \     \big[    q_s   - q_z \big]  \  U_B $$
 
 $$ Q_L = -L_v \  E $$
 
-The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
+where $\rho$ is the density of air. The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
 $\vec{U}_z$ is the wind speed vector at the reference height.
 $U_B$ is the bulk scalar wind speed (very close to $|\vec{U}_z|$ in most cases).
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at the reference height, respectively.
