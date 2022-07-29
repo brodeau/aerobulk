@@ -20,7 +20,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 # **> Bulk formula and their parameterizations **
 
-$$ \mathbf{\tau} = \rho\  C_D \  \mathbf{U}_z  \  U_B $$
+$$ \vec{\tau} = \rho\  C_D \  \vec{U}_z  \  U_B $$
 
 $$ Q_H = \rho \ C_H \ C_P \ \big[ \theta_z - T_s \big] \  U_B  $$
 
