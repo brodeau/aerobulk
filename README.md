@@ -21,7 +21,7 @@ These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and 
 
 # **> Bulk formula and their parameterizations**
 
-Aerobulk relies on the following traditional set of bulk formula to estimate turbulent fluxes at the air-sea interface:
+**AeroBulk** relies on the following traditional set of bulk formula to estimate turbulent fluxes at the air-sea interface:
 
 $$ \vec{\tau} = \rho\  C_D \  \vec{U}_z  \  U_B $$
 
@@ -33,11 +33,11 @@ $$ Q_L = -L_v \  E $$
 
 The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
 $\vec{U}_z$ is the wind speed vector at the reference height.
-$\theta_z$ and $q_z$ are the potential temperature and specific humidity of air, respectively, at height $z$ above the air-sea interface.
-$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air, respectively, (immediately) at the air-sea interface ($z=0$). If the _cool-skin_/_warm-layer_ scheme is used these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
+$\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at the reference height, respectively.
+$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air immediately at the air-sea interface ($z=0$), respectively. If the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
 
-Any decent level of accuracy from this set of formula can only be achieved through the best possible estimate of the value of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$, namely the drag, evaporation and sensible heat coefficients.
-
+Any decent level of accuracy from this set of formula can only be achieved through the "best possible" estimate of the value of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$, namely the drag, evaporation and sensible heat coefficients.
+In **AeroBulk**, these bulk coefficients can be estimated thanks to a collection of _bulk parameterizations_ a.k.a _bulk algorithms_, which "attempt" to relate the value of these coefficients to the near-surface atmospheric stability and the roughness of the sea surface.
 
 
 
@@ -74,7 +74,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 
 **Example of a set of figures generated with one of AeroBulk diagnostic Python scripts:**
 
-![Aerobulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)
+![AeroBulk Approach](https://github.com/brodeau/aerobulk/blob/master/doc/figs/Comparaison_Psi.svg)
 
 <!--
 <p align="center">
