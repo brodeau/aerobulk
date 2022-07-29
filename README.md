@@ -33,9 +33,9 @@ $$ Q_L = -L_v \  E $$
 
 where $\rho$ is the density of air. The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
 $\vec{U}_z$ is the wind speed vector at the reference height.
-$U_B$ is the bulk scalar wind speed (very close to $|\vec{U}_z|$ in most cases).
+$U_B$ is the bulk scalar wind speed at the reference height (very close to $|\vec{U}_z|$ in most cases).
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at the reference height, respectively.
-$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air immediately at the air-sea interface ($z=0$), respectively. If the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
+$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air immediately at the air-sea interface ($z=0$), respectively; if the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
 
 Any decent level of accuracy from this set of formula can only be achieved through the "best possible" estimate of the value of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$, namely the drag, evaporation and sensible heat coefficients.
 In **AeroBulk**, these bulk coefficients can be estimated thanks to a collection of _bulk parameterizations_ a.k.a _bulk algorithms_, which "attempt" to relate the value of these coefficients to the near-surface atmospheric stability and the roughness of the sea surface.
@@ -58,7 +58,7 @@ The following figure provides a schematic overview on the way turbulent fluxes a
 
 &nbsp;
 
-Currently, in AeroBulk, 5 bulk algorithm parameterizations are available to compute the drag, sensible heat and moisture transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
+Currently, in AeroBulk, 5 bulk algorithm parameterizations are available to compute the drag, sensible heat and evaporation transfer coefficients (namely C<sub>D</sub>, C<sub>H</sub> and C<sub>E</sub>) used in the bulk formula:
 
 *   COARE v3.0 ([Fairall *et al.*, 2003](http://dx.doi.org/10.1175/1520-0442(2003)016<0571:BPOASF>2.0.CO;2))
 *   COARE v3.6 ([Edson *et al.*, 2013](http://dx.doi.org/10.1175/jpo-d-12-0173.1) + Chris Fairall, *private communication*, 2016)
