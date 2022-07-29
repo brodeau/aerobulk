@@ -30,7 +30,9 @@ $$ E   = \rho \ C_E \     \big[    q_s   - q_z \big]  \  U_B $$
 
 $$ Q_L = -L_v \  E $$
 
-$\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at height $z$ above the air-sea interface.
+$\theta_z$ and $q_z$ are the potential temperature and specific humidity of air, respectively,  at height $z$ above the air-sea interface.
+
+$\theta_s$ and $q_s$ are the potential temperature and specific humidity of air, respectively, (immediately) at the air-sea interface ($z=0$).
 
 
 The following figure provides a schematic overview on the way turbulent fluxes are computed in AeroBulk:
