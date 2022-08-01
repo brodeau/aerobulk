@@ -144,6 +144,8 @@ Linking to AeroBulk's library:
 
 
 
+&nbsp;
+
 # **> Giving AeroBulk a first try in interactive "toy mode"**
 
 Check that `bin/aerobulk_toy.x` has been compiled and execute it:
