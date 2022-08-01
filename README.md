@@ -240,7 +240,7 @@ INPUT ARGUMENTS:
 [ OPTIONAL INPUT ARGUMENT: ]
 *   `Niter`  : (Sc,int) number of iterations for the bulk algorithms (default is 5)
 *   `rad_sw` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
-*   `rad_lw` : (2D,real)downw. longwave rad. at surface (>0) [W/m^2]
+*   `rad_lw` : (2D,real) downw. longwave  rad. at surface (>0) [W/m^2]
 
 (The presence of `rad_sw` and `rad_sw` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
 
