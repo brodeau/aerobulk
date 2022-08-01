@@ -83,7 +83,7 @@ The focus in AeroBulk is readability, efficiency, and portability towards modern
 </p>
 -->
 
-_Fig 1/ Comparison of the stability correction profiles $\Psi(\zeta)$ as used in 4 different bulk algorithms._
+_Fig 1/ Comparison of the stability correction profiles_ $\Psi(\zeta)$ _as used in 4 different bulk algorithms._
 
 
 &nbsp;
