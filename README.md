@@ -9,7 +9,7 @@
 
 **AeroBulk** is a FORTRAN90-based library and suite of tools (including a C++ interface) that feature *state of the art* parameterizations to estimate turbulent air-sea fluxes by means of the traditional **aerodynamic bulk formulae**.
 
-These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity. If the *cool-skin/warm-layer* schemes need to be called to estimate the skin temperature, downwelling shortwave and longwave radiation are also required.
+These turbulent fluxes, namely, wind stress, evaporation (latent heat flux) and sensible heat flux, are estimated using the sea surface temperature (bulk or skin), and the near-surface atmospheric surface state: wind speed, air temperature and humidity. If the *cool-skin/warm-layer* schemes need to be called to estimate the skin temperature, surface downwelling shortwave and longwave radiative fluxes are required.
 
 <!-- ![Bulk Formula](https://github.com/brodeau/aerobulk/blob/master/doc/figs/bulk.svg) -->
 <!--
@@ -31,11 +31,11 @@ $$ Q_L = -L_v \  E $$
 
 $$ Q_H = \rho \ C_H \ C_P \ \big[ \theta_z - T_s \big] \  U_B  $$
 
-where $\rho$ is the density of air. The $z$ subscript relates to the reference height above the air-sea interface (generally $z=10m$).
+where $\rho$ is the density of air. The $z$ subscript relates to the reference height above the air-sea interface (generally _z=10m_).
 $\vec{U}_z$ is the wind speed vector at the reference height.
 $U_B$ is the bulk scalar wind speed at the reference height (very close to $|\vec{U}_z|$ in most cases).
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at the reference height, respectively.
-$T_s$ and $q_s$ are the absolute (= potential) temperature and specific humidity of air immediately at the air-sea interface ($z=0$), respectively; if the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
+$T_s$ and $q_s$ are the absolute (= potential) temperature and specific humidity of air immediately at the air-sea interface (_z=0_), respectively; if the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
 
 Any decent level of accuracy from this set of formula can only be achieved through the "best possible" estimate of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$, namely the drag, evaporation and sensible heat coefficients.
 In **AeroBulk**, these bulk coefficients can be estimated thanks to a collection of _bulk parameterizations_ a.k.a _bulk algorithms_, which "attempt" to relate the value of these coefficients to the near-surface atmospheric stability, the wind speed, and (ideally) the roughness of the sea surface.
