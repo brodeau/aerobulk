@@ -66,7 +66,7 @@ Currently, in AeroBulk, 5 bulk parameterizations are available to compute $C_D$,
 *   ANDREAS ([Andreas *et al.*, 2015](https://dx.doi.org/10.1002/qj.2424))
 *   NCAR (Large & Yeager 2004, [2009](http://dx.doi.org/10.1007/s00382-008-0441-3))
 
-In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature to be used is the bulk SST (usually measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. Other parameterizations, such as NCAR, are meant to be used with the bulk SST, and does not feature a cool-skin/warm layer scheme.
+In the COARE and ECMWF algorithms, a cool-skin/warm layer scheme is included and can be activated if the input sea-surface temperature to be used is the bulk SST (usually measured a few tenths of meters below the surface). Activation of these cool-skin/warm layer schemes requires the surface downwelling shortwave and longwave radiative flux components to be provided. Other parameterizations, such as NCAR, are meant to be used with the bulk SST, and do not feature a cool-skin/warm layer scheme.
 
 Beside bulk algorithms, AeroBulk also provides a collection of functions (module `mod_phymbl.f90`) to accurately estimate relevant atmospheric parameters such as: density of air, different expressions of the humidity of air, viscosity of air, specific humidity at saturation, *Obukhov* length, bulk *Richardson* number, wind gustiness, etc...
 
