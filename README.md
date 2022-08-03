@@ -37,7 +37,7 @@ $U_B$ is the bulk scalar wind speed at the reference height (very close to $|\ve
 $\theta_z$ and $q_z$ are the potential temperature and specific humidity of air at the reference height, respectively.
 $T_s$ and $q_s$ are the absolute (= potential) temperature and specific humidity of air immediately at the air-sea interface (_z=0_), respectively; if the _cool-skin/warm-layer_ scheme is used, these two are deduced from the skin temperature, otherwise they are deduced from the bulk SST (default).
 
-Any decent level of accuracy from this set of formula can only be achieved through the "best possible" estimate of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$, namely the drag, evaporation and sensible heat coefficients.
+Any decent level of accuracy from this set of formula can only be achieved through the "best possible" estimate of the 3 bulk transfer coefficient $C_D$, $C_E$, and $C_H$ (drag, evaporation, and sensible heat coefficients).
 In **AeroBulk**, these bulk coefficients can be estimated thanks to a collection of _bulk parameterizations_ a.k.a _bulk algorithms_, which "attempt" to relate the value of these coefficients to the near-surface atmospheric stability, the wind speed, and (ideally) the roughness of the sea surface.
 
 
