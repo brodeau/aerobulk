@@ -449,7 +449,12 @@ CONTAINS
       !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
       !
-      zta = MIN( pzeta , 5._wp ) !! Very stable conditions (L positif and big!):
+      zta = MIN( pzeta ,   5._wp ) !! `zeta` plateaus at 5 in very stable conditions     (L>0 and small!)
+      
+      !#fixme: Jean Bildot & Sam Hatfield @ ECMWF, complain that
+      !        `EXP(-0.35_wp*zta)` later blows up in single precision when unstable with big `zta`
+      !#fixme: LB suggests:
+      zta = MAX( pzeta , -50._wp ) !! `zeta` plateaus at -50 in very unstable conditions (L<0 and small!)
 
       ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
       zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
