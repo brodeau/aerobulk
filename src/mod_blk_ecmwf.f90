@@ -448,13 +448,9 @@ CONTAINS
       REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
-      !
-      !#fixme: Jean Bildot & Sam Hatfield @ ECMWF, complain that
-      !        `EXP(-0.35_wp*zta)` later blows up in single precision when unstable with big `zta`
-      !#fixme: LB suggests:
-      zta = MAX( pzeta , -50._wp ) ! => regions where `zeta<-50.` are given value -50 (still unrealistic but numerically safe?)
-      !                            !  ==> prevents numerical problems such as overflows...      
-      zta = MIN(  zta ,   5._wp )  !`zeta` plateaus at 5 in very stable conditions (L>0 and small!), inherent to ECMWF algo!
+
+      zta = pzeta
+      CALL cap_zeta( zta )
 
       ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
       zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
@@ -484,8 +480,9 @@ CONTAINS
       !
       DO jj = 1, SIZE(pzeta,2)
          DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = MIN( pzeta(ji,jj) , 5._wp ) !! Very stable conditions (L positif and big!):
+
+            zta = pzeta(ji,jj)
+            CALL cap_zeta( zta )
 
             ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
             zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
@@ -525,9 +522,10 @@ CONTAINS
       REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
-      !
-      zta = MIN(pzeta , 5._wp)   ! Very stable conditions (L positif and big!):
-      !
+
+      zta = pzeta
+      CALL cap_zeta( zta )
+
       ! *** Unstable (Paulson 1970)   [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
       zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
       zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
@@ -555,9 +553,10 @@ CONTAINS
       !
       DO jj = 1, SIZE(pzeta,2)
          DO ji = 1, SIZE(pzeta,1)
-            !
-            zta = MIN(pzeta(ji,jj) , 5._wp)   ! Very stable conditions (L positif and big!):
-            !
+
+            zta = pzeta(ji,jj)
+            CALL cap_zeta( zta )
+
             ! *** Unstable (Paulson 1970)   [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
             zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
             zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
@@ -577,6 +576,20 @@ CONTAINS
    END FUNCTION psi_h_ecmwf_vctr
    !!===============================================================================================
 
+   SUBROUTINE cap_zeta( pzeta )
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), INTENT(inout) :: pzeta
+      REAL(wp) ::  zta
+      !!--------------------------------------------------------------------------------------------
+      !#fixme: Jean Bildot & Sam Hatfield @ ECMWF, complain that
+      !        `EXP(-0.35_wp*zta)` later blows up in single precision when unstable with big `zta`
+      !#fixme: LB suggests:
+      zta = MAX( pzeta , -50._wp ) ! => regions where `zeta<-50.` are given value -50 (still unrealistic but numerically safe?)
+      !                            !  ==> prevents numerical problems such as overflows...
+      zta = MIN(  zta ,   5._wp )  !`zeta` plateaus at 5 in very stable conditions (L>0 and small!), inherent to ECMWF algo!
+      !
+      pzeta = zta
+   END SUBROUTINE cap_zeta
 
    !!======================================================================
 END MODULE mod_blk_ecmwf
