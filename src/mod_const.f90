@@ -146,7 +146,7 @@ MODULE mod_const
    REAL(wp), PARAMETER :: ref_rlw_min = 0._wp     , ref_rlw_max =  750.0_wp  ! Downwelling longwave  radiation [W/m^2]
 
    !! On computed fluxes:
-   REAL(wp), PARAMETER :: ref_tau_max = 5._wp ! Wind stress [N/m2]
+   REAL(wp), PARAMETER :: ref_tau_max = 10._wp ! Wind stress [N/m2]
    
    !! IFS:
 
