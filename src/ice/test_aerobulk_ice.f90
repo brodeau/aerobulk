@@ -308,6 +308,7 @@ PROGRAM TEST_AEROBULK_ICE
             &                zcd0, zch0, zce0,                          &
             &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
             &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         zCdN(:,:)=zcd0 ; zChN(:,:)=zch0 ; zCeN(:,:)=zce0
 
       CASE(2)
          CALL TURB_ICE_AN05( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
