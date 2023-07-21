@@ -4,7 +4,8 @@ PROGRAM TEST_AEROBULK_ICE
 
    USE mod_const
    USE mod_phymbl
-   USE mod_blk_ice_nemo
+   !USE mod_blk_ice_nemo
+   USE mod_blk_ice_easy
    USE mod_blk_ice_an05
    USE mod_blk_ice_lu12
    USE mod_blk_ice_lg15
@@ -14,7 +15,7 @@ PROGRAM TEST_AEROBULK_ICE
    INTEGER, PARAMETER :: nb_algos = 4
    
    CHARACTER(len=12), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ '   NEMdef   ' , '   Andreas  ' , 'Lupkes 2012 ' , '  L&G 2015  ' /)
+      &      vca = (/ '    EASY    ' , '   Andreas  ' , 'Lupkes 2012 ' , '  L&G 2015  ' /)
 
 
    REAL(wp), DIMENSION(nb_algos) ::  &
@@ -43,7 +44,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    REAL(wp), DIMENSION(lx,ly) :: Cd, Ce, Ch, Cp_ma, rgamma
 
-   REAL(wp) :: zt, zu, nu_air
+   REAL(wp) :: zt, zu, nu_air, zcd0, zch0, zce0
 
    CHARACTER(len=3) :: czt, czu
 
@@ -100,6 +101,17 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) '  *** Virt. temp. const. = (1-eps)/eps (~0.608) =>', rctv0
    WRITE(6,*) ''
 
+
+   WRITE(6,*) 'Give CD_N*1000, CH_N*1000., CE_N*1000 for EASY algo:'
+   READ(*,*) zcd0, zch0, zce0
+   zcd0 = zcd0/1000.
+   zce0 = zce0/1000.
+   zch0 = zch0/1000.
+   CALL prtcol( 6, ' Cd_N_ice for EASY', zcd0, '[]' )
+   CALL prtcol( 6, ' Ch_N_ice for EASY', zch0, '[]' )
+   CALL prtcol( 6, ' Ce_N_ice for EASY', zce0, '[]' )
+   WRITE(6,*) ''
+   
    WRITE(6,*) 'Give the sea-ice concentration in %'
    READ(*,*) frice
    frice = frice/100.
@@ -292,9 +304,9 @@ PROGRAM TEST_AEROBULK_ICE
       SELECT CASE(ialgo)
 
       CASE(1)
-         CALL TURB_ICE_NEMO( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+         CALL TURB_ICE_EASY( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+            &                zcd0, zch0, zce0,                          &
             &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &                CdN=zCdN, ChN=zChN, CeN=zCeN,              &
             &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
 
       CASE(2)

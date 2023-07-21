@@ -93,9 +93,7 @@ CONTAINS
       REAL(wp), INTENT(in ), DIMENSION(:,:) :: qs_i  ! sat. spec. hum. at ice/air interface    [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(:,:) :: q_zt  ! spec. air humidity at zt               [kg/kg]
       REAL(wp), INTENT(in ), DIMENSION(:,:) :: U_zu  ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(out), DIMENSION(:,:) :: CdN
-      REAL(wp), INTENT(out), DIMENSION(:,:) :: ChN
-      REAL(wp), INTENT(out), DIMENSION(:,:) :: CeN
+      REAL(wp), INTENT(in )                 :: CdN, ChN, CeN
       REAL(wp), INTENT(out), DIMENSION(:,:) :: Cd_i  ! drag coefficient over sea-ice
       REAL(wp), INTENT(out), DIMENSION(:,:) :: Ch_i  ! transfert coefficient for heat over ice
       REAL(wp), INTENT(out), DIMENSION(:,:) :: Ce_i  ! transfert coefficient for sublimation over ice
@@ -195,9 +193,9 @@ CONTAINS
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
-            ztmp0(:,:) = psi_h_ice(zeta_u(:,:)) - psi_h_ice(zeta_t(:,:)) + zlog1
-            t_zu(:,:)  =            t_zt(:,:) - t_star(:,:)/vkarmn*ztmp0(:,:)
-            q_zu(:,:)  = MAX(0._wp, q_zt(:,:) - q_star(:,:)/vkarmn*ztmp0(:,:) )
+            ztmp0(:,:)  = psi_h_ice(zeta_u(:,:)) - psi_h_ice(zeta_t(:,:)) + zlog1
+            t_zu_i(:,:) =            t_zt(:,:) - t_star(:,:)/vkarmn*ztmp0(:,:)
+            q_zu_i(:,:) = MAX(0._wp, q_zt(:,:) - q_star(:,:)/vkarmn*ztmp0(:,:) )
          END IF
          
       END DO !DO jit = 1, nb_iter
