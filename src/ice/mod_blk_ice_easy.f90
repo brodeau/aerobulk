@@ -135,10 +135,7 @@ CONTAINS
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(Ni,Nj) )
 
-
-
       zsqrtCDN = SQRT(CdN)
-
       zlog1 = LOG(zt/zu)
       zlog2 = LOG(zu/10._wp)
 
@@ -153,7 +150,6 @@ CONTAINS
       Cd_i(:,:) = CdN
       Ch_i(:,:) = ChN
       Ce_i(:,:) = CeN
-
 
       !! ITERATION BLOCK
       DO jit = 1, nb_iter
@@ -183,13 +179,13 @@ CONTAINS
          
          !! Update C_D:
          ztmp0(:,:) = 1._wp + zsqrtCDN/vkarmn*(zlog2 - psi_m_ice(zeta_u(:,:)))
-         Cd_i(:,:)  = MAX( CdN / ( ztmp0(:,:)*ztmp0(:,:) ), Cx_min )
+         Cd_i(:,:)  = MIN( MAX( CdN / ( ztmp0(:,:)*ztmp0(:,:) ), Cx_min ) , 1.9E-3_wp )
 
          !! Update C_H and C_E
          ztmp0(:,:) = ( zlog2 - psi_h_ice(zeta_u) ) / vkarmn / zsqrtCDN
          ztmp1(:,:) = SQRT(Cd_i(:,:)) / zsqrtCDN
-         Ch_i(:,:)  = MAX( ChN*ztmp1(:,:) / ( 1._wp + ChN*ztmp0(:,:) ) , Cx_min )
-         Ce_i(:,:)  = MAX( CeN*ztmp1(:,:) / ( 1._wp + CeN*ztmp0(:,:) ) , Cx_min )
+         Ch_i(:,:)  = MIN( MAX( ChN*ztmp1(:,:) / ( 1._wp + ChN*ztmp0(:,:) ) , Cx_min ) , 1.9E-3_wp )
+         Ce_i(:,:)  = MIN( MAX( CeN*ztmp1(:,:) / ( 1._wp + CeN*ztmp0(:,:) ) , Cx_min ) , 1.9E-3_wp )
 
          IF( .NOT. l_zt_equal_zu ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu :
