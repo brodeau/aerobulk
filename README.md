@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/83811363.svg)](https://zenodo.org/badge/latestdoi/83811363)
+
 <!-- ![Aerobulk Logo](https://github.com/brodeau/aerobulk/blob/master/doc/figs/logo_300.svg) -->
 
 <p align="center">
