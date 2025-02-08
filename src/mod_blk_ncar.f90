@@ -1,14 +1,5 @@
-! AeroBulk / 2019 / L. Brodeau
-!
-!   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
-!
-!   Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically
-!   significant effects of some approximations in the bulk parameterizations of
-!   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
-!
-!
 MODULE mod_blk_ncar
-   !!====================================================================================
+   !!======================================================================
    !!       Computes turbulent components of surface fluxes
    !!         according to Large & Yeager (2004,2008)
    !!
@@ -22,9 +13,16 @@ MODULE mod_blk_ncar
    !!       Routine turb_ncar maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
+   !!   When using AeroBulk to produce scientific work, please acknowledge with the following citation:
+   !!
+   !!   Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically
+   !!   significant effects of some approximations in the bulk parameterizations of
+   !!   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
+   !! 
+   !!
    !!            Author: Laurent Brodeau, 2016
    !!
-   !!====================================================================================
+   !!=====================================================================
    USE mod_const       !: physical and other constants
    USE mod_phymbl      !: misc. physical functions
 
@@ -85,7 +83,7 @@ CONTAINS
       !!    *  Ce     : evaporation coefficient
       !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
       !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ubzu  : bulk wind speed at zu                                 [m/s]
+      !!    *  Ubzu   : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
