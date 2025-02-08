@@ -18,7 +18,7 @@ MODULE mod_blk_ncar
    !!   Brodeau, L., B. Barnier, S. Gulev, and C. Woods, 2016: Climatologically
    !!   significant effects of some approximations in the bulk parameterizations of
    !!   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
-   !! 
+   !!
    !!
    !!            Author: Laurent Brodeau, 2016
    !!
@@ -55,7 +55,7 @@ MODULE mod_blk_ncar
 CONTAINS
 
    SUBROUTINE turb_ncar( zt, zu, sst, t_zt, ssq, q_zt, U_zu,   &
-      &                  Cd, Ch, Ce, t_zu, q_zu, Ubzu,         &
+      &                        Cd, Ch, Ce, t_zu, q_zu, Ubzu,   &
       &                  CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ncar  ***
@@ -97,8 +97,8 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
-      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
+      REAL(wp), INTENT(in   )                 ::   zt       ! height for t_zt and q_zt                    [m]
+      REAL(wp), INTENT(in   )                 ::   zu       ! height for U_zu                             [m]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   sst      ! sea surface temperature                [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   t_zt     ! potential air temperature              [Kelvin]
       REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   ssq      ! sea surface specific humidity           [kg/kg]
@@ -118,7 +118,7 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xu_star  ! u*, friction velocity
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL  ! zeta (zu/L)
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10  ! Neutral wind at zu
-      !
+      !!----------------------------------------------------------------------------------
       INTEGER :: Ni, Nj, jit, ji, jj
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
       !
@@ -167,11 +167,9 @@ CONTAINS
             Ch(ji,jj) = ch_n10_ncar( zsqrt_CdN , zstab )   ! zstab is stability (1/0)
             zsqrt_Cd = zsqrt_CdN
 
-
             !! Initializing values at z_u with z_t values:
             t_zu(ji,jj) = MAX( t_zt(ji,jj) ,  180._wp )   ! who knows what's given on masked-continental regions...
             q_zu(ji,jj) = MAX( q_zt(ji,jj) , 1.e-6_wp )   !               "
-
 
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
@@ -211,11 +209,9 @@ CONTAINS
                zsqrt_CdN = SQRT(zCdN)
 
                !! Update of transfer coefficients:
-
                !! C_D
                ztmp  = 1._wp + zsqrt_CdN/vkarmn*(zlog2 - zpsi_m)   ! L&Y 2004 Eq. (10a) (zpsi_m == psi_m(zeta_u))
                Cd(ji,jj)     = MAX( zCdN / ( ztmp*ztmp ), Cx_min )
-
                !! C_H and C_E
                zsqrt_Cd = SQRT( Cd(ji,jj) )
                ztmp = ( zlog2 - psi_h_ncar(zeta_u) ) / vkarmn / zsqrt_CdN
