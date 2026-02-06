@@ -1,0 +1,38 @@
+# Makefile for AeroBulk with the NVIDIA HPC SDK suite of Compilers
+# ================================================================
+
+# Compilers :
+FC  = nvfortran
+CXX = nvc++
+
+# Libraries of Fortran compiler
+#FC_PATH = 
+#VERSION = latest
+#DIR_FORT_LIB = $(FC_PATH)/compiler/$(VERSION)/linux/compiler/lib/intel64
+#LNK_FORT_LIB = -lifcore
+
+# only for C++ to find module "iso_c_binding":
+#FORT_INC = -I$(FC_PATH)/compiler/$(VERSION)/linux/compiler/include/intel64
+
+
+
+### Fortran compilation flags :
+
+# Production
+FF =  -O3 -i4 -r8 -Minit-integer=zero -Minit-real=zero -D_NOTGCC -module mod/
+
+# Debugging:
+#FF = -Kieee -g -O1 -traceback -Minit-logical=false -Minfo=accel -C -Ktrap=divz,fp,ovf -ffpe-trap=invalid,zero,overflow
+
+
+CXXFLAGS = --c++11 -fast --diag_suppress virtual_function_decl_hidden,extra_semicolon,code_is_unreachable,declared_but_not_referenced
+
+# Directory to install binaries :
+INSTALL_DIR = /usr/local
+
+# Root directory for Netcdf:
+NETCDF_DIR = /opt/hdf5_netcdf4_intel
+
+# Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
+L_NCDF = -lnetcdff
+

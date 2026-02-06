@@ -60,7 +60,7 @@ PROGRAM AEROBULK_TOY
    
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
-#ifdef ifort
+#ifdef _NOTGCC
    OPEN(6, FORM='formatted', RECL=512)
 #endif
 
