@@ -296,7 +296,7 @@ PROGRAM TEST_AEROBULK_ICE
 
    CALL TURB_ECMWF( 1, zt, zu, sst, theta_zt, ssq, q_zt, W10, .FALSE., .FALSE., &
       &             Cd_w, Ch_w, Ce_w, theta_zu_w, q_zu_w, Ublk_w,               &
-      &             xz0=zz0_w, xu_star=zus_w, xL=zL_w, xUN10=zUN10_w )
+      &             pz0=zz0_w, pu_star=zus_w, pL=zL_w, pUN10=zUN10_w )
 
    WRITE(6,*) ' With ECMWF bulk algorithm we get the following transfer coeff. over water (leads):'
    WRITE(6,*) '  * Cd =', REAL(1000.*Cd_w,4)

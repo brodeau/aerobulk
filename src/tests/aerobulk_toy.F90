@@ -20,7 +20,7 @@ PROGRAM AEROBULK_TOY
 
    REAL(wp), DIMENSION(nb_algos) ::  &
       &           vCd, vCe, vCh, vTheta_u, vT_u, vQu, vz0, vus, vRho_u, vUg, vL, vBRN, &
-      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw, vQu_sane,        &
+      &           vUN10, vQL, vTau, vQH, vEvap, vTs, vSST, vqs, vQlw, vQu_sat,        &
       &           vCdN, vChN, vCeN
 
    INTEGER, PARAMETER ::   &
@@ -369,15 +369,15 @@ PROGRAM AEROBULK_TOY
          IF ( l_use_coolsk ) THEN
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &             Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,        &
-               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                               &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
+               &             pQsw=(1._wp - roce_alb0)*rad_sw, prad_lw=rad_lw, pslp=SLP,        &
+               &             pCdN=zCdN, pChN=zChN, pCeN=zCeN,                               &
+               &             pz0=zz0, pu_star=zus, pL=zL, pUN10=zUN10)
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
             CALL TURB_ECMWF( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &             Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                               &
-               &             xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10)
+               &             pCdN=zCdN, pChN=zChN, pCeN=zCeN,                               &
+               &             pz0=zz0, pu_star=zus, pL=zL, pUN10=zUN10)
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
 
@@ -397,7 +397,7 @@ PROGRAM AEROBULK_TOY
       vT_u(ialgo) =  t_zu(1,1) -rt0 
 
       !! So what is the saturation at t_zu then ???
-      vQu_sane(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
+      vQu_sat(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
       vQu(ialgo)  =  q_zu(1,1)
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
@@ -474,7 +474,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
    WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
    WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1.E3*vQu, 4)       , '[g/kg]'
-   WRITE(6,*) '    q_',TRIM(czu),'_sane=   ', REAL(1.E3*vQu_sane, 4)  , '[g/kg]'
+   WRITE(6,*) '    q_',TRIM(czu),'_sat =   ', REAL(1.E3*vQu_sat, 4)  , '[g/kg]'
    WRITE(6,*) ''
    WRITE(6,*) '      SSQ     =   ', REAL(1.E3*qs(1,1), 4)             , '[g/kg]'
    WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
@@ -483,7 +483,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) '    Ug (gust) =   ', REAL(vUg, 4)                       , '[m/s]'
    WRITE(6,*) ''
 
-   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sane = ', REAL(1.E3*vQu_sane, 4), '[g/kg]'
+   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sat = ', REAL(1.E3*vQu_sat, 4), '[g/kg]'
    PRINT *, ''
 
    WRITE(6,*) ''

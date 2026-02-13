@@ -157,7 +157,7 @@ CONTAINS
          IF( l_use_skin_schemes ) THEN
             CALL TURB_ECMWF ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE.,  &
                &              zCd, zCh, zCe, zThtzu, zQzu, zUblk,      &
-               &              Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp  )
+               &              pQsw=(1._wp - roce_alb0)*rad_sw, prad_lw=rad_lw, pslp=slp  )
          ELSE
             CALL TURB_ECMWF ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .FALSE., .FALSE.,  &
                &              zCd, zCh, zCe, zThtzu, zQzu, zUblk)
