@@ -1083,8 +1083,8 @@ CONTAINS
       !
       REAL(wp) :: zdt, zdq, zCd, zCh, zCe, zz0, zQlat, zQsen, zQlw
       !!----------------------------------------------------------------------------------
-      zdt = pThta - pts ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-      zdq = pqa - pqs ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      zdt = pThta - pts ;  zdt = SIGN( MAX(ABS(zdt),1.E-09_wp), zdt )
+      zdq = pqa   - pqs ;  zdq = SIGN( MAX(ABS(zdq),1.E-12_wp), zdq )
       zz0 = pust/pUb
       zCd = zz0*zz0
       zCh = zz0*ptst/zdt

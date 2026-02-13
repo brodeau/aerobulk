@@ -108,8 +108,8 @@ CONTAINS
       zc_b = 0.004_wp*zzi0*zBeta0*zBeta0*zBeta0
 
       !! Air-sea differences (and we don't want them to be 0...)
-      zdt = t_zu - psst ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-      zdq = q_zu - pssq ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+      zdt = t_zu - psst ;   zdt = SIGN( MAX(ABS(zdt),1.E-09_wp), zdt )
+      zdq = q_zu - pssq ;   zdq = SIGN( MAX(ABS(zdq),1.E-12_wp), zdq )
 
       zNu_a = visc_air(t_zu) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
@@ -158,8 +158,8 @@ CONTAINS
          q_zu = (0.5_wp + SIGN(0.5_wp,q_zu))*q_zu ! prevents negative humidity...
          !!
          !! Update of theta and q air-sea differences and theta*, q* :
-         zdt = t_zu - psst  ; zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-         zdq = q_zu - pssq  ; zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+         zdt = t_zu - psst  ; zdt = SIGN( MAX(ABS(zdt),1.E-09_wp), zdt )
+         zdq = q_zu - pssq  ; zdq = SIGN( MAX(ABS(zdq),1.E-12_wp), zdq )
          zts = zdt*ztmp
          zqs = zdq*ztmp
       ENDIF

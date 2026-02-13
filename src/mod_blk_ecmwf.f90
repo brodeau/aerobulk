@@ -191,22 +191,22 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      INTEGER,  INTENT(in   )                 ::   kt       ! current time step
-      REAL(wp), INTENT(in   )                 ::   zt       ! height for pt_zt and pq_zt                    [m]
-      REAL(wp), INTENT(in   )                 ::   zu       ! height for pU_zu                             [m]
-      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   pT_s      ! sea surface temperature                [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pt_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   pq_s      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pq_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pU_zu     ! relative wind module at zu                [m/s]
-      LOGICAL , INTENT(in   )                 ::   l_use_cs ! use the cool-skin parameterization
-      LOGICAL , INTENT(in   )                 ::   l_use_wl ! use the warm-layer parameterization
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCh       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCe       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pt_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pq_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pUbzu    ! bulk wind speed at zu                     [m/s]
+      INTEGER,  INTENT(in   )                     ::   kt       ! current time step
+      REAL(wp), INTENT(in   )                     ::   zt       ! height for pt_zt and pq_zt                [m]
+      REAL(wp), INTENT(in   )                     ::   zu       ! height for pU_zu                          [m]
+      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   pT_s     ! sea surface temperature              [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pt_zt    ! potential air temperature            [Kelvin]
+      REAL(wp), INTENT(inout), DIMENSION(:,:) ::   pq_s     ! sea surface specific humidity         [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pq_zt    ! specific air humidity at zt           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pU_zu    ! relative wind module at zu              [m/s]
+      LOGICAL , INTENT(in   )                     ::   l_use_cs ! use the cool-skin parameterization
+      LOGICAL , INTENT(in   )                     ::   l_use_wl ! use the warm-layer parameterization
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCd      ! transfer coefficient for momentum         [-]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCh      ! transfer coefficient for sensible heat    [-]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCe      ! transfert coefficient for evaporation     [-]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pt_zu    ! pot. air temp. adjusted at zu             [K]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pq_zu    ! spec. humidity adjusted at zu         [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pUbzu    ! bulk wind speed at zu                   [m/s]
       !
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   pQsw      !             [W/m^2]
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   prad_lw   !             [W/m^2]
@@ -224,7 +224,8 @@ CONTAINS
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pUN10  ! Neutral wind at zu
       !!----------------------------------------------------------------------------------
       LOGICAL  :: l_skin
-      INTEGER  :: Ni, Nj, ji, jj, jit
+      INTEGER  :: Ni, Nj
+      INTEGER  :: ji, jj, jit
       REAL(wp) :: zdum, zm_ztzu                ! => `1.` if `zu /= zt`, `0.` otherwize
       !
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: xSST     ! to back up the initial bulk SST
@@ -297,8 +298,8 @@ CONTAINS
             znu_a   = visc_air(zt_zt) ! Air viscosity (m^2/s) at zt given from temperature in (K)
 
             !! Pot. temp. difference (and we don't want it to be 0!)
-            zdt = zt_zu - zT_s ;   zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-            zdq = zq_zu - zq_s ;   zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
+            zdt = zt_zu - zT_s ;   zdt = SIGN( MAX(ABS(zdt),1.E-09_wp), zdt )
+            zdq = zq_zu - zq_s ;   zdq = SIGN( MAX(ABS(zdq),1.E-12_wp), zdq )
 
             !! First guess of inverse of Obukov length (1/L) :
             z1oL    = One_on_L( zt_zu, zq_zu, zus, zts, zqs )
@@ -351,22 +352,20 @@ CONTAINS
                zpsi_h_z0q  = psi_h_ecmwf_sclr(zz0q*z1oL)  !              "                           "
 
 
-               !! Update wind at zu with convection-related wind gustiness in unstable conditions (Chap. 3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
-               ztmp0 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, hap.3, IFS doc - Cy31r1)
+               !! Update wind@zu / convection-related wind gustiness in unst. cond. (C.3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
+               ztmp0 = Beta0*Beta0*zus2*(MAX(-zi0*z1oL/vkarmn,0._wp))**(2._wp/3._wp) ! square of wind gustiness contribution  (combining Eq. 3.8 and 3.18, C.3, IFS doc - Cy31r1)
                !!   ! Only true when unstable (L<0) => when zRib < 0 => explains "-" before zi0
                zUbzu = MAX(SQRT(zUzu*zUzu + ztmp0), 0.2_wp)        ! include gustiness in bulk wind speed
                ! => 0.2 prevents pUbzu to be 0 in stable case when pU_zu=0.
 
 
-               !! Need to update "theta" and "q" at zu in case they are given at different heights
-               !! as well the air-sea differences:
+               !! Shifting temperature and humidity at zu if required by `zm_ztzu`:
                ztmp0 = zpsi_h_u - zpsi_h_z0t
                ztmp1 = vkarmn/(zlog_zu - zlog_z0t - ztmp0)
                zts   = zdt*ztmp1
                ztmp1 = zlog_ztu + ztmp0 - zpsi_h_t + zpsi_h_z0t
                zt_zu = zt_zt - zm_ztzu*zts/vkarmn*ztmp1
-
-               zpsi_h_z0q  = zpsi_h_z0q
+               !
                ztmp0  = zpsi_h_u - zpsi_h_z0q
                ztmp1  = vkarmn/(zlog_zu - zlog_z0q - ztmp0)
                zqs    = zdq*ztmp1
@@ -400,10 +399,8 @@ CONTAINS
                   zq_s = rdct_qsat_salt*q_sat(MAX(zT_s, 200._wp), pslp(ji,jj))
                ENDIF
 
-               !IF( l_use_cs .OR. l_use_wl .OR. (.NOT. l_zt_equal_zu) ) THEN
-               zdt = zt_zu - zT_s ;  zdt = SIGN( MAX(ABS(zdt),1.E-6_wp), zdt )
-               zdq = zq_zu - zq_s ;  zdq = SIGN( MAX(ABS(zdq),1.E-9_wp), zdq )
-               !ENDIF
+               zdt = zt_zu - zT_s ;  zdt = SIGN( MAX(ABS(zdt),1.E-09_wp), zdt )
+               zdq = zq_zu - zq_s ;  zdq = SIGN( MAX(ABS(zdq),1.E-12_wp), zdq )
 
             END DO !DO jit = 1, nb_iter
 
@@ -607,6 +604,6 @@ CONTAINS
       !
       pzeta = zta
    END SUBROUTINE cap_zeta
-
    !!======================================================================
+
 END MODULE mod_blk_ecmwf
