@@ -30,21 +30,12 @@ MODULE mod_blk_ecmwf
    !!            Author: Laurent Brodeau, July 2019
    !!
    !!====================================================================================
-   USE mod_const       !: physical and othe constants
-   USE mod_phymbl      !: thermodynamics
-   USE mod_skin_ecmwf  !: cool-skin & warm-layer parameterizations of
-   !                   !: Zeng and Beljaars, 1995 WITH update from Takaya et al. 2010...
+   USE mod_const        !: physical and othe constants
+   USE mod_phymbl       !: thermodynamics
    USE mod_common_coare, ONLY : FIRST_GUESS_COARE
+   USE mod_skin_ecmwf   !: cool-skin & warm-layer parameterizations
 
    IMPLICIT NONE
-
-   INTERFACE psi_m_ecmwf
-      MODULE PROCEDURE psi_m_ecmwf_vctr, psi_m_ecmwf_sclr
-   END INTERFACE psi_m_ecmwf
-
-   INTERFACE psi_h_ecmwf
-      MODULE PROCEDURE psi_h_ecmwf_vctr, psi_h_ecmwf_sclr
-   END INTERFACE psi_h_ecmwf
 
    PRIVATE
 
@@ -66,63 +57,11 @@ MODULE mod_blk_ecmwf
 CONTAINS
 
 
-   SUBROUTINE ECMWF_INIT(nx, ny, l_use_wl)
-      !!---------------------------------------------------------------------
-      !!                  ***  FUNCTION ecmwf_init  ***
-      !!
-      !! INPUT :
-      !! -------
-      !!    * l_use_wl : use the warm-layer parameterization
-      !!---------------------------------------------------------------------
-      INTEGER, INTENT(in) :: nx, ny   ! shape of the domain
-      LOGICAL, INTENT(in) :: l_use_wl ! use the warm-layer parameterization
-      INTEGER :: ierr
-      !!---------------------------------------------------------------------
-      IF( l_use_wl ) THEN
-         ierr = 0
-         ALLOCATE ( dT_wl(nx,ny), Hz_wl(nx,ny), STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
-         dT_wl(:,:)  = 0._wp
-         Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
-      ENDIF
-      !IF( l_use_cs ) THEN
-      !   ierr = 0
-      !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of dT_cs failed!' )
-      !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
-      !ENDIF
-   END SUBROUTINE ECMWF_INIT
 
-   SUBROUTINE ECMWF_EXIT(l_use_wl)
-      !!---------------------------------------------------------------------
-      !!                  ***  FUNCTION ecmwf_exit  ***
-      !!
-      !! INPUT :
-      !! -------
-      !!    * l_use_wl : use the warm-layer parameterization
-      !!---------------------------------------------------------------------
-      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
-      INTEGER :: ierr
-      !!---------------------------------------------------------------------
-      IF( l_use_wl ) THEN
-         ierr = 0
-         DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
-         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
-      ENDIF
-      !IF( l_use_cs ) THEN
-      !   ierr = 0
-      !   DEALLOCATE ( dT_cs, STAT=ierr )
-      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of dT_cs failed!' )
-      !ENDIF
-   END SUBROUTINE ECMWF_EXIT
-
-
-
-
-   SUBROUTINE turb_ecmwf( kt, zt, zu, pT_s, pt_zt, pq_s, pq_zt, pU_zu, l_use_cs, l_use_wl, &
-      &                       pCd, pCh, pCe, pt_zu, pq_zu, pUbzu,                          &
-      &                       pQsw, prad_lw, pslp, pdT_cs,                                 & ! optionals for cool-skin (and warm-layer)
-      &                       pdT_wl, pHz_wl,                                              & ! optionals for warm-layer only
+   SUBROUTINE turb_ecmwf( kt, zt, zu, pT_s, pt_zt, pq_s, pq_zt, pU_zu, l_use_cs, l_use_wl,    &
+      &                       pCd, pCh, pCe, pt_zu, pq_zu, pUbzu,                             &
+      &                       pQsw, prad_lw, pslp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
+      &                       pdT_wl, pHz_wl,                                                 & ! optionals for warm-layer only
       &                       pCdN, pChN, pCeN, pz0, pu_star, pL, pUN10 )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
@@ -269,8 +208,7 @@ CONTAINS
 
       ALLOCATE ( xSST(Ni,Nj) )
       xSST = pT_s
-      IF( l_skin ) THEN         
-         !xSST = pT_s ! backing up the bulk SST
+      IF( l_skin ) THEN
          IF( l_use_cs ) pT_s = pT_s - 0.25_wp   ! First guess of correction
          pq_s    = rdct_qsat_salt*q_sat(MAX(pT_s, 200._wp), pslp) ! First guess of pq_s
       ENDIF
@@ -310,9 +248,9 @@ CONTAINS
             zlog_z0t = LOG(zz0t)
 
             !! Functions such as  u* = pUbzu*vkarmn/zFm
-            zFm = zlog_zu - zlog_z0  - psi_m_ecmwf_sclr(zzeta_u) + psi_m_ecmwf_sclr( zz0*z1oL)
-            zpsi_h_u = psi_h_ecmwf_sclr(zzeta_u)
-            zFh = zlog_zu - zlog_z0t - zpsi_h_u + psi_h_ecmwf_sclr(zz0t*z1oL)
+            zFm = zlog_zu - zlog_z0  - psi_m_ecmwf(zzeta_u) + psi_m_ecmwf( zz0*z1oL)
+            zpsi_h_u = psi_h_ecmwf(zzeta_u)
+            zFh = zlog_zu - zlog_z0t - zpsi_h_u + psi_h_ecmwf(zz0t*z1oL)
 
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
@@ -326,14 +264,14 @@ CONTAINS
                z1oL   = SIGN( MIN(ABS(z1oL),200._wp), z1oL ) ! (prevent FPE from stupid values from masked region later on...)
 
                zzeta_u  = zu*z1oL
-               zpsi_m_u = psi_m_ecmwf_sclr(zzeta_u)
-               zpsi_h_u = psi_h_ecmwf_sclr(zzeta_u)
+               zpsi_m_u = psi_m_ecmwf(zzeta_u)
+               zpsi_h_u = psi_h_ecmwf(zzeta_u)
 
                zzeta_t  = zt*z1oL
-               zpsi_h_t = psi_h_ecmwf_sclr(zzeta_t)
+               zpsi_h_t = psi_h_ecmwf(zzeta_t)
 
                !! Update zFm with new z1oL:
-               zFm = zlog_zu -zlog_z0 - zpsi_m_u + psi_m_ecmwf_sclr(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
+               zFm = zlog_zu -zlog_z0 - zpsi_m_u + psi_m_ecmwf(zz0*z1oL) ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
 
                !! Need to update roughness lengthes:
                zus = zUbzu*vkarmn/zFm
@@ -347,9 +285,9 @@ CONTAINS
                zlog_z0t = LOG(zz0t)
                zlog_z0q = LOG(zz0q)
 
-               zpsi_m_z0   = psi_m_ecmwf_sclr(zz0 *z1oL)  ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
-               zpsi_h_z0t  = psi_h_ecmwf_sclr(zz0t*z1oL)  !              "                           "
-               zpsi_h_z0q  = psi_h_ecmwf_sclr(zz0q*z1oL)  !              "                           "
+               zpsi_m_z0   = psi_m_ecmwf(zz0 *z1oL)  ! LB: should be "zu+z0" rather than "zu" alone, but z0 is tiny wrt zu!
+               zpsi_h_z0t  = psi_h_ecmwf(zz0t*z1oL)  !              "                           "
+               zpsi_h_z0q  = psi_h_ecmwf(zz0q*z1oL)  !              "                           "
 
 
                !! Update wind@zu / convection-related wind gustiness in unst. cond. (C.3.2, IFS doc - Cy40r1, Eq.3.17 and Eq.3.18 + Eq.3.8)
@@ -359,7 +297,7 @@ CONTAINS
                ! => 0.2 prevents pUbzu to be 0 in stable case when pU_zu=0.
 
 
-               !! Shifting temperature and humidity at zu if required by `zm_ztzu`:
+               !! Adjusting temperature and humidity at zu if required by `zm_ztzu`:
                ztmp0 = zpsi_h_u - zpsi_h_z0t
                ztmp1 = vkarmn/(zlog_zu - zlog_z0t - ztmp0)
                zts   = zdt*ztmp1
@@ -393,7 +331,7 @@ CONTAINS
                   CALL UPDATE_QNSOL_TAU( zu, zT_s, zq_s, zt_zu, zq_zu, zus, zts, zqs, zUzu, zUbzu, &
                      &                   pslp(ji,jj), prad_lw(ji,jj), zQns, ztmp0)  ! Tau -> ztmp0
                   CALL WL_ECMWF( ji, jj, pQsw(ji,jj), zQns, zus, zSST )
-                  !! Updating T_s and pq_s !!!
+                  !! Updating pT_s and pq_s !!!
                   zT_s = zSST + dT_wl(ji,jj)
                   IF( l_use_cs ) zT_s = zT_s + zdT_cs
                   zq_s = rdct_qsat_salt*q_sat(MAX(zT_s, 200._wp), pslp(ji,jj))
@@ -414,7 +352,6 @@ CONTAINS
 
             ! compute transfer coefficients at zu :
             zFq = zlog_zu - zlog_z0q - zpsi_h_u + zpsi_h_z0q
-
             pCd(ji,jj) = MAX( vkarmn2/(zFm*zFm) , Cx_min )
             pCh(ji,jj) = MAX( vkarmn2/(zFm*zFh) , Cx_min )
             pCe(ji,jj) = MAX( vkarmn2/(zFm*zFq) , Cx_min )
@@ -437,15 +374,69 @@ CONTAINS
       IF( l_use_wl .AND. PRESENT(pdT_wl) ) pdT_wl = dT_wl
       IF( l_use_wl .AND. PRESENT(pHz_wl) ) pHz_wl = Hz_wl
 
-      IF( l_use_cs .OR. l_use_wl ) DEALLOCATE ( xSST )
+      DEALLOCATE ( xSST )
 
       IF( kt == nitend ) CALL ECMWF_EXIT( l_use_wl )
 
    END SUBROUTINE turb_ecmwf
 
 
+
+   SUBROUTINE ECMWF_INIT(nx, ny, l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION ecmwf_init  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      INTEGER, INTENT(in) :: nx, ny   ! shape of the domain
+      LOGICAL, INTENT(in) :: l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF( l_use_wl ) THEN
+         ierr = 0
+         ALLOCATE ( dT_wl(nx,ny), Hz_wl(nx,ny), STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+         dT_wl(:,:)  = 0._wp
+         Hz_wl(:,:)  = rd0 ! (rd0, constant, = 3m is default for Zeng & Beljaars)
+      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   ALLOCATE ( dT_cs(nx,ny), STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_INIT => allocation of dT_cs failed!' )
+      !   dT_cs(:,:) = -0.25_wp  ! First guess of skin correction
+      !ENDIF
+   END SUBROUTINE ECMWF_INIT
+
+   SUBROUTINE ECMWF_EXIT(l_use_wl)
+      !!---------------------------------------------------------------------
+      !!                  ***  FUNCTION ecmwf_exit  ***
+      !!
+      !! INPUT :
+      !! -------
+      !!    * l_use_wl : use the warm-layer parameterization
+      !!---------------------------------------------------------------------
+      LOGICAL , INTENT(in) ::   l_use_wl ! use the warm-layer parameterization
+      INTEGER :: ierr
+      !!---------------------------------------------------------------------
+      IF( l_use_wl ) THEN
+         ierr = 0
+         DEALLOCATE ( dT_wl, Hz_wl, STAT=ierr )
+         IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of Tau_ac, Qnt_ac, dT_wl & Hz_wl failed!' )
+      ENDIF
+      !IF( l_use_cs ) THEN
+      !   ierr = 0
+      !   DEALLOCATE ( dT_cs, STAT=ierr )
+      !   IF( ierr > 0 ) CALL ctl_stop( ' '//clbl//'_EXIT => deallocation of dT_cs failed!' )
+      !ENDIF
+   END SUBROUTINE ECMWF_EXIT
+
+
+
+
    !!===============================================================================================
-   FUNCTION psi_m_ecmwf_sclr( pzeta )
+   FUNCTION psi_m_ecmwf( pzeta )
       !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!     ECMWF / as in IFS cy31r1 documentation, available online
@@ -457,7 +448,7 @@ CONTAINS
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!--------------------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_m_ecmwf_sclr
+      REAL(wp)             :: psi_m_ecmwf
       !!
       REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
@@ -478,48 +469,16 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_m_ecmwf_sclr =         zstab    * zpsi_stab &  ! (zta > 0) Stable
+      psi_m_ecmwf =         zstab    * zpsi_stab &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
       !
-   END FUNCTION psi_m_ecmwf_sclr
+   END FUNCTION psi_m_ecmwf
 
-   FUNCTION psi_m_ecmwf_vctr( pzeta )
-      !!--------------------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ecmwf_vctr
-      INTEGER  ::   ji, jj    ! dummy loop indices
-      REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
-      !!--------------------------------------------------------------------------------------------
-      zc = 5._wp/0.35_wp
-      !
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-
-            zta = pzeta(ji,jj)
-            CALL cap_zeta( zta )
-
-            ! *** Unstable (Paulson 1970)    [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
-            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 - 16z)^0.5
-            zx  = SQRT(zx2)                          ! (1 - 16z)^0.25
-            ztmp = 1._wp + zx
-            zpsi_unst = LOG( 0.125_wp*ztmp*ztmp*(1._wp + zx2) ) - 2._wp*ATAN( zx ) + 0.5_wp*rpi
-
-            ! *** Stable                   [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
-            zpsi_stab = -2._wp/3._wp*(zta - zc)*EXP(-0.35_wp*zta) &
-               &       - zta - 2._wp/3._wp*zc
-            !
-            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
-            !
-            psi_m_ecmwf_vctr(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
-         END DO
-      END DO
-   END FUNCTION psi_m_ecmwf_vctr
    !!===============================================================================================
 
 
    !!===============================================================================================
-   FUNCTION psi_h_ecmwf_sclr( pzeta )
+   FUNCTION psi_h_ecmwf( pzeta )
       !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!     ECMWF / as in IFS cy31r1 documentation, available online
@@ -531,7 +490,7 @@ CONTAINS
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!--------------------------------------------------------------------------------------------
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_h_ecmwf_sclr
+      REAL(wp)             :: psi_h_ecmwf
       !!
       REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
@@ -551,43 +510,11 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_h_ecmwf_sclr =        zstab     * zpsi_stab   &  ! (zta > 0) Stable
+      psi_h_ecmwf =        zstab     * zpsi_stab   &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst      ! (zta < 0) Unstable
       !
-   END FUNCTION psi_h_ecmwf_sclr
+   END FUNCTION psi_h_ecmwf
 
-   FUNCTION psi_h_ecmwf_vctr( pzeta )
-      !!--------------------------------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:), INTENT(in) :: pzeta
-      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ecmwf_vctr
-      INTEGER  ::   ji, jj     ! dummy loop indices
-      REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
-      !!--------------------------------------------------------------------------------------------
-      zc = 5._wp/0.35_wp
-      !
-      DO jj = 1, SIZE(pzeta,2)
-         DO ji = 1, SIZE(pzeta,1)
-
-            zta = pzeta(ji,jj)
-            CALL cap_zeta( zta )
-
-            ! *** Unstable (Paulson 1970)   [eq.3.20, Chap.3, p.33, IFS doc - Cy31r1] :
-            zx2 = SQRT( ABS(1._wp - 16._wp*zta) )  ! (1 -16z)^0.5
-            zpsi_unst = 2._wp*LOG( 0.5_wp*(1._wp + zx2) )
-            !
-            ! *** Stable [eq.3.22, Chap.3, p.33, IFS doc - Cy31r1] :
-            zpsi_stab = -2._wp/3._wp*(zta - zc)*EXP(-0.35_wp*zta) &
-               &       - ABS(1._wp + 2._wp/3._wp*zta)**1.5_wp - 2._wp/3._wp*zc + 1._wp
-            !
-            ! LB: added ABS() to avoid NaN values when unstable, which contaminates the unstable solution...
-            !
-            zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
-            !
-            psi_h_ecmwf_vctr(ji,jj) =         zstab  * zpsi_stab &  ! (zta > 0) Stable
-               &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
-         END DO
-      END DO
-   END FUNCTION psi_h_ecmwf_vctr
    !!===============================================================================================
 
    SUBROUTINE cap_zeta( pzeta )

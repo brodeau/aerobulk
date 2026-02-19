@@ -326,16 +326,16 @@ PROGRAM AEROBULK_TOY
          IF ( l_use_coolsk ) THEN
             CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=SLP,        &
-               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
-               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+               &                pQsw=(1._wp - roce_alb0)*rad_sw, prad_lw=rad_lw, pslp=SLP,        &
+               &                pCdN=zCdN, pChN=zChN, pCeN=zCeN,                                  &
+               &                pz0=zz0, pu_star=zus, pL=zL, pUN10=zUN10 )
 
             !! => Ts and qs are updated wrt to skin temperature !
          ELSE
             CALL TURB_COARE3P0( 1, zt, zu, Ts, theta_zt, qs, q_zt, W10, l_use_coolsk, .FALSE., &
                &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,                              &
-               &                CdN=zCdN, ChN=zChN, CeN=zCeN,                                  &
-               &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+               &                pCdN=zCdN, pChN=zChN, pCeN=zCeN,                                  &
+               &                pz0=zz0, pu_star=zus, pL=zL, pUN10=zUN10 )
             !! => Ts and qs are not updated: Ts=sst and qs=ssq
          END IF
 

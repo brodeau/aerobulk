@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 ./bin/test_aerobulk_oce+ice.x <<EOF
 10
 2
