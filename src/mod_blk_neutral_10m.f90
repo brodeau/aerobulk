@@ -63,7 +63,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::   CeN10       ! transfert coefficient for evaporation   (Q_lat)
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::   pz0          ! roughness length [m]
 
-      INTEGER :: Ni, Nj, jit
+      INTEGER :: Ni, Nj, jit, ji, jj
 
       REAL(wp), DIMENSION(:,:), ALLOCATABLE  :: u_star, z0t, z0q, Ub, ztmp0, ztmp1
       !!===================================================================================
@@ -95,7 +95,11 @@ CONTAINS
                ztmp0 = charn_coare3p6(Ub)
 
             ELSEIF ( TRIM(calgo) == 'coare3p0' ) THEN
-               ztmp0 = charn_coare3p0(Ub)
+               DO jj = 1, Nj
+                  DO ji = 1, Ni
+                     ztmp0(ji,jj) = charn_coare3p0( Ub(ji,jj) )
+                  END DO
+               END DO
 
             ELSEIF ( TRIM(calgo) == 'ecmwf' ) THEN
                ztmp0 = charn0_ecmwf

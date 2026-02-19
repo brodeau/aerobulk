@@ -132,7 +132,8 @@ CONTAINS
          IF( l_use_skin_schemes ) THEN
             CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE., &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
-               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
+               &                pQsw=(1._wp - roce_alb0)*rad_sw, prad_lw=rad_lw, pslp=slp, &
+               &                isecday_utc=12, plong=ztmp  )
          ELSE
             CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .FALSE., .FALSE.,  &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk )
