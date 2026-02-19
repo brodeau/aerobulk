@@ -14,16 +14,13 @@ MODULE mod_blk_coare3p0
    !!       Computes turbulent bulk transfer coefficients according to:
    !!           * Fairall et al., 2003
    !!
-   !!======================================================================================================================
-   !!
-   !!
    !!         "THE TOGA-COARE BULK AIR-SEA FLUX ALGORITHM"
    !!
    !!       With Cool-Skin and Warm-Layer correction of SST (if needed)
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: Ubzu (including gustiness contribution in unstable conditions)
+   !!   * the "effective" bulk wind speed at zu: pUbzu (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!       Routine turb_coare3p0 maintained and developed in AeroBulk
@@ -49,18 +46,18 @@ MODULE mod_blk_coare3p0
    REAL(wp), PARAMETER :: zi0   = 600._wp     ! scale height of the atmospheric boundary layer...
    REAL(wp), PARAMETER :: Beta0 =  1.25_wp    ! gustiness parameter
    REAL(wp), PARAMETER :: zeta_abs_max = 50._wp
-   !!----------------------------------------------------------------------
+
 CONTAINS
 
 
 
    SUBROUTINE turb_coare3p0( kt, zt, zu, pT_s, pt_zt, pq_s, pq_zt, pU_zu, l_use_cs, l_use_wl, &
       &                       pCd, pCh, pCe, pt_zu, pq_zu, pUbzu,                             &
-      &                       pQsw, prad_lw, pslp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                       isecday_utc, plong,                                             & ! optionals for warm-layer only
-      &                       pdT_wl, pHz_wl,                                                 & ! optionals for warm-layer only
+      &                       pQsw, prad_lw, pslp, pdT_cs,                                    & ! opt. cool-skin & warm-layer
+      &                       isecday_utc, plong,                                             & ! opt. warm-layer only
+      &                       pdT_wl, pHz_wl,                                                 & ! opt. warm-layer only
       &                       pCdN, pChN, pCeN, pz0, pu_star, pL, pUN10 )
-      !!----------------------------------------------------------------------
+      !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_coare3p0  ***
       !!
       !! ** Purpose :   Computes turbulent transfert coefficients of surface
@@ -100,7 +97,7 @@ CONTAINS
       !!    *  prad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
       !!    *  pslp    : sea-level pressure                                    [Pa]
       !!    * isecday_utc:
-      !!    *  plong  : longitude array                                       [deg.E]
+      !!    *  plong   : longitude array                                       [deg.E]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
@@ -151,7 +148,7 @@ CONTAINS
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   pslp      !             [Pa]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pdT_cs
       !
-      INTEGER,  INTENT(in   ), OPTIONAL                     ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
+      INTEGER,  INTENT(in   ), OPTIONAL                 ::   isecday_utc ! current UTC time, counted in second since 00h of the current day
       REAL(wp), INTENT(in   ), OPTIONAL, DIMENSION(:,:) ::   plong    !             [deg.E]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pdT_wl   !             [K]
       REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pHz_wl   !             [m]
@@ -269,8 +266,8 @@ CONTAINS
                !! Adjustment the wind at 10m (not needed in the current algo form):
                !IF( zu \= 10._wp ) U10 = pU_zu + zus/vkarmn*(LOG(10._wp/zu) - psi_m_coare(10._wp*z1oL) + psi_m_coare(zzta_u))
 
-               !! Roughness lengthes z0, z0t (z0q = z0t) :
-               zUn10 = zus/vkarmn*(zlog_10 - zlog_z0)       ! Neutral wind speed at 10m
+               !! Roughness lengthes z0, z0t (z0q = z0t):
+               zUn10 = zus/vkarmn*(zlog_10 - zlog_z0)         ! Neutral wind speed at 10m
                zz0    = charn_coare3p0(zUn10)*zus2/grav + 0.11_wp*znu_a/zus ! Roughness length (eq.6)
                zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )  ! (prevents FPE from stupid values from masked region later on)
                zlog_z0 = LOG(zz0)

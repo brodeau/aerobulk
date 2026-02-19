@@ -18,11 +18,8 @@ MODULE mod_blk_ecmwf
    !!
    !!   * bulk transfer coefficients C_D, C_E and C_H
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: pUbzu
+   !!   * the "effective" bulk wind speed at zu: pUbzu (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
-   !!
-   !!    Using the bulk formulation/param. of ECMWF
-   !!      + consideration of cool-skin warm layer parametrization (CS: Fairall et al. 1996; WL: Zeng & Beljaars, 2005 )
    !!
    !!       Routine turb_ecmwf maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
@@ -52,16 +49,14 @@ MODULE mod_blk_ecmwf
    REAL(wp), PARAMETER ::   alpha_H = 0.40    ! (Chapter 3, p.34, IFS doc Cy31r1)
    REAL(wp), PARAMETER ::   alpha_Q = 0.62    !
 
-
-   !!----------------------------------------------------------------------
 CONTAINS
 
 
 
-   SUBROUTINE turb_ecmwf( kt, zt, zu, pT_s, pt_zt, pq_s, pq_zt, pU_zu, l_use_cs, l_use_wl,    &
+   SUBROUTINE turb_ecmwf(    kt, zt, zu, pT_s, pt_zt, pq_s, pq_zt, pU_zu, l_use_cs, l_use_wl, &
       &                       pCd, pCh, pCe, pt_zu, pq_zu, pUbzu,                             &
-      &                       pQsw, prad_lw, pslp, pdT_cs,                                    & ! optionals for cool-skin (and warm-layer)
-      &                       pdT_wl, pHz_wl,                                                 & ! optionals for warm-layer only
+      &                       pQsw, prad_lw, pslp, pdT_cs,                                    & ! opt. cool-skin & warm-layer
+      &                       pdT_wl, pHz_wl,                                                 & ! opt. warm-layer only
       &                       pCdN, pChN, pCeN, pz0, pu_star, pL, pUN10 )
       !!----------------------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_ecmwf  ***
