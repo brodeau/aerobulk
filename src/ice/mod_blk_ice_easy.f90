@@ -13,20 +13,21 @@ MODULE mod_blk_ice_easy
    !!
    !!   What is the "EASY" algorithm ?
    !!    => Given a constant value for the neutral coefficients C_D_N, C_E_N and C_H_N over sea-ice
-   !!       C_D, C_E and C_H consistent with the near-surface atmospheric stability
-   !!    ==> which is already a better option than using a constant value for C_D, C_E and C_H as in
+   !!       it will commpute the C_D, C_E and C_H consistent with the near-surface atmospheric stability
+   !!    ==> which is already a better approach than using a constant value for C_D, C_E and C_H as in
    !!        the default (and simplest) option in NEMO for instance.
-   !!    ==> the only room for XXX is the pick of the stability functions: we use those of Andreas 2005 for now...
+   !!    ==> the only room for improvement is the pick of the stability functions: we use those of Andreas 2005 for now...
    !!
-   !!   * bulk transfer coefficients C_D, C_E and C_H
+   !! What it computes:
+   !!   * bulk transfer coefficients C_D, C_E and C_H over sea-ice
    !!   * air temp. and spec. hum. adjusted from zt (usually 2m) to zu (usually 10m) if needed
-   !!   * the "effective" bulk wind speed at zu: Ubzu (including gustiness contribution in unstable conditions)
+   !!   * the "effective" bulk wind speed at zu: Ub (including gustiness contribution in unstable conditions)
    !!   => all these are used in bulk formulas in sbcblk.F90
    !!
    !!       Routine turb_ice_easy maintained and developed in AeroBulk
    !!                     (https://github.com/brodeau/aerobulk/)
    !!
-   !!            Author: Laurent Brodeau, July 2023
+   !!            Author: Laurent Brodeau, Summer 2023
    !!
    !!====================================================================================
    USE mod_const       !: physical and other constants
@@ -157,7 +158,7 @@ CONTAINS
          !! Air-Ice differences:
          dt_zu(:,:) = t_zu_i - Ts_i ; !  dt_zu = SIGN( MAX(ABS(dt_zu),1.E-6_wp), dt_zu ) ; !RM 2nd part!!!
          dq_zu(:,:) = q_zu_i - qs_i ; !  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
-         
+
          !! Now we can get the urbulent scales:
          ztmp0(:,:)  = SQRT(Cd_i(:,:)) ; ! == u*/Ubzu
          u_star = ztmp0(:,:) * Ubzu(:,:)
@@ -168,7 +169,7 @@ CONTAINS
          !!Inverse of Obukov length (1/L) :
          ztmp0(:,:) = One_on_L(t_zu_i, q_zu_i, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
          ztmp0(:,:) = SIGN( MIN(ABS(ztmp0(:,:)),200._wp), ztmp0(:,:) ) ! (prevents FPE from stupid values from masked region later on...)
-         
+
          !! Stability parameters "zeta" :
          zeta_u(:,:) = zu*ztmp0(:,:)
          zeta_u(:,:) = SIGN( MIN(ABS(zeta_u(:,:)),50.0_wp), zeta_u(:,:) )
@@ -176,7 +177,7 @@ CONTAINS
             zeta_t(:,:) = zt*ztmp0(:,:)
             zeta_t(:,:) = SIGN( MIN(ABS(zeta_t(:,:)),50.0_wp), zeta_t(:,:) )
          END IF
-         
+
          !! Update C_D:
          ztmp0(:,:) = 1._wp + zsqrtCDN/vkarmn*(zlog2 - psi_m_ice(zeta_u(:,:)))
          Cd_i(:,:)  = MIN( MAX( CdN / ( ztmp0(:,:)*ztmp0(:,:) ), Cx_min ) , 1.9E-3_wp )
@@ -193,10 +194,10 @@ CONTAINS
             t_zu_i(:,:) =            t_zt(:,:) - t_star(:,:)/vkarmn*ztmp0(:,:)
             q_zu_i(:,:) = MAX(0._wp, q_zt(:,:) - q_star(:,:)/vkarmn*ztmp0(:,:) )
          END IF
-         
+
       END DO !DO jit = 1, nb_iter
 
-      
+
       IF( lreturn_z0 )    xz0 = z0_from_Cd( zu, Cd_i(:,:), ppsi=psi_m_ice(zeta_u(:,:)) )
       IF( lreturn_ustar ) xu_star = u_star
       IF( lreturn_L )     xL      = 1./One_on_L(t_zu_i, q_zu_i, u_star, t_star, q_star)
