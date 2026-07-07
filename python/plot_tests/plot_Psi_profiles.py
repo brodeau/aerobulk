@@ -21,8 +21,8 @@ AEROBULK_HOME = getenv('AEROBULK_HOME')
 if AEROBULK_HOME is None:
     print('The environment variable "AEROBULK_HOME" must be set!')
     sys.exit(0)
-cdir_in = AEROBULK_HOME+'/dat'
-print('\n *** Will look for data into '+AEROBULK_HOME+' !')
+#cdir_in = AEROBULK_HOME+'/dat'
+#print('\n *** Will look for data into '+AEROBULK_HOME+' !')
 
 # Directory where to save figures:
 fig_dir = AEROBULK_HOME+'/figures'
@@ -43,10 +43,10 @@ clr_mod = '#008ab8'
 
 rDPI=120.
 
-L_ALGOS = [  'COARE'   , 'ECMWF'   , 'NCAR' , 'ANDREAS' ]
-l_color = [  '#ffed00' , '#008ab8' , '0.6'  , '#AD0000' ] ; # colors to differentiate algos on the plot
-l_width = [     5      ,    3      ,  2     ,  2        ] ; # line-width to differentiate algos on the plot
-l_style = [    '-'     ,   '-'     , '--'   , '--'      ] ; # line-style
+L_ALGOS = [  'COARE'   , 'ECMWF'   , 'NCAR' , 'ANDREAS'  , 'GRACHEV07' ]
+l_color = [  '#ffed00' , '#008ab8' , '0.6'  , '#AD0000'  , 'k'         ] ; # colors to differentiate algos on the plot
+l_width = [     5      ,    3      ,  2     ,  2         ,  4          ] ; # line-width to differentiate algos on the plot
+l_style = [    '-'     ,   '-'     , '--'   , '--'       , ':'         ] ; # line-style
 nb_algos = len(L_ALGOS) ; print(nb_algos)
 
 
@@ -98,7 +98,7 @@ ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
 plt.ylabel(r'$\Psi_m(\zeta)$', **font_axes)
 plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
-plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
+plt.legend(bbox_to_anchor=(0.45, 0.25), ncol=1, shadow=True, fancybox=True)
 #
 plt.savefig(fig_dir+'/Comparaison_Psi_m.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)
@@ -116,7 +116,7 @@ ax1.set_xlim(vzeta[0],vzeta[nzeta-1])
 plt.ylabel(r'$\Psi_h(\zeta)$', **font_axes)
 plt.xlabel(r'$\zeta$', **font_axes)
 ax1.grid(color='k', linestyle='-', linewidth=0.3)
-plt.legend(bbox_to_anchor=(0.45, 0.2), ncol=1, shadow=True, fancybox=True)
+plt.legend(bbox_to_anchor=(0.45, 0.25), ncol=1, shadow=True, fancybox=True)
 #
 plt.savefig(fig_dir+'/Comparaison_Psi_h.'+fig_ext, dpi=int(rDPI), transparent=False)
 plt.close(1)

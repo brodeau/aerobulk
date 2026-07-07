@@ -22,17 +22,18 @@ PROGRAM test_psi_stab
    USE mod_phymbl                                        !: thermodynamics
    USE io_ezcdf
 
-   USE mod_blk_ncar,     ONLY: psi_m_ncar,    psi_h_ncar
-   USE mod_common_coare, ONLY: psi_m_coare,   psi_h_coare
-   USE mod_blk_ecmwf,    ONLY: psi_m_ecmwf,   psi_h_ecmwf
-   USE mod_blk_andreas,  ONLY: psi_m_andreas, psi_h_andreas
+   USE mod_blk_ncar,      ONLY: psi_m_ncar,      psi_h_ncar
+   USE mod_common_coare,  ONLY: psi_m_coare,     psi_h_coare
+   USE mod_blk_ecmwf,     ONLY: psi_m_ecmwf,     psi_h_ecmwf
+   USE mod_blk_andreas,   ONLY: psi_m_andreas,   psi_h_andreas
+   USE mod_blk_grachev07, ONLY: psi_m_grachev07, psi_h_grachev07
 
    IMPLICIT NONE
 
    CHARACTER(len=256), PARAMETER :: cf_out = 'psi.nc'
 
    INTEGER,  PARAMETER :: Nz = 1001, &
-      &                   nalgos = 4
+      &                   nalgos = 5
    REAL(wp), PARAMETER :: zeta_min = -15._wp, zeta_max = 15._wp
 
    INTEGER  :: jz
@@ -67,6 +68,9 @@ PROGRAM test_psi_stab
    vpsi_m(:,:,4) = REAL( psi_m_andreas( vzeta ) , 4 )
    vpsi_h(:,:,4) = REAL( psi_h_andreas( vzeta ) , 4 )
 
+   vpsi_m(:,:,5) = REAL( psi_m_grachev07( vzeta ) , 4 )
+   vpsi_h(:,:,5) = REAL( psi_h_grachev07( vzeta ) , 4 )
+
 
    !PRINT *, ' *** vpsi_m =', vpsi_m
    !PRINT *, ''
@@ -81,7 +85,9 @@ PROGRAM test_psi_stab
       &            vdt05=vpsi_m(:,1,3), cv_dt05='Psi_m_ECMWF',   &
       &            vdt06=vpsi_h(:,1,3), cv_dt06='Psi_h_ECMWF',   &
       &            vdt07=vpsi_m(:,1,4), cv_dt07='Psi_m_ANDREAS', &
-      &            vdt08=vpsi_h(:,1,4), cv_dt08='Psi_h_ANDREAS'  &
+      &            vdt08=vpsi_h(:,1,4), cv_dt08='Psi_h_ANDREAS', &
+      &            vdt09=vpsi_m(:,1,5), cv_dt09='Psi_m_GRACHEV07', &
+      &            vdt10=vpsi_h(:,1,5), cv_dt10='Psi_h_GRACHEV07'  &
       &  )
 
 
