@@ -2,8 +2,8 @@
 # =======================================================
 
 # Fortran compiler :
-FC  = ifort
-CXX = icpc
+FC  = ifx
+CXX = icx
 
 # Libraries of Fortran compiler
 FC_PATH = /opt/intel/oneapi

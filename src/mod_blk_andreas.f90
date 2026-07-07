@@ -49,7 +49,7 @@ MODULE mod_blk_andreas
       MODULE PROCEDURE u_star_andreas_vctr, u_star_andreas_sclr
    END INTERFACE u_star_andreas
 
-   
+
    !! Important (Brodeau fix):
    REAL(wp), PARAMETER :: rRi_max = 0.15_wp   ! Bulk Ri above which the algorithm fucks up!
    !                                          ! (increasing (>0) Ri means that surface layer increasingly stable and/or wind increasingly weak)
@@ -63,9 +63,9 @@ MODULE mod_blk_andreas
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE turb_andreas( zt, zu, sst, t_zt, ssq, q_zt, U_zu, &
-      &                     Cd, Ch, Ce, t_zu, q_zu, Ubzu,       &
-      &                    CdN, ChN, CeN, xz0, xu_star, xL, xUN10 )
+   SUBROUTINE turb_andreas( zt, zu, psst, pt_zt, pssq, pq_zt, pU_zu, &
+      &                     pCd, pCh, pCe, pt_zu, pq_zu, pUbzu,       &
+      &                    pCdN, pChN, pCeN, pz0, pu_star, pL, pUN10 )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  turb_andreas  ***
       !!
@@ -78,50 +78,50 @@ CONTAINS
       !! -------
       !!    *  zt   : height for temperature and spec. hum. of air            [m]
       !!    *  zu   : height for wind speed (usually 10m)                     [m]
-      !!    *  sst  : bulk SST                                                [K]
-      !!    *  t_zt : potential air temperature at zt                         [K]
-      !!    *  ssq  : specific humidity at saturation at SST                  [kg/kg]
-      !!    *  q_zt : specific humidity of air at zt                          [kg/kg]
-      !!    *  U_zu : scalar wind speed at zu                                 [m/s]
+      !!    *  psst  : bulk SST                                                [K]
+      !!    *  pt_zt : potential air temperature at zt                         [K]
+      !!    *  pssq  : specific humidity at saturation at SST                  [kg/kg]
+      !!    *  pq_zt : specific humidity of air at zt                          [kg/kg]
+      !!    *  pU_zu : scalar wind speed at zu                                 [m/s]
       !!
       !! OUTPUT :
       !! --------
-      !!    *  Cd     : drag coefficient
-      !!    *  Ch     : sensible heat coefficient
-      !!    *  Ce     : evaporation coefficient
-      !!    *  t_zu   : pot. air temperature adjusted at wind height zu       [K]
-      !!    *  q_zu   : specific humidity of air        //                    [kg/kg]
-      !!    *  Ubzu   : bulk wind speed at zu                                 [m/s]
+      !!    *  pCd     : drag coefficient
+      !!    *  pCh     : sensible heat coefficient
+      !!    *  pCe     : evaporation coefficient
+      !!    *  pt_zu   : pot. air temperature adjusted at wind height zu       [K]
+      !!    *  pq_zu   : specific humidity of air        //                    [kg/kg]
+      !!    *  pUbzu   : bulk wind speed at zu                                 [m/s]
       !!
       !! OPTIONAL OUTPUT:
       !! ----------------
-      !!    * CdN      : neutral-stability drag coefficient
-      !!    * ChN      : neutral-stability sensible heat coefficient
-      !!    * CeN      : neutral-stability evaporation coefficient
+      !!    * Pcdn      : neutral-stability drag coefficient
+      !!    * pChN      : neutral-stability sensible heat coefficient
+      !!    * pCeN      : neutral-stability evaporation coefficient
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
-      REAL(wp), INTENT(in   )                     ::   zt       ! height for t_zt and q_zt                    [m]
-      REAL(wp), INTENT(in   )                     ::   zu       ! height for U_zu                             [m]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   sst      ! sea surface temperature                [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   t_zt     ! potential air temperature              [Kelvin]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   ssq      ! sea surface specific humidity           [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   q_zt     ! specific air humidity at zt             [kg/kg]
-      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   U_zu     ! relative wind module at zu                [m/s]
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Cd       ! transfer coefficient for momentum         (tau)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ch       ! transfer coefficient for sensible heat (Q_sens)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ce       ! transfert coefficient for evaporation   (Q_lat)
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   t_zu     ! pot. air temp. adjusted at zu               [K]
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   q_zu     ! spec. humidity adjusted at zu           [kg/kg]
-      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   Ubzu    ! bulk wind speed at zu                     [m/s]
+      REAL(wp), INTENT(in   )                     ::   zt       ! height for pt_zt and pq_zt                    [m]
+      REAL(wp), INTENT(in   )                     ::   zu       ! height for pU_zu                             [m]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   psst      ! sea surface temperature                [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pt_zt     ! potential air temperature              [Kelvin]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pssq      ! sea surface specific humidity           [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pq_zt     ! specific air humidity at zt             [kg/kg]
+      REAL(wp), INTENT(in   ), DIMENSION(:,:) ::   pU_zu     ! relative wind module at zu                [m/s]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCd       ! transfer coefficient for momentum         (tau)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCh       ! transfer coefficient for sensible heat (Q_sens)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pCe       ! transfert coefficient for evaporation   (Q_lat)
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pt_zu     ! pot. air temp. adjusted at zu               [K]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pq_zu     ! spec. humidity adjusted at zu           [kg/kg]
+      REAL(wp), INTENT(  out), DIMENSION(:,:) ::   pUbzu    ! bulk wind speed at zu                     [m/s]
       !!
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CdN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   ChN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   CeN
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xz0     ! Aerodynamic roughness length   [m]
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xu_star ! u*, friction velocity
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xL      ! zeta (zu/L)
-      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   xUN10   ! Neutral wind at zu
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pCdN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pChN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pCeN
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pz0     ! Aerodynamic roughness length   [m]
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pu_star ! u*, friction velocity
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pL      ! zeta (zu/L)
+      REAL(wp), INTENT(  out), OPTIONAL, DIMENSION(:,:) ::   pUn10   ! Neutral wind at zu
       !!
       INTEGER :: Ni, Nj, jit
       LOGICAL :: l_zt_equal_zu = .FALSE.      ! if q and t are given at same height as U
@@ -137,40 +137,40 @@ CONTAINS
          &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_andreas@mod_blk_andreas.f90'
       !!----------------------------------------------------------------------------------
-      Ni = SIZE(sst,1)
-      Nj = SIZE(sst,2)
+      Ni = SIZE(psst,1)
+      Nj = SIZE(psst,2)
 
       ALLOCATE( u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj), z0(Ni,Nj), &
          &        UN10(Ni,Nj), UN10_old(Ni,Nj), zeta_u(Ni,Nj), RiB(Ni,Nj), &
          &       ztmp0(Ni,Nj),  ztmp1(Ni,Nj),  ztmp2(Ni,Nj) )
 
-      lreturn_cdn   = PRESENT(CdN)
-      lreturn_chn   = PRESENT(ChN)
-      lreturn_cen   = PRESENT(CeN)
-      lreturn_z0    = PRESENT(xz0)
-      lreturn_ustar = PRESENT(xu_star)
-      lreturn_L     = PRESENT(xL)
-      lreturn_UN10  = PRESENT(xUN10)
+      lreturn_cdn   = PRESENT(pCdN)
+      lreturn_chn   = PRESENT(pChN)
+      lreturn_cen   = PRESENT(pCeN)
+      lreturn_z0    = PRESENT(pz0)
+      lreturn_ustar = PRESENT(pu_star)
+      lreturn_L     = PRESENT(pL)
+      lreturn_UN10  = PRESENT(pUN10)
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp ) ! testing "zu == zt" is risky with double precision
 
-      Ubzu = MAX( 0.25_wp , U_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
+      pUbzu = MAX( 0.25_wp , pU_zu )   !  relative wind speed at zu (normally 10m), we don't want to fall under 0.5 m/s
 
       !! First guess:
-      UN10 = Ubzu
-      Cd   = 1.1E-3_wp
-      Ch   = 1.1E-3_wp
-      Ce   = 1.1E-3_wp
-      t_zu = t_zt
-      q_zu = q_zt
+      UN10 = pUbzu
+      pCd   = 1.1E-3_wp
+      pCh   = 1.1E-3_wp
+      pCe   = 1.1E-3_wp
+      pt_zu = pt_zt
+      pq_zu = pq_zt
 
       !! First guess of turbulent scales for scalars:
-      ztmp0  = SQRT(Cd)
-      t_star = Ch/ztmp0*(t_zu - sst) ! theta*
-      q_star = Ce/ztmp0*(q_zu - ssq) ! q*
+      ztmp0  = SQRT(pCd)
+      t_star = pCh/ztmp0*(pt_zu - psst) ! theta*
+      q_star = pCe/ztmp0*(pq_zu - pssq) ! q*
 
       ! Bulk Richardson number:
-      RiB(:,:) = Ri_bulk( zu, sst, t_zu, ssq, q_zu, Ubzu )
+      RiB(:,:) = Ri_bulk( zu, psst, pt_zu, pssq, pq_zu, pUbzu )
 
 
       !! ITERATION BLOCK
@@ -187,56 +187,56 @@ CONTAINS
             !! Extremely stable + weak wind !!!
             !!  => for we force u* to be consistent with minimum value for CD:
             !!  (otherwize algorithm becomes nonsense...)
-            u_star = SQRT(Cx_min) * Ubzu     ! Cd does not go below Cx_min !
+            u_star = SQRT(Cx_min) * pUbzu     ! pCd does not go below Cx_min !
          ENDWHERE
 
          IF(iverbose==1) PRINT *, 'LOLO *** u* =', u_star, jit
-         IF(iverbose==2) PRINT *, 'LOLO *** t_zu =', t_zu, jit
-         IF(iverbose==2) PRINT *, 'LOLO *** q_zu =', q_zu, jit
+         IF(iverbose==2) PRINT *, 'LOLO *** pt_zu =', pt_zu, jit
+         IF(iverbose==2) PRINT *, 'LOLO *** pq_zu =', pq_zu, jit
          IF(iverbose==1) PRINT *, 'LOLO *** theta* =', t_star, jit
          IF(iverbose==1) PRINT *, 'LOLO *** q* =', q_star, jit
 
          !! Stability parameter :
-         zeta_u = zu*One_on_L( t_zu, q_zu, u_star, t_star, q_star )   ! zu * 1/L
+         zeta_u = zu*One_on_L( pt_zu, pq_zu, u_star, t_star, q_star )   ! zu * 1/L
 
          IF(iverbose==1) PRINT *, 'LOLO *** L =', zu/zeta_u, jit
          IF(iverbose==1) PRINT *, 'LOLO *** zeta_u =', zeta_u, jit
-         IF(iverbose==1) PRINT *, 'LOLO *** Ubzu =', Ubzu, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** pUbzu =', pUbzu, jit
 
          !! Drag coefficient:
-         ztmp0 = u_star/Ubzu
+         ztmp0 = u_star/pUbzu
 
-         Cd = MAX( ztmp0*ztmp0 , Cx_min )
+         pCd = MAX( ztmp0*ztmp0 , Cx_min )
 
-         IF(iverbose==1) PRINT *, 'LOLO *** CD=', Cd, jit
+         IF(iverbose==1) PRINT *, 'LOLO *** CD=', pCd, jit
 
          !! Roughness length:
-         z0 = MIN( z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) ) , z0_sea_max )
+         z0 = MIN( z0_from_Cd( zu, pCd,  ppsi=psi_m_andreas(zeta_u) ) , z0_sea_max )
          IF(iverbose==1) PRINT *, 'LOLO *** z0 =', z0, jit
          IF(iverbose==1) PRINT *, 'LOLO'
 
          !! z0t and z0q, based on LKB, just like into COARE 2.5:
-         ztmp0 = z0 * u_star / visc_air(t_zu) ! Re_r
+         ztmp0 = z0 * u_star / visc_air(pt_zu) ! Re_r
          ztmp1 = z0tq_LKB( 1, ztmp0, z0 )     ! z0t
          ztmp2 = z0tq_LKB( 2, ztmp0, z0 )     ! z0q
 
          !! Turbulent scales at zu :
          ztmp0 = psi_h_andreas(zeta_u)  ! lolo: zeta_u for scalars???
          IF(iverbose==1) PRINT *, 'LOLO *** psi_h(zeta_u) =', ztmp0, jit
-         t_star  = (t_zu - sst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
-         q_star  = (q_zu - ssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
+         t_star  = (pt_zu - psst)*vkarmn/(LOG(zu) - LOG(ztmp1) - ztmp0)  ! theta* (ztmp1 == z0t in rhs term)
+         q_star  = (pq_zu - pssq)*vkarmn/(LOG(zu) - LOG(ztmp2) - ztmp0)  !   q*   (ztmp2 == z0q in rhs term)
 
          IF( (.NOT. l_zt_equal_zu).AND.( jit > 1 ) ) THEN
             !! Re-updating temperature and humidity at zu if zt /= zu:
             ztmp0 = zeta_u/zu*zt   ! zeta_t
             ztmp0 = LOG(zt/zu) + psi_h_andreas(zeta_u) - psi_h_andreas(ztmp0)
-            t_zu = t_zt - t_star/vkarmn*ztmp0
-            q_zu = q_zt - q_star/vkarmn*ztmp0
-            RiB  = Ri_bulk( zu, sst, t_zu, ssq, q_zu, Ubzu ) !LOLO
+            pt_zu = pt_zt - t_star/vkarmn*ztmp0
+            pq_zu = pq_zt - q_star/vkarmn*ztmp0
+            RiB  = Ri_bulk( zu, psst, pt_zu, pssq, pq_zu, pUbzu ) !LOLO
          ENDIF
 
          !! Update neutral-stability wind at zu:
-         UN10 = MAX( 0.1_wp , UN10_from_ustar( zu, Ubzu, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
+         UN10 = MAX( 0.1_wp , UN10_from_ustar( zu, pUbzu, u_star, psi_m_andreas(zeta_u) ) ) ! UN10
 
          IF(iverbose==1) PRINT *, 'LOLO *** UN10 =', UN10, jit
          IF(iverbose==1) PRINT *, 'LOLO'
@@ -244,34 +244,34 @@ CONTAINS
       END DO !DO jit = 1, nb_iter
 
       ! Compute transfer coefficients at zu:
-      ztmp0 = u_star/Ubzu
+      ztmp0 = u_star/pUbzu
 
-      Cd = MAX( ztmp0*ztmp0 , Cx_min )   ! the earlier use of Cx_min on u* should make use of Cx_min here unnecessary!
+      pCd = MAX( ztmp0*ztmp0 , Cx_min )   ! the earlier use of Cx_min on u* should make use of Cx_min here unnecessary!
 
-      ztmp1 = t_zu - sst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dt_zu
-      ztmp2 = q_zu - ssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dq_zu
-      Ch   = MAX( ztmp0*t_star/ztmp1 , rCs_min )
-      Ce   = MAX( ztmp0*q_star/ztmp2 , rCs_min )
+      ztmp1 = pt_zu - psst ;  ztmp1 = SIGN( MAX(ABS(ztmp1),1.E-6_wp), ztmp1 )  ! dpt_zu
+      ztmp2 = pq_zu - pssq ;  ztmp2 = SIGN( MAX(ABS(ztmp2),1.E-9_wp), ztmp2 )  ! dpq_zu
+      pCh   = MAX( ztmp0*t_star/ztmp1 , rCs_min )
+      pCe   = MAX( ztmp0*q_star/ztmp2 , rCs_min )
 
       IF( lreturn_cdn .OR. lreturn_chn .OR. lreturn_cen ) ztmp0 = 1._wp/LOG(zu/z0)
-      IF( lreturn_cdn )   CdN     = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
+      IF( lreturn_cdn )   pCdN     = MAX( vkarmn2*ztmp0*ztmp0 , Cx_min )
 
-      IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = z0 * u_star / visc_air(t_zu)  ! Re_r
-      IF( lreturn_chn )   ChN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 1, ztmp1, z0 ))
-      IF( lreturn_cen )   CeN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 2, ztmp1, z0 ))
+      IF( lreturn_chn .OR. lreturn_cen ) ztmp1 = z0 * u_star / visc_air(pt_zu)  ! Re_r
+      IF( lreturn_chn )   pChN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 1, ztmp1, z0 ))
+      IF( lreturn_cen )   pCeN     = vkarmn2*ztmp0/LOG(zu/z0tq_LKB( 2, ztmp1, z0 ))
 
-      !IF( lreturn_z0 )    xz0     = z0_from_Cd( zu, Cd,  ppsi=psi_m_andreas(zeta_u) )
-      IF( lreturn_z0 )    xz0     = z0
-      IF( lreturn_ustar ) xu_star = u_star
-      IF( lreturn_L )     xL      = zu/zeta_u
-      IF( lreturn_UN10 )  xUN10   =  UN10_from_ustar( zu, Ubzu, u_star, psi_m_andreas(zeta_u) )
+      !IF( lreturn_z0 )    pz0     = z0_from_Cd( zu, pCd,  ppsi=psi_m_andreas(zeta_u) )
+      IF( lreturn_z0 )    pz0     = z0
+      IF( lreturn_ustar ) pu_star = u_star
+      IF( lreturn_L )     pL      = zu/zeta_u
+      IF( lreturn_UN10 )  pUN10   =  UN10_from_ustar( zu, pUbzu, u_star, psi_m_andreas(zeta_u) )
 
 
       DEALLOCATE( u_star, t_star, q_star, z0, UN10, zeta_u, RiB, ztmp0, ztmp1, ztmp2 ) !
 
    END SUBROUTINE turb_andreas
 
-   
+
    FUNCTION u_star_andreas_sclr( pun10 )
       !!----------------------------------------------------------------------------------
       !! Estimate of the friction velocity as a function of the neutral-stability wind

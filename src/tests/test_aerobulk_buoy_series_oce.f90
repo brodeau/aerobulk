@@ -476,14 +476,14 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       CASE ( 'ecmwf'    )
          CALL TURB_ECMWF(   jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),  &
-            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),     & ! for cool-skin !
+            &             pQsw=Qsw(:,:,jt), prad_lw=rad_lw(:,:,jt), pslp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),     & ! for cool-skin !
             &             pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt),        &
-            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &             pz0=zz0(:,:,jt), pu_star=zus(:,:,jt), pL=zL(:,:,jt), pUN10=zUN10(:,:,jt) )
 
       CASE ( 'andreas' )
          CALL TURB_ANDREAS(    zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt),  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &             pz0=zz0(:,:,jt), pu_star=zus(:,:,jt), pL=zL(:,:,jt), pUN10=zUN10(:,:,jt) )
 
 
       CASE DEFAULT

@@ -207,7 +207,7 @@ PROGRAM cx_vs_wind_test
 
             IF ( TRIM(calgo) == 'coare3p0' ) &
                CALL TURB_COARE3P0( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
-               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, pz0=z0, pu_star=us, pL=lo, pUN10=un )
             
             IF ( TRIM(calgo) == 'coare3p6' ) &
                CALL TURB_COARE3P6( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
@@ -219,11 +219,11 @@ PROGRAM cx_vs_wind_test
             
             IF ( TRIM(calgo) == 'ecmwf' ) &
                CALL TURB_ECMWF( 1, zt, zu, sstk, zTz, qsat_sst, zQz, w10, .false., .false., &
-               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, pz0=z0, pu_star=us, pL=lo, pUN10=un )
             
             IF ( TRIM(calgo) == 'andreas' ) &
                CALL TURB_ANDREAS(  zt, zu, sstk, zTz, qsat_sst, zQz, w10, &
-               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, xz0=z0, xu_star=us, xL=lo, xUN10=un )
+               &          Cd, Ch, Ce, theta_zu, q_zu, U_bulk, pz0=z0, pu_star=us, pL=lo, pUN10=un )
             
             !! Bulk Richardson number at zu:
             ri = Ri_bulk( zu, sstk, theta_zu, qsat_sst, q_zu, U_bulk )

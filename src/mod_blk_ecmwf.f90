@@ -36,6 +36,13 @@ MODULE mod_blk_ecmwf
 
    PRIVATE
 
+   INTERFACE psi_m_ecmwf
+      MODULE PROCEDURE psi_m_ecmwf_scl, psi_m_ecmwf_vct
+   END INTERFACE
+   INTERFACE psi_h_ecmwf
+      MODULE PROCEDURE psi_h_ecmwf_scl, psi_h_ecmwf_vct
+   END INTERFACE
+
    PUBLIC :: ECMWF_INIT, TURB_ECMWF, psi_m_ecmwf, psi_h_ecmwf
 
    CHARACTER(len=8), PARAMETER :: clbl = 'ECMWF'
@@ -431,7 +438,7 @@ CONTAINS
 
 
    !!===============================================================================================
-   FUNCTION psi_m_ecmwf( pzeta )
+   FUNCTION psi_m_ecmwf_scl( pzeta )
       !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for momentum
       !!     ECMWF / as in IFS cy31r1 documentation, available online
@@ -442,9 +449,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!--------------------------------------------------------------------------------------------
+      REAL(wp)             :: psi_m_ecmwf_scl
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_m_ecmwf
-      !!
+      !!--------------------------------------------------------------------------------------------
       REAL(wp) :: zta, zx2, zx, ztmp, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
@@ -464,16 +471,31 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_m_ecmwf =         zstab    * zpsi_stab &  ! (zta > 0) Stable
+      psi_m_ecmwf_scl =         zstab    * zpsi_stab &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst    ! (zta < 0) Unstable
       !
-   END FUNCTION psi_m_ecmwf
+   END FUNCTION psi_m_ecmwf_scl
+
+   FUNCTION psi_m_ecmwf_vct( pzeta )
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_m_ecmwf_vct
+      !!--------------------------------------------------------------------------------------------
+      INTEGER  ::   ji, jj     ! dummy loop indices
+      !!--------------------------------------------------------------------------------------------
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
+            psi_m_ecmwf_vct(ji,jj) = psi_m_ecmwf_scl( pzeta(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION psi_m_ecmwf_vct
+
 
    !!===============================================================================================
 
 
    !!===============================================================================================
-   FUNCTION psi_h_ecmwf( pzeta )
+   FUNCTION psi_h_ecmwf_scl( pzeta )
       !!--------------------------------------------------------------------------------------------
       !! Universal profile stability function for temperature and humidity
       !!     ECMWF / as in IFS cy31r1 documentation, available online
@@ -484,9 +506,9 @@ CONTAINS
       !!
       !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!--------------------------------------------------------------------------------------------
+      REAL(wp)             :: psi_h_ecmwf_scl
       REAL(wp), INTENT(in) :: pzeta
-      REAL(wp)             :: psi_h_ecmwf
-      !!
+      !!--------------------------------------------------------------------------------------------
       REAL(wp) ::  zta, zx2, zpsi_unst, zpsi_stab, zstab, zc
       !!--------------------------------------------------------------------------------------------
       zc = 5._wp/0.35_wp
@@ -505,10 +527,24 @@ CONTAINS
       !
       zstab = 0.5_wp + SIGN(0.5_wp, zta) ! zta > 0 => zstab = 1
       !
-      psi_h_ecmwf =        zstab     * zpsi_stab   &  ! (zta > 0) Stable
+      psi_h_ecmwf_scl =        zstab     * zpsi_stab   &  ! (zta > 0) Stable
          &              + (1._wp - zstab) * zpsi_unst      ! (zta < 0) Unstable
       !
-   END FUNCTION psi_h_ecmwf
+   END FUNCTION psi_h_ecmwf_scl
+
+   FUNCTION psi_h_ecmwf_vct( pzeta )
+      !!--------------------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(:,:), INTENT(in)             :: pzeta
+      REAL(wp), DIMENSION(SIZE(pzeta,1),SIZE(pzeta,2)) :: psi_h_ecmwf_vct
+      !!--------------------------------------------------------------------------------------------
+      INTEGER  ::   ji, jj     ! dummy loop indices
+      !!--------------------------------------------------------------------------------------------
+      DO jj = 1, SIZE(pzeta,2)
+         DO ji = 1, SIZE(pzeta,1)
+            psi_h_ecmwf_vct(ji,jj) = psi_h_ecmwf_scl( pzeta(ji,jj) )
+         END DO
+      END DO
+   END FUNCTION psi_h_ecmwf_vct
 
    !!===============================================================================================
 

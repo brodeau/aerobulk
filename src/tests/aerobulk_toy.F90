@@ -57,7 +57,7 @@ PROGRAM AEROBULK_TOY
    !                                       !: warm-layer cannot be used in this simple test are there is not time integration possible !!!
 
    !! Global constants of mod_const.f90:
-   
+
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
 #ifdef _NOTGCC
@@ -147,7 +147,7 @@ PROGRAM AEROBULK_TOY
    END IF
    CALL prtcol( 6, 'Sea-level atmospheric pressure', Patm, 'Pa' )
 
-   
+
    WRITE(6,*) 'Give SST (deg. C):'
    READ(*,*) sst
    sst = sst + rt0
@@ -384,8 +384,8 @@ PROGRAM AEROBULK_TOY
       CASE(5)
          CALL TURB_ANDREAS( zt, zu, sst, theta_zt, ssq, q_zt, W10,           &
             &            Cd, Ch, Ce, theta_zu, q_zu, Ublk,                   &
-            &            CdN=zCdN, ChN=zChN, CeN=zCeN,                       &
-            &            xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+            &            pCdN=zCdN, pChN=zChN, pCeN=zCeN,                       &
+            &            pz0=zz0, pu_star=zus, pL=zL, pUN10=zUN10 )
 
       CASE DEFAULT
          WRITE(6,*) 'Bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
@@ -394,7 +394,7 @@ PROGRAM AEROBULK_TOY
 
       !! Absolute temperature at zu ?
       t_zu = T_from_z_P0_Theta_q( zu, SLP, theta_zu, q_zu )
-      vT_u(ialgo) =  t_zu(1,1) -rt0 
+      vT_u(ialgo) =  t_zu(1,1) -rt0
 
       !! So what is the saturation at t_zu then ???
       vQu_sat(ialgo) = q_sat( t_zu(1,1), SLP(1,1) )
@@ -524,7 +524,7 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) '      C_E_N   =   ', REAL(vCeN ,4) , ' [10^-3]'
    WRITE(6,*) '      C_H_N   =   ', REAL(vChN ,4) , ' [10^-3]'
    WRITE(6,*) ''
-  !lolo WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
+   !lolo WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
    WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]', ' ( MEAN =', VMEAN(vTau), 'RMS =', VARIANCE(vTau), ')'
    WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]', ' ( MEAN =', VMEAN(vEvap),'RMS =', VARIANCE(vEvap),')'
