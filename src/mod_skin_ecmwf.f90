@@ -6,18 +6,39 @@
 !   significant effects of some approximations in the bulk parameterizations of
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 !
-!
 MODULE mod_skin_ecmwf
-   !!====================================================================================
-   !!       Cool-Skin and warm-layer correction of SST
-   !!    Cool-skin and warm-layer parametrization (Fairall et al. 1996)
+   !!======================================================================
+   !!                   ***  MODULE  sbcblk_skin_ecmwf  ***
    !!
-   !!       Routine "cs_ecmwf" and "wl_ecmwf" maintained and developed in AeroBulk
-   !!                     (https://github.com/brodeau/aerobulk/)
+   !!   Module that gathers the cool-skin and warm-layer parameterization used
+   !!   by the IFS at ECMWF (recoded from scratch =>
+   !!   https://github.com/brodeau/aerobulk)
    !!
-   !!            Author: Laurent Brodeau, 2019
+   !!  Mainly based on Zeng & Beljaars, 2005 with the more recent add-up from
+   !!  Takaya et al., 2010 when it comes to the warm-layer parameterization
+   !!  (contribution of extra mixing due to Langmuir circulation)
    !!
-   !!====================================================================================
+   !!  - Zeng X., and A. Beljaars, 2005: A prognostic scheme of sea surface skin
+   !!    temperature for modeling and data assimilation. Geophysical Research
+   !!    Letters, 32 (14) , pp. 1-4.
+   !!
+   !!  - Takaya, Y., J.-R. Bildot, A. C. M. Beljaars, and P. A. E. M. Janssen,
+   !!    2010: Refinements to a prognostic scheme of skin sea surface
+   !!    temperature. J. Geophys. Res., 115, C06009, doi:10.1029/2009JC005985
+   !!
+   !!   Most of the formula are taken from the documentation of IFS of ECMWF
+   !!            (cycle 40r1) (avaible online on the ECMWF's website)
+   !!
+   !!   Routine 'sbcblk_skin_ecmwf' also maintained and developed in AeroBulk (as
+   !!            'mod_skin_ecmwf')
+   !!    (https://github.com/brodeau/aerobulk)
+   !!
+   !! ** Author: L. Brodeau, November 2019 / AeroBulk (https://github.com/brodeau/aerobulk)
+   !!----------------------------------------------------------------------
+   !! History :  4.0  ! 2019-11  (L.Brodeau)   Original code
+   !!            4.2  ! 2020-12  (L. Brodeau) Introduction of various air-ice bulk parameterizations + improvements
+   !!----------------------------------------------------------------------
+
    USE mod_const   !: physical and othe constants
    USE mod_phymbl  !: thermodynamics
 
@@ -49,10 +70,9 @@ CONTAINS
       !!
       !! Cool-skin parameterization, based on Fairall et al., 1996:
       !!
-      !! Fairall, C. W., Bradley, E. F., Godfrey, J. S., Wick, G. A.,
-      !! Edson, J. B., and Young, G. S. ( 1996), Cool‐skin and warm‐layer
-      !! effects on sea surface temperature, J. Geophys. Res., 101( C1), 1295-1308,
-      !! doi:10.1029/95JC03190.
+      !!  - Zeng X., and A. Beljaars, 2005: A prognostic scheme of sea surface
+      !!    skin temperature for modeling and data assimilation. Geophysical
+      !!    Research Letters, 32 (14) , pp. 1-4.
       !!
       !!------------------------------------------------------------------
       !!

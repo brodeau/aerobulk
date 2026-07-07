@@ -98,10 +98,6 @@ CONTAINS
       !!    * CdN      : neutral-stability drag coefficient
       !!    * ChN      : neutral-stability sensible heat coefficient
       !!    * CeN      : neutral-stability evaporation coefficient
-      !!    * xz0      : return the aerodynamic roughness length (integration constant for wind stress) [m]
-      !!    * xu_star  : return u* the friction velocity                    [m/s]
-      !!    * xL       : return the Obukhov length                          [m]
-      !!    * xUN10    : neutral wind speed at 10m                          [m/s]
       !!
       !! ** Author: L. Brodeau, June 2019 / AeroBulk (https://github.com/brodeau/aerobulk/)
       !!----------------------------------------------------------------------------------
