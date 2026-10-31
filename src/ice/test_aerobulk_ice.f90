@@ -4,18 +4,17 @@ PROGRAM TEST_AEROBULK_ICE
 
    USE mod_const
    USE mod_phymbl
-   !USE mod_blk_ice_nemo
-   USE mod_blk_ice_easy
+   USE mod_blk_ice_nanuq
    USE mod_blk_ice_an05
    USE mod_blk_ice_lu12
    USE mod_blk_ice_lg15
-   
+
    IMPLICIT NONE
 
    INTEGER, PARAMETER :: nb_algos = 4
-   
+
    CHARACTER(len=12), DIMENSION(nb_algos), PARAMETER :: &
-      &      vca = (/ '    EASY    ' , '   Andreas  ' , 'Lupkes 2012 ' , '  L&G 2015  ' /)
+      &      vca = (/ '    NANUQ    ' , '   Andreas  ' , 'Lupkes 2012 ' , '  L&G 2015  ' /)
 
 
    REAL(wp), DIMENSION(nb_algos) ::  &
@@ -55,7 +54,10 @@ PROGRAM TEST_AEROBULK_ICE
 
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   ! Note about wide output: we do NOT re-open unit 6 (standard output) with a larger RECL here:
+   ! changing the RECL of an already connected unit is not allowed by the Fortran standard (only Intel
+   ! accepts it; gfortran and LLVM flang refuse it). With Intel and LLVM flang, which wrap list-directed
+   ! output at about 80 characters, set the environment variable FORT_FMT_RECL=512 when running instead.
 
 
 
@@ -102,16 +104,16 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
 
 
-   WRITE(6,*) 'Give CD_N*1000, CH_N*1000., CE_N*1000 for EASY algo:'
+   WRITE(6,*) 'Give CD_N*1000, CH_N*1000., CE_N*1000 for NANUQ algo:'
    READ(*,*) zcd0, zch0, zce0
    zcd0 = zcd0/1000.
    zce0 = zce0/1000.
    zch0 = zch0/1000.
-   CALL prtcol( 6, ' Cd_N_ice for EASY', zcd0, '[]' )
-   CALL prtcol( 6, ' Ch_N_ice for EASY', zch0, '[]' )
-   CALL prtcol( 6, ' Ce_N_ice for EASY', zce0, '[]' )
+   CALL prtcol( 6, ' Cd_N_ice for NANUQ', zcd0, '[]' )
+   CALL prtcol( 6, ' Ch_N_ice for NANUQ', zch0, '[]' )
+   CALL prtcol( 6, ' Ce_N_ice for NANUQ', zce0, '[]' )
    WRITE(6,*) ''
-   
+
    WRITE(6,*) 'Give the sea-ice concentration in %'
    READ(*,*) frice
    frice = frice/100.
@@ -214,7 +216,8 @@ PROGRAM TEST_AEROBULK_ICE
       t_zt = sit ! first guess
       DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
+         ! Dry adiabatic lapse rate (as in aerobulk_toy), since theta is defined with the dry adiabat:
+         t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - rgamma_dry*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
 
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -251,8 +254,10 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
 
 
-   !! Must give something more like a potential temperature at zt:
-   theta_zt = t_zt + rgamma*zt
+   !! Potential temperature at zt from absolute temperature, using the same function as the library
+   !! (aerobulk_compute) and the toy: potential temperature is defined with the DRY adiabat (Poisson),
+   !! not with the moist lapse rate used before (gamma_moist, `rgamma` above is now only displayed).
+   theta_zt = Theta_from_z_P0_T_q( zt, SLP, t_zt, q_zt )
 
    WRITE(6,*) ''
    WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
@@ -304,10 +309,14 @@ PROGRAM TEST_AEROBULK_ICE
       SELECT CASE(ialgo)
 
       CASE(1)
-         CALL TURB_ICE_EASY( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
+         CALL TURB_ICE_NANUQ( zt, zu, Ts, theta_zt, qs, q_zt, W10,       &
             &                zcd0, zch0, zce0,                          &
-            &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,          &
-            &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+            &                Cd, Ch, Ce, theta_zu, q_zu )
+         !&                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
+         ! TURB_ICE_NANUQ does not return the bulk wind speed: we set it to the one it uses internally
+         ! (wind at zu, not below `wspd_thrshld_ice`). It must not be 0, because it is used below as the
+         ! wind in Ri_bulk (division by its square) and in BULK_FORMULA (fluxes proportional to it).
+         Ublk(:,:) = MAX( W10(:,:), wspd_thrshld_ice )
          zCdN(:,:)=zcd0 ; zChN(:,:)=zch0 ; zCeN(:,:)=zce0
 
       CASE(2)
@@ -321,18 +330,18 @@ PROGRAM TEST_AEROBULK_ICE
             &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
             &                CdN=zCdN, ChN=zChN, CeN=zCeN,               &
             &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
+
       CASE(4)
          CALL TURB_ICE_LG15( zt, zu, Ts, theta_zt, qs, q_zt, W10, frice, &
             &                Cd, Ch, Ce, theta_zu, q_zu, Ublk,           &
             &                CdN=zCdN, ChN=zChN, CeN=zCeN,               &
             &                xz0=zz0, xu_star=zus, xL=zL, xUN10=zUN10 )
-         
+
       CASE DEFAULT
          WRITE(6,*) 'Sea-ice bulk algorithm #', ialgo, ' is unknown!!!' ; STOP
 
       END SELECT
-      
+
 
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
@@ -343,11 +352,9 @@ PROGRAM TEST_AEROBULK_ICE
       vTheta_u(ialgo) = theta_zu(1,1) -rt0   ! Potential temperature at zu
 
       !! Absolute temperature at zu
-      t_zu = theta_zu ! first guess...
-      DO jq = 1, 4
-         rgamma = gamma_moist(0.5*(t_zu+Ts), q_zu)
-         t_zu = theta_zu - rgamma*zu   ! Absolute temp.
-      END DO
+      ! (from potential temperature at zu, using the same function as the toy: inverse of
+      !  Theta_from_z_P0_T_q, dry adiabat, instead of the moist lapse rate used before)
+      t_zu = T_from_z_P0_Theta_q( zu, SLP, theta_zu, q_zu )
 
       vCd(ialgo) = 1000.*Cd(1,1)
       vCh(ialgo) = 1000.*Ch(1,1)
@@ -389,7 +396,7 @@ PROGRAM TEST_AEROBULK_ICE
 
       vTau(ialgo)  =       1000. *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
-      
+
    END DO
 
    WRITE(6,*) ''; WRITE(6,*) ''
@@ -462,7 +469,6 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
 
    WRITE(6,*) ''
-   CLOSE(6)
 
 CONTAINS
 
@@ -475,38 +481,37 @@ CONTAINS
       WRITE(id,*) ''
    END SUBROUTINE prtcol
 
-SUBROUTINE usage_test( icontinue )
-   INTEGER, INTENT(in) :: icontinue
-   !!
-   PRINT *,''
-   IF (icontinue>=1) THEN
+   SUBROUTINE usage_test( icontinue )
+      INTEGER, INTENT(in) :: icontinue
+      !!
       PRINT *,''
-      PRINT *,'                 ======   A e r o B u l k   ====='
+      IF (icontinue>=1) THEN
+         PRINT *,''
+         PRINT *,'                 ======   A e r o B u l k   ====='
+         PRINT *,''
+         PRINT *,'                      (L. Brodeau, 2015-2019)'
+         PRINT *,''
+         PRINT *,'                   Simple interactive test-case'
+      END IF
+      PRINT *,'##########################################################################'
+      PRINT *,'   List of command line options:'
       PRINT *,''
-      PRINT *,'                      (L. Brodeau, 2015-2019)'
+      PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
       PRINT *,''
-      PRINT *,'                   Simple interactive test-case'
-   END IF
-   PRINT *,'##########################################################################'
-   PRINT *,'   List of command line options:'
-   PRINT *,''
-   PRINT *,'   -p   => Ask for sea-level pressure, otherwize assume SLP = 1010 hPa'
-   PRINT *,''
-   PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
-   PRINT *,''
-   PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
-   PRINT *,'           -> will not ask for air temp. at zt, instead will only'
-   PRINT *,'           ask for relative humidity at zt and will force the air'
-   PRINT *,'           temperature at zt that yields a neutral-stability!'
-   PRINT *,''
-   PRINT *,'   -h   => Show this message'
-   PRINT *,'##########################################################################'
-   PRINT *,''
-   IF (icontinue==0) STOP
-   !!
-END SUBROUTINE usage_test
+      PRINT *,'   -r   => Ask for relative humidity rather than specific humidity'
+      PRINT *,''
+      PRINT *,'   -N   => Force neutral stability in surface atmospheric layer'
+      PRINT *,'           -> will not ask for air temp. at zt, instead will only'
+      PRINT *,'           ask for relative humidity at zt and will force the air'
+      PRINT *,'           temperature at zt that yields a neutral-stability!'
+      PRINT *,''
+      PRINT *,'   -h   => Show this message'
+      PRINT *,'##########################################################################'
+      PRINT *,''
+      IF (icontinue==0) STOP
+      !!
+   END SUBROUTINE usage_test
 
-   
+
 
 END PROGRAM TEST_AEROBULK_ICE
-

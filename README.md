@@ -152,7 +152,9 @@ Linking to AeroBulk's library:
 
 Check that `bin/aerobulk_toy.x` has been compiled and execute it:
 
-     ./bin/aerobulk_toy.x
+      FORT_FMT_RECL=512 ./bin/aerobulk_toy.x
+
+Setting the environment variable `FORT_FMT_RECL=512` is needed with the Intel and LLVM (flang) compilers: their Fortran runtime cuts the lines of standard output at about 80 characters, which breaks the summary tables printed by `aerobulk_toy.x`. It is harmless (and not needed) with GNU `gfortran`.
 
 You will be interactively prompted for different sea-surface and ABL related parameters, such as SST, air temperature and humidity, wind speed, etc.  Then `aerobulk_toy.x` will compute all the turbulent air-sea fluxes with all the algorithms available (as well as third-party diagnostics of the ABL), and will print it in the form of a summary table.
 
@@ -222,7 +224,8 @@ AeroBulk can also directly compute the 3 turbulent fluxes by means of the `aerob
            ...
            CALL AEROBULK_MODEL( jt, Nt, calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
            &                    Qe, Qh, Tau_x, Tau_y, Evap                                 &
-           &                   [, Niter=N, rad_sw=Rsw, rad_lw=Rlw] )
+           &                   [, Niter=N, l_use_skin=.TRUE., rad_sw=Rsw, rad_lw=Rlw, T_s=SSST, &
+           &                      isecday_utc=isec, plong=xlon ] )
            ...
        END PROGRAM TEST_FLUX
 
@@ -243,8 +246,16 @@ INPUT ARGUMENTS:
 *   `Niter`  : (Sc,int) number of iterations for the bulk algorithms (default is 5)
 *   `rad_sw` : (2D,real) downw. shortwave rad. at surface (>0) [W/m^2]
 *   `rad_lw` : (2D,real) downw. longwave  rad. at surface (>0) [W/m^2]
+*   `l_use_skin` : (Sc,logical) use the Cool-Skin Warm-Layer parameterization (only with COARE and ECMWF algorithms, needs `rad_sw` and `rad_lw`)
+*   `isecday_utc` : (Sc,int) current UTC time, in seconds since 00:00 UTC of the current day
+*   `plong` : (2D,real) longitude [deg.E]
 
-(The presence of `rad_sw` and `rad_sw` triggers the use of the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
+(`rad_sw` and `rad_lw` must be provided to use the Cool-Skin Warm-Layer parameterization with COARE and ECMWF algorithms)
+
+(`isecday_utc` and `plong` must be provided together. The warm-layer scheme of COARE needs them to know the local solar time; if they are not provided, only the cool-skin scheme of COARE is used. They are not needed by ECMWF)
+
+[ OPTIONAL OUTPUT ARGUMENT: ]
+*   `T_s` : (2D,real) skin temperature [K] (equal to `sst` if the Cool-Skin Warm-Layer parameterization is not used)
 
 OUTPUT ARGUMENTS:
 
@@ -254,11 +265,12 @@ OUTPUT ARGUMENTS:
 *   `Tau_y` : (2D,real) meridional wind stress [N/m^2]
 *   `Evap` : (2D,real) evaporation [mm/s]
 
-Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations:
+Example of a call, using COARE 3.0 algorithm with cool-skin warm-layer parameterization and 10 iterations, at 2PM UTC (14 x 3600 = 50400 s):
 
     CALL AEROBULK_MODEL( 1, 24, 'coare3p0', 2., 10., sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
          &               Qe, Qh, Tau_x, Tau_y, Evap,                                     &
-         &               Niter=10, rad_sw=Rsw, rad_lw=Rlw T_s=SSST )
+         &               Niter=10, l_use_skin=.TRUE., rad_sw=Rsw, rad_lw=Rlw, T_s=SSST,   &
+         &               isecday_utc=50400, plong=xlongitudes )
 
 &nbsp;
 

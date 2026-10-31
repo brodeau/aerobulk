@@ -119,7 +119,7 @@ CONTAINS
 
       !! Update roughness length:
       zz0     = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus
-      zz0     = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
+      zz0     = MIN( MAX(ABS(zz0), 1.E-8_wp) , 1._wp )      ! (prevents FPE from stupid values from masked region later on)
       zlog_z0 = LOG(zz0)
 
       !! First guess of Cd
@@ -128,7 +128,7 @@ CONTAINS
 
       !! Temperature/humidity roughness lengthes:
       zz0t  = 10._wp / EXP( vkarmn/( 0.00115*z1_o_sqrt_Cd10 ) )
-      zz0t    = MIN( MAX(ABS(zz0t), 1.E-8) , 1._wp )         ! (prevents FPE from stupid values from masked region later on)
+      zz0t    = MIN( MAX(ABS(zz0t), 1.E-8_wp) , 1._wp )         ! (prevents FPE from stupid values from masked region later on)
       zlog_z0t = LOG(zz0t)
 
       !! Bulk Richardson Number (BRN)
@@ -144,7 +144,7 @@ CONTAINS
 
 
       !! u*, theta*, q* :
-      zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare(zzeta_u)) , 1.E-9 ) ! (MAX => prevents FPE from stupid values from masked region later on)
+      zus  = MAX ( zUb*vkarmn/(zlog_zu - zlog_z0  - psi_m_coare(zzeta_u)) , 1.E-9_wp ) ! (MAX => prevents FPE from stupid values from masked region later on)
       ztmp = vkarmn/(zlog_zu - zlog_z0t - psi_h_coare(zzeta_u))
       zts  = zdt*ztmp
       zqs  = zdq*ztmp
@@ -173,7 +173,7 @@ CONTAINS
       IF( PRESENT(pz0) ) THEN
          !! Again, because new zus:
          zz0 = pcharn*zus*zus/grav + 0.11_wp*zNu_a/zus
-         pz0 = MIN( MAX(ABS(zz0), 1.E-8) , 1._wp )    ! (prevents FPE from stupid values from masked region later on)
+         pz0 = MIN( MAX(ABS(zz0), 1.E-8_wp) , 1._wp )    ! (prevents FPE from stupid values from masked region later on)
       END IF
 
    END SUBROUTINE FIRST_GUESS_COARE_SCLR

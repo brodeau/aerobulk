@@ -77,7 +77,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
    nb_iter = 20 ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   ! Note about wide output: we do NOT re-open unit 6 (standard output) with a larger RECL here:
+   ! changing the RECL of an already connected unit is not allowed by the Fortran standard (only Intel
+   ! accepts it; gfortran and LLVM flang refuse it). With Intel and LLVM flang, which wrap list-directed
+   ! output at about 80 characters, set the environment variable FORT_FMT_RECL=512 when running instead.
 
    !----------------------------------------------
 
@@ -369,7 +372,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       info = DISP_DEBUG(lverbose, 'Absolute   air temp. at '//TRIM(czt),     t_zt(:,:,jt) - rt0, '[deg.C]') ! Air temperatures at zt...
       info = DISP_DEBUG(lverbose, 'Specific   air humi. at '//TRIM(czt),     1000.*q_zt(:,:,jt), '[g/kg]') ! Air temperatures at zt...
 
-      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
+      ! Potential temperature at zt from absolute temperature, using the same function as the library
+      ! (aerobulk_compute) and the toy: potential temperature is defined with the DRY adiabat (Poisson),
+      ! not with the moist lapse rate used before (gamma_moist, `rgamma` above is now only displayed).
+      theta_zt(:,:,jt) = Theta_from_z_P0_T_q( zt, SLP(:,:,jt), t_zt(:,:,jt), q_zt(:,:,jt) )
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
 
       tmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
@@ -417,11 +423,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
 
 
          !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
-         t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
-         DO jq = 1, 4
-            rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
-            t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
-         END DO
+         ! Absolute temperature at zu from potential temperature at zu, using the same function as the toy
+         ! (inverse of Theta_from_z_P0_T_q, dry adiabat), instead of the moist lapse rate used before
+         t_zu(:,:,jt) = T_from_z_P0_Theta_q( zu, SLP(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt) )
 
          !! Bulk Richardson Number for layer "sea-level -- zu":
          RiB_zu(:,:,jt) = Ri_bulk(zu, SIT(:,:,jt), theta_zu(:,:,jt), SIQ(:,:), q_zu(:,:,jt), Ublk(:,:,jt) )
@@ -503,7 +507,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_ICE
       &           )
 
    WRITE(6,*) ''; WRITE(6,*) ''
-   CLOSE(6)
 
 CONTAINS
 

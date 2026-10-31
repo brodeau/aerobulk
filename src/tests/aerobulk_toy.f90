@@ -60,9 +60,13 @@ PROGRAM AEROBULK_TOY
 
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
-#ifdef _NOTGCC
-   OPEN(6, FORM='formatted', RECL=512)
-#endif
+   ! Note about wide output: the summary tables printed below need lines longer than 80 characters.
+   ! We do NOT re-open unit 6 (standard output) with a larger RECL here: changing the RECL of an
+   ! already connected unit is not allowed by the Fortran standard (only Intel accepts it; gfortran
+   ! and LLVM flang refuse it). Instead, with Intel and LLVM flang (which wrap list-directed output
+   ! at about 80 characters), set the environment variable FORT_FMT_RECL when running the toy:
+   !        FORT_FMT_RECL=512 ./bin/aerobulk_toy.x
+   ! (not needed with gfortran, which does not wrap list-directed output)
 
 
    CALL usage_test(1)
@@ -145,7 +149,8 @@ PROGRAM AEROBULK_TOY
    ELSE
       SLP = Patm
    END IF
-   CALL prtcol( 6, 'Sea-level atmospheric pressure', Patm, 'Pa' )
+   ! Print the pressure actually used (given by the user with `-p`, or the default Patm otherwise)
+   CALL prtcol( 6, 'Sea-level atmospheric pressure', SLP(1,1), 'Pa' )
 
 
    WRITE(6,*) 'Give SST (deg. C):'
@@ -446,10 +451,12 @@ PROGRAM AEROBULK_TOY
       vTau(ialgo)  =       1.E3 *  vTau(ialgo)  ! mN/m^2
       vEvap(ialgo) = to_mm_p_day * vEvap(ialgo)  ! mm/day
 
+      ! Surface temperature and humidity used by this algorithm (skin values if the cool-skin/warm-layer
+      ! schemes are used, SST and SSQ otherwise): saved for each algorithm, for the summary table below
+      vTs(ialgo)  = Ts(1,1)
+      vqs(ialgo)  = qs(1,1)
       IF ( l_use_coolsk ) THEN
          vSST(ialgo) = sst(1,1)
-         vTs(ialgo)  = Ts(1,1)
-         vqs(ialgo)  = qs(1,1)
          vQlw(ialgo) = qlw_net( rad_lw(1,1), Ts(1,1) ) ! Net longwave flux
       END IF
 
@@ -458,8 +465,9 @@ PROGRAM AEROBULK_TOY
 
    WRITE(6,*) ''; WRITE(6,*) ''
 
-   WRITE(ctitle,*) '  Algorithm:         ',TRIM(vca(1)),'   |   ',TRIM(vca(2)),'    |    ',TRIM(vca(3)),&
-      '     |    ',TRIM(vca(4)),'     |    ',TRIM(vca(5))
+   ! Title of the summary tables, with the same column layout as the rows printed by `prt_row`:
+   ! 18 characters, then each algorithm name right-aligned in a 14-character column (so it is right above its values)
+   WRITE(ctitle,'(a18,*(a14))') '  Algorithm:', (vca(ialgo), ialgo=1,nb_algos)
 
    IF ( zt /= zu ) THEN
       WRITE(6,*) ''; WRITE(6,*) 'Potential temperature and humidity at z = ',TRIM(czt),' :'
@@ -469,21 +477,27 @@ PROGRAM AEROBULK_TOY
 
    WRITE(6,*) ''; WRITE(6,*) 'Temperatures and humidity at z = ',TRIM(czu),' :'
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) TRIM(ctitle)
+   ! Title printed with an explicit format: `WRITE(6,*)` would add a leading blank and shift it by 1 column vs the rows
+   WRITE(6,'(a)') TRIM(ctitle)
    WRITE(6,*) '===================================================================================================='
-   WRITE(6,*) '    theta_',TRIM(czu),' =   ', REAL(vTheta_u,  4)       , '[deg.C]'
-   WRITE(6,*) '    t_',TRIM(czu),'     =   ', REAL(vT_u    ,  4)       , '[deg.C]'
-   WRITE(6,*) '    q_',TRIM(czu),'     =   ', REAL(1.E3*vQu, 4)       , '[g/kg]'
-   WRITE(6,*) '    q_',TRIM(czu),'_sat =   ', REAL(1.E3*vQu_sat, 4)  , '[g/kg]'
+   ! Rows of the first summary table (one value per algorithm, aligned columns, see `prt_row`):
+   CALL prt_row( 'theta_'//TRIM(czu),   vTheta_u,      '[deg.C]', 'f14.5' )
+   CALL prt_row( 't_'//TRIM(czu),       vT_u,          '[deg.C]', 'f14.5' )
+   CALL prt_row( 'q_'//TRIM(czu),       1.E3_wp*vQu,     '[g/kg]',  'f14.5' )
+   CALL prt_row( 'q_'//TRIM(czu)//'_sat', 1.E3_wp*vQu_sat, '[g/kg]',  'f14.5' )
    WRITE(6,*) ''
-   WRITE(6,*) '      SSQ     =   ', REAL(1.E3*qs(1,1), 4)             , '[g/kg]'
-   WRITE(6,*) '    Delta t   =   ', REAL(vT_u  - (Ts(1,1)-rt0) , 4)    , '[deg.C]'
-   WRITE(6,*) '    Delta q   =   ', REAL(1.E3*(vQu - qs(1,1)), 4)     , '[g/kg]'
+   ! Surface values and air-surface differences, for each algorithm (vTs and vqs can differ between algorithms
+   ! when the skin schemes are used). The temperature difference uses the POTENTIAL temperature at zu, as in the bulk formula.
+   CALL prt_row( 'SSQ',          1.E3_wp*vqs,            '[g/kg]',  'f14.5' )
+   CALL prt_row( 'Delta theta',  vTheta_u - (vTs-rt0),   '[deg.C]', 'f14.5' )
+   CALL prt_row( 'Delta q',      1.E3_wp*(vQu - vqs),    '[g/kg]',  'f14.5' )
    WRITE(6,*) ''
-   WRITE(6,*) '    Ug (gust) =   ', REAL(vUg, 4)                       , '[m/s]'
+   CALL prt_row( 'Ug (gust)',    vUg,                    '[m/s]',   'f14.5' )
    WRITE(6,*) ''
 
-   WRITE(6,*) '   Saturation at t=t_zu is q_zu_sat = ', REAL(1.E3*vQu_sat, 4), '[g/kg]'
+   ! Line outside of the table with one value per algorithm: explicit format so the values have a fixed width
+   WRITE(6,'(a,*(f12.5))', advance='no') '   Saturation at t=t_zu is q_zu_sat = ', REAL(1.E3_wp*vQu_sat, 4)
+   WRITE(6,'(a)') '  [g/kg]'
    PRINT *, ''
 
    WRITE(6,*) ''
@@ -497,7 +511,9 @@ PROGRAM AEROBULK_TOY
    WRITE(6,*) 'Kinematic viscosity of air =', nu_air
    WRITE(6,*) ''
    WRITE(6,*) 'With a pressure of', int(SLP)
-   WRITE(6,*) 'Density of air at ',TRIM(czu),' =', REAL(vRho_u,4), ' [kg/m^3]'
+   ! Line outside of the table with one value per algorithm: explicit format so the values have a fixed width
+   WRITE(6,'(a,*(f12.5))', advance='no') ' Density of air at '//TRIM(czu)//' =', REAL(vRho_u,4)
+   WRITE(6,'(a)') '  [kg/m^3]'
    IF ( zt < zu )  WRITE(6,*) ' (density of air at ',TRIM(czt),' was ', REAL(rho_air(t_zt, q_zt, SLP),4),')'
    WRITE(6,*) ''
    Cp_ma = cp_air(q_zu)
@@ -507,42 +523,46 @@ PROGRAM AEROBULK_TOY
 
    WRITE(6,*) ''
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) TRIM(ctitle)
+   ! Title printed with an explicit format: `WRITE(6,*)` would add a leading blank and shift it by 1 column vs the rows
+   WRITE(6,'(a)') TRIM(ctitle)
    WRITE(6,*) '=============================================================================================='
-   WRITE(6,*) '      C_D     =   ', REAL(vCd  ,4) , ' [10^-3]'
-   WRITE(6,*) '      C_E     =   ', REAL(vCe  ,4) , ' [10^-3]'
-   WRITE(6,*) '      C_H     =   ', REAL(vCh  ,4) , ' [10^-3]'
+   ! Rows of the second summary table (one value per algorithm, aligned columns, see `prt_row`).
+   ! `es14.5` (scientific notation) is used for z_0 and Ri_bulk, which are very small numbers.
+   CALL prt_row( 'C_D',      vCd,   '[10^-3]', 'f14.5' )
+   CALL prt_row( 'C_E',      vCe,   '[10^-3]', 'f14.5' )
+   CALL prt_row( 'C_H',      vCh,   '[10^-3]', 'f14.5' )
    WRITE(6,*) ''
-   WRITE(6,*) '      z_0     =   ', REAL(vz0  ,4) , ' [m]'
-   WRITE(6,*) '      u*      =   ', REAL(vus  ,4) , ' [m/s]'
-   WRITE(6,*) '      L       =   ', REAL(vL   ,4) , ' [m]'
-   WRITE(6,*) '      Ri_bulk =   ', REAL(vBRN ,4) , ' [-]'
+   CALL prt_row( 'z_0',      vz0,   '[m]',     'es14.5' )
+   CALL prt_row( 'u*',       vus,   '[m/s]',   'f14.5' )
+   CALL prt_row( 'L',        vL,    '[m]',     'f14.5' )
+   CALL prt_row( 'Ri_bulk',  vBRN,  '[-]',     'es14.5' )
    WRITE(6,*) ''
    WRITE(6,*) '                 *** Neutral-stability: ***'
-   WRITE(6,*) '      UN10    =   ', REAL(vUN10,4) , ' [m/s]'
-   WRITE(6,*) '      C_D_N   =   ', REAL(vCdN ,4) , ' [10^-3]'
-   WRITE(6,*) '      C_E_N   =   ', REAL(vCeN ,4) , ' [10^-3]'
-   WRITE(6,*) '      C_H_N   =   ', REAL(vChN ,4) , ' [10^-3]'
+   CALL prt_row( 'UN10',     vUN10, '[m/s]',   'f14.5' )
+   CALL prt_row( 'C_D_N',    vCdN,  '[10^-3]', 'f14.5' )
+   CALL prt_row( 'C_E_N',    vCeN,  '[10^-3]', 'f14.5' )
+   CALL prt_row( 'C_H_N',    vChN,  '[10^-3]', 'f14.5' )
    WRITE(6,*) ''
    !lolo WRITE(6,*) 'Equ. Charn p. =   ', REAL( grav/(vus*vus)*(vz0 - 0.11*nu_air/vus) , 4)
    WRITE(6,*) ''
-   WRITE(6,*) ' Wind stress  =   ', REAL(vTau ,4) , ' [mN/m^2]', ' ( MEAN =', VMEAN(vTau), 'RMS =', VARIANCE(vTau), ')'
-   WRITE(6,*) ' Evaporation  =   ', REAL(vEvap,4) , ' [mm/day]', ' ( MEAN =', VMEAN(vEvap),'RMS =', VARIANCE(vEvap),')'
-   WRITE(6,*) '    QL        =   ', REAL(vQL  ,4) , ' [W/m^2] ', ' ( MEAN =', VMEAN(vQL),  'RMS =', VARIANCE(vQL),  ')'
-   WRITE(6,*) '    QH        =   ', REAL(vQH  ,4) , ' [W/m^2] ', ' ( MEAN =', VMEAN(vQH),  'RMS =', VARIANCE(vQH),  ')'
+   ! Fluxes, with the mean and RMS over the algorithms appended to the row (l_stats=.TRUE.):
+   CALL prt_row( 'Wind stress',  vTau,  '[mN/m^2]', 'f14.5', l_stats=.TRUE. )
+   CALL prt_row( 'Evaporation',  vEvap, '[mm/day]', 'f14.5', l_stats=.TRUE. )
+   CALL prt_row( 'QL',           vQL,   '[W/m^2]',  'f14.5', l_stats=.TRUE. )
+   CALL prt_row( 'QH',           vQH,   '[W/m^2]',  'f14.5', l_stats=.TRUE. )
    WRITE(6,*) ''
    IF ( l_use_coolsk ) THEN
+      ! Rows related to the cool-skin scheme (same aligned layout as the tables above):
       WRITE(6,*) '              Cool-skin related:'
-      WRITE(6,*) '  Q longwave  =   ', REAL( vQlw  ,4), ' [W/m^2]'
-      WRITE(6,*) '  Q non-solar =   ', REAL( vQL + vQH + vQlw ,4), ' [W/m^2]'
-      WRITE(6,*) '      Ts      =   ', REAL( vTs-rt0  ,4), ' [deg.C]'
-      WRITE(6,*) '  Ts - SST    =   ', REAL( vTs-vSST ,4), ' [deg.C]'
-      WRITE(6,*) '      qs      =   ', REAL( 1.E3*vqs,4), ' [g/kg]'
+      CALL prt_row( 'Q longwave',   vQlw,             '[W/m^2]', 'f14.5' )
+      CALL prt_row( 'Q non-solar',  vQL + vQH + vQlw, '[W/m^2]', 'f14.5' )
+      CALL prt_row( 'Ts',           vTs-rt0,          '[deg.C]', 'f14.5' )
+      CALL prt_row( 'Ts - SST',     vTs-vSST,         '[deg.C]', 'f14.5' )
+      CALL prt_row( 'qs',           1.E3_wp*vqs,      '[g/kg]',  'f14.5' )
       WRITE(6,*) ''
    END IF
 
    WRITE(6,*) ''
-   CLOSE(6)
 
 CONTAINS
 
@@ -552,12 +572,56 @@ CONTAINS
       REAL(wp),         INTENT(in) :: pval
       CHARACTER(len=*), INTENT(in) :: cs2
       CHARACTER(len=2), INTENT(in), OPTIONAL :: color_code
-      CHARACTER(len=2) :: cc = '95' ; ! Light magenta
+      CHARACTER(len=2) :: cc
       !!
+      ! Default color (light magenta) set at each call, and not in the declaration above: a value given
+      ! in the declaration implies `SAVE`, so a color passed in one call would stay for the later calls.
+      cc = '95'
       IF( PRESENT(color_code) ) cc = color_code
       WRITE(id,*) ACHAR(27)//'['//cc//'m *** '//TRIM(cs1)//' =',REAL(pval,4),TRIM(cs2)//ACHAR(27)//'[0m'
       WRITE(id,*) ''
    END SUBROUTINE prtcol
+
+
+   SUBROUTINE prt_row( clabel, pvals, cunit, cfmt,  l_stats )
+      !!----------------------------------------------------------------------------------
+      !! Print one row of a summary table: a label, the values (one per algorithm) in
+      !! fixed-width columns, and the unit (and possibly the mean and RMS of the values).
+      !!
+      !! We use an explicit format (and not `WRITE(6,*)`), so that the columns are vertically
+      !! aligned with every compiler: the width used by list-directed output is compiler-dependent
+      !! (LLVM flang for example uses the shortest possible width for each value).
+      !!
+      !! Layout (same as the title line `ctitle`): label right-aligned on 15 characters + " = "
+      !! (18 characters in total), then each value in a 14-character column, then the unit.
+      !!----------------------------------------------------------------------------------
+      CHARACTER(len=*),       INTENT(in) :: clabel  ! label of the row
+      REAL(wp), DIMENSION(:), INTENT(in) :: pvals   ! one value per algorithm
+      CHARACTER(len=*),       INTENT(in) :: cunit   ! unit, printed after the values
+      CHARACTER(len=*),       INTENT(in) :: cfmt    ! edit descriptor of 1 value, 14 characters wide: 'f14.5' or 'es14.5'
+      LOGICAL, OPTIONAL,      INTENT(in) :: l_stats ! if TRUE: also print the mean and RMS of the values
+      !!
+      CHARACTER(len=15)  :: clab    ! label padded/truncated to 15 characters
+      CHARACTER(len=128) :: cform   ! the format of the row, built from `cfmt` and the number of values
+      LOGICAL            :: lstats
+      !!----------------------------------------------------------------------------------
+      lstats = .FALSE.
+      IF( PRESENT(l_stats) ) lstats = l_stats
+
+      ! Label padded to 15 characters, then right-aligned (so that all the " = " are in the same column):
+      clab = clabel
+      clab = ADJUSTR(clab)
+
+      ! Build the format, e.g. for 5 values and cfmt='f14.5':  (a15," = ",5(f14.5),2x,a)
+      ! and, if asked, add the mean and RMS of the values at the end of the row:
+      IF( lstats ) THEN
+         WRITE(cform,'(a,i0,a,a,a)') '(a15," = ",', SIZE(pvals), '(', TRIM(cfmt), '),2x,a," ( MEAN =",f12.5,"  RMS =",f12.5," )")'
+         WRITE(6,cform) clab, REAL(pvals,4), TRIM(cunit), VMEAN(pvals), VARIANCE(pvals)
+      ELSE
+         WRITE(cform,'(a,i0,a,a,a)') '(a15," = ",', SIZE(pvals), '(', TRIM(cfmt), '),2x,a)'
+         WRITE(6,cform) clab, REAL(pvals,4), TRIM(cunit)
+      END IF
+   END SUBROUTINE prt_row
 
 
    SUBROUTINE usage_test( icontinue )
@@ -591,6 +655,11 @@ CONTAINS
       PRINT *,'           temperature at zt that yields a neutral-stability!'
       PRINT *,''
       PRINT *,'   -h   => Show this message'
+      PRINT *,''
+      ! Tell the user how to get wide enough output lines for the summary tables (Intel and LLVM flang
+      ! wrap list-directed output at about 80 characters unless FORT_FMT_RECL is set):
+      PRINT *,'   Recommended call (wide output for the summary tables):'
+      PRINT *,'      FORT_FMT_RECL=512 ./bin/aerobulk_toy.x'
       PRINT *,'##########################################################################'
       PRINT *,''
       IF (icontinue==0) STOP

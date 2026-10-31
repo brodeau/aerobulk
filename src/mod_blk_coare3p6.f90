@@ -327,12 +327,12 @@ CONTAINS
                !! Roughness lengthes z0, z0t (z0q = z0t) :
                zUn10 = zus/vkarmn*(zlog_10 - zlog_z0)       ! Neutral wind speed at 10m
                zz0    = charn_coare3p6(zUn10)*zus2/grav + 0.11_wp*znu_a/zus ! Roughness length (eq.6)
-               zz0     = MIN( MAX(ABS(zz0), 1.E-9) , 1._wp )  ! (prevents FPE from stupid values from masked region later on)
+               zz0     = MIN( MAX(ABS(zz0), 1.E-9_wp) , 1._wp )  ! (prevents FPE from stupid values from masked region later on)
                zlog_z0 = LOG(zz0)
 
                ztmp1 = ( znu_a / (zz0*zus) )**0.72_wp        ! COARE3.6-specific! (1./Re_r)^0.72 (Re_r: roughness Reynolds number) COARE3.6-specific!
                zz0t   = MIN( 1.6E-4_wp , 5.8E-5_wp*ztmp1 )   ! COARE3.6-specific!
-               zz0t   = MIN( MAX(ABS(zz0t), 1.E-9) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
+               zz0t   = MIN( MAX(ABS(zz0t), 1.E-9_wp) , 1._wp ) ! (prevents FPE from stupid values from masked region later on)
                zlog_z0t = LOG(zz0t)
 
                !! Turbulent scales at zu :
@@ -341,7 +341,7 @@ CONTAINS
 
                zts = zdt*ztmp1
                zqs = zdq*ztmp1
-               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare(zzta_u)) , 1.E-9 )
+               zus = MAX( Ubzu(ji,jj)*vkarmn/(zlog_zu - zlog_z0 - psi_m_coare(zzta_u)) , 1.E-9_wp )
 
                IF( .NOT. l_zt_equal_zu ) THEN
                   !! Re-updating temperature and humidity at zu if zt /= zu :
@@ -366,8 +366,10 @@ CONTAINS
                   !! Warm-layer contribution
                   CALL UPDATE_QNSOL_TAU( zu, T_s(ji,jj), q_s(ji,jj), t_zu(ji,jj), q_zu(ji,jj), zus, zts, zqs, &
                      &                   zUzu, Ubzu(ji,jj), slp(ji,jj), rad_lw(ji,jj),  zQns, zTau)
-                  !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-                  CALL WL_COARE( ji, jj, Qsw(ji,jj), zQns, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, MOD(nb_iter,jit) )
+                  !! In WL_COARE, Tau_ac and Qnt_ac must be updated only at the final iteration step.
+                  !! The last argument (`iwait`) is 0 only when jit == nb_iter, so the accumulated
+                  !! heat and momentum are saved once per time step (and not at every divisor of nb_iter).
+                  CALL WL_COARE( ji, jj, Qsw(ji,jj), zQns, zTau, xSST(ji,jj), plong(ji,jj), isecday_utc, nb_iter - jit )
 
                   !! Updating T_s and q_s !!!
                   T_s(ji,jj) = xSST(ji,jj) + dT_wl(ji,jj)

@@ -45,7 +45,10 @@ PROGRAM TEST_COEF_N10
    REAL, DIMENSION(n_w,1) :: &
       &   t_w10, t_cdn10, t_cen10, t_chn10, t_z0
 
-   OPEN(6, FORM='formatted', RECL=512)
+   ! Note about wide output: we do NOT re-open unit 6 (standard output) with a larger RECL here:
+   ! changing the RECL of an already connected unit is not allowed by the Fortran standard (only Intel
+   ! accepts it; gfortran and LLVM flang refuse it). With Intel and LLVM flang, which wrap list-directed
+   ! output at about 80 characters, set the environment variable FORT_FMT_RECL=512 when running instead.
 
    nb_iter = 50  ! 50 itterations in bulk algorithm...
 
@@ -125,7 +128,6 @@ PROGRAM TEST_COEF_N10
    END DO
 
    WRITE(6,*) ''
-   CLOSE(6)
 
 
 CONTAINS

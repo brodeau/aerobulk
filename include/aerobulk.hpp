@@ -5,8 +5,9 @@
 
 #include <vector>
 #include <string>
-#include <cassert>
-#include <cstdarg>
+#include <initializer_list>
+#include <cstddef>
+#include <stdexcept>
 
 namespace aerobulk
 {
@@ -22,8 +23,9 @@ namespace aerobulk
 
     std::string algorithm_to_string(algorithm algo);
 
-    // To check the size of the inputs
-    int check_sizes(int count, ...);
+    // To check that all input vectors have the same size (returns that size,
+    // throws std::invalid_argument if the sizes differ)
+    int check_sizes(std::initializer_list<std::size_t> sizes);
 
     // Interface for l_vap
     //std::vector<double> l_vap(const std::vector<double> &sst);
@@ -33,6 +35,15 @@ namespace aerobulk
                const std::vector<double> &hum_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
                std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
                const int Niter, const bool l_use_skin, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s);
+
+    // Interface to aerobulk_model with rad_sw and rad_lw as inputs and T_s as output,
+    // plus the UTC time (seconds since 00:00 UTC) and the longitude [deg.E],
+    // needed by the warm-layer scheme of COARE (without them COARE only uses its cool-skin scheme)
+    void model(const int jt, const int Nt, algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,
+               const std::vector<double> &hum_zt, const std::vector<double> &U_zu, const std::vector<double> &V_zu, const std::vector<double> &slp,
+               std::vector<double> &QL, std::vector<double> &QH, std::vector<double> &Tau_x, std::vector<double> &Tau_y, std::vector<double> &Evap,
+               const int Niter, const bool l_use_skin, const std::vector<double> &rad_sw, const std::vector<double> &rad_lw, std::vector<double> &T_s,
+               const int isecday_utc, const std::vector<double> &plong);
 
     // Interface to aerobulk_model without rad_sw, rad_lw, and T_s
     void model(const int jt, const int Nt, algorithm algo, double zt, double zu, const std::vector<double> &sst, const std::vector<double> &t_zt,

@@ -34,49 +34,53 @@ MODULE mod_const
 
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
+   !! Note: all real literals below carry the `_wp` kind suffix. Without it, a literal such as `9.8`
+   !! is a single-precision number, and when stored in a REAL(wp) (double precision) it becomes
+   !! 9.80000019... (only ~7 correct digits). With `_wp` the full working precision is kept.
+
    !! General constants:
-   REAL(wp), PARAMETER, PUBLIC :: grav  = 9.8      !: acceleration of gravity    [m.s^-2]
+   REAL(wp), PARAMETER, PUBLIC :: grav  = 9.8_wp      !: acceleration of gravity    [m.s^-2]
    REAL(wp), PARAMETER, PUBLIC :: rpi   = 3.141592653589793_wp
    REAL(wp), PARAMETER, PUBLIC :: twoPi = 2.*rpi
    REAL(wp), PARAMETER, PUBLIC :: to_rad = rpi/180.
 
    
    !! Earth constants:
-   REAL(wp), PARAMETER, PUBLIC :: R_earth = 6.37E6 ! Earth radius (m)
-   REAL(wp), PARAMETER, PUBLIC ::rtilt_earth = 23.5
-   REAL(wp), PARAMETER, PUBLIC ::Sol0 = 1366.         !: Solar constant W/m^2
+   REAL(wp), PARAMETER, PUBLIC :: R_earth = 6.37E6_wp ! Earth radius (m)
+   REAL(wp), PARAMETER, PUBLIC ::rtilt_earth = 23.5_wp
+   REAL(wp), PARAMETER, PUBLIC ::Sol0 = 1366._wp         !: Solar constant W/m^2
    !!
-   REAL(wp), PARAMETER, PUBLIC :: roce_alb0  = 0.066   !: Default sea surface albedo over ocean when nothing better is available
+   REAL(wp), PARAMETER, PUBLIC :: roce_alb0  = 0.066_wp   !: Default sea surface albedo over ocean when nothing better is available
    !!                                                      !: NEMO: 0.066 / ECMWF: 0.055
-   REAL(wp), PARAMETER, PUBLIC :: rice_alb0  = 0.8     !: BAD!!! must use that of the sea-ice model when possible !!!
+   REAL(wp), PARAMETER, PUBLIC :: rice_alb0  = 0.8_wp     !: BAD!!! must use that of the sea-ice model when possible !!!
 
 
    !! Physics constants:
    REAL(wp), PARAMETER, PUBLIC ::emiss_w = 0.98_wp     !: Long-wave (thermal) emissivity of sea-water []
-   REAL(wp), PARAMETER, PUBLIC ::emiss_i = 0.996       !:  "   for ice and snow => but Rees 1993 suggests can be lower in winter on fresh snow... 0.72 ...
-   REAL(wp), PARAMETER, PUBLIC ::stefan = 5.67E-8 !: Stefan Boltzman constant
+   REAL(wp), PARAMETER, PUBLIC ::emiss_i = 0.996_wp       !:  "   for ice and snow => but Rees 1993 suggests can be lower in winter on fresh snow... 0.72 ...
+   REAL(wp), PARAMETER, PUBLIC ::stefan = 5.67E-8_wp !: Stefan Boltzman constant
 
    !! Thermodynamics / Water:
-   REAL(wp), PARAMETER, PUBLIC :: rt0  = 273.15      !: freezing point of fresh water [K]
-   REAL(wp), PARAMETER, PUBLIC :: rtt0 = 273.16      !: triple point                  [K]
+   REAL(wp), PARAMETER, PUBLIC :: rt0  = 273.15_wp      !: freezing point of fresh water [K]
+   REAL(wp), PARAMETER, PUBLIC :: rtt0 = 273.16_wp      !: triple point                  [K]
    !!
-   REAL(wp), PARAMETER, PUBLIC :: rCp0_w  = 4190.    !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
-   REAL(wp), PARAMETER, PUBLIC :: rho0_w = 1025.     !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
-   REAL(wp), PARAMETER, PUBLIC :: rnu0_w = 1.e-6     !: kinetic viscosity of water                      [m^2/s]
-   REAL(wp), PARAMETER, PUBLIC :: rk0_w  = 0.6       !: thermal conductivity of water (at 20C)          [W/m/K]
+   REAL(wp), PARAMETER, PUBLIC :: rCp0_w  = 4190._wp    !: Specific heat capacity of seawater (ECMWF 4190) [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rho0_w = 1025._wp     !: Density of sea-water  (ECMWF->1025)             [kg/m^3]
+   REAL(wp), PARAMETER, PUBLIC :: rnu0_w = 1.e-6_wp     !: kinetic viscosity of water                      [m^2/s]
+   REAL(wp), PARAMETER, PUBLIC :: rk0_w  = 0.6_wp       !: thermal conductivity of water (at 20C)          [W/m/K]
 
    
    !! Thermodynamics:
-   REAL(wp), PARAMETER, PUBLIC :: rCp0_a  = 1015.0   !: Specic heat of moist air                      [J/K/kg]
-   REAL(wp), PARAMETER, PUBLIC :: rCp_dry = 1005.0   !: Specic heat of dry air, constant pressure      [J/K/kg]
-   REAL(wp), PARAMETER, PUBLIC :: rCp_vap = 1860.0   !: Specic heat of water vapor, constant pressure  [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rCp0_a  = 1015.0_wp   !: Specific heat of moist air                      [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rCp_dry = 1005.0_wp   !: Specific heat of dry air, constant pressure      [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: rCp_vap = 1860.0_wp   !: Specific heat of water vapor, constant pressure  [J/K/kg]
    !!
-   REAL(wp), PARAMETER, PUBLIC :: R_dry = 287.05     !: Specific gas constant for dry air              [J/K/kg]
-   REAL(wp), PARAMETER, PUBLIC :: R_vap = 461.495    !: Specific gas constant for water vapor          [J/K/kg]
-   REAL(wp), PARAMETER, PUBLIC :: R_gas = 8.314510   !: Universal molar gas constant                   [J/mol/K]
+   REAL(wp), PARAMETER, PUBLIC :: R_dry = 287.05_wp     !: Specific gas constant for dry air              [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: R_vap = 461.495_wp    !: Specific gas constant for water vapor          [J/K/kg]
+   REAL(wp), PARAMETER, PUBLIC :: R_gas = 8.314510_wp   !: Universal molar gas constant                   [J/mol/K]
    !!
-   REAL(wp), PARAMETER, PUBLIC :: rmm_dryair = 28.9647e-3             !: dry air molar mass / molecular weight     [kg/mol]
-   REAL(wp), PARAMETER, PUBLIC :: rmm_water  = 18.0153e-3             !: water   molar mass / molecular weight           [kg/mol]
+   REAL(wp), PARAMETER, PUBLIC :: rmm_dryair = 28.9647e-3_wp             !: dry air molar mass / molecular weight     [kg/mol]
+   REAL(wp), PARAMETER, PUBLIC :: rmm_water  = 18.0153e-3_wp             !: water   molar mass / molecular weight           [kg/mol]
    REAL(wp), PARAMETER, PUBLIC :: rmm_ratio  = rmm_water / rmm_dryair
    !!
    REAL(wp), PARAMETER, PUBLIC :: rpoiss_dry = R_dry / rCp_dry  !: Poisson constant for dry air
@@ -86,17 +90,17 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: reps0 = R_dry/R_vap      !: ratio of gas constant for dry air and water vapor => ~ 0.622
    REAL(wp), PARAMETER, PUBLIC :: rctv0 = R_vap/R_dry - 1. !: for virtual temperature (== (1-eps)/eps) => ~ 0.608
    !!
-   REAL(wp), PARAMETER, PUBLIC :: rnu0_air  = 1.5E-5   !: kinematic viscosity of air    [m^2/s]
+   REAL(wp), PARAMETER, PUBLIC :: rnu0_air  = 1.5E-5_wp   !: kinematic viscosity of air    [m^2/s]
    !!
    REAL(wp), PARAMETER, PUBLIC :: rLevap = 2.46e+6_wp   !: Latent heat of vaporization for sea-water in   [J/kg]
    REAL(wp), PARAMETER, PUBLIC :: rLsub  = 2.834e+6_wp  !: Latent heat of sublimation for ice at 0 deg.C  [J/kg]
    !!
-   REAL(wp), PARAMETER, PUBLIC :: Tswf  = 273.         !: BAD!!! because sea-ice not used yet!!!
+   REAL(wp), PARAMETER, PUBLIC :: Tswf  = 273._wp         !: BAD!!! because sea-ice not used yet!!!
 
    
    !! Some defaults:
-   REAL(wp), PARAMETER, PUBLIC :: Patm  = 101000. !: reference atmospheric pressure at sea-level            [Pa]
-   REAL(wp), PARAMETER, PUBLIC :: rho0_a = 1.2    !: Approx. of density of air                          [kg/m^3]
+   REAL(wp), PARAMETER, PUBLIC :: Patm  = 101000._wp !: reference atmospheric pressure at sea-level            [Pa]
+   REAL(wp), PARAMETER, PUBLIC :: rho0_a = 1.2_wp    !: Approx. of density of air                          [kg/m^3]
    
    
    !! Bulk model:

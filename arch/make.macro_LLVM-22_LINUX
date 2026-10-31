@@ -1,0 +1,54 @@
+# Makefile for AeroBulk with the LLVM suite of compilers (version 22): flang (Fortran) + clang++ (C++)
+# ===================================================================================================
+#  => inspired by `make.macro_Intel_OneAPI`
+#  => tested names/paths for Debian packages of LLVM 22 (flang-22, clang++-22)
+
+# Fortran and C++ compilers.
+# On Debian the LLVM executables carry the version number (`flang-22`, `clang++-22`);
+# do not use `flang-new`, which can point to an older LLVM version.
+FC  = flang-22
+CXX = clang++-22
+
+# Libraries of the Fortran compiler (only needed to link the C++ interface with the Fortran library).
+# The Fortran runtime of flang is the static library `libflang_rt.runtime.a` (it was called
+# `libFortranRuntime.a` in older LLVM versions), found in the clang resource directory of LLVM 22:
+VERSION      = 22
+DIR_FORT_LIB = /usr/lib/llvm-$(VERSION)/lib/clang/$(VERSION)/lib/x86_64-pc-linux-gnu
+LNK_FORT_LIB = -lflang_rt.runtime -lm
+
+
+
+### Fortran compilation flags :
+#  -fdefault-real-8 -fdefault-double-8 => default REAL is 8 bytes (like `-r8` with Intel),
+#                                          and DOUBLE PRECISION stays 8 bytes (not promoted to 16)
+#  -module-dir mod/ -I mod/            => where to write and read the `.mod` files (like `-module mod/` with Intel)
+#  (default INTEGER is already 4 bytes with flang, so no equivalent of Intel `-i4` is needed)
+#
+#  Wide standard output: the flang runtime wraps list-directed output (PRINT *, WRITE(6,*)) at about
+#  80 characters. To get wider lines (needed by the summary tables of `aerobulk_toy.x`), set the
+#  environment variable FORT_FMT_RECL when running, e.g.:  FORT_FMT_RECL=512 ./bin/aerobulk_toy.x
+
+# Production
+FF = -O3 -fdefault-real-8 -fdefault-double-8 -module-dir mod/ -I mod/
+# Equivalent of Intel `-xHOST` (optimize for the CPU of this machine), to try:
+#FF += -march=native
+
+# Debugging (flang has fewer run-time check options than Intel `-check all`):
+#DEBUG_FF = -g -O0
+#FF = $(DEBUG_FF) -fdefault-real-8 -fdefault-double-8 -module-dir mod/ -I mod/
+
+# C++ compilation flags (Intel `-traceback` does not exist with clang++, we use the GNU-like flags of `make.macro_GnuLinux`):
+CXXFLAGS = -std=c++11 -O3 -fPIC
+
+# Directory to install binaries :
+INSTALL_DIR = /usr/local
+
+# Root directory for Netcdf.
+# WARNING: Fortran `.mod` files are not compatible between compilers, so NetCDF-Fortran must have
+# been compiled with flang-22 (the Debian package `libnetcdff-dev` is compiled with gfortran and
+# cannot be used here). NetCDF is only needed by `make test` (programs using `io_ezcdf.f90`),
+# not by the default `make` (library, toy, examples, ice tests).
+NETCDF_DIR = /usr
+
+# Linking argument: usually "-lnetcdff", "-lnetcdf" or "-lnetcdf -lnetcdff" :
+L_NCDF = -lnetcdff

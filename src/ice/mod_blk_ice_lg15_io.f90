@@ -177,6 +177,15 @@ CONTAINS
 
       lreturn_o_water =  PRESENT(Cd_w) .AND. PRESENT(Ch_w) .AND. PRESENT(Ce_w) .AND. PRESENT(t_zu_w) .AND. PRESENT(q_zu_w)
 
+      ! The "over water" part of this scheme is not finished: the skin-drag arrays over water
+      ! (zz0_s, zCdN_s, zChN_s at index 2) are never set, so any over-water output would be computed
+      ! from uninitialized memory. We stop with a clear message if any of these outputs is asked for.
+      IF( PRESENT(Cd_w) .OR. PRESENT(Ch_w) .OR. PRESENT(Ce_w) .OR. PRESENT(t_zu_w) .OR. PRESENT(q_zu_w) ) THEN
+         PRINT *, ' ERROR: turb_ice_lg15_io@mod_blk_ice_lg15_io => over-water outputs (Cd_w, Ch_w, Ce_w, t_zu_w, q_zu_w)'
+         PRINT *, '        are not implemented yet!'
+         STOP
+      END IF
+
       IF( ( lreturn_o_water ) .AND. (.NOT.(PRESENT(Ts_w)) .OR. .NOT.(PRESENT(qs_w))) ) THEN
          PRINT *, ' ERROR: turb_ice_lg15_io@mod_blk_ice_lg15_io => you must specify "Ts_w" and "qs_w" as input'
          STOP
@@ -264,7 +273,9 @@ CONTAINS
             xtmp2(:,:) = zz0_s(:,:,1) + zz0_f(:,:,1)      ! total roughness length z0
             xtmp1 = LOG(zt/zu) + f_h_louis( zu, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) ) &
                &               - f_h_louis( zt, RiB(:,:,1), xtmp1(:,:), xtmp2(:,:) )
-            xtmp2(:,:) = MAX( Ubzu(:,:) + (SQRT(zCd(:,:,1))*Ubzu)*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*Ubzu == u* !)
+            ! Wind at zt from the log profile: U(zt) = U(zu) + u*/vkarmn * xtmp1   (u* = SQRT(Cd)*U(zu))
+            ! (the division by vkarmn was missing, which gave a too strong wind at zt and a too weak RiB)
+            xtmp2(:,:) = MAX( Ubzu(:,:) + (SQRT(zCd(:,:,1))*Ubzu)/vkarmn*xtmp1 , wspd_thrshld_ice ) ! wind at zt ( SQRT(zCd(:,:,1))*Ubzu == u* !)
             xtmp2(:,:) = MIN( xtmp2(:,:) , Ubzu(:,:) )
             IF(l_dbg_print) PRINT *, 'LOLO: ADJUSTED WIND AT ZT =', xtmp2
          ELSE

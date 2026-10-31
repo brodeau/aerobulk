@@ -19,7 +19,7 @@ CXX = nvc++
 ### Fortran compilation flags :
 
 # Production
-FF =  -O3 -i4 -r8 -Minit-integer=zero -Minit-real=zero -D_NOTGCC -module mod/
+FF =  -O3 -i4 -r8 -Minit-integer=zero -Minit-real=zero -module mod/
 
 # Debugging:
 #FF = -Kieee -g -O1 -traceback -Minit-logical=false -Minfo=accel -C -Ktrap=divz,fp,ovf -ffpe-trap=invalid,zero,overflow

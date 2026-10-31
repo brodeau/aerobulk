@@ -179,10 +179,13 @@ CONTAINS
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
       REAL(wp)                       :: pot_temp_sclr  !: potential air temperature at `z` m above sea level [K]
       !!
-      REAL(wp) :: zPref = Patm
+      REAL(wp) :: zPref
       !!-------------------------------------------------------------------
+      !! The default value is set here, at each call, and not in the declaration above:
+      !! a value given in the declaration implies `SAVE` and would keep the `pPref` of a previous call.
+      zPref = Patm
       IF( PRESENT(pPref) ) zPref = pPref
-      pot_temp_sclr = pTa * ( zPref / pPz )**rpoiss_dry
+      pot_temp_sclr =pTa * ( zPref / pPz )**rpoiss_dry
       !!
    END FUNCTION pot_temp_sclr
 
@@ -220,10 +223,13 @@ CONTAINS
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
       REAL(wp)                       :: abs_temp_sclr  !: potential air temperature at `z` m above sea level [K]
       !!
-      REAL(wp) :: zPref = Patm
+      REAL(wp) :: zPref
       !!-------------------------------------------------------------------
+      !! The default value is set here, at each call, and not in the declaration above:
+      !! a value given in the declaration implies `SAVE` and would keep the `pPref` of a previous call.
+      zPref = Patm
       IF( PRESENT(pPref) ) zPref = pPref
-      abs_temp_sclr = pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
+      abs_temp_sclr =pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
       !!
    END FUNCTION abs_temp_sclr
 
@@ -288,6 +294,10 @@ CONTAINS
       !!              based barometric equation, from absolute air temperature
       !!              and specific humidity at height `pz` and sea-level pressure
       !!
+      !!              Note: `l_ice` is not used anymore (the molar mass of moist air is computed
+      !!              directly from the specific humidity, so no saturation humidity is needed),
+      !!              it is only kept so that existing calls do not break.
+      !!
       !! ** Author: G. Samson,  Feb  2021
       !!            L. Brodeau, June 2021
       !!-------------------------------------------------------------------------------
@@ -295,25 +305,22 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pslp             ! pressure at sea-level (z=0)        [Pa]
       REAL(wp), INTENT(in)           :: pTa              ! air abs. temperature at z=`pz`     [K]
       REAL(wp), INTENT(in)           :: pqa              ! air specific humidity at z=`pz`    [kg/kg]
-      LOGICAL , INTENT(in), OPTIONAL :: l_ice            ! sea-ice presence
+      LOGICAL , INTENT(in), OPTIONAL :: l_ice            ! sea-ice presence (not used anymore, see note above)
       REAL(wp)                       :: Pz_from_P0_tz_qz_sclr  ! pressure at `pz` m above sea level [Pa]
       !!
-      REAL(wp)           :: zpa, zxm, zqsat, zf
-      INTEGER            :: it
-      LOGICAL            :: lice = .FALSE. ! sea-ice presence
-      INTEGER, PARAMETER :: niter = 3      ! iteration indice and number
+      REAL(wp) :: zxv, zxm
       !!-------------------------------------------------------------------------------
-      IF( PRESENT(l_ice) ) lice = l_ice
-      !!
-      zpa = pslp              ! first guess of air pressure at zt   [Pa]
-      DO it = 1, niter
-         zqsat = q_sat( pTa, zpa, l_ice=lice )                               ! saturation specific humidity [kg/kg]
-         zf    = pqa/zqsat
-         zxm   = (1._wp - zf) * rmm_dryair + zf * rmm_water    ! moist air molar mass [kg/mol]
-         zpa   = pslp * EXP( -grav * zxm * pz / ( R_gas * pTa ) )
-      END DO
-      !!
-      Pz_from_P0_tz_qz_sclr = zpa
+      ! Mole fraction of water vapour in the air, computed from the specific humidity q (a mass ratio):
+      !    x_v = q / ( eps + (1 - eps)*q ),  with eps = M_water / M_dry
+      ! (the old code used q/q_sat, which is the relative humidity, not a mole fraction)
+      zxv = pqa / ( rmm_ratio + (1._wp - rmm_ratio)*pqa )
+
+      ! Molar mass of moist air [kg/mol]:
+      zxm = (1._wp - zxv) * rmm_dryair + zxv * rmm_water
+
+      ! Barometric equation for an isothermal layer at temperature pTa.
+      ! The molar mass does not depend on pressure, so no iteration is needed anymore:
+      Pz_from_P0_tz_qz_sclr = pslp * EXP( -grav * zxm * pz / ( R_gas * pTa ) )
       !!
    END FUNCTION Pz_from_P0_tz_qz_sclr
 
@@ -326,8 +333,11 @@ CONTAINS
       REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             :: Pz_from_P0_tz_qz_vctr  ! pressure at `pz` m above sea level [Pa]
       !!
       INTEGER :: ji, jj         ! loop indices
-      LOGICAL :: lice = .FALSE. ! presence of ice ?
+      LOGICAL :: lice           ! presence of ice ?
       !!
+      !! The default value is set here, at each call, and not in the declaration above:
+      !! a value given in the declaration implies `SAVE` and would keep the `l_ice` of a previous call.
+      lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
       DO jj = 1, SIZE(pTa,2)
          DO ji = 1, SIZE(pTa,1)
@@ -726,10 +736,11 @@ CONTAINS
       REAL(wp), INTENT(in) :: pub   ! bulk wind speed                     [m/s]
       REAL(wp), INTENT(in), OPTIONAL :: pTa_layer ! when possible, a better guess of absolute temperature WITHIN the layer [K]
       REAL(wp), INTENT(in), OPTIONAL :: pqa_layer ! when possible, a better guess of specific humidity    WITHIN the layer [kg/kg]
-      LOGICAL  :: l_ptqa_l_prvd = .FALSE.
+      LOGICAL  :: l_ptqa_l_prvd
       REAL(wp) :: zdthv, ztv, zsstv  ! local scalars
       !!-------------------------------------------------------------------
-      IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
+      !! Set at each call (a value given in the declaration would imply `SAVE` and keep the result of a previous call):
+      l_ptqa_l_prvd = ( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) )
       !
       zsstv = virt_temp_sclr( psst, pssq )          ! virtual SST (absolute==potential because z=0!)
       !
@@ -756,9 +767,10 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pTa_layer
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pqa_layer
       REAL(wp), DIMENSION(SIZE(psst,1),SIZE(psst,2))             :: Ri_bulk_vctr
-      LOGICAL  :: l_ptqa_l_prvd = .FALSE.
+      LOGICAL  :: l_ptqa_l_prvd
       INTEGER  ::   ji, jj
-      IF( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) ) l_ptqa_l_prvd=.TRUE.
+      !! Set at each call (a value given in the declaration would imply `SAVE` and keep the result of a previous call):
+      l_ptqa_l_prvd = ( PRESENT(pTa_layer) .AND. PRESENT(pqa_layer) )
       DO jj = 1, SIZE(psst,2)
          DO ji = 1, SIZE(psst,1)
             IF( l_ptqa_l_prvd ) THEN
@@ -1233,7 +1245,10 @@ CONTAINS
       INTEGER  :: ji, jj
       CHARACTER(len=256) :: cmsg
       !!----------------------------------------------------------------------------------
-      lice = PRESENT(l_ice)
+      ! `lice` must be the VALUE of `l_ice` (FALSE if the argument is absent), not whether the argument is present:
+      ! otherwise `l_ice=.FALSE.` would switch the ice formulas ON.
+      lice = .FALSE.
+      IF( PRESENT(l_ice) ) lice = l_ice
       lrE  = PRESENT(pEvap)
       lrR  = PRESENT(prhoa)
       DO jj = 1, SIZE(pts,2)
@@ -1640,8 +1655,12 @@ CONTAINS
       !!              * iflag==1 => temperature => returns: z_{0t}
       !!              * iflag==2 => humidity    => returns: z_{0q}
       !!              from roughness reynold number "pRer" (i.e. [z_0 u*]/Nu_{air})
-      !!              between 0 and 1000. Out of range "pRer" indicated by prt=-999.
       !!              and roughness length (for momentum)
+      !!
+      !!              The table of Liu et al. is defined for 0 < pRer <= 1000:
+      !!              * pRer > 1000 (never seen in realistic conditions) => the last segment
+      !!                of the table is extended beyond 1000
+      !!              * pRer <= 0 (or NaN, not physical, e.g. masked points) => z_{0t} = z_0
       !!
       !!              Based on Liu et al. (1979) JAS 36 1722-1723s
       !!
@@ -1676,27 +1695,37 @@ CONTAINS
       !     &       0.,4.28,0,-0.528,-0.870,-1.297,-1.845,-2.682,-3.616/
       !      DATA RAN/0.11,.16,1.00,3.0,10.0,30.0,100.,300.,1000./
       !-------------------------------------------------------------------
-      LOGICAL  :: lfound=.FALSE.
+      LOGICAL  :: lfound
       REAL(wp) :: zrr
       INTEGER  :: ji, jj, jm
       !!---------------------------------------------------------------------------------
-      z0tq_LKB(:,:) = -999._wp
-      !
       DO jj = 1, SIZE(pRer,2)
          DO ji = 1, SIZE(pRer,1)
-            zrr    = pRer(ji,jj)
-            lfound = .FALSE.
-            IF( (zrr > 0.).AND.(zrr < 1000.) ) THEN
+            zrr = pRer(ji,jj)
+            IF( zrr >= XRAN(8) ) THEN
+               ! Re_r above the range of the table (very rough flow, never seen in realistic conditions):
+               ! extend the last segment (300 < Re_r <= 1000) beyond 1000, so z0t stays continuous at Re_r=1000
+               ! and keeps decreasing (instead of the old fallback that gave the maximum value, 0.05 m).
+               z0tq_LKB(ji,jj) = XA(8,iflag)*zrr**XB(8,iflag) * pz0(ji,jj)/zrr
+            ELSEIF( zrr > 0._wp ) THEN
+               ! Normal case: find the segment of the table that contains Re_r
                jm = 0
+               lfound = .FALSE.
                DO WHILE ( .NOT. lfound )
                   jm = jm + 1
                   lfound = ( (zrr > XRAN(jm-1)) .AND. (zrr <= XRAN(jm)) )
                END DO
                z0tq_LKB(ji,jj) = XA(jm,iflag)*zrr**XB(jm,iflag) * pz0(ji,jj)/zrr
+            ELSE
+               ! Re_r <= 0 (or NaN) is not physical (u* or z0 is 0 or garbage, e.g. masked points):
+               ! use z0t = z0 as a bounded fallback (instead of the maximum value 0.05 m).
+               z0tq_LKB(ji,jj) = pz0(ji,jj)
             END IF
          END DO
       END DO
-      z0tq_LKB(:,:) = MIN( MAX(ABS(z0tq_LKB(:,:)), 1.E-9) , 0.05_wp )
+
+      ! Safety net: keep z0t within [1.E-9, 0.05] m
+      z0tq_LKB(:,:) = MIN( MAX(ABS(z0tq_LKB(:,:)), 1.E-9_wp) , 0.05_wp )
       !!
    END FUNCTION z0tq_LKB
    !===============================================================================================
@@ -1902,12 +1931,12 @@ CONTAINS
       CASE('rh_air','rh','RH','rlh','rha')
          zmax = ref_rlh_max
          zmin = ref_rlh_min
-         cunit = 'kg/kg'
+         cunit = '%'       ! relative humidity is in percent
 
       CASE('dp_air','dp','d2m','D2M')
          zmax = ref_dpt_max
          zmin = ref_dpt_min
-         cunit = 'kg/kg'
+         cunit = 'K'       ! dew-point temperature is in Kelvin
 
       CASE('slp','mslp','MSL','msl','P')
          zmax = ref_slp_max

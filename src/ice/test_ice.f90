@@ -26,7 +26,8 @@ PROGRAM TEST_ICE
 
    dus = (us_max - us_min)/(nustar - 1)
 
-   PRINT *, ' Temperature increment = ', dus
+   ! Increment of the friction velocity u* between two points of the test axis
+   PRINT *, ' u* increment = ', dus, ' [m/s]'
 
    vus(1,:) = (/ ( us_min + (ju-1)*dus , ju=1,nustar ) /)
 

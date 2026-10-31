@@ -22,7 +22,8 @@ CONTAINS
    SUBROUTINE aerobulk_compute( jt, calgo, zt, zu, sst, t_zt, &
       &                         hum_zt, U_zu, V_zu, slp,  &
       &                         QL, QH, Tau_x, Tau_y,     &
-      &                         rad_sw, rad_lw, T_s, Evp )
+      &                         rad_sw, rad_lw, T_s, Evp,  &
+      &                         isecday_utc, plong )
       !!======================================================================================
       !!
       !! INPUT :
@@ -46,6 +47,10 @@ CONTAINS
       !! --------------  (these 2 are only needed when using CSWL schemes...)
       !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
+      !!    *  isecday_utc : current UTC time, in seconds since 00:00 UTC of the current day
+      !!    *  plong       : longitude                                       [deg.E]
+      !!                     => these 2 are needed by the warm-layer scheme of COARE (local solar time),
+      !!                        if one is missing, only the cool-skin scheme of COARE is used
       !!
       !! OUTPUT :
       !! --------
@@ -70,6 +75,8 @@ CONTAINS
       REAL(wp),   DIMENSION(:,:), INTENT(out) :: QL, QH, Tau_x, Tau_y
       REAL(wp),   DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
       REAL(wp),   DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s, Evp
+      INTEGER,                    INTENT(in), OPTIONAL :: isecday_utc ! current UTC time [s since 00:00 UTC]
+      REAL(wp),   DIMENSION(:,:), INTENT(in), OPTIONAL :: plong       ! longitude [deg.E]
       !!
       REAL(wp),   DIMENSION(:,:), ALLOCATABLE  ::  &
          &     zWzu,            & !: Scalar wind speed at zu m
@@ -79,10 +86,10 @@ CONTAINS
          &  zThtzu, zQzu,       & !: POTENTIAL air temperature and specific humidity at zu meters
          &  zTs, zqs, zEvap,    & !:
          &  zTaum,              & !: wind stress module
-         &  zUblk,              & !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
-         &  ztmp                  !: temporary array
+         &  zUblk                 !: Bulk scalar wind speed (zWzu corrected for low wind and unstable conditions)
       !
       INTEGER          :: Ni, Nj
+      LOGICAL          :: l_use_wl_coare   !: use the warm-layer scheme of COARE? (only if time and longitude are known)
       !!------------------------------------------------------------------------------
 
       Ni = SIZE(sst,1)
@@ -93,7 +100,7 @@ CONTAINS
          &       zThtzt(Ni,Nj), zQzt(Ni,Nj),                &
          &       zThtzu(Ni,Nj), zQzu(Ni,Nj),                &
          &       zUblk(Ni,Nj),  zTs(Ni,Nj),    zqs(Ni,Nj),  &
-         &       zEvap(Ni,Nj),  zTaum(Ni,Nj),  ztmp(Ni,Nj)  )
+         &       zEvap(Ni,Nj),  zTaum(Ni,Nj)                )
       
       ! Conversion to specific humidity when needed:
       SELECT CASE(ctype_humidity)
@@ -123,17 +130,22 @@ CONTAINS
       zqs = zSSQ
 
 
-      ztmp(:,:) = 0._wp   ! longitude fixed to 0, (for COAREx when using cool-skin/warm-layer)
+      !! The warm-layer scheme of COARE needs the local solar time, so it needs both the UTC time
+      !! and the longitude. If one of them is missing, we only use the cool-skin scheme of COARE
+      !! (a warning about this is printed once in AEROBULK_INIT).
+      !! When `l_use_wl_coare` is FALSE, `isecday_utc` and `plong` are passed as absent optional
+      !! arguments to TURB_COARE*, which is fine since they are not used without the warm layer.
+      l_use_wl_coare = ( PRESENT(isecday_utc) .AND. PRESENT(plong) )
 
 
       SELECT CASE(TRIM(calgo))
          !!
       CASE('coare3p0')
          IF( l_use_skin_schemes ) THEN
-            CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE., &
+            CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., l_use_wl_coare, &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
                &                pQsw=(1._wp - roce_alb0)*rad_sw, prad_lw=rad_lw, pslp=slp, &
-               &                isecday_utc=12, plong=ztmp  )
+               &                isecday_utc=isecday_utc, plong=plong  )
          ELSE
             CALL TURB_COARE3P0 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .FALSE., .FALSE.,  &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk )
@@ -141,9 +153,10 @@ CONTAINS
          !!
       CASE('coare3p6')
          IF( l_use_skin_schemes ) THEN
-            CALL TURB_COARE3P6 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., .TRUE., &
+            CALL TURB_COARE3P6 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .TRUE., l_use_wl_coare, &
                &                zCd, zCh, zCe, zThtzu, zQzu, zUblk,            &
-               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, isecday_utc=12, plong=ztmp  )
+               &                Qsw=(1._wp - roce_alb0)*rad_sw, rad_lw=rad_lw, slp=slp, &
+               &                isecday_utc=isecday_utc, plong=plong  )
          ELSE
             CALL TURB_COARE3P6 ( jt, zt, zu, zTs, zThtzt, zqs, zQzt, zWzu, .FALSE., .FALSE.,  &
                &                 zCd, zCh, zCe, zThtzu, zQzu, zUblk )
@@ -208,7 +221,7 @@ CONTAINS
       IF( PRESENT(Evp) ) Evp(:,:) = zEvap(:,:)
 
       DEALLOCATE ( zWzu, zSSQ, zCd, zCh, zCe, zThtzt, zQzt, zThtzu, zQzu, &
-         &         zUblk, zTs, zqs, zEvap, zTaum, ztmp  )
+         &         zUblk, zTs, zqs, zEvap, zTaum  )
       
    END SUBROUTINE aerobulk_compute
 

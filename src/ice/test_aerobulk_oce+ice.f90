@@ -66,7 +66,10 @@ PROGRAM TEST_AEROBULK_ICE
 
    nb_iter = 20  ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   ! Note about wide output: we do NOT re-open unit 6 (standard output) with a larger RECL here:
+   ! changing the RECL of an already connected unit is not allowed by the Fortran standard (only Intel
+   ! accepts it; gfortran and LLVM flang refuse it). With Intel and LLVM flang, which wrap list-directed
+   ! output at about 80 characters, set the environment variable FORT_FMT_RECL=512 when running instead.
 
 
 
@@ -227,7 +230,8 @@ PROGRAM TEST_AEROBULK_ICE
       t_zt = sit ! first guess
       DO icpt=1, 10
          q_zt = q_air_rh(RH_zt, t_zt, SLP)
-         t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - gamma_moist(t_zt, q_zt)*zt ! Eq: theta_v_0 = theta_v_zt
+         ! Dry adiabatic lapse rate (as in aerobulk_toy), since theta is defined with the dry adiabat:
+         t_zt = virt_temp(sit, siq) / (1._wp + rctv0*q_air_rh(RH_zt, t_zt, SLP)) - rgamma_dry*zt ! Eq: theta_v_0 = theta_v_zt
       END DO
 
       qsat_zt = q_sat(t_zt, SLP)  ! spec. hum. at saturation [kg/kg]
@@ -264,8 +268,10 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ' *** SSQ over water =', REAL(1000.*ssq ,4), '[g/kg]'
    WRITE(6,*) ''
 
-   !! Must give something more like a potential temperature at zt:
-   theta_zt = t_zt + rgamma*zt
+   !! Potential temperature at zt from absolute temperature, using the same function as the library
+   !! (aerobulk_compute) and the toy: potential temperature is defined with the DRY adiabat (Poisson),
+   !! not with the moist lapse rate used before (gamma_moist, `rgamma` above is now only displayed).
+   theta_zt = Theta_from_z_P0_T_q( zt, SLP, t_zt, q_zt )
 
    WRITE(6,*) ''
    WRITE(6,*) 'Pot. temp. at ',TRIM(czt),' (using gamma)  =', theta_zt - rt0, ' [deg.C]'
@@ -361,11 +367,9 @@ PROGRAM TEST_AEROBULK_ICE
       vTheta_u(ialgo) = theta_zu(1,1) -rt0   ! Potential temperature at zu
 
       !! Absolute temperature at zu
-      t_zu = theta_zu ! first guess...
-      DO jq = 1, 4
-         rgamma = gamma_moist(0.5*(t_zu+sit), q_zu)
-         t_zu = theta_zu - rgamma*zu   ! Absolute temp.
-      END DO
+      ! (from potential temperature at zu, using the same function as the toy: inverse of
+      !  Theta_from_z_P0_T_q, dry adiabat, instead of the moist lapse rate used before)
+      t_zu = T_from_z_P0_Theta_q( zu, SLP, theta_zu, q_zu )
 
       vCd(ialgo) = 1000.*Cd(1,1)
       vCh(ialgo) = 1000.*Ch(1,1)
@@ -473,7 +477,6 @@ PROGRAM TEST_AEROBULK_ICE
    WRITE(6,*) ''
 
    WRITE(6,*) ''
-   CLOSE(6)
 
 
 CONTAINS

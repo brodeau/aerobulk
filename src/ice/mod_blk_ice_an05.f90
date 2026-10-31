@@ -279,11 +279,12 @@ CONTAINS
 
             !! *** TABLE 1 of Andreas et al. 2005 ***
             !! Smooth flow condition (R* <= 0.135):
-            zsmoot = 0.5_wp + SIGN( 0.5_wp, (0.135_wp   - zre) ) ! zre <= 0.135: zsmoot==1 ; otherwize: zsmoot==0
-            !! Transition (0.135 < R* < 2.5):
-            ztrans = 0.5_wp + SIGN( 0.5_wp, (2.49999_wp - zre) ) - zsmoot
-            !! Rough ( R* > 2.5):
-            zrough = 0.5_wp + SIGN( 0.5_wp, (zre - 2.5_wp) )
+            zsmoot = 0.5_wp + SIGN( 0.5_wp, (0.135_wp - zre) ) ! zre <= 0.135: zsmoot==1 ; otherwize: zsmoot==0
+            !! Rough flow condition (R* >= 2.5):
+            zrough = 0.5_wp + SIGN( 0.5_wp, (zre - 2.5_wp) )   ! zre >= 2.5:   zrough==1 ; otherwize: zrough==0
+            !! Transition (0.135 < R* < 2.5): what is left, so that the 3 flags always add up to exactly 1
+            !! (the old threshold 2.49999 left a gap 2.49999 < R* < 2.5 where all 3 flags were 0 => ctl_stop)
+            ztrans = 1._wp - zsmoot - zrough
 
             IF( (zsmoot+ztrans+zrough > 1.001_wp).OR.(zsmoot+ztrans+zrough < 0.999_wp) ) &
                CALL ctl_stop( ' rough_leng_tq@mod_blk_ice_an05.f90 => something wrong with zsmoot, ztrans, zrough!' )
@@ -348,7 +349,11 @@ CONTAINS
                &    - 2.*ATAN( zx ) + 0.5*rpi
 
             ! Stable stratification:
-            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
+            ! Stable stratification, Holtslag & De Bruin (1988) as given in Eq.(33) of Jordan et al. 1999:
+            !   psi = -[ a*zeta + b*(zeta - c/d)*exp(-d*zeta) + b*c/d ],  with a=0.7, b=0.75, c=5, d=0.35
+            ! We use the exact values c/d = 5/0.35 and b*c/d = 0.75*5/0.35 instead of the rounded values
+            ! 14.3 and 10.7 printed in the paper, so that psi(0) = 0 exactly (it was +0.025 with the rounded values)
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 5._wp/0.35_wp)*EXP( -0.35_wp*zta) + 0.75_wp*5._wp/0.35_wp )
 
             !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)
@@ -394,7 +399,11 @@ CONTAINS
             zpsi_u =   2.*LOG( (1._wp + zx*zx)/2. )  ! Eq.(31) Jordan et al. 1999
 
             ! Stable stratification (identical to Psi_m!):
-            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
+            ! Stable stratification, Holtslag & De Bruin (1988) as given in Eq.(33) of Jordan et al. 1999:
+            !   psi = -[ a*zeta + b*(zeta - c/d)*exp(-d*zeta) + b*c/d ],  with a=0.7, b=0.75, c=5, d=0.35
+            ! We use the exact values c/d = 5/0.35 and b*c/d = 0.75*5/0.35 instead of the rounded values
+            ! 14.3 and 10.7 printed in the paper, so that psi(0) = 0 exactly (it was +0.025 with the rounded values)
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 5._wp/0.35_wp)*EXP( -0.35_wp*zta) + 0.75_wp*5._wp/0.35_wp )
 
             !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)

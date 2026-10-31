@@ -293,7 +293,6 @@ PROGRAM TEST_AEROBULK_CDNF_SERIES
       &           )
 
    WRITE(6,*) ''; WRITE(6,*) ''
-   CLOSE(6)
 
 CONTAINS
 

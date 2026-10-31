@@ -19,7 +19,7 @@ PROGRAM TEST_PHYMBL
    INTEGER, PARAMETER :: ntemp = 101
 
    CHARACTER(len=6) :: cslp
-   CHARACTER(len=2) :: cdT
+   CHARACTER(len=3) :: cdT   ! sign + 2 digits of the air-sea temperature difference (e.g. "p05", "m12")
 
    REAL(wp), DIMENSION(1,ntemp) :: vsst, vmsl, vqsat1, vqsat2, vqsat3, vqsat4, vqsat_ice, &
       &                            vsst_k, vrho, vt10, vq10, vrh
@@ -138,8 +138,9 @@ PROGRAM TEST_PHYMBL
       PRINT *, ''
       PRINT *, 'Give air-sea diff of temperature at 10m (Tair - SST) (K):'
       READ(*,*) dT
-      IF ( dT >= 0.) WRITE(cdT,'("p",i1)') INT(ABS(dT))
-      IF ( dT <  0.) WRITE(cdT,'("m",i1)') INT(ABS(dT))
+      ! 2 digits (i2.2) so that a difference of 10 K or more does not give "*" in the file name
+      IF ( dT >= 0.) WRITE(cdT,'("p",i2.2)') INT(ABS(dT))
+      IF ( dT <  0.) WRITE(cdT,'("m",i2.2)') INT(ABS(dT))
 
 
 
@@ -214,6 +215,9 @@ PROGRAM TEST_PHYMBL
       DO jt = 2, ntemp-1
          vdes_dt_ice_fd(1,jt) = (ves_ice(1,jt+1) - ves_ice(1,jt-1)) / ( vsst_k(1,jt+1) - vsst_k(1,jt-1) )
       END DO
+      ! End points: one-sided (forward / backward) differences, so that all the rows written below are defined
+      vdes_dt_ice_fd(1,1)     = (ves_ice(1,2)     - ves_ice(1,1))       / ( vsst_k(1,2)     - vsst_k(1,1) )
+      vdes_dt_ice_fd(1,ntemp) = (ves_ice(1,ntemp) - ves_ice(1,ntemp-1)) / ( vsst_k(1,ntemp) - vsst_k(1,ntemp-1) )
 
       cfout1 = 'e_sat_ice_and_derivative.dat'
       OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)
@@ -236,6 +240,9 @@ PROGRAM TEST_PHYMBL
       DO jt = 2, ntemp-1
          vdqs_dt_ice_fd(1,jt) = (vqs_ice(1,jt+1) - vqs_ice(1,jt-1)) / ( vsst_k(1,jt+1) - vsst_k(1,jt-1) )
       END DO
+      ! End points: one-sided (forward / backward) differences, so that all the rows written below are defined
+      vdqs_dt_ice_fd(1,1)     = (vqs_ice(1,2)     - vqs_ice(1,1))       / ( vsst_k(1,2)     - vsst_k(1,1) )
+      vdqs_dt_ice_fd(1,ntemp) = (vqs_ice(1,ntemp) - vqs_ice(1,ntemp-1)) / ( vsst_k(1,ntemp) - vsst_k(1,ntemp-1) )
 
       cfout1 = 'q_sat_ice_and_derivative_'//cslp//'Pa.dat'
       OPEN(11, FILE=cfout1, FORM='formatted', STATUS='unknown',RECL=512)

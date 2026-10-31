@@ -99,8 +99,8 @@ CONTAINS
       !!
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: dt_zu, dq_zu
       INTEGER :: Ni, Nj
-      LOGICAL :: lreturn_cdn=.FALSE., lreturn_chn=.FALSE., lreturn_cen=.FALSE., &
-         &        lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL :: lreturn_cdn, lreturn_chn, lreturn_cen, &
+         &        lreturn_z0, lreturn_ustar, lreturn_L, lreturn_UN10
       !!
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_nemo@mod_blk_ice_nemo.f90'
       !!----------------------------------------------------------------------------------
@@ -110,13 +110,16 @@ CONTAINS
       !u_star(Ni,Nj), t_star(Ni,Nj), q_star(Ni,Nj),  &
       ALLOCATE ( dt_zu(Ni,Nj),  dq_zu(Ni,Nj) )
       
-      IF( PRESENT(CdN) )     lreturn_cdn   = .TRUE.
-      IF( PRESENT(ChN) )     lreturn_chn   = .TRUE.
-      IF( PRESENT(CeN) )     lreturn_cen   = .TRUE.
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
+      ! Each flag is set at each call from the presence of its optional argument
+      ! (a value given in the declaration would imply `SAVE`, and a flag set to TRUE by a previous call
+      !  would make us write into an absent argument in a later call)
+      lreturn_cdn   = PRESENT(CdN)
+      lreturn_chn   = PRESENT(ChN)
+      lreturn_cen   = PRESENT(CeN)
+      lreturn_z0    = PRESENT(xz0)
+      lreturn_ustar = PRESENT(xu_star)
+      lreturn_L     = PRESENT(xL)
+      lreturn_UN10  = PRESENT(xUN10)
       
       !! Scalar wind speed cannot be below 0.2 m/s
       Ub = MAX( U_zu, wspd_thrshld_ice )

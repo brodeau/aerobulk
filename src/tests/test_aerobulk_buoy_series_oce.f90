@@ -88,7 +88,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
 
    nb_iter = 20 ! 20 itterations in bulk algorithm...
 
-   OPEN(6, FORM='formatted', RECL=512)
+   ! Note about wide output: we do NOT re-open unit 6 (standard output) with a larger RECL here:
+   ! changing the RECL of an already connected unit is not allowed by the Fortran standard (only Intel
+   ! accepts it; gfortran and LLVM flang refuse it). With Intel and LLVM flang, which wrap list-directed
+   ! output at about 80 characters, set the environment variable FORT_FMT_RECL=512 when running instead.
 
    !----------------------------------------------
 
@@ -179,6 +182,26 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
    PRINT *, ' *** Digested time unit is: '
    PRINT *, tut_time_unit
    PRINT *, ''
+
+   ! The bulk algorithms with a warm layer (COARE, ECMWF) allocate their warm-layer arrays at the first
+   ! time step (kt == nit000) and deallocate them when kt == nitend. This test reads `Qnt_ac` and `Tau_ac`
+   ! after each call, including at the last time step, so we set nitend beyond the last step: the arrays
+   ! are then never deallocated during the run (they are freed when the program ends).
+   nitend = Nt + 1
+
+   ! Time step of the series in seconds, needed by the warm-layer schemes (default `rdt` is 3600 s).
+   ! We assume a regular time axis and use the first interval.
+   IF( Nt > 1 ) THEN
+      SELECT CASE( tut_time_unit%unit )
+      CASE('d')
+         rdt = (vtime(2) - vtime(1))*24._wp*3600._wp
+      CASE('h')
+         rdt = (vtime(2) - vtime(1))*3600._wp
+      CASE('s')
+         rdt =  vtime(2) - vtime(1)
+      END SELECT
+      WRITE(6,*) ' *** Time step of the series: rdt =', REAL(rdt,4), ' [s]'
+   END IF
 
 
 
@@ -393,7 +416,10 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       rgamma(:,:) = gamma_moist(t_zt(:,:,jt), q_zt(:,:,jt))
       info = DISP_DEBUG(lverbose, 'Adiabatic lapse-rate of (moist) air', 1000.*rgamma, '[K/1000m]')
 
-      theta_zt(:,:,jt) = t_zt(:,:,jt) + rgamma(:,:)*zt ! potential temperature at zt
+      ! Potential temperature at zt from absolute temperature, using the same function as the library
+      ! (aerobulk_compute) and the toy: potential temperature is defined with the DRY adiabat (Poisson),
+      ! not with the moist lapse rate used before (gamma_moist, `rgamma` above is now only displayed).
+      theta_zt(:,:,jt) = Theta_from_z_P0_T_q( zt, SLP(:,:,jt), t_zt(:,:,jt), q_zt(:,:,jt) )
       info = DISP_DEBUG(lverbose, 'Potential  air temp. at '//TRIM(czt), theta_zt(:,:,jt) - rt0, '[deg.C]')
 
       xtmp = virt_temp(theta_zt(:,:,jt), q_zt(:,:,jt))
@@ -454,11 +480,13 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
             &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
 
       CASE ( 'coare3p0' )
-         CALL TURB_COARE3P6( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
+         ! COARE 3.0 (this case was calling TURB_COARE3P6 by mistake, a copy-paste error).
+         ! Note: the optional arguments of TURB_COARE3P0 use the `p` prefix (pQsw, prad_lw, pslp, pz0, ...)
+         CALL TURB_COARE3P0( jt, zt, zu, Ts(:,:,jt), theta_zt(:,:,jt), qs(:,:,jt), q_zt(:,:,jt), W10(:,:,jt), .TRUE., .TRUE.,  &
             &             Cd(:,:,jt), Ch(:,:,jt), Ce(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt),    &
-            &             Qsw=Qsw(:,:,jt), rad_lw=rad_lw(:,:,jt), slp=SLP(:,:,jt), pdt_cs=dTcs(:,:,jt),       & ! for cool-skin !
+            &             pQsw=Qsw(:,:,jt), prad_lw=rad_lw(:,:,jt), pslp=SLP(:,:,jt), pdT_cs=dTcs(:,:,jt),    & ! for cool-skin !
             &             isecday_utc=isecday_utc, plong=xlon(:,:), pdT_wl=dTwl(:,:,jt), pHz_wl=zHwl(:,:,jt), &
-            &             xz0=zz0(:,:,jt), xu_star=zus(:,:,jt), xL=zL(:,:,jt), xUN10=zUN10(:,:,jt) )
+            &             pz0=zz0(:,:,jt), pu_star=zus(:,:,jt), pL=zL(:,:,jt), pUN10=zUN10(:,:,jt) )
 
          zQac(:,:,jt) = Qnt_ac(:,:) ! known from module "mod_skin_coare"
          zTac(:,:,jt) = Tau_ac(:,:) !                "
@@ -497,11 +525,9 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
       !IF (jtt == 1)  dTcs(:,:,jt) = Ts(:,:,jt) - SST(:,:,jt)
 
       !! Absolute temperature at zu: LOLO: Take the mean ??? => 0.5 * (t_zu + Ts) ????
-      t_zu(:,:,jt) = theta_zu(:,:,jt) ! first guess...
-      DO jq = 1, 4
-         rgamma(:,:) = gamma_moist(t_zu(:,:,jt), q_zu(:,:,jt))
-         t_zu(:,:,jt) = theta_zu(:,:,jt) - rgamma(:,:)*zu   ! Real temp.
-      END DO
+      ! Absolute temperature at zu from potential temperature at zu, using the same function as the toy
+      ! (inverse of Theta_from_z_P0_T_q, dry adiabat), instead of the moist lapse rate used before
+      t_zu(:,:,jt) = T_from_z_P0_Theta_q( zu, SLP(:,:,jt), theta_zu(:,:,jt), q_zu(:,:,jt) )
 
       !! Bulk Richardson Number for layer "sea-level -- zu":
       RiB(:,:,jt) = Ri_bulk(zu, Ts(:,:,jt), theta_zu(:,:,jt), qs(:,:,jt), q_zu(:,:,jt), Ublk(:,:,jt) )
@@ -583,7 +609,6 @@ PROGRAM TEST_AEROBULK_BUOY_SERIES_OCE
    END IF
 
    WRITE(6,*) ''; WRITE(6,*) ''
-   CLOSE(6)
 
 CONTAINS
 

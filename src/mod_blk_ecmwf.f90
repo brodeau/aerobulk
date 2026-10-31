@@ -176,6 +176,7 @@ CONTAINS
       REAL(wp) :: zz0, zz0t, zz0q, zpsi_h_z0t, zpsi_h_z0q, zpsi_m_z0, zzeta_u, zzeta_t
       REAL(wp) :: zlog_10, zlog_ztu, zlog_z0, zlog_zu, zlog_z0t, zlog_z0q
       REAL(wp) :: zFm, zFh, zFq, zQns
+      REAL(wp) :: zdTwl_0    ! warm-layer dT at the beginning of the current time step [K]
       REAL(wp) :: zSST, zT_s, zq_s, zubzu, zt_zt, zq_zt, zt_zu, zq_zu
       REAL(wp) :: ztmp0, ztmp1
       !
@@ -246,13 +247,18 @@ CONTAINS
             zzeta_u = zu*z1oL
             zzeta_t = zt*z1oL
 
-            zz0t    = MIN( MAX(ABS(  1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/( vkarmn/(zlog_10-zlog_z0) ))) )   ), 1.E-9) , 1._wp )
+            zz0t    = MIN( MAX(ABS(  1._wp / ( 0.1_wp*EXP(vkarmn/(0.00115/( vkarmn/(zlog_10-zlog_z0) ))) )   ), 1.E-9_wp) , 1._wp )
             zlog_z0t = LOG(zz0t)
 
             !! Functions such as  u* = pUbzu*vkarmn/zFm
             zFm = zlog_zu - zlog_z0  - psi_m_ecmwf(zzeta_u) + psi_m_ecmwf( zz0*z1oL)
             zpsi_h_u = psi_h_ecmwf(zzeta_u)
             zFh = zlog_zu - zlog_z0t - zpsi_h_u + psi_h_ecmwf(zz0t*z1oL)
+
+            !! Save the warm-layer dT of the previous time step, before the iterations start.
+            !! WL_ECMWF must always integrate in time from this value (one `rdt` per time step),
+            !! not from the value updated at the previous iteration of the loop below.
+            IF( l_use_wl ) zdTwl_0 = dT_wl(ji,jj)
 
             !! ITERATION BLOCK
             DO jit = 1, nb_iter
@@ -332,7 +338,7 @@ CONTAINS
                   !! Warm-layer contribution
                   CALL UPDATE_QNSOL_TAU( zu, zT_s, zq_s, zt_zu, zq_zu, zus, zts, zqs, zUzu, zUbzu, &
                      &                   pslp(ji,jj), prad_lw(ji,jj), zQns, ztmp0)  ! Tau -> ztmp0
-                  CALL WL_ECMWF( ji, jj, pQsw(ji,jj), zQns, zus, zSST )
+                  CALL WL_ECMWF( ji, jj, pQsw(ji,jj), zQns, zus, zSST, zdTwl_0 )
                   !! Updating pT_s and pq_s !!!
                   zT_s = zSST + dT_wl(ji,jj)
                   IF( l_use_cs ) zT_s = zT_s + zdT_cs

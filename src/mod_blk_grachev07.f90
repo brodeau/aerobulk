@@ -52,20 +52,30 @@ CONTAINS
       REAL(wp)             :: psi_m_grachev07_scl
       REAL(wp), INTENT(in) :: pzeta
       !!--------------------------------------------------------------------------------------------
-      REAL(wp) :: zta, zx, zpsi_u, zpsi_s
+      REAL(wp), PARAMETER :: zam  = 5._wp                                   ! a_m (just below Eq.(9b), Grachev et al. 2007)
+      REAL(wp), PARAMETER :: zbm  = zam/6.5_wp                              ! b_m (just below Eq.(9b))
+      REAL(wp), PARAMETER :: zbbm = ((1._wp - zbm)/zbm)**(1._wp/3._wp)      ! B_m (just below Eq.(12))
+      REAL(wp), PARAMETER :: zsr3 = SQRT(3._wp)
+      REAL(wp) :: zta, zts, zx, zpsi_u, zpsi_s
       !!----------------------------------------------------------------------------------
       zta = pzeta
-      !
-      ! Unstable stratification:
+
+      ! Unstable stratification (Jordan et al. 1999):
       zx = ABS(1._wp - 16._wp*zta)**0.25_wp              !  (16 here, not 15!)
+      zpsi_u = LOG( 0.5_wp*(1._wp + zx*zx) ) + 2._wp*LOG( 0.5_wp*(1._wp + zx) ) - 2._wp*ATAN( zx ) + 0.5_wp*rpi  ! Eq.(30) Jordan et al. 1999
 
-      zpsi_u = LOG( 0.5_wp*(1._wp + zx*zx) ) + 2._wp*LOG( 0.5_wp*(1._wp + zx) ) - 2._wp*ATAN( zx ) + 0.5_wp*rpi  ! Eq.(30) Jordan et al. 1999:
+      ! Stable stratification, Eq.(12) Grachev et al. 2007 (integrated form of phi_m of Eq.(9a)).
+      ! `zts` is forced to be >= 0 so that this branch never produces NaN when zeta < -1
+      ! (MERGE below evaluates both branches, even if only one is used).
+      zts = MAX( zta , 0._wp )
+      zx  = (1._wp + zts)**(1._wp/3._wp)
+      zpsi_s = -3._wp*zam/zbm*(zx - 1._wp) + zam*zbbm/(2._wp*zbm) * (                                     &
+         &        2._wp*LOG( (zx + zbbm)/(1._wp + zbbm) )                                              &
+         &      -       LOG( (zx*zx - zx*zbbm + zbbm*zbbm)/(1._wp - zbbm + zbbm*zbbm) )                 &
+         &      + 2._wp*zsr3*( ATAN( (2._wp*zx - zbbm)/(zsr3*zbbm) ) - ATAN( (2._wp - zbbm)/(zsr3*zbbm) ) ) )
 
-      ! Stable stratification:
-      zpsi_s = 1._wp + 6.5_wp*zta*( 1._wp + zta )**0.3333333_wp / ( 1.3_wp + zta )     ! Eq.(9.a) Grachev et al. 2007
-
-      !! Combine:
-      psi_m_grachev07_scl = MERGE( zpsi_u  ,  -1._wp*zpsi_s  ,  zta < 0._wp )   ! Unstable <= zta < 0)  |  Stable <= zta > 0)
+      !! Combine: unstable when zeta < 0, stable when zeta >= 0
+      psi_m_grachev07_scl = MERGE( zpsi_u , zpsi_s , zta < 0._wp )
       !!
    END FUNCTION psi_m_grachev07_scl
 
@@ -94,21 +104,29 @@ CONTAINS
       REAL(wp)             :: psi_h_grachev07_scl
       REAL(wp), INTENT(in) :: pzeta
       !!--------------------------------------------------------------------------------------------
-      REAL(wp) :: zta, zx, zpsi_u, zpsi_s
+      REAL(wp), PARAMETER :: zah  = 5._wp        ! a_h (just below Eq.(9b), Grachev et al. 2007)
+      REAL(wp), PARAMETER :: zbh  = 5._wp        ! b_h (just below Eq.(9b))
+      REAL(wp), PARAMETER :: zch  = 3._wp        ! c_h (just below Eq.(9b))
+      REAL(wp), PARAMETER :: zbbh = SQRT(5._wp)  ! B_h = sqrt(c_h^2 - 4) (just below Eq.(13))
+      REAL(wp) :: zta, zts, zx, zz, zpsi_u, zpsi_s
       !!----------------------------------------------------------------------------------
       zta = pzeta
 
-      ! Unstable stratification:
+      ! Unstable stratification (Jordan et al. 1999):
       zx = ABS(1._wp - 16._wp*zta)**0.25_wp              !  (16 here, not 15!)
+      zpsi_u = 2._wp*LOG( 0.5_wp*(1._wp + zx*zx) )       ! Eq.(31) Jordan et al. 1999
 
-      zpsi_u =   2._wp*LOG( 0.5_wp * (1._wp + zx*zx) )  ! Eq.(31) Jordan et al. 1999
+      ! Stable stratification, Eq.(13) Grachev et al. 2007 (integrated form of phi_h of Eq.(9b)).
+      ! `zts` is forced to be >= 0 so that this branch stays finite when zeta < 0
+      ! (MERGE below evaluates both branches, even if only one is used).
+      zts = MAX( zta , 0._wp )
+      zz  = 2._wp*zts + zch
+      zpsi_s = - 0.5_wp*zbh*LOG( 1._wp + zch*zts + zts*zts )                   &
+         &     + ( -zah/zbbh + 0.5_wp*zbh*zch/zbbh )                           &
+         &       * ( LOG( (zz  - zbbh)/(zz  + zbbh) ) - LOG( (zch - zbbh)/(zch + zbbh) ) )
 
-      ! Stable stratification (identical to Psi_m!):
-      !zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35_wp*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
-      zpsi_s = 1._wp + 5._wp*zta*( 1._wp + zta ) / ( 1._wp + 3._wp*zta + zta*zta )       ! Eq.(9.b) Grachev et al. 2007
-
-      !! Combine:
-      psi_h_grachev07_scl = MERGE( zpsi_u  ,  -1._wp*zpsi_s  ,  zta < 0._wp )   ! Unstable <= zta < 0)  |  Stable <= zta > 0)
+      !! Combine: unstable when zeta < 0, stable when zeta >= 0
+      psi_h_grachev07_scl = MERGE( zpsi_u , zpsi_s , zta < 0._wp )
       !!
    END FUNCTION psi_h_grachev07_scl
 

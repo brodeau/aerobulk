@@ -110,7 +110,7 @@ CONTAINS
    END SUBROUTINE CS_ECMWF
 
 
-   SUBROUTINE WL_ECMWF( ki, kj, pQsw, pQnsol, pustar, pSST,  pustk )
+   SUBROUTINE WL_ECMWF( ki, kj, pQsw, pQnsol, pustar, pSST, pdTwl_0,  pustk )
       !!---------------------------------------------------------------------
       !!
       !!  Warm-Layer scheme according to Zeng & Beljaars, 2005 (GRL)
@@ -126,12 +126,15 @@ CONTAINS
       !!     *pQnsol*     surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       !!     *pustar*     friction velocity u*                           [m/s]
       !!     *pSST*       bulk SST  (taken at depth gdept_1d(1))         [K]
+      !!     *pdTwl_0*    warm-layer dT at the beginning of the time step [K]
+      !!                  (value of `dT_wl` saved before the iterations of the bulk algorithm)
       !!---------------------------------------------------------------------
       INTEGER , INTENT(in) :: ki, kj
       REAL(wp), INTENT(in) :: pQsw     ! surface net solar radiation into the ocean [W/m^2]     => >= 0 !
       REAL(wp), INTENT(in) :: pQnsol   ! surface net non-solar heat flux into the ocean [W/m^2] => normally < 0 !
       REAL(wp), INTENT(in) :: pustar   ! friction velocity [m/s]
       REAL(wp), INTENT(in) :: pSST     ! bulk SST at depth gdept_1d(1) [K]
+      REAL(wp), INTENT(in) :: pdTwl_0  ! warm-layer dT at the beginning of the time step (before iterations) [K]
       !!
       REAL(wp), OPTIONAL, INTENT(in) :: pustk ! surface Stokes velocity [m/s]
       !
@@ -156,10 +159,12 @@ CONTAINS
       zHwl = Hz_wl(ki,kj) ! first guess for warm-layer depth, and final choice because `Hz_wl` fixed in present ECMWF algo (as opposed to COARE)
       !!                  ! it is constant! => rd0 == 3m ! Zeng & Beljaars....
 
-      !! Previous value of dT / warm-layer, adapted to depth:
+      !! Previous value of dT / warm-layer, adapted to depth.
+      !! We start from `pdTwl_0` (value at the start of the time step) and not from `dT_wl(ki,kj)`,
+      !! because `dT_wl(ki,kj)` is overwritten at each iteration of the bulk algorithm.
       flg = 0.5_wp + SIGN( 0.5_wp , gdept_1d(1)-zHwl )               ! => 1 when gdept_1d(1)>zHwl (dT_wl(ki,kj) = zdTwl) | 0 when z_s$
       ztcorr = flg + (1._wp - flg)*gdept_1d(1)/zHwl
-      zdTwl_b = MAX ( dT_wl(ki,kj) / ztcorr , 0._wp )
+      zdTwl_b = MAX ( pdTwl_0 / ztcorr , 0._wp )
       ! zdTwl is the difference between "almost surface (right below viscous layer) and bottom of WL (here zHwl)
       ! pdT         "                          "                                    and depth of bulk SST (here gdept_1d(1))!
       !! => but of course in general the bulk SST is taken shallower than zHwl !!! So correction less pronounced!
@@ -178,7 +183,7 @@ CONTAINS
 
       ! Langmuir:
       IF ( l_pustk_known ) THEN
-         zLa = SQRT(zusw/MAX(pustk,1.E-6))
+         zLa = SQRT(zusw/MAX(pustk,1.E-6_wp))
       ELSE
          zla = 0.3_wp
       END IF

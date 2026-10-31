@@ -35,7 +35,7 @@ LIB_SRC = src/mod_const.f90 \
           src/mod_aerobulk.f90 \
 	  src/ice/mod_cdn_form_ice.f90 \
 	  src/ice/mod_blk_ice_nemo.f90 \
-	  src/ice/mod_blk_ice_easy.f90 \
+	  src/ice/mod_blk_ice_nanuq.f90 \
 	  src/ice/mod_blk_ice_an05.f90 \
 	  src/ice/mod_blk_ice_lu12.f90 \
 	  src/ice/mod_blk_ice_lg15.f90 src/ice/mod_blk_ice_lg15_io.f90 \
@@ -77,9 +77,9 @@ lib/libaerobulk_cxx.a: $(LIB_OBJ) $(LIB_OBJ_CXX)
 	ranlib lib/libaerobulk_cxx.a
 	@echo ""
 
-bin/aerobulk_toy.x: src/tests/aerobulk_toy.F90 lib/libaerobulk.a
+bin/aerobulk_toy.x: src/tests/aerobulk_toy.f90 lib/libaerobulk.a
 	@mkdir -p bin
-	$(FC) $(FF) src/tests/aerobulk_toy.F90 -o bin/aerobulk_toy.x $(LIB)
+	$(FC) $(FF) src/tests/aerobulk_toy.f90 -o bin/aerobulk_toy.x $(LIB)
 
 bin/example_call_aerobulk.x: src/tests/example_call_aerobulk.f90 lib/libaerobulk.a
 	@mkdir -p bin
@@ -147,11 +147,14 @@ mod/io_ezcdf.mod: src/io_ezcdf.f90
 
 
 
-.f90.o: $(LIB_SRC) $(LIB_SRC_CXX)
+# Suffix rule: how to build a `.o` object from a `.f90` source
+# (a suffix rule cannot have prerequisites: recent GNU make ignores them and prints a warning)
+.f90.o:
 	@mkdir -p mod
 	$(FC) -c $(FF) $(FORT_INC) $< -o $*.o
 
-.cpp.o: $(LIB_SRC_CXX)
+# Suffix rule: how to build a `.o` object from a `.cpp` source (same remark)
+.cpp.o:
 	@mkdir -p mod
 	$(CXX) -c $(CXXFLAGS) $< -o $*.o
 

@@ -21,7 +21,7 @@ MODULE mod_aerobulk
 
 CONTAINS
 
-   SUBROUTINE AEROBULK_INIT( Nt, calgo, psst, pta, pha, pU, pV, pslp,  l_use_skin, prsw, prlw )
+   SUBROUTINE AEROBULK_INIT( Nt, calgo, psst, pta, pha, pU, pV, pslp,  l_use_skin, prsw, prlw, plong )
       !!===========================================================================================
       !! 1. Set the official 2D shape of the problem based on the `psst` array =>[Ni,Nj]
       !! 2. Check on size agreement between input arrays (must all be [Ni,Nj])
@@ -44,6 +44,7 @@ CONTAINS
       LOGICAL,                  INTENT(in), OPTIONAL :: l_use_skin
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prsw   !: downwelling shortwave radiation  [W/m^2]
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: prlw   !: downwelling  longwave radiation  [W/m^2]
+      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: plong  !: longitude (needed by COARE warm-layer) [deg.E]
       !!==================================================================================================
       LOGICAL :: lsrad, lskin
       INTEGER :: Ni, Nj, np
@@ -74,7 +75,17 @@ CONTAINS
          l_use_skin_schemes = .TRUE. ! if we go here it's fine!
          WRITE(6,*)'       ==> will use the Cool-skin & Warm-layer scheme of `'//TRIM(calgo)//'` !'
 
+         ! The warm-layer scheme of COARE needs the local solar time, so the longitude must be known.
+         ! If it is not given, AEROBULK_MODEL will only use the cool-skin scheme of COARE: we warn the user once here.
+         IF( (calgo(1:MIN(4,LEN(calgo))) == 'coar') .AND. (.NOT. PRESENT(plong)) ) THEN
+            WRITE(6,*)'       ==> WARNING: `isecday_utc` and `plong` not provided => the Warm-layer scheme of COARE'
+            WRITE(6,*)'                    is switched OFF, only the Cool-skin scheme of COARE will be used!'
+         END IF
+
       ELSE
+         ! Reset the global flag (shared via mod_const and SAVEd): a previous call with skin schemes
+         ! may have set it to TRUE, and it must not stay TRUE for this run without skin schemes.
+         l_use_skin_schemes = .FALSE.
          WRITE(6,*)'    *** Cool-skin & Warm-layer schemes will NOT be used!'
       END IF
 
@@ -92,6 +103,10 @@ CONTAINS
       IF( lsrad ) THEN
          IF( ANY(SHAPE(prsw)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and Rad_SW arrays do not agree in shape!')
          IF( ANY(SHAPE(prlw)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and Rad_LW arrays do not agree in shape!')
+      END IF
+      ! The longitude array (if provided) must have the same 2D shape as all other input fields:
+      IF( PRESENT(plong) ) THEN
+         IF( ANY(SHAPE(plong)/=(/Ni,Nj/)) ) CALL ctl_stop(' AEROBULK_INIT => SST and longitude arrays do not agree in shape!')
       END IF
 
       WRITE(6,'("     *** Computational domain shape: Ni x Nj = ",i5.5," x ",i5.5)') Ni, Nj
@@ -177,7 +192,8 @@ CONTAINS
       &                       calgo, zt, zu, sst, t_zt,   &
       &                       hum_zt, U_zu, V_zu, slp,    &
       &                       QL, QH, Tau_x, Tau_y, Evap, &
-      &                       Niter, l_use_skin, rad_sw, rad_lw, T_s  )
+      &                       Niter, l_use_skin, rad_sw, rad_lw, T_s, &
+      &                       isecday_utc, plong )
       !!======================================================================================
       !!
       !! INPUT :
@@ -211,6 +227,10 @@ CONTAINS
       !!    *  l_use_skin: should we use the cool-skin & warm-layer schemes fot skin temperature ?
       !!    *  rad_sw : downwelling shortwave radiation at the surface (>0)   [W/m^2]
       !!    *  rad_lw : downwelling longwave radiation at the surface  (>0)   [W/m^2]
+      !!    *  isecday_utc : current UTC time, in seconds since 00:00 UTC of the current day
+      !!    *  plong  : longitude                                              [deg.E]
+      !!               => `isecday_utc` and `plong` are needed by the warm-layer scheme of COARE
+      !!                  (local solar time); without them only the cool-skin scheme of COARE is used
       !!
       !! OPTIONAL Output:
       !! ---------------
@@ -226,6 +246,8 @@ CONTAINS
       INTEGER,                  INTENT(in), OPTIONAL :: Niter
       LOGICAL,                  INTENT(in), OPTIONAL :: l_use_skin
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: rad_sw, rad_lw
+      INTEGER,                  INTENT(in), OPTIONAL :: isecday_utc  ! current UTC time [s since 00:00 UTC]
+      REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: plong        ! longitude [deg.E]
       !! Optional output:
       REAL(wp), DIMENSION(:,:), INTENT(out),OPTIONAL :: T_s
       !!
@@ -243,14 +265,23 @@ CONTAINS
 
       IF( jt <1 ) CALL ctl_stop('AEROBULK_MODEL => jt < 1 !??', 'we are in a Fortran world here...')
 
+      ! `isecday_utc` and `plong` only make sense together (both are needed to get the local solar time):
+      IF( PRESENT(isecday_utc) .NEQV. PRESENT(plong) ) &
+         & CALL ctl_stop('AEROBULK_MODEL => `isecday_utc` and `plong` must be provided together (or not at all)!')
+
       IF( lsrad ) THEN
 
-         IF( jt==1 ) CALL AEROBULK_INIT( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_use_skin=lskin, prsw=rad_lw, prlw=rad_lw )
+         ! `plong` is passed to AEROBULK_INIT for the shape check, and so it knows whether the COARE
+         ! warm layer can be used (if `plong` is absent here, it is also absent in AEROBULK_INIT):
+         IF( jt==1 ) CALL AEROBULK_INIT( Nt, calgo, sst, t_zt, hum_zt, U_zu, V_zu, slp,  l_use_skin=lskin, prsw=rad_sw, prlw=rad_lw, &
+            &                            plong=plong )
 
+         ! Time and longitude are passed to the computation (absent if not provided by the caller):
          CALL AEROBULK_COMPUTE( jt, calgo, zt, zu, sst, t_zt, &
             &                   hum_zt, U_zu, V_zu, slp,      &
             &                   QL, QH, Tau_x, Tau_y,         &
-            &                   rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap )
+            &                   rad_sw=rad_sw, rad_lw=rad_lw, T_s=T_s, Evp=Evap, &
+            &                   isecday_utc=isecday_utc, plong=plong )
 
       ELSE
 

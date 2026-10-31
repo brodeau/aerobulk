@@ -112,7 +112,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   ztmp0, ztmp1, ztmp2
       REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   sqrtCd       ! square root of Cd
       !
-      LOGICAL :: lreturn_z0=.FALSE., lreturn_ustar=.FALSE., lreturn_L=.FALSE., lreturn_UN10=.FALSE.
+      LOGICAL :: lreturn_z0, lreturn_ustar, lreturn_L, lreturn_UN10
       CHARACTER(len=40), PARAMETER :: crtnm = 'turb_ice_best@mod_blk_ice_best.f90'
       !!----------------------------------------------------------------------------------
       Ni = SIZE(Ts_i,1)
@@ -121,10 +121,13 @@ CONTAINS
          &    zeta_u(Ni,Nj), sqrtCd(Ni,Nj),      &
          &    ztmp0(Ni,Nj),  ztmp1(Ni,Nj), ztmp2(Ni,Nj) )
 
-      IF( PRESENT(xz0) )     lreturn_z0    = .TRUE.
-      IF( PRESENT(xu_star) ) lreturn_ustar = .TRUE.
-      IF( PRESENT(xL) )      lreturn_L     = .TRUE.
-      IF( PRESENT(xUN10) )   lreturn_UN10  = .TRUE.
+      ! Each flag is set at each call from the presence of its optional argument
+      ! (a value given in the declaration would imply `SAVE`, and a flag set to TRUE by a previous call
+      !  would make us write into an absent argument in a later call)
+      lreturn_z0    = PRESENT(xz0)
+      lreturn_ustar = PRESENT(xu_star)
+      lreturn_L     = PRESENT(xL)
+      lreturn_UN10  = PRESENT(xUN10)
 
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
@@ -139,6 +142,10 @@ CONTAINS
       CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ts_i, qi_s, Cd, Ch )
       Ce = Ch
       sqrtCd = SQRT( Cd )
+      ! First guess of sqrt(CdN10), needed at the first iteration below (line computing U_N10):
+      ! NEUTRAL drag coefficient from Cx_Lupkes2015 (ztmp1, ztmp2 used as temporary arrays)
+      CALL Cx_Lupkes2015( zu, t_zu, q_zu, U_blk, Ts_i, qi_s, ztmp1, ztmp2, l_neutral=.TRUE. )
+      sqrtCdn10 = SQRT( ztmp1 )
       !LOLO:STOP
 
 
@@ -179,7 +186,10 @@ CONTAINS
          ztmp2 = psi_m_ice(zeta_u)
          ztmp0 = MAX( wspd_thrshld_ice , U_blk/(1._wp + sqrtCdn10/vkarmn*(LOG(zu/10._wp) - ztmp2)) ) ! U_n10 (ztmp2 == psi_m_ice(zeta_u))
 
-         CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ts_i, qi_s, Cd, Cx_n10 )
+         ! NEUTRAL coefficients (l_neutral=.TRUE.): the stability correction is done just below with the
+         ! psi functions (L&Y 2004 Eq. 10a-c). Without l_neutral, Cx_Lupkes2015 would also apply the Louis
+         ! stability functions, and the stability correction would be applied twice.
+         CALL Cx_Lupkes2015( zu, t_zu, q_zu, ztmp0, Ts_i, qi_s, Cd, Cx_n10, l_neutral=.TRUE. )
          sqrtCdn10 = sqrt(Cd)
 
          !! Update of transfer coefficients:
@@ -206,7 +216,7 @@ CONTAINS
 
 
 
-   SUBROUTINE Cx_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch )
+   SUBROUTINE Cx_Lupkes2015( zu, t_zu, q_zu, Ui_zu, Ts_i, qs_i, pcd, pch,  l_neutral )
       !!----------------------------------------------------------------------
       !!                      ***  ROUTINE  Cx_Lupkes2015  ***
       !!
@@ -240,7 +250,9 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in)  :: qs_i   ! humidity at saturation over ice at T=Ts_i [kg/kg]
       REAL(wp), DIMENSION(:,:), INTENT(out) :: pcd    ! momentum transfer coefficient
       REAL(wp), DIMENSION(:,:), INTENT(out) :: pch    ! heat transfer coefficient
+      LOGICAL,  OPTIONAL,       INTENT(in)  :: l_neutral ! TRUE => return NEUTRAL coefficients (Louis stability functions not applied)
       !
+      LOGICAL  ::   lneutral
       REAL(wp) ::   zfi, zfo
       REAL(wp) ::   zrib_i, ztmp
       REAL(wp) ::   zCdn_skin_ice, zCdn_form_ice, zCdn_ice
@@ -251,7 +263,13 @@ CONTAINS
       !!----------------------------------------------------------------------
       Ni = SIZE(Ts_i,1)
       Nj = SIZE(Ts_i,2)
-      
+
+      ! By default the Louis (1979) stability functions are applied (as in the original ECHAM6/NEMO code).
+      ! With l_neutral=.TRUE. they are not, so the routine returns the neutral coefficients:
+      ! this is needed when the stability correction is done afterwards with psi functions (as in TURB_ICE_BEST).
+      lneutral = .FALSE.
+      IF( PRESENT(l_neutral) ) lneutral = l_neutral
+
       ! Momentum Neutral Transfer Coefficients (should be a constant)
       zCdn_form_tmp = zce10 * ( LOG( 10._wp / z0_form_ice + 1._wp ) / LOG( zu / z0_form_ice + 1._wp ) )**2   ! Eq. 46
       zCdn_skin_ice = ( vkarmn                                      / LOG( zu / z0_skin_ice + 1._wp ) )**2   ! Eq. 7
@@ -269,9 +287,6 @@ CONTAINS
 
             zfo  = 0._wp  ! fraction of open ocean
 
-            ! Bulk Richardson Number:
-            zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
-
             ! Momentum and Heat Neutral Transfer Coefficients
             zCdn_form_ice = zCdn_form_tmp * zfi * zfo**zbeta                          ! Eq. 40 !LOLO: WHAT????? zfi * zfo is always 0 !!!
             zChn_form_ice = zCdn_form_ice / ( 1._wp + ( LOG( z1_alphaf ) / vkarmn ) * SQRT( zCdn_form_ice ) )   ! Eq. 53
@@ -279,8 +294,16 @@ CONTAINS
             ! Momentum and Heat Stability functions (possibility to use psi_m_ecmwf instead ?)
             z0i = z0_skin_ice                                        ! over ice
 
-            zfmi = f_m_louis( zu, zrib_i, zCdn_ice, z0i )
-            zfhi = f_h_louis( zu, zrib_i, zCdn_ice, z0i )  !LOLO: why "zCdn_ice" and not "zChn_ice" ???
+            ! Momentum and Heat stability functions (Louis 1979), or 1 if neutral coefficients are asked for:
+            IF( lneutral ) THEN
+               zfmi = 1._wp
+               zfhi = 1._wp
+            ELSE
+               ! Bulk Richardson Number (only needed for the Louis stability functions):
+               zrib_i = Ri_bulk( zu, Ts_i(ji,jj), t_zu(ji,jj), qs_i(ji,jj), q_zu(ji,jj), zwndspd_i )
+               zfmi = f_m_louis( zu, zrib_i, zCdn_ice, z0i )
+               zfhi = f_h_louis( zu, zrib_i, zCdn_ice, z0i )  !LOLO: why "zCdn_ice" and not "zChn_ice" ???
+            END IF
 
             ! Momentum and Heat transfer coefficients (Eq. 38) and (Eq. 49):
             ztmp       = 1._wp / MAX( 1.e-06, zfi )
@@ -328,7 +351,11 @@ CONTAINS
                &    - 2.*ATAN( zx ) + 0.5*rpi
 
             ! Stable stratification:
-            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
+            ! Stable stratification, Holtslag & De Bruin (1988) as given in Eq.(33) of Jordan et al. 1999:
+            !   psi = -[ a*zeta + b*(zeta - c/d)*exp(-d*zeta) + b*c/d ],  with a=0.7, b=0.75, c=5, d=0.35
+            ! We use the exact values c/d = 5/0.35 and b*c/d = 0.75*5/0.35 instead of the rounded values
+            ! 14.3 and 10.7 printed in the paper, so that psi(0) = 0 exactly (it was +0.025 with the rounded values)
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 5._wp/0.35_wp)*EXP( -0.35_wp*zta) + 0.75_wp*5._wp/0.35_wp )
 
             !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)
@@ -373,8 +400,12 @@ CONTAINS
 
             zpsi_u =   2.*LOG( (1._wp + zx*zx)/2. )  ! Eq.(31) Jordan et al. 1999
 
-            ! Stable stratification (identical to psi_m_ice!):
-            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 14.3_wp)*EXP( -0.35*zta) + 10.7_wp )  ! Eq.(33) Jordan et al. 1999
+            ! Stable stratification (identical to Psi_m!):
+            ! Stable stratification, Holtslag & De Bruin (1988) as given in Eq.(33) of Jordan et al. 1999:
+            !   psi = -[ a*zeta + b*(zeta - c/d)*exp(-d*zeta) + b*c/d ],  with a=0.7, b=0.75, c=5, d=0.35
+            ! We use the exact values c/d = 5/0.35 and b*c/d = 0.75*5/0.35 instead of the rounded values
+            ! 14.3 and 10.7 printed in the paper, so that psi(0) = 0 exactly (it was +0.025 with the rounded values)
+            zpsi_s = - ( 0.7_wp*zta + 0.75_wp*(zta - 5._wp/0.35_wp)*EXP( -0.35_wp*zta) + 0.75_wp*5._wp/0.35_wp )
 
             !! Combine:
             zstab = 0.5 + SIGN(0.5_wp, zta)

@@ -106,7 +106,9 @@ CONTAINS
             zrlog = LOG(zhf*ztmp) / LOG(10._wp*ztmp)
 
             !#bug reported by V. Guemas: CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(22)
-            CdN10_f_LU12(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(22)
+            ! Store the result at the current point only (assigning `(:,:)` here would overwrite
+            ! the whole array at each loop step, so all points would get the value of the last point)
+            CdN10_f_LU12(ji,jj) = 0.5_wp* 0.3_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(22)
             !!                   1/2      Ce
 
          END DO
@@ -134,7 +136,9 @@ CONTAINS
 
             zfri = pfrice(ji,jj)
 
-            CdN_f_LU12_eq36(:,:) = 0.5_wp* 0.3_wp * zrlog*zrlog * zhf/zDi  * (1._wp - zfri)**rBeta_0 ! Eq.(35) & (36)
+            ! Store the result at the current point only (assigning `(:,:)` here would overwrite
+            ! the whole array at each loop step, so all points would get the value of the last point)
+            CdN_f_LU12_eq36(ji,jj) = 0.5_wp* 0.3_wp * zrlog*zrlog * zhf/zDi  * (1._wp - zfri)**rBeta_0 ! Eq.(35) & (36)
             !!                        1/2      Ce
 
          END DO
@@ -261,7 +265,9 @@ CONTAINS
             zrlog = LOG(zhf*ztmp/2.718_wp) / LOG(pzu*ztmp)  !LOLO: adding number "e" !!!
 
             !#bug reported by V. Guemas: CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc*zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
-            CdN_f_LG15(:,:) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
+            ! Store the result at the current point only (assigning `(:,:)` here would overwrite
+            ! the whole array at each loop step, so all points would get the value of the last point)
+            CdN_f_LG15(ji,jj) = 0.5_wp* 0.4_wp * zrlog*zrlog * zSc * zhf/zDi * zfri  ! Eq.(21) Lukes & Gryanik (2015)
             !!                   1/2      Ce
          END DO
       END DO
@@ -299,7 +305,9 @@ CONTAINS
             ztmp = 1._wp / pz0w(ji,jj)
             zrlog = LOG( 10._wp * ztmp ) / LOG( pzu * ztmp ) ! part of (Eq.46)
 
-            CdN_f_LG15_light(:,:) = rce10_i_0 *zrlog*zrlog * zfri * (1._wp - zfri)**rbeta_0  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
+            ! Store the result at the current point only (assigning `(:,:)` here would overwrite
+            ! the whole array at each loop step, so all points would get the value of the last point)
+            CdN_f_LG15_light(ji,jj) = rce10_i_0 *zrlog*zrlog * zfri * (1._wp - zfri)**rbeta_0  ! (Eq.46)  [ index 1 is for ice, 2 for water ]
 
          END DO
       END DO

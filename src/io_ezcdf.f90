@@ -515,7 +515,7 @@ CONTAINS
       REAL(4),  DIMENSION (:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,   INTENT(in)    :: jt1, jt2, lz
 
-      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
+      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop, ierr1, ierr2
       REAL(4) :: rsf, rao
       LOGICAL :: l_okay
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_2D_R4'
@@ -532,6 +532,9 @@ CONTAINS
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
 
+      ! The default value is set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the `lz` of a previous call.
+      kz_stop = 0
       IF ( present(lz) ) kz_stop = lz
 
       IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
@@ -600,7 +603,7 @@ CONTAINS
       REAL(8),  DIMENSION (:,:), INTENT(out)   :: X
       INTEGER,       OPTIONAL,   INTENT(in)    :: jt1, jt2, lz
 
-      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop = 0, ierr1, ierr2
+      INTEGER :: ni, nj, n1, n2, n3, n4, jlev, its, ite, kz_stop, ierr1, ierr2
       REAL(4) :: rsf, rao
       LOGICAL :: l_okay
       CHARACTER(len=80), PARAMETER :: crtn = 'GETVAR_2D_R8'
@@ -617,6 +620,9 @@ CONTAINS
       IF ( PRESENT(jt1) ) its = jt1
       IF ( PRESENT(jt2) ) ite = jt2
 
+      ! The default value is set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the `lz` of a previous call.
+      kz_stop = 0
       IF ( present(lz) ) kz_stop = lz
 
       IF ( (jt == its).OR.(jt == 0) ) THEN   ! Opening file and defining variable :
@@ -1089,31 +1095,34 @@ CONTAINS
       INTEGER :: idv01, idv02, idv03, idv04, idv05, idv06, idv07, idv08, idv09, idv10, &
          &       idv11, idv12, idv13, idv14, idv15, idv16, idv17, idv18, idv19, idv20      
       REAL(4) :: rmin, rmax
-      LOGICAL :: ldv02=.FALSE.,ldv03=.FALSE.,ldv04=.FALSE.,ldv05=.FALSE.,ldv06=.FALSE.,ldv07=.FALSE.,ldv08=.FALSE.,ldv09=.FALSE., &
-         &       ldv10=.FALSE.,ldv11=.FALSE.,ldv12=.FALSE.,ldv13=.FALSE.,ldv14=.FALSE.,ldv15=.FALSE., &
-         &       ldv16=.FALSE.,ldv17=.FALSE.,ldv18=.FALSE.,ldv19=.FALSE.,ldv20=.FALSE.
+      LOGICAL :: ldv02,ldv03,ldv04,ldv05,ldv06,ldv07,ldv08,ldv09, &
+         &       ldv10,ldv11,ldv12,ldv13,ldv14,ldv15, &
+         &       ldv16,ldv17,ldv18,ldv19,ldv20
 
       CHARACTER(len=80), PARAMETER :: crtn = 'PT_SERIES'
 
-      IF (PRESENT(vdt02)) ldv02=.true.
-      IF (PRESENT(vdt03)) ldv03=.true.
-      IF (PRESENT(vdt04)) ldv04=.true.
-      IF (PRESENT(vdt05)) ldv05=.true.
-      IF (PRESENT(vdt06)) ldv06=.true.
-      IF (PRESENT(vdt07)) ldv07=.true.
-      IF (PRESENT(vdt08)) ldv08=.true.
-      IF (PRESENT(vdt09)) ldv09=.true.
-      IF (PRESENT(vdt10)) ldv10=.true.
-      IF (PRESENT(vdt11)) ldv11=.true.
-      IF (PRESENT(vdt12)) ldv12=.true.
-      IF (PRESENT(vdt13)) ldv13=.true.
-      IF (PRESENT(vdt14)) ldv14=.true.
-      IF (PRESENT(vdt15)) ldv15=.true.
-      IF (PRESENT(vdt16)) ldv16=.true.
-      IF (PRESENT(vdt17)) ldv17=.true.
-      IF (PRESENT(vdt18)) ldv18=.true.
-      IF (PRESENT(vdt19)) ldv19=.true.
-      IF (PRESENT(vdt20)) ldv20=.true.
+      ! Each flag is set at each call, directly from the presence of its optional series:
+      ! a value given in the declaration would imply `SAVE`, and a flag set to TRUE by a previous call
+      ! (with more series) would make us read an absent array in a later call (with fewer series).
+      ldv02 = PRESENT(vdt02)
+      ldv03 = PRESENT(vdt03)
+      ldv04 = PRESENT(vdt04)
+      ldv05 = PRESENT(vdt05)
+      ldv06 = PRESENT(vdt06)
+      ldv07 = PRESENT(vdt07)
+      ldv08 = PRESENT(vdt08)
+      ldv09 = PRESENT(vdt09)
+      ldv10 = PRESENT(vdt10)
+      ldv11 = PRESENT(vdt11)
+      ldv12 = PRESENT(vdt12)
+      ldv13 = PRESENT(vdt13)
+      ldv14 = PRESENT(vdt14)
+      ldv15 = PRESENT(vdt15)
+      ldv16 = PRESENT(vdt16)
+      ldv17 = PRESENT(vdt17)
+      ldv18 = PRESENT(vdt18)
+      ldv19 = PRESENT(vdt19)
+      ldv20 = PRESENT(vdt20)
 
       nbt = SIZE(vtime,1)
       
@@ -1384,13 +1393,16 @@ CONTAINS
       INTEGER  :: id_tim
       INTEGER  :: ni, nj
       REAL(4)  :: rmin, rmax
-      LOGICAL  :: lcopy_att_F = .FALSE., l_add_extrema=.true.
+      LOGICAL  :: lcopy_att_F, l_add_extrema
       INTEGER, DIMENSION(:), ALLOCATABLE :: vidim
 
       CHARACTER(len=80), PARAMETER :: crtn = 'P2D_T'
 
-      IF ( PRESENT(attr_F) ) lcopy_att_F = .TRUE.
+      ! Default values are set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the result of a previous call.
+      lcopy_att_F = PRESENT(attr_F)
 
+      l_add_extrema = .TRUE.
       IF ( PRESENT(l_add_valid_min_max) ) l_add_extrema = l_add_valid_min_max
 
       !! About dimensions of xlon, xlat and x2d:
@@ -1535,16 +1547,19 @@ CONTAINS
       INTEGER          :: id_x, id_y, id_t, id_lo, id_la, id_tim
       INTEGER          :: ni, nj, lz
       REAL(4)          :: dr, rmin, rmax
-      LOGICAL :: lcopy_att_F = .FALSE., &
-         &       lcopy_att_z = .FALSE., &
-         &     l_add_extrema = .TRUE.
+      LOGICAL :: lcopy_att_F, &
+         &       lcopy_att_z, &
+         &     l_add_extrema
       INTEGER, DIMENSION(:), ALLOCATABLE :: vidim
 
       CHARACTER(len=80), PARAMETER :: crtn = 'P3D_T'
 
-      IF ( PRESENT(attr_z) ) lcopy_att_z = .TRUE.
-      IF ( PRESENT(attr_F) ) lcopy_att_F = .TRUE.
+      ! Default values are set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the result of a previous call.
+      lcopy_att_z = PRESENT(attr_z)
+      lcopy_att_F = PRESENT(attr_F)
 
+      l_add_extrema = .TRUE.
       IF ( PRESENT(l_add_valid_min_max) ) l_add_extrema = l_add_valid_min_max
 
       !! About dimensions of xlon, xlat, vdpth and x3d:
@@ -1747,9 +1762,10 @@ CONTAINS
       INTEGER :: ierr
       CHARACTER(len=400) :: c00
       CHARACTER(len=80), PARAMETER :: crtn = 'GET_VAR_INFO'
-      LOGICAL :: lclndr = .FALSE.
+      LOGICAL :: lclndr
       !!
-      IF ( PRESENT(clndr) ) lclndr = .TRUE.
+      ! Set at each call (a value given in the declaration would imply `SAVE` and keep the result of a previous call):
+      lclndr = PRESENT(clndr)
       !!
       !! Opening file :
       CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),  crtn,cf_in,cv_in)
@@ -1919,10 +1935,11 @@ CONTAINS
       REAL(4), DIMENSION(:,:), OPTIONAL, INTENT(in) :: d2np ! distance to nearest point (km)
 
       INTEGER          :: ni, nj, il0, id_n2, id_n3, id_v1, id_v2, id_v3, id_dnp
-      LOGICAL          :: l_save_distance_to_np=.FALSE.
+      LOGICAL          :: l_save_distance_to_np
       CHARACTER(len=80), PARAMETER :: crtn = 'P2D_MAPPING_AB'
 
-      IF ( PRESENT(d2np) ) l_save_distance_to_np=.TRUE.
+      ! Set at each call (a value given in the declaration would imply `SAVE` and keep the result of a previous call):
+      l_save_distance_to_np = PRESENT(d2np)
 
       ni = size(ralfbet,1) ; nj = size(ralfbet,2)
 
@@ -2135,10 +2152,13 @@ CONTAINS
       INTEGER, OPTIONAL, INTENT(in) :: italk
       !!
       !! local :
-      INTEGER :: ierr1, ierr2, itlk=0
+      INTEGER :: ierr1, ierr2, itlk
       !!
       CHARACTER(len=80), PARAMETER :: crtn = 'GET_SF_AO'
       !!
+      ! The default value is set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the `italk` of a previous call.
+      itlk = 0
       IF ( PRESENT(italk) ) itlk = italk
       !!
       CALL sherr( NF90_OPEN(cf_in, NF90_NOWRITE, id_f),  crtn,cf_in,cv_in)
@@ -2297,14 +2317,28 @@ CONTAINS
       LOGICAL, OPTIONAL, INTENT(in)             :: l_add_valid_min_max
 
       LOGICAL ::  &
-         &       lcopy_att_lon = .FALSE., &
-         &       lcopy_att_lat = .FALSE., &
-         &       lcopy_att_tim = .FALSE., &
-         &       l_add_extrema = .TRUE.
+         &       lcopy_att_lon, &
+         &       lcopy_att_lat, &
+         &       lcopy_att_tim, &
+         &       l_add_extrema
 
-      IF ( PRESENT(attr_lon).AND.(attr_lon(1)%itype>0) ) lcopy_att_lon = .TRUE.
-      IF ( PRESENT(attr_lat).AND.(attr_lat(1)%itype>0) ) lcopy_att_lat = .TRUE.
-      IF ( PRESENT(attr_tim).AND.(attr_tim(1)%itype>0) ) lcopy_att_tim = .TRUE.
+      ! Default values are set here, at each call, and not in the declaration above:
+      ! a value given in the declaration implies `SAVE` and would keep the result of a previous call.
+      lcopy_att_lon = .FALSE.
+      lcopy_att_lat = .FALSE.
+      lcopy_att_tim = .FALSE.
+      l_add_extrema = .TRUE.
+
+      ! Nested IFs: Fortran does not short-circuit `.AND.`, so `attr_xxx(1)` must not be read when `attr_xxx` is absent
+      IF ( PRESENT(attr_lon) ) THEN
+         IF ( attr_lon(1)%itype > 0 ) lcopy_att_lon = .TRUE.
+      END IF
+      IF ( PRESENT(attr_lat) ) THEN
+         IF ( attr_lat(1)%itype > 0 ) lcopy_att_lat = .TRUE.
+      END IF
+      IF ( PRESENT(attr_tim) ) THEN
+         IF ( attr_tim(1)%itype > 0 ) lcopy_att_tim = .TRUE.
+      END IF
 
       IF ( PRESENT(l_add_valid_min_max) ) l_add_extrema = l_add_valid_min_max
 
@@ -2581,9 +2615,12 @@ CONTAINS
             !   WRITE(*,'(" ***  now : ",i4,"-",i2.2,"-",i2.2," ",i2.2,":",i2.2,":",i2.2," s cum =",i," d cum =",i)') jy, jmn, jd, jh, jm, js,  rjs_t
             !END IF
             IF ( (zt <= rjs_t).AND.(zt > rjs_t_old) ) lcontinue = .FALSE.
-            IF ( jy == 2021 ) THEN
+            ! Safety stop against an endless loop (e.g. a NaN or absurd time value): we never need
+            ! to go more than 1000 years beyond the reference year of the time axis ("... since YYYY").
+            ! (this replaces a fixed limit at year 2021, which stopped any recent data)
+            IF ( jy > cal_unit_ref0%year + 1000 ) THEN
                PRINT *, 'rjs_t =', rjs_t
-               STOP 'ERROR: time_to_date => beyond 2020!'
+               STOP 'ERROR: time_to_date => more than 1000 years after the reference year, time value is not valid!'
             END IF
             rjs_t_old = rjs_t
          END DO
@@ -2719,9 +2756,12 @@ CONTAINS
             !   WRITE(*,'(" ***  now : ",i4,"-",i2.2,"-",i2.2," ",i2.2,":",i2.2,":",i2.2," s cum =",i," d cum =",i)') jy, jmn, jd, jh, jm, js,  rjs_t
             !END IF
             IF ( (zt <= rjs_t).AND.(zt > rjs_t_old) ) lcontinue = .FALSE.
-            IF ( jy == 2019 ) THEN
+            ! Safety stop against an endless loop (e.g. a NaN or absurd time value): we never need
+            ! to go more than 1000 years beyond the reference year of the time axis ("... since YYYY").
+            ! (this replaces a fixed limit at year 2019, which stopped any recent data)
+            IF ( jy > cal_unit_ref0%year + 1000 ) THEN
                PRINT *, 'rjs_t =', rjs_t
-               STOP 'ERROR: to_epoch_time_scalar => beyond 2018!'
+               STOP 'ERROR: to_epoch_time_scalar => more than 1000 years after the reference year, time value is not valid!'
             END IF
             rjs_t_old = rjs_t
          END DO
@@ -2867,9 +2907,12 @@ CONTAINS
             IF ( (jy==1970).AND.(jmn==1).AND.(jd==1).AND.(jh==0).AND.(jm==0).AND.(rjs==0.) ) rjs0_epoch = rjs_t
             !
             IF ( (zt <= rjs_t).AND.(zt > rjs_t_old) ) lcontinue = .FALSE.
-            IF ( jy == 2019 ) THEN
+            ! Safety stop against an endless loop (e.g. a NaN or absurd time value): we never need
+            ! to go more than 1000 years beyond the reference year of the time axis ("... since YYYY").
+            ! (this replaces a fixed limit at year 2019, which stopped any recent data)
+            IF ( jy > cal_unit_ref0%year + 1000 ) THEN
                PRINT *, 'rjs_t =', rjs_t
-               STOP 'ERROR: to_epoch_time_vect => beyond 2018!'
+               STOP 'ERROR: to_epoch_time_vect => more than 1000 years after the reference year, time value is not valid!'
             END IF
             rjs_t_old = rjs_t
          END DO
