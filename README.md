@@ -106,7 +106,9 @@ _Fig 1/ Comparison of the stability correction profiles_ $\Psi(\zeta)$ _as used 
 
 # **> Compilation of AeroBulk**
 
-Normally, AeroBulk should compile fine with GNU `gfortran` (version 7 and above) and Intel `ifort`.
+AeroBulk has been successfully tested with `flang` of `LLVM`, GNU `gfortran` (version 7 and above), and Intel's `ifx`.
+We encourage you to use `LLVM` (template: `./arch/make.macro_LLVM-22_LINUX`).
+
 Prior to typing `make`, make sure that a file or symbolic link named `make.macro`, which contains architecture specific compilation paths and options, is present in the root directory of AeroBulk. Template examples for `make.macro` can be found in the `arch/` directory.
 
 Compile the library and basic executables:
@@ -176,7 +178,7 @@ You will be interactively prompted for different sea-surface and ABL related par
     -h   => Show this message
 
 
-Example of an output obtained with the following setup:
+Example of an output obtained with the following set of parameters:
 
  * _z<sub>u_ = 10 m
  * _z<sub>t_ = 2 m
@@ -187,47 +189,45 @@ Example of an output obtained with the following setup:
 
 <!-- $$  SST = 22^{\circ}C \\ \theta_z = 20^{\circ}C $$ -->
 
-     ==============================================================================================
-        Algorithm:      coare3p0  |  coare3p6  |    ncar    |    ecmwf   | andreas
-     ==============================================================================================
-           C_D     =    1.1954       1.0775       1.2038       1.2862       1.0167      [10^-3]
-           C_E     =    1.3345       1.3729       1.3618       1.3143       1.1565      [10^-3]
-           C_H     =    1.3345       1.3729       1.2776       1.2635       1.1103      [10^-3]
-    
-           z_0     =   4.40936E-05  2.19285E-05  4.49880E-05  6.98835E-05  1.56119E-05  [m]
-           u*      =   0.17578      0.16672      0.17348      0.18192       0.1594      [m/s]
-           L       =   -20.383      -16.919      -20.494      -24.029      -18.558      [m]
-           Ri_bulk =  -3.78706E-02 -3.79537E-02 -3.90686E-02 -3.79799E-02 -3.87826E-02  [-]
-    
-                      *** Neutral stability: **
-           UN10    =    5.4192       5.4311       5.3396       5.3992       5.3289      [m/s]
-           C_D_N   =    1.0521      0.94234       1.0555       1.1353       0.8950      [10^-3]
-           C_E_N   =    1.1077       1.1119       1.1241       1.1064       0.9600      [10^-3]
-           C_H_N   =    1.1077       1.1119       1.0624       1.0680       0.9260      [10^-3]
-    
-     Equ. Charn p. =   1.10033E-02  4.23674E-03  1.15475E-02  1.80029E-02  2.02298E-03
-    
-      Wind stress  =    36.198       32.596       35.849       38.860       30.275      [mN/m^2]
-      Evaporation  =    3.1059       3.1925       3.1215       3.0538       2.6270      [mm/day]
-         QL        =   -88.031      -90.486      -88.473      -86.555      -74.459      [W/m^2]
-         QH        =   -17.833      -18.330      -16.730      -16.805      -14.441      [W/m^2]
-
-
+        ==============================================================================================
+             Algorithm:      coare3p0      coare3p6        ncar          ecmwf         andreas
+        ==============================================================================================
+                 C_D =        1.19506       1.07714       1.20354       1.28584       1.01647  [10^-3]
+                 C_E =        1.33413       1.37235       1.36141       1.31389       1.15611  [10^-3]
+                 C_H =        1.33413       1.37235       1.27724       1.26318       1.11000  [10^-3]
+        
+                 z_0 =    4.40827E-05   2.19126E-05   4.49913E-05   6.98637E-05   1.56123E-05  [m]
+                  u* =        0.17575       0.16668       0.17346       0.18189       0.15941  [m/s]
+                   L =      -20.45377     -16.97787     -20.56680     -24.11025     -18.62475  [m]
+             Ri_bulk =   -3.77407E-02  -3.78234E-02  -3.89310E-02  -3.78487E-02  -3.86457E-02  [-]
+        
+                       *** Neutral-stability: ***
+                UN10 =        5.41829       5.43015       5.33894       5.39836       5.32830  [m/s]
+               C_D_N =        1.05209       0.94224       1.05558       1.13529       0.89507  [10^-3]
+               C_E_N =        1.10771       1.11188       1.12414       1.06801       0.96006  [10^-3]
+               C_H_N =        1.10771       1.11188       1.06241       1.06801       0.92601  [10^-3]
+        
+        
+         Wind stress =       36.19126      32.58756      35.84599      38.85268      30.27210  [mN/m^2] ( MEAN =  34.74992  RMS = 2.99460 )
+         Evaporation =       -3.10542      -3.19173      -3.12111      -3.05341      -2.62676  [mm/day] ( MEAN =  -3.01969  RMS = 0.20138 )
+                  QL =      -88.01768     -90.46416     -88.46249     -86.54375     -74.45107  [W/m^2]  ( MEAN = -85.58783  RMS = 5.70767 )
+                  QH =      -17.74057     -18.23365     -16.64410     -16.71834     -14.36743  [W/m^2]  ( MEAN = -16.74082  RMS = 1.33198 )
+            
 &nbsp;
 
 # **> Computing turbulent fluxes with AeroBulk**
 
 AeroBulk can also directly compute the 3 turbulent fluxes by means of the `aerobulk_model()` routine of module `mod_aerobulk` (`mod_aerobulk.f90`):
 
-       PROGRAM TEST_FLUX
-           USE mod_aerobulk
-           ...
-           CALL AEROBULK_MODEL( jt, Nt, calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
-           &                    Qe, Qh, Tau_x, Tau_y, Evap                                 &
-           &                   [, Niter=N, l_use_skin=.TRUE., rad_sw=Rsw, rad_lw=Rlw, T_s=SSST, &
-           &                      isecday_utc=isec, plong=xlon ] )
-           ...
-       END PROGRAM TEST_FLUX
+PROGRAM TEST_FLUX
+    USE mod_aerobulk
+    ...
+    CALL AEROBULK_MODEL( jt, Nt, calgo, zt, zu, sst, t_zt, hum_zt, U_zu, V_zu, SLP, &
+    &                    Qe, Qh, Tau_x, Tau_y, Evap                                 &
+    &                   [, Niter=N, l_use_skin=.TRUE., rad_sw=Rsw, rad_lw=Rlw, T_s=SSST, &
+    &                      isecday_utc=isec, plong=xlon ] )
+    ...
+END PROGRAM TEST_FLUX
 
 INPUT ARGUMENTS:
 *   `jt`  : (Sc,int) current time step (to go from `1` to `Nt`)
