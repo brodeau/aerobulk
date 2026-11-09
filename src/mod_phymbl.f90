@@ -1199,16 +1199,21 @@ CONTAINS
 
       pTau = zUrho * pCd * pwnd ! Wind stress module ( `pwnd` here because `pUb` already in `zUrho`
 
+      ! Evaporation [kg/m^2/s] (< 0 when the surface loses water). It is NOT capped: condensation events
+      ! (zevap > 0, air more humid than the surface) are kept, both in `pEvap` and in `pQlat` (then > 0),
+      ! so that the latent heat flux and the water flux stay consistent with each other, over ice and water.
+      ! (decision of Nov 2026, same as in NANUQ; before, `pEvap` was capped with MIN(...,0) over ice only)
       zevap = zUrho * pCe * (pqa - pqs)
       pQsen = zUrho * pCh * (pThta - pts) * cp_air(pqa)
 
+      ! Latent heat flux: heat of sublimation over ice, heat of vaporization over water
       IF( lice) THEN
          pQlat =      rLsub * zevap
-         IF( PRESENT(pEvap) ) pEvap = MIN( zevap , 0._wp )
       ELSE
          pQlat = L_vap(pts) * zevap
-         IF( PRESENT(pEvap) ) pEvap = zevap
       END IF
+
+      IF( PRESENT(pEvap) ) pEvap = zevap
 
       IF( PRESENT(prhoa) ) prhoa = zrho
 
