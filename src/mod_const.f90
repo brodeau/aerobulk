@@ -32,6 +32,12 @@ MODULE mod_const
    REAL(wp),                 SAVE :: rdt = 3600. !: time step for the cool-skin/warm-layer parameterization  [s]
    INTEGER,                  SAVE :: nb_iter=5  !: number of itteration in the bulk algorithm
 
+   ! Number of iterations in the sea-ice bulk algorithms AN05, LG15 and NANUQ (`turb_ice_an05`, `turb_ice_lg15`, `turb_ice_nanuq`).
+   ! It is larger than `nb_iter` (used by the ocean algorithms) because the surface layer is usually stable over sea-ice,
+   ! and the iteration on the stability parameter z/L converges more slowly in stable conditions.
+   ! Same value as in NANUQ, where these 3 algorithms use 8 iterations.
+   INTEGER, PARAMETER :: nb_iter_ice = 8  !: number of itterations in the sea-ice bulk algorithms
+
    LOGICAL, PARAMETER :: ldebug_blk_algos=.false.
 
    !! Note: all real literals below carry the `_wp` kind suffix. Without it, a literal such as `9.8`
@@ -39,7 +45,9 @@ MODULE mod_const
    !! 9.80000019... (only ~7 correct digits). With `_wp` the full working precision is kept.
 
    !! General constants:
-   REAL(wp), PARAMETER, PUBLIC :: grav  = 9.8_wp      !: acceleration of gravity    [m.s^-2]
+   ! Standard acceleration of gravity (it was 9.8): same value as in NEMO/NANUQ (`phycst.F90`),
+   ! and as the one already used in `rcst_cs` (cool-skin) below.
+   REAL(wp), PARAMETER, PUBLIC :: grav  = 9.80665_wp  !: acceleration of gravity    [m.s^-2]
    REAL(wp), PARAMETER, PUBLIC :: rpi   = 3.141592653589793_wp
    REAL(wp), PARAMETER, PUBLIC :: twoPi = 2.*rpi
    REAL(wp), PARAMETER, PUBLIC :: to_rad = rpi/180.
@@ -115,14 +123,25 @@ MODULE mod_const
    REAL(wp), PARAMETER, PUBLIC :: radrw    = rho0_a/rho0_w !: Density ratio
    REAL(wp), PARAMETER, PUBLIC :: sq_radrw = SQRT(rho0_a/rho0_w)
 
-   REAL(wp), PARAMETER, PUBLIC :: Cx_min = 0.1E-3_wp ! smallest value allowed for bulk transfer coefficients (usually in stable conditions with now wind)
+   ! Smallest value allowed for the bulk transfer coefficients C_D, C_H and C_E of the OCEAN algorithms
+   ! (NCAR, COARE 3.0, COARE 3.6, ECMWF, ANDREAS); it only matters in very stable conditions with low wind.
+   ! It was 0.1E-3: 0.05E-3 is the value used in NANUQ (`sbc_phy.F90`), closer to the published algorithms,
+   ! and still large enough to prevent zero or negative coefficients.
+   ! (The sea-ice algorithm `turb_ice_nanuq` uses its own limits, `rCx_min` and `rCx_max`.)
+   REAL(wp), PARAMETER, PUBLIC :: Cx_min = 0.05E-3_wp ! smallest value allowed for bulk transfer coefficients (usually in stable conditions with now wind)
    
 
    !! Sea-ice stuff:
    REAL(wp), PARAMETER, PUBLIC :: rCd_ice = 1.4e-3_wp   !: transfer coefficient over ice
    REAL(wp), PARAMETER, PUBLIC :: to_mm_p_day = 24._wp*3600._wp  !: freshwater flux: from kg/s/m^2 == mm/s to mm/day
-   REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 0.2_wp !: minimum scalar wind speed accepted over sea-ice...
-   !REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 0.5_wp !: minimum scalar wind speed accepted over sea-ice...
+   ! Minimum scalar wind speed used to compute the bulk transfer coefficients over sea-ice (all ice algorithms).
+   ! It was 0.2 m/s: at such low wind the stability parameter zeta = z/L becomes extreme (|zeta| up to the cap of 50),
+   ! which gives extreme C_D, C_H and C_E (well above 2E-3 in unstable cases, well below 0.5E-3 in stable cases).
+   ! 1 m/s limits this. There is no gustiness / free-convection term over sea-ice, so this threshold is the only protection.
+   ! Same value as in NANUQ (`sbc_phy.F90`).
+   ! Note: unlike NANUQ, the AeroBulk ice algorithms return the bulk wind `Ubzu` (= MAX(U_zu, wspd_thrshld_ice)),
+   ! which is then used in the bulk formulas, so here this threshold also affects the fluxes, not only the coefficients.
+   REAL(wp), PARAMETER, PUBLIC :: wspd_thrshld_ice = 1._wp !: minimum scalar wind speed accepted over sea-ice... [m/s]
 
 
 

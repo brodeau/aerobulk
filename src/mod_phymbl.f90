@@ -11,10 +11,9 @@
 !   significant effects of some approximations in the bulk parameterizations of
 !   turbulent air-sea fluxes. J. Phys. Oceanogr., doi:10.1175/JPO-D-16-0169.1.
 
-
 MODULE MOD_PHYMBL
 
-   !!   pot_temp      : potential temperature
+   !!   pot_from_abs  : potential temperature from absolute temperature (same name as in NANUQ)
    !!   virt_temp     : virtual (aka sensible) temperature (potential or absolute)
    !!   rho_air       : density of (moist) air (depends on T_air, q_air and SLP
    !!   visc_air      : kinematic viscosity (aka Nu_air) of air from temperature
@@ -30,13 +29,14 @@ MODULE MOD_PHYMBL
 
    IMPLICIT NONE
 
-   INTERFACE pot_temp
-      MODULE PROCEDURE pot_temp_vctr, pot_temp_sclr
-   END INTERFACE pot_temp
+   ! Potential temperature from absolute temperature (Poisson's equation)
+   INTERFACE pot_from_abs
+      MODULE PROCEDURE pot_from_abs_vctr, pot_from_abs_sclr
+   END INTERFACE pot_from_abs
 
-   INTERFACE abs_temp
-      MODULE PROCEDURE abs_temp_vctr, abs_temp_sclr
-   END INTERFACE abs_temp
+   INTERFACE abs_from_pot_p
+      MODULE PROCEDURE abs_from_pot_p_vctr, abs_from_pot_p_sclr
+   END INTERFACE abs_from_pot_p
 
    INTERFACE virt_temp
       MODULE PROCEDURE virt_temp_vctr, virt_temp_sclr
@@ -160,9 +160,9 @@ MODULE MOD_PHYMBL
 CONTAINS
 
    !===============================================================================================
-   FUNCTION pot_temp_sclr( pTa, pPz,  pPref )
+   FUNCTION pot_from_abs_sclr( pTa, pPz,  pPref )
       !!------------------------------------------------------------------------
-      !!                           ***  FUNCTION pot_temp  ***
+      !!                           ***  FUNCTION pot_from_abs  ***
       !!
       !! Poisson's equation to obtain potential temperature from absolute temperature, pressure,
       !! and the reference (sea-level) pressure.
@@ -177,7 +177,7 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pTa            !: absolute air temperature at `z` m above sea level  [K]
       REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: pot_temp_sclr  !: potential air temperature at `z` m above sea level [K]
+      REAL(wp)                       :: pot_from_abs_sclr  !: potential air temperature at `z` m above sea level [K]
       !!
       REAL(wp) :: zPref
       !!-------------------------------------------------------------------
@@ -185,27 +185,27 @@ CONTAINS
       !! a value given in the declaration implies `SAVE` and would keep the `pPref` of a previous call.
       zPref = Patm
       IF( PRESENT(pPref) ) zPref = pPref
-      pot_temp_sclr =pTa * ( zPref / pPz )**rpoiss_dry
+      pot_from_abs_sclr =pTa * ( zPref / pPz )**rpoiss_dry
       !!
-   END FUNCTION pot_temp_sclr
+   END FUNCTION pot_from_abs_sclr
 
-   FUNCTION pot_temp_vctr( pTa, pPz,  pPref )
+   FUNCTION pot_from_abs_vctr( pTa, pPz,  pPref )
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pTa
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pPz
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pPref
-      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))                       :: pot_temp_vctr
+      REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))                       :: pot_from_abs_vctr
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
-         pot_temp_vctr = pTa * ( pPref / pPz )**rpoiss_dry
+         pot_from_abs_vctr = pTa * ( pPref / pPz )**rpoiss_dry
       ELSE
-         pot_temp_vctr = pTa * ( Patm  / pPz )**rpoiss_dry
+         pot_from_abs_vctr = pTa * ( Patm  / pPz )**rpoiss_dry
       END IF
-   END FUNCTION pot_temp_vctr
+   END FUNCTION pot_from_abs_vctr
    !===============================================================================================
 
 
    !===============================================================================================
-   FUNCTION abs_temp_sclr( pThta, pPz,  pPref )
+   FUNCTION abs_from_pot_p_sclr( pThta, pPz,  pPref )
       !!------------------------------------------------------------------------
       !!
       !! Poisson's equation to obtain absolute temperature from potential temperature, pressure,
@@ -221,7 +221,7 @@ CONTAINS
       REAL(wp), INTENT(in)           :: pThta          !: potential air temperature at `z` m above sea level  [K]
       REAL(wp), INTENT(in)           :: pPz            !: pressure at `z` m above sea level                  [Pa]
       REAL(wp), INTENT(in), OPTIONAL :: pPref          !: reference pressure (sea-level)                     [Pa]
-      REAL(wp)                       :: abs_temp_sclr  !: potential air temperature at `z` m above sea level [K]
+      REAL(wp)                       :: abs_from_pot_p_sclr  !: potential air temperature at `z` m above sea level [K]
       !!
       REAL(wp) :: zPref
       !!-------------------------------------------------------------------
@@ -229,22 +229,22 @@ CONTAINS
       !! a value given in the declaration implies `SAVE` and would keep the `pPref` of a previous call.
       zPref = Patm
       IF( PRESENT(pPref) ) zPref = pPref
-      abs_temp_sclr =pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
+      abs_from_pot_p_sclr =pThta / MAX ( ( zPref / pPz )**rpoiss_dry, 1.E-9_wp )
       !!
-   END FUNCTION abs_temp_sclr
+   END FUNCTION abs_from_pot_p_sclr
 
-   FUNCTION abs_temp_vctr( pThta, pPz,  pPref )
+   FUNCTION abs_from_pot_p_vctr( pThta, pPz,  pPref )
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pThta
       REAL(wp), DIMENSION(:,:), INTENT(in)           :: pPz
       REAL(wp), DIMENSION(:,:), INTENT(in), OPTIONAL :: pPref
-      REAL(wp), DIMENSION(SIZE(pThta,1),SIZE(pThta,2))                       :: abs_temp_vctr
+      REAL(wp), DIMENSION(SIZE(pThta,1),SIZE(pThta,2))                       :: abs_from_pot_p_vctr
       !!-------------------------------------------------------------------
       IF( PRESENT(pPref) ) THEN
-         abs_temp_vctr = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
+         abs_from_pot_p_vctr = pThta / MAX ( ( pPref / pPz )**rpoiss_dry, 1.E-9_wp )
       ELSE
-         abs_temp_vctr = pThta / MAX ( ( Patm  / pPz )**rpoiss_dry, 1.E-9_wp )
+         abs_from_pot_p_vctr = pThta / MAX ( ( Patm  / pPz )**rpoiss_dry, 1.E-9_wp )
       END IF
-   END FUNCTION abs_temp_vctr
+   END FUNCTION abs_from_pot_p_vctr
    !===============================================================================================
 
 
@@ -370,7 +370,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------
       zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, pTa, pqa ) ! pressure at z=`pz`
       !!
-      Theta_from_z_P0_T_q_sclr = pot_temp_sclr( pTa, zPz,  pPref=pslp )
+      Theta_from_z_P0_T_q_sclr = pot_from_abs_sclr( pTa, zPz,  pPref=pslp )
       !!
    END FUNCTION Theta_from_z_P0_T_q_sclr
 
@@ -381,7 +381,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:), INTENT(in) :: pqa
       REAL(wp), DIMENSION(SIZE(pTa,1),SIZE(pTa,2))             :: Theta_from_z_P0_T_q_vctr
       !!-------------------------------------------------------------------------------
-      Theta_from_z_P0_T_q_vctr = pot_temp_vctr( pTa, Pz_from_P0_tz_qz_vctr( pz, pslp, pTa, pqa ),  pPref=pslp )
+      Theta_from_z_P0_T_q_vctr = pot_from_abs_vctr( pTa, Pz_from_P0_tz_qz_vctr( pz, pslp, pTa, pqa ),  pPref=pslp )
    END FUNCTION Theta_from_z_P0_T_q_vctr
    !===============================================================================================
 
@@ -410,7 +410,7 @@ CONTAINS
       !!
       DO it = 1, 4
          zPz = Pz_from_P0_tz_qz_sclr( pz, pslp, zTa, pqa ) ! pressure at z=`pz`
-         zTa = abs_temp_sclr( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
+         zTa = abs_from_pot_p_sclr( pThta, zPz,  pPref=pslp )    ! update of absolute temperature
       END DO
       T_from_z_P0_Theta_q_sclr = zTa
       !!
@@ -429,6 +429,58 @@ CONTAINS
          END DO
       END DO
    END FUNCTION T_from_z_P0_Theta_q_vctr
+   !===============================================================================================
+
+
+   !===============================================================================================
+   FUNCTION abs_from_pot( pThta, pqa, pz )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION abs_from_pot  ***
+      !!
+      !! ** Purpose : compute the air absolute temperature at height pz from the potential temperature,
+      !!              inverse of the Exner function with the SEA-LEVEL pressure as reference pressure
+      !!              (same convention as `Theta_from_z_P0_T_q` and `T_from_z_P0_Theta_q`):
+      !!                 T = theta * ( p(z) / p_s )**rpoiss_dry
+      !!
+      !!              Unlike `T_from_z_P0_Theta_q`, the sea-level pressure is NOT needed here:
+      !!              with the barometric equation (isothermal layer at temperature T, as in `Pz_from_P0_tz_qz`),
+      !!                 p(z) / p_s = EXP( -g * M * z / ( R * T ) )      (M: molar mass of moist air)
+      !!              so the ratio p(z)/p_s does not depend on the VALUE of p_s, and:
+      !!                 T = theta * EXP( -rpoiss_dry * g * M * z / ( R * T ) )
+      !!              This is solved for T with a few fixed-point iterations, starting from the first guess
+      !!              T = theta - rgamma_dry*z (dry lapse rate). It is used where p_s is not available (`Ri_bulk`).
+      !!
+      !!              Same function as `abs_from_pot()` of NANUQ (`sbc_phy.F90`). Note the names of the constants:
+      !!              in AeroBulk `rpoiss_dry` is the Poisson constant and `rgamma_dry` the dry lapse rate,
+      !!              in NANUQ `rgamma_dry` is the Poisson constant and `rlapse_dry` the dry lapse rate.
+      !!
+      !! ** Author: L. Brodeau, Nov 2026
+      !!-------------------------------------------------------------------------------
+      REAL(wp)             :: abs_from_pot   ! air absolute temperature at height pz [K]
+      REAL(wp), INTENT(in) :: pThta          ! air potential temperature at height pz [K]
+      REAL(wp), INTENT(in) :: pqa            ! air specific humidity at height pz     [kg/kg]
+      REAL(wp), INTENT(in) :: pz             ! height above sea-level                 [m]
+      !!-------------------------------------------------------------------------------
+      REAL(wp)           :: zxv, zxm, zta
+      INTEGER            :: it
+      INTEGER, PARAMETER :: niter = 3   ! number of fixed-point iterations (the correction is ~ g*z/(Cp*T), so it converges very fast)
+      !!-------------------------------------------------------------------------------
+      ! Molar mass of moist air [kg/mol], from the mole fraction of water vapour (same as in `Pz_from_P0_tz_qz`):
+      zxv = pqa / ( rmm_ratio + (1._wp - rmm_ratio)*pqa )
+      zxm = (1._wp - zxv) * rmm_dryair + zxv * rmm_water
+
+      ! First guess: dry adiabatic lapse rate (already very close to the solution near the surface)
+      zta = pThta - rgamma_dry*pz
+
+      ! Fixed-point iterations on T = theta * ( p(z)/p_s )**rpoiss_dry, with p(z)/p_s from the barometric equation
+      ! (MAX() protects against masked/garbage values of temperature):
+      DO it = 1, niter
+         zta = pThta * EXP( -rpoiss_dry * grav * zxm * pz / ( R_gas * MAX(zta,1._wp) ) )
+      END DO
+
+      abs_from_pot = zta
+      !!
+   END FUNCTION abs_from_pot
    !===============================================================================================
 
 
@@ -747,10 +799,15 @@ CONTAINS
       zdthv = virt_temp_sclr( pThta, pqa  ) - zsstv  ! air-sea delta of "virtual potential temperature"
       !
       !! ztv: estimate of the ABSOLUTE virtual temp. within the layer
+      !! * if provided, from the layer temperature and humidity `pTa_layer` & `pqa_layer`
+      !! * otherwise, mean of the virtual surface temperature and the virtual absolute air temperature at pz,
+      !!   the absolute air temperature being obtained from the potential one with the inverse of the Exner function
+      !!   (`abs_from_pot()`, same as NANUQ; it replaces the dry lapse-rate approximation `pThta - rgamma_dry*pz`,
+      !!    and does not need the sea-level pressure, which is why `Ri_bulk` has no `slp` argument)
       IF( l_ptqa_l_prvd ) THEN
          ztv = virt_temp_sclr( pTa_layer, pqa_layer )
       ELSE
-         ztv = 0.5_wp*( zsstv + virt_temp_sclr( pThta-rgamma_dry*pz, pqa ) )
+         ztv = 0.5_wp*( zsstv + virt_temp_sclr( abs_from_pot( pThta, pqa, pz ), pqa ) )
       END IF
       !
       Ri_bulk_sclr = grav*zdthv*pz / ( ztv*pub*pub )      ! the usual definition of Ri_bulk_sclr
@@ -1184,16 +1241,22 @@ CONTAINS
       REAL(wp), INTENT(out), OPTIONAL :: prhoa ! Air density at z=pzu [kg/m^3]
       LOGICAL,  INTENT(in),  OPTIONAL :: l_ice  !: we are above ice
       !!
-      REAL(wp) :: zta, zrho, zUrho, zevap
+      REAL(wp) :: zta, zpa, zrho, zUrho, zevap
       LOGICAL  :: lice
       !!----------------------------------------------------------------------------------
       lice = .FALSE.
       IF( PRESENT(l_ice) ) lice = l_ice
 
       !! Need zta, absolute temperature at pzu (formula to estimate rho_air needs absolute temperature, not the potential temperature "pThta")
-      zta  = pThta - rgamma_dry*pzu   ! Absolute temp. is slightly colder...
-      zrho = rho_air(zta, pqa, pslp)
-      zrho = rho_air(zta, pqa, pslp-zrho*grav*pzu) ! taking into account that we are pzu m above the sea level where SLP is given!
+      !! and zpa, the air pressure at pzu (same method as NANUQ, `sbc_phy.F90`):
+      !! * zta: from pThta with the inverse of the Exner function (reference pressure = sea-level pressure, as in
+      !!        `Theta_from_z_P0_T_q` used by the drivers), instead of the lapse-rate approximation `pThta - rgamma_dry*pzu`
+      !! * zpa: from the barometric equation starting at the sea-level pressure `pslp`, instead of the old
+      !!        2-step estimate `pslp - rho*grav*pzu`
+      !! so the air density is computed with the temperature and the pressure at pzu, consistent with each other.
+      zta  = abs_from_pot( pThta, pqa, pzu )
+      zpa  = Pz_from_P0_tz_qz_sclr( pzu, pslp, zta, pqa )
+      zrho = rho_air( zta, pqa, zpa )
 
       zUrho = pUb*MAX(zrho, 1._wp)     ! rho*U10
 

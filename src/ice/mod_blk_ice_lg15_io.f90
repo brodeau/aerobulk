@@ -202,7 +202,7 @@ CONTAINS
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
 
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:

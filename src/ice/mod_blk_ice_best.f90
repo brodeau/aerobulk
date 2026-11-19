@@ -132,7 +132,7 @@ CONTAINS
       l_zt_equal_zu = .FALSE.
       IF( ABS(zu - zt) < 0.01_wp )   l_zt_equal_zu = .TRUE.    ! testing "zu == zt" is risky with double precision
 
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       U_blk = MAX( U_zu, wspd_thrshld_ice )
 
       !! Initializing values at z_u with z_t values:

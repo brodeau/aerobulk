@@ -155,7 +155,7 @@ CONTAINS
       lreturn_L     = PRESENT(xL)
       lreturn_UN10  = PRESENT(xUN10)
 
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:
@@ -172,8 +172,8 @@ CONTAINS
       Ce_i(:,:) = rz0_i_s_0 !! temporary array to contain roughness length for skin drag !
 
       
-      !! Method #1:
-      Cd_i(:,:) = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU13( frice(:,:) )
+      !! Method #1 (not used anymore, NANUQ uses method #4, see below):
+      !Cd_i(:,:) = Cd_from_z0( zu, Ce_i(:,:) )  + CdN10_f_LU13( frice(:,:) )
       !IF( lreturn_cdfrm ) CdN_frm = CdN10_f_LU13( frice(:,:) )
       !PRINT *, 'LOLO: estimate of Cd_f_i method #1 =>', CdN10_f_LU13( frice(:,:) ); PRINT *, ''
 
@@ -192,8 +192,11 @@ CONTAINS
 
       !! Method #4:
       !! using eq.21 of LG15 instead:
-      !z0_i(:,:) = rz0_i_f_0
-      !Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
+      !! => this is the method in use, the same as in NANUQ (`sbcblk_algo_ice_lu12.F90`), so both codes give the same C_D:
+      !!    neutral C_D = skin drag (from the skin roughness length `rz0_i_s_0`, stored in Ce_i)
+      !!                + form drag of Eq.(21) of Lupkes & Gryanik (2015), from the ice fraction and the form roughness length `rz0_i_f_0`
+      z0_i(:,:) = rz0_i_f_0
+      Cd_i(:,:)   = Cd_from_z0( zu, Ce_i(:,:) )  + CdN_f_LG15( zu, frice(:,:), z0_i(:,:) ) !/ frice(:,:)
       !IF( lreturn_cdfrm ) CdN_frm = CdN_f_LG15( zu, frice(:,:), z0_i(:,:) )
 
 

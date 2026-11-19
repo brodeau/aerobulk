@@ -121,7 +121,7 @@ CONTAINS
       lreturn_L     = PRESENT(xL)
       lreturn_UN10  = PRESENT(xUN10)
       
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       Ub = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:

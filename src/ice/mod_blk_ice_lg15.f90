@@ -167,7 +167,7 @@ CONTAINS
 
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
 
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:
@@ -205,7 +205,7 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO jit = 1, nb_iter
+      DO jit = 1, nb_iter_ice   ! `nb_iter_ice` (and not `nb_iter`): more iterations over sea-ice, see mod_const.f90
 
          IF(l_dbg_print) PRINT *, 'LOLO: LOOP #', INT(jit,1)
          IF(l_dbg_print) PRINT *, 'LOLO: theta_zu, Ts_i, Ubzu =', REAL(t_zu_i(:,:),4), REAL(Ts_i(:,:),4), REAL(Ubzu(:,:),4)
@@ -281,7 +281,7 @@ CONTAINS
 
          IF(l_dbg_print) PRINT *, ''!LOLO
 
-      END DO !DO jit = 1, nb_iter
+      END DO !DO jit = 1, nb_iter_ice
 
       Ce_i(:,:)   =  Ch_i(:,:)
 

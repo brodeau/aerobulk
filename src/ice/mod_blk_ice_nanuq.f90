@@ -31,9 +31,18 @@ MODULE mod_blk_ice_nanuq
 
    PUBLIC :: turb_ice_nanuq
 
-   ! Note: the number of iterations `nb_iter` is the one of module `mod_const` (shared by all algorithms,
-   ! set by the user), it is not redefined here (a local `nb_iter` would clash with the one of `mod_const`).
+   ! Note: the number of iterations is `nb_iter_ice` of module `mod_const` (shared by the sea-ice algorithms),
+   ! it is not redefined here (a local declaration would clash with the one of `mod_const`).
    REAL(wp), PARAMETER ::   epsi10 = 1.E-10_wp
+
+   ! Lower and upper limits applied to the transfer coefficients C_D, C_H and C_E over sea-ice computed here.
+   ! They are the same as in NANUQ (`sbcblk_algo_ice_stab.F90`), so both codes give the same coefficients.
+   ! * rCx_min: in very stable conditions (low wind, strong inversion) the stability correction can make C_H and C_E
+   !            fall to very small values; 0.5E-3 keeps a minimum turbulent exchange over the ice
+   !            (this is larger than the general `Cx_min` of `mod_const`, which is used by the other algorithms)
+   ! * rCx_max: in very unstable conditions the coefficients can become unrealistically large; 2.5E-3 limits this
+   REAL(wp), PARAMETER ::   rCx_min = 0.5E-3_wp
+   REAL(wp), PARAMETER ::   rCx_max = 2.5E-3_wp
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -127,7 +136,7 @@ CONTAINS
             zt_0 = pts_i(ji,jj)
             zq_0 = pqs_i(ji,jj)
 
-            !! Scalar wind speed cannot be below 0.2 m/s
+            !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
             zUbzu = MAX( pU_zu(ji,jj), wspd_thrshld_ice )
 
             zt_zt = pt_zt(ji,jj)
@@ -145,7 +154,7 @@ CONTAINS
             zsqrtCD  = SQRT(zCD)             ! == u*/zUbzu
 
             !! ITERATION BLOCK
-            DO jit = 1, nb_iter
+            DO jit = 1, nb_iter_ice   ! `nb_iter_ice` (and not `nb_iter`): more iterations over sea-ice, see mod_const.f90
 
                !! Air-Ice differences:
                zdt_zu = zt_zu - zt_0   !  zdt_zu = SIGN( MAX(ABS(zdt_zu),1.E-6_wp), zdt_zu )   !RM 2nd part!!!
@@ -167,31 +176,30 @@ CONTAINS
                zzeta_u = SIGN( MIN(ABS(zzeta_u),50.0_wp), zzeta_u )
                zzeta_t = SIGN( MIN(ABS(zzeta_t),50.0_wp), zzeta_t )
 
-               !! Update C_D:
+               !! Update C_D, kept within [rCx_min, rCx_max] (same limits as in NANUQ, see declaration):
                zdum = 1._wp + zsqrtCDN*z1_vkarmn*(zlog2 - psi_m_ice(zzeta_u))
-               zCD  = MAX( pCdN / ( zdum*zdum ) , Cx_min )
-               !zCD  = MIN( MAX( pCdN / ( zdum*zdum ), Cx_min ) , 1.9E-3_wp ) ! capped version
+               zCD  = MIN( MAX( pCdN / ( zdum*zdum ) , rCx_min ) , rCx_max )
 
                zsqrtCD  = SQRT(zCD)             ! == u*/zUbzu
 
-               !! Update C_H and C_E
+               !! Update C_H and C_E, kept within [rCx_min, rCx_max] (same limits as in NANUQ, see declaration):
                zdum = ( zlog2 - psi_h_ice(zzeta_u) ) * z1_vkarmn * z1_sqrtCDN
                zdvm = zsqrtCD * z1_sqrtCDN
-               zCH  = MAX( pChN*zdvm / ( 1._wp + pChN*zdum ) , Cx_min )
-               zCE  = MAX( pCeN*zdvm / ( 1._wp + pCeN*zdum ) , Cx_min )
-               !zCH  = MIN( MAX( pChN*zdvm / ( 1._wp + pChN*zdum ) , Cx_min ) , 1.999E-3_wp ) ! capped version
-               !zCE  = MIN( MAX( pCeN*zdvm / ( 1._wp + pCeN*zdum ) , Cx_min ) , 1.999E-3_wp ) ! capped version
+               zCH  = MIN( MAX( pChN*zdvm / ( 1._wp + pChN*zdum ) , rCx_min ) , rCx_max )
+               zCE  = MIN( MAX( pCeN*zdvm / ( 1._wp + pCeN*zdum ) , rCx_min ) , rCx_max )
 
                !! Re-updating temperature and humidity at zu if zt /= zu :
                zdum  = z1_vkarmn * ( psi_h_ice(zzeta_u) - psi_h_ice(zzeta_t) + zlog1 )
                zt_zu = MERGE( zt_zu  ,             zt_zt - zts*zdum   ,  l_zt_equal_zu )
                zq_zu = MERGE( zq_zu  ,  MAX(0._wp, zq_zt - zqs*zdum)  ,  l_zt_equal_zu )
 
-            END DO !DO jit = 1, nb_iter
+            END DO !DO jit = 1, nb_iter_ice
 
-            pCd_i(ji,jj) = zCD
-            pCh_i(ji,jj) = zCH
-            pCe_i(ji,jj) = zCE
+            ! Returned coefficients, limited again to [rCx_min, rCx_max] as in NANUQ
+            ! (also covers the case where the iteration loop above is not entered, i.e. `nb_iter_ice` < 1)
+            pCd_i(ji,jj) = MIN( MAX( zCD, rCx_min ), rCx_max )
+            pCh_i(ji,jj) = MIN( MAX( zCH, rCx_min ), rCx_max )
+            pCe_i(ji,jj) = MIN( MAX( zCE, rCx_min ), rCx_max )
 
             pt_zu_i(ji,jj) = zt_zu
             pq_zu_i(ji,jj) = zq_zu

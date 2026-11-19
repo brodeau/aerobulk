@@ -95,7 +95,7 @@ PROGRAM TEST_PHYMBL
       
       PRINT *, '  ==> potential '
       WRITE(*,'("   ==> potential temperature of air at ",f3.0," m is: ", f7.3, " deg.C !")') zzt, ztpa-rt0
-      PRINT *, '    ====> from `pot_temp@mod_phymbl` function:', REAL(pot_temp( zta, zP_zt, pPref=zslp ) - rt0,4)
+      PRINT *, '    ====> from `pot_from_abs@mod_phymbl` function:', REAL(pot_from_abs( zta, zP_zt, pPref=zslp ) - rt0,4)
       PRINT *, ''
 
 

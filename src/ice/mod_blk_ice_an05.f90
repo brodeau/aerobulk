@@ -139,7 +139,7 @@ CONTAINS
       l_zt_equal_zu = ( ABS(zu - zt) < 0.01_wp )
       IF( .NOT. l_zt_equal_zu )  ALLOCATE( zeta_t(Ni,Nj) )
 
-      !! Scalar wind speed cannot be below 0.2 m/s
+      !! Scalar wind speed cannot be below `wspd_thrshld_ice` (1 m/s, see mod_const.f90)
       Ubzu = MAX( U_zu, wspd_thrshld_ice )
 
       !! First guess of temperature and humidity at height zu:
@@ -171,7 +171,7 @@ CONTAINS
 
 
       !! ITERATION BLOCK
-      DO jit = 1, nb_iter
+      DO jit = 1, nb_iter_ice   ! `nb_iter_ice` (and not `nb_iter`): more iterations over sea-ice, see mod_const.f90
 
          !!Inverse of Obukov length (1/L) :
          ztmp0 = One_on_L(t_zu_i, q_zu_i, u_star, t_star, q_star)  ! 1/L == 1/[Obukhov length]
@@ -204,7 +204,7 @@ CONTAINS
             dq_zu = q_zu_i - qs_i ;  dq_zu = SIGN( MAX(ABS(dq_zu),1.E-9_wp), dq_zu )
          END IF
 
-      END DO !DO jit = 1, nb_iter
+      END DO !DO jit = 1, nb_iter_ice
 
       ! compute transfer coefficients at zu :
       ztmp0 = u_star/Ubzu
